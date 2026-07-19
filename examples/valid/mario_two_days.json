@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "0.1.0",
+  "scenarioId": "mario_rossi_two_days",
+  "timeZone": "Europe/Rome",
+  "startDate": "2026-10-12",
+  "endDate": "2026-10-13",
+  "seed": 42,
+  "provenance": {
+    "authorType": "external_llm",
+    "generatorName": "example-model",
+    "promptTemplateVersion": "daily-plan-0.1"
+  },
+  "residents": [
+    {
+      "residentId": "resident_mario_rossi",
+      "initialLocationId": "bedroom",
+      "attributes": {"age": 45, "occupation": "customer_service_employee"}
+    }
+  ],
+  "locations": [
+    {"locationId": "bedroom", "kind": "room"},
+    {"locationId": "bathroom", "kind": "room"},
+    {"locationId": "kitchen", "kind": "room"},
+    {"locationId": "workplace", "kind": "external"}
+  ],
+  "resources": [
+    {"resourceId": "shower_01", "resourceType": "shower", "locationId": "bathroom"},
+    {"resourceId": "kettle_01", "resourceType": "kettle", "locationId": "kitchen"}
+  ],
+  "days": [
+    {
+      "date": "2026-10-12",
+      "context": {"dayType": "working_day", "weather": "dry"},
+      "activities": [
+        {
+          "activityId": "d1_wake",
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "destinationId": "bedroom",
+          "timing": {
+            "start": {"earliest": "06:25", "preferred": "06:25", "latest": "06:25"},
+            "duration": {"minimumMinutes": 3, "preferredMinutes": 5, "maximumMinutes": 10}
+          }
+        },
+        {
+          "activityId": "d1_shower",
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "destinationId": "bathroom",
+          "timing": {
+            "start": {"earliest": "06:30", "preferred": "06:32", "latest": "06:40"},
+            "duration": {"minimumMinutes": 15, "preferredMinutes": 20, "maximumMinutes": 25}
+          },
+          "after": ["d1_wake"],
+          "requiredResources": ["shower_01"]
+        },
+        {
+          "activityId": "d1_breakfast",
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "destinationId": "kitchen",
+          "timing": {
+            "start": {"earliest": "06:50", "preferred": "06:55", "latest": "07:05"},
+            "duration": {"minimumMinutes": 20, "preferredMinutes": 28, "maximumMinutes": 35}
+          },
+          "after": ["d1_shower"],
+          "requiredResources": ["kettle_01"]
+        },
+        {
+          "activityId": "d1_work",
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "destinationId": "workplace",
+          "timing": {
+            "start": {"earliest": "08:00", "preferred": "08:00", "latest": "08:15"},
+            "duration": {"minimumMinutes": 405, "preferredMinutes": 420, "maximumMinutes": 435}
+          },
+          "after": ["d1_breakfast"]
+        }
+      ]
+    },
+    {
+      "date": "2026-10-13",
+      "context": {"dayType": "working_day", "weather": "rain"},
+      "activities": [
+        {
+          "activityId": "d2_wake",
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "destinationId": "bedroom",
+          "timing": {
+            "start": {"earliest": "06:25", "preferred": "06:30", "latest": "06:40"},
+            "duration": {"minimumMinutes": 3, "preferredMinutes": 5, "maximumMinutes": 10}
+          }
+        },
+        {
+          "activityId": "d2_breakfast",
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "destinationId": "kitchen",
+          "timing": {
+            "start": {"earliest": "06:45", "preferred": "06:55", "latest": "07:10"},
+            "duration": {"minimumMinutes": 20, "preferredMinutes": 28, "maximumMinutes": 35}
+          },
+          "after": ["d2_wake"],
+          "requiredResources": ["kettle_01"]
+        },
+        {
+          "activityId": "d2_work",
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "destinationId": "workplace",
+          "timing": {
+            "start": {"earliest": "08:00", "preferred": "08:00", "latest": "08:15"},
+            "duration": {"minimumMinutes": 405, "preferredMinutes": 420, "maximumMinutes": 435}
+          },
+          "after": ["d2_breakfast"]
+        }
+      ]
+    }
+  ]
+}
+

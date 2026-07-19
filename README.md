@@ -1,64 +1,55 @@
 # Smart Home Simulator
 
-Prototipo headless per la Proposta 2 della tesi: prende un piano strutturato, lo valida, lo compila in primitive di microesecuzione, simula il movimento in una casa e genera un log sensoriale grezzo separato dalla ground truth.
+Software di ricerca per generare dataset domestici sintetici mediante scenari strutturati, validazione deterministica e simulazione vincolata.
 
-Questa prima versione è volutamente piccola. Supporta un residente, una giornata, una casa rappresentata come grafo e sensori PIR. La struttura è predisposta per aggiungere cataloghi di attività, contatti, smart plug, rumore, più residenti e scenari longitudinali.
+## Stato attuale
 
-## Avvio rapido
+Il progetto è nella **Milestone 1: scenario contract e validation engine**.
 
-Requisiti: [`uv`](https://docs.astral.sh/uv/). Il progetto usa Python 3.12 in un ambiente isolato; non modifica il Python di sistema.
+Sono intenzionalmente assenti:
 
-```bash
-uv sync
-uv run smart-home-sim validate examples/minimal_scenario.json
-uv run smart-home-sim run examples/minimal_scenario.json
-```
+- motore di simulazione;
+- SimPy;
+- ambiente e planimetria 2D;
+- microesecuzione;
+- sensori;
+- exporter dei dataset;
+- integrazione LLM.
 
-Il comando `run` crea, per impostazione predefinita:
+Queste feature verranno sviluppate separatamente solo dopo il completamento dei rispettivi criteri di ingresso descritti in [ROADMAP.md](ROADMAP.md).
 
-```text
-outputs/latest/raw_sensor_events.jsonl
-outputs/latest/ground_truth.jsonl
-outputs/latest/activity_executions.jsonl
-```
-
-Per generare il JSON Schema iniziale:
+## Comandi disponibili
 
 ```bash
-uv run smart-home-sim schema --output outputs/scenario.schema.json
+make sync
+make validate
+make schema
 ```
 
-Per eseguire i controlli:
+Per validare un file specifico:
 
 ```bash
-uv run pytest
-uv run ruff check .
+UV_NO_EDITABLE=1 uv run smart-home-sim validate percorso/scenario.json
+UV_NO_EDITABLE=1 uv run smart-home-sim validate percorso/scenario.json --format json
 ```
 
-## Pipeline implementata
+`UV_NO_EDITABLE=1` evita che le installazioni editable basate su `.pth` vengano ignorate dalle versioni recenti di Python quando macOS assegna a tali file il flag filesystem `hidden`.
 
-```text
-scenario JSON
-    -> modelli Pydantic
-    -> validazione referenziale e temporale
-    -> compilatore di attività
-    -> primitive di microesecuzione
-    -> SimPy + grafo della casa
-    -> modello PIR
-    -> raw sensor log + ground truth
+Test e qualità:
+
+```bash
+make test
+make lint
+make check
 ```
 
-Il log grezzo non contiene `actorId` o `activityId`. La ground truth li conserva in un file separato.
+Il comando `validate` non corregge lo scenario e non lo esegue. Produce esclusivamente un rapporto stabile con codici, severità, percorso JSON e messaggio.
 
-## Limiti della versione 0.1
+## Documentazione
 
-- una sola persona;
-- attività domestiche sequenziali;
-- destinazioni interne alla casa;
-- solo PIR con segnali `ON`/`OFF`;
-- template di microesecuzione iniziali, non ancora calibrati su CASAS Aruba;
-- nessuna integrazione LLM: il confine di ingresso è già il JSON validato.
-
-Il prossimo obiettivo tecnico è calibrare frequenze di movimento, reset e distribuzioni temporali usando segmenti reali di Aruba, prima di aumentare il numero di attività.
-
-Vedi [docs/architecture.md](docs/architecture.md) per i confini tra i moduli.
+- [Roadmap e milestone](ROADMAP.md)
+- [Confine del sistema](docs/spec/00-system-boundary.md)
+- [Contratto dello scenario](docs/spec/01-scenario-contract.md)
+- [Motore di validazione](docs/spec/02-validation-engine.md)
+- [Contratti downstream](docs/spec/03-downstream-contracts.md)
+- [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)

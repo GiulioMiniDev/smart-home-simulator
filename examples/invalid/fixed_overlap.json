@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "0.1.0",
+  "scenarioId": "fixed_overlap",
+  "timeZone": "Europe/Rome",
+  "startDate": "2026-10-12",
+  "endDate": "2026-10-12",
+  "seed": 1,
+  "provenance": {"authorType": "human"},
+  "residents": [{"residentId": "r1", "initialLocationId": "kitchen"}],
+  "locations": [{"locationId": "kitchen", "kind": "room"}],
+  "resources": [],
+  "days": [
+    {
+      "date": "2026-10-12",
+      "activities": [
+        {
+          "activityId": "a1",
+          "actorId": "r1",
+          "intent": "breakfast",
+          "destinationId": "kitchen",
+          "timing": {
+            "start": {"earliest": "07:00", "preferred": "07:00", "latest": "07:00"},
+            "duration": {"minimumMinutes": 20, "preferredMinutes": 25, "maximumMinutes": 30}
+          }
+        },
+        {
+          "activityId": "a2",
+          "actorId": "r1",
+          "intent": "phone_call",
+          "destinationId": "kitchen",
+          "timing": {
+            "start": {"earliest": "07:10", "preferred": "07:10", "latest": "07:10"},
+            "duration": {"minimumMinutes": 10, "preferredMinutes": 10, "maximumMinutes": 15}
+          }
+        }
+      ]
+    }
+  ]
+}
+

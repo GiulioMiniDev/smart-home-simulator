@@ -1,14 +1,12 @@
 [project]
 name = "smart-home-simulator"
 version = "0.1.0"
-description = "Constrained discrete-event smart-home simulator for synthetic ambient-sensor datasets"
+description = "Validated scenario language for a constrained smart-home simulator"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "networkx>=3.4",
-  "pydantic>=2.10",
-  "simpy>=4.1",
-  "typer>=0.15",
+  "pydantic>=2.13,<3",
+  "typer>=0.27,<1",
 ]
 
 [project.scripts]
@@ -16,8 +14,8 @@ smart-home-sim = "smart_home_sim.cli:app"
 
 [dependency-groups]
 dev = [
-  "pytest>=8.3",
-  "ruff>=0.9",
+  "pytest>=9,<10",
+  "ruff>=0.15,<1",
 ]
 
 [build-system]
@@ -36,5 +34,5 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM"]
 

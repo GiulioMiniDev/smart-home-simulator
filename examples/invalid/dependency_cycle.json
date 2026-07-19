@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "0.1.0",
+  "scenarioId": "dependency_cycle",
+  "timeZone": "Europe/Rome",
+  "startDate": "2026-10-12",
+  "endDate": "2026-10-12",
+  "seed": 1,
+  "provenance": {"authorType": "human"},
+  "residents": [{"residentId": "r1", "initialLocationId": "kitchen"}],
+  "locations": [{"locationId": "kitchen", "kind": "room"}],
+  "resources": [],
+  "days": [
+    {
+      "date": "2026-10-12",
+      "activities": [
+        {
+          "activityId": "a1",
+          "actorId": "r1",
+          "intent": "first",
+          "destinationId": "kitchen",
+          "timing": {
+            "start": {"earliest": "07:00", "preferred": "07:05", "latest": "08:00"},
+            "duration": {"minimumMinutes": 5, "preferredMinutes": 10, "maximumMinutes": 15}
+          },
+          "after": ["a2"]
+        },
+        {
+          "activityId": "a2",
+          "actorId": "r1",
+          "intent": "second",
+          "destinationId": "kitchen",
+          "timing": {
+            "start": {"earliest": "07:00", "preferred": "07:10", "latest": "08:00"},
+            "duration": {"minimumMinutes": 5, "preferredMinutes": 10, "maximumMinutes": 15}
+          },
+          "after": ["a1"]
+        }
+      ]
+    }
+  ]
+}
+

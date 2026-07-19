@@ -1,5 +1,5 @@
-"""Scenario validation beyond JSON structure."""
+"""Read-only structural and semantic validation."""
 
-from smart_home_sim.validation.scenario import ScenarioValidationError, validate_scenario
+from smart_home_sim.validation.service import validate_file, validate_payload, validate_scenario
 
-__all__ = ["ScenarioValidationError", "validate_scenario"]
+__all__ = ["validate_file", "validate_payload", "validate_scenario"]

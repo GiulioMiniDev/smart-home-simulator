@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "0.1.0",
+  "scenarioId": "unknown_references",
+  "timeZone": "Europe/Rome",
+  "startDate": "2026-10-12",
+  "endDate": "2026-10-12",
+  "seed": 1,
+  "provenance": {"authorType": "human"},
+  "residents": [{"residentId": "r1", "initialLocationId": "missing_room"}],
+  "locations": [{"locationId": "kitchen", "kind": "room"}],
+  "resources": [],
+  "days": [
+    {
+      "date": "2026-10-12",
+      "activities": [
+        {
+          "activityId": "a1",
+          "actorId": "missing_resident",
+          "intent": "prepare_breakfast",
+          "destinationId": "missing_room",
+          "timing": {
+            "start": {"earliest": "07:00", "preferred": "07:05", "latest": "07:10"},
+            "duration": {"minimumMinutes": 10, "preferredMinutes": 15, "maximumMinutes": 20}
+          },
+          "after": ["missing_activity"],
+          "requiredResources": ["missing_resource"]
+        }
+      ]
+    }
+  ]
+}
+

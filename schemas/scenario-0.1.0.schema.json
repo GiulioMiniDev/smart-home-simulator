@@ -1,0 +1,391 @@
+{
+  "$defs": {
+    "Activity": {
+      "additionalProperties": false,
+      "properties": {
+        "activityId": {
+          "minLength": 1,
+          "title": "Activityid",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "destinationId": {
+          "minLength": 1,
+          "title": "Destinationid",
+          "type": "string"
+        },
+        "timing": {
+          "$ref": "#/$defs/ActivityTiming"
+        },
+        "mandatory": {
+          "default": true,
+          "title": "Mandatory",
+          "type": "boolean"
+        },
+        "after": {
+          "items": {
+            "type": "string"
+          },
+          "title": "After",
+          "type": "array"
+        },
+        "participants": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Participants",
+          "type": "array"
+        },
+        "requiredResources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requiredresources",
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "activityId",
+        "actorId",
+        "intent",
+        "destinationId",
+        "timing"
+      ],
+      "title": "Activity",
+      "type": "object"
+    },
+    "ActivityTiming": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/TimeWindow"
+        },
+        "duration": {
+          "$ref": "#/$defs/DurationRange"
+        }
+      },
+      "required": [
+        "start",
+        "duration"
+      ],
+      "title": "ActivityTiming",
+      "type": "object"
+    },
+    "DayPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/Activity"
+          },
+          "title": "Activities",
+          "type": "array"
+        },
+        "context": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Context",
+          "type": "object"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "DayPlan",
+      "type": "object"
+    },
+    "DurationRange": {
+      "additionalProperties": false,
+      "properties": {
+        "minimumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Minimumminutes",
+          "type": "number"
+        },
+        "preferredMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Preferredminutes",
+          "type": "number"
+        },
+        "maximumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Maximumminutes",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minimumMinutes",
+        "preferredMinutes",
+        "maximumMinutes"
+      ],
+      "title": "DurationRange",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "room",
+            "external",
+            "transit"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "locationId",
+        "kind"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "enum": [
+            "human",
+            "external_llm",
+            "rule_generator",
+            "import"
+          ],
+          "title": "Authortype",
+          "type": "string"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Resident": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "initialLocationId": {
+          "minLength": 1,
+          "title": "Initiallocationid",
+          "type": "string"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "residentId",
+        "initialLocationId"
+      ],
+      "title": "Resident",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": {
+          "minLength": 1,
+          "title": "Resourceid",
+          "type": "string"
+        },
+        "resourceType": {
+          "minLength": 1,
+          "title": "Resourcetype",
+          "type": "string"
+        },
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "capacity": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Capacity",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resourceId",
+        "resourceType",
+        "locationId"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "TimeWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "earliest": {
+          "format": "time",
+          "title": "Earliest",
+          "type": "string"
+        },
+        "preferred": {
+          "format": "time",
+          "title": "Preferred",
+          "type": "string"
+        },
+        "latest": {
+          "format": "time",
+          "title": "Latest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "earliest",
+        "preferred",
+        "latest"
+      ],
+      "title": "TimeWindow",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "scenarioId": {
+      "minLength": 1,
+      "title": "Scenarioid",
+      "type": "string"
+    },
+    "timeZone": {
+      "title": "Timezone",
+      "type": "string"
+    },
+    "startDate": {
+      "format": "date",
+      "title": "Startdate",
+      "type": "string"
+    },
+    "endDate": {
+      "format": "date",
+      "title": "Enddate",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "residents": {
+      "items": {
+        "$ref": "#/$defs/Resident"
+      },
+      "minItems": 1,
+      "title": "Residents",
+      "type": "array"
+    },
+    "locations": {
+      "items": {
+        "$ref": "#/$defs/Location"
+      },
+      "minItems": 1,
+      "title": "Locations",
+      "type": "array"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "days": {
+      "items": {
+        "$ref": "#/$defs/DayPlan"
+      },
+      "minItems": 1,
+      "title": "Days",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "timeZone",
+    "startDate",
+    "endDate",
+    "seed",
+    "provenance",
+    "residents",
+    "locations",
+    "days"
+  ],
+  "title": "Scenario",
+  "type": "object"
+}
