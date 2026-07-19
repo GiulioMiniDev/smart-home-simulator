@@ -1,6 +1,6 @@
 [project]
 name = "smart-home-simulator"
-version = "0.1.0"
+version = "1.0.0"
 description = "Validated scenario language for a constrained smart-home simulator"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -14,7 +14,9 @@ smart-home-sim = "smart_home_sim.cli:app"
 
 [dependency-groups]
 dev = [
+  "jsonschema>=4.25,<5",
   "pytest>=9,<10",
+  "pytest-cov>=7,<8",
   "ruff>=0.15,<1",
 ]
 
@@ -26,7 +28,7 @@ build-backend = "hatchling.build"
 packages = ["src/smart_home_sim"]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q --cov=src/smart_home_sim --cov-report=term-missing --cov-fail-under=95"
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -35,4 +37,3 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-

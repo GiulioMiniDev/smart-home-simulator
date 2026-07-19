@@ -1,0 +1,52 @@
+{
+  "validatorVersion": "1.0.0",
+  "valid": false,
+  "schemaVersion": "1.0.0",
+  "scenarioId": "unknown_references",
+  "issues": [
+    {
+      "code": "UNKNOWN_ACTOR",
+      "severity": "error",
+      "level": "referential",
+      "path": "$.days[0].activities[1].actorId",
+      "message": "Activity 'activity_2' references unknown resident 'missing_resident'.",
+      "details": {}
+    },
+    {
+      "code": "UNKNOWN_COMMITMENT",
+      "severity": "error",
+      "level": "referential",
+      "path": "$.days[0].activities[1].commitmentId",
+      "message": "Activity 'activity_2' references unknown commitment 'missing_commitment'.",
+      "details": {}
+    },
+    {
+      "code": "UNKNOWN_DEPENDENCY",
+      "severity": "error",
+      "level": "referential",
+      "path": "$.days[0].activities[1].dependencyGroups",
+      "message": "Activity 'activity_2' references unknown activity 'missing_activity'.",
+      "details": {}
+    },
+    {
+      "code": "UNKNOWN_ACTIVITY_LOCATION",
+      "severity": "error",
+      "level": "referential",
+      "path": "$.days[0].activities[1].locationIds",
+      "message": "Activity 'activity_2' references unknown location 'missing_location'.",
+      "details": {}
+    },
+    {
+      "code": "UNKNOWN_REQUIRED_RESOURCE",
+      "severity": "error",
+      "level": "referential",
+      "path": "$.days[0].activities[1].requiredResources",
+      "message": "Activity 'activity_2' references unknown resource 'missing_resource'.",
+      "details": {}
+    }
+  ],
+  "summary": {
+    "errorCount": 5,
+    "warningCount": 0
+  }
+}

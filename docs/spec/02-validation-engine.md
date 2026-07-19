@@ -1,59 +1,75 @@
-# Validation engine
+# Validation engine 1.0.0
 
 ## Responsibility
 
-The validator decides whether a scenario is admissible according to a versioned contract. It is deterministic, read-only and independent from simulation.
+The validator deterministically decides whether a scenario is admissible under contract `1.0.0`. It is read-only, has no random behavior and imports no compiler, simulator, geometry or sensor implementation.
 
-## Levels
+It does not repair, schedule or execute a scenario. A valid report means “internally admissible”, not “behaviorally realistic”.
 
-| Level | Examples |
+## Input pipeline
+
+Validation is deliberately staged:
+
+1. bounded file read, with a 50 MiB limit;
+2. strict UTF-8 decoding;
+3. JSON nesting bounded to 256 levels;
+4. strict JSON parsing, rejecting duplicate keys and non-finite numbers;
+5. exact schema-version dispatch;
+6. strict Pydantic structural validation with unknown fields forbidden;
+7. deterministic referential, temporal and semantic rules;
+8. stable sorting and report serialization.
+
+Failures are returned as reports rather than uncaught exceptions for missing files, unreadable inputs, encoding errors, JSON syntax and invalid scenarios.
+
+## Validation levels
+
+| Level | Responsibility |
 |---|---|
-| Structure | missing field, wrong type, invalid duration range |
-| Referential | unknown actor, location, resource or dependency |
-| Temporal | date outside range, dependency cycle, impossible precedence, fixed overlap |
-| Semantic | participant duplicates actor, resource located elsewhere |
+| `structure` | JSON, types, required/unknown fields and local object invariants |
+| `referential` | identifiers and cross-object references |
+| `temporal` | simulation bounds, timezone offsets, precedence and definite conflicts |
+| `semantic` | policies, fallback meaning, participant and resource compatibility |
 
-## Issue contract
+The engine flags contradictions it can prove from fixed information. It does not reject merely possible overlaps between flexible activities; resolving those belongs to the plan compiler.
 
-Every issue contains:
+## Report contract
+
+Every issue contains `code`, frozen `severity`, `level`, JSON-style `path`, human-readable `message` and machine-readable `details`.
 
 ```json
 {
-  "code": "UNKNOWN_ACTOR",
-  "severity": "error",
-  "level": "referential",
-  "path": "$.days[0].activities[2].actorId",
-  "message": "Activity 'a03' references unknown resident 'r9'."
+  "validatorVersion": "1.0.0",
+  "valid": false,
+  "schemaVersion": "1.0.0",
+  "scenarioId": "example",
+  "issues": [
+    {
+      "code": "UNKNOWN_ACTOR",
+      "severity": "error",
+      "level": "referential",
+      "path": "$.days[0].activities[2].actorId",
+      "message": "Activity 'a03' references unknown resident 'r9'.",
+      "details": {}
+    }
+  ],
+  "summary": {"errorCount": 1, "warningCount": 0}
 }
 ```
 
-Errors make the report invalid. Warnings do not, unless the CLI is invoked with `--warnings-as-errors`.
+Errors make the report invalid. Warnings remain valid unless the CLI uses `--warnings-as-errors`. The distributed output contract is `schemas/validation-report-1.0.0.schema.json`; the golden report in `tests/golden` protects ordering, aliases and serialization.
 
-## Initial stable codes
+## Stable issue vocabulary
 
-```text
-JSON_SYNTAX
-STRUCTURE_INVALID
-DUPLICATE_RESIDENT_ID
-DUPLICATE_LOCATION_ID
-DUPLICATE_RESOURCE_ID
-DUPLICATE_DAY
-DUPLICATE_ACTIVITY_ID
-UNKNOWN_INITIAL_LOCATION
-UNKNOWN_RESOURCE_LOCATION
-UNKNOWN_ACTOR
-UNKNOWN_PARTICIPANT
-UNKNOWN_DESTINATION
-UNKNOWN_REQUIRED_RESOURCE
-UNKNOWN_DEPENDENCY
-SELF_DEPENDENCY
-DEPENDENCY_CYCLE
-DAY_OUTSIDE_SCENARIO
-IMPOSSIBLE_PRECEDENCE
-FIXED_ACTIVITY_OVERLAP
-ACTOR_REPEATED_AS_PARTICIPANT
-RESOURCE_LOCATION_MISMATCH
-```
+The authoritative registry is `src/smart_home_sim/domain/codes.py`. It contains 83 codes and is emitted as the `code` enumeration in the validation-report JSON Schema. Three have warning severity: `DUPLICATE_DECLARED_CONSTRAINT`, `RESOURCE_LOCATION_MISMATCH` and `UNUSED_COMMITMENT`; every other code is an error.
 
-Adding a code is backward compatible. Renaming or changing the meaning of a code requires a documented compatibility decision.
+The test matrix executes every registered rule code and asserts that no emitted code or severity can exist outside the registry. Renaming a code, changing its severity or changing its established meaning is a breaking report-contract change.
 
+## Quality gates
+
+- every valid example exits `0` and every invalid example exits `1`;
+- the representative week contains seven days and 173 activities and validates cleanly;
+- both public JSON Schemas pass the Draft 2020-12 metaschema validator and exactly match the models;
+- parser, model invariants, all issue codes, CLI modes and golden output are tested;
+- line coverage must remain at least 95%;
+- Ruff lint and formatting checks pass;
+- the dependency graph contains no simulation, geometry or sensor runtime.

@@ -1,42 +1,187 @@
 {
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "1.0.0",
+  "documentType": "life_scenario",
   "scenarioId": "dependency_cycle",
+  "title": "Minimal contract example",
+  "language": "en",
   "timeZone": "Europe/Rome",
-  "startDate": "2026-10-12",
-  "endDate": "2026-10-12",
+  "simulationWindow": {
+    "start": "2026-10-12T00:00:00+02:00",
+    "end": "2026-10-13T00:00:00+02:00"
+  },
   "seed": 1,
-  "provenance": {"authorType": "human"},
-  "residents": [{"residentId": "r1", "initialLocationId": "kitchen"}],
-  "locations": [{"locationId": "kitchen", "kind": "room"}],
-  "resources": [],
+  "provenance": {
+    "authorType": "human",
+    "humanReviewed": true
+  },
+  "modelReferences": {
+    "activityCatalog": {
+      "referenceId": "activity_catalog",
+      "version": "1.0.0"
+    },
+    "homeModel": {
+      "referenceId": "minimal_home",
+      "version": "1.0.0"
+    }
+  },
+  "residents": [
+    {
+      "residentId": "resident_1",
+      "displayName": "Resident One"
+    }
+  ],
+  "externalPeople": [
+    {
+      "externalPersonId": "friend_1",
+      "displayName": "Friend One",
+      "relationshipToResidents": {
+        "resident_1": "friend"
+      }
+    }
+  ],
+  "locations": [
+    {
+      "locationId": "bedroom",
+      "kind": "room"
+    },
+    {
+      "locationId": "kitchen",
+      "kind": "room"
+    },
+    {
+      "locationId": "home",
+      "kind": "composite",
+      "memberLocationIds": [
+        "bedroom",
+        "kitchen"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "resourceId": "kettle_1",
+      "resourceType": "kettle",
+      "locationId": "kitchen",
+      "capacity": 1
+    }
+  ],
+  "initialState": {
+    "at": "2026-10-12T00:00:00+02:00",
+    "residents": [
+      {
+        "residentId": "resident_1",
+        "locationId": "bedroom",
+        "facts": {
+          "awake": false
+        }
+      }
+    ],
+    "resourceFacts": {
+      "kettle_1": {
+        "available": true
+      }
+    }
+  },
+  "commitments": [
+    {
+      "commitmentId": "breakfast_commitment",
+      "intent": "eat_breakfast",
+      "participantIds": [
+        "resident_1"
+      ],
+      "locationId": "kitchen",
+      "start": "2026-10-12T08:00:00+02:00",
+      "end": "2026-10-12T08:30:00+02:00"
+    }
+  ],
   "days": [
     {
       "date": "2026-10-12",
+      "context": {
+        "dayType": "working_day"
+      },
       "activities": [
         {
-          "activityId": "a1",
-          "actorId": "r1",
-          "intent": "first",
-          "destinationId": "kitchen",
-          "timing": {
-            "start": {"earliest": "07:00", "preferred": "07:05", "latest": "08:00"},
-            "duration": {"minimumMinutes": 5, "preferredMinutes": 10, "maximumMinutes": 15}
+          "activityId": "activity_1",
+          "actorId": "resident_1",
+          "intent": "eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-12T08:00:00+02:00",
+            "preferred": "2026-10-12T08:00:00+02:00",
+            "latest": "2026-10-12T08:00:00+02:00"
           },
-          "after": ["a2"]
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 30.0
+          },
+          "requiredResources": [
+            {
+              "resourceId": "kettle_1",
+              "units": 1
+            }
+          ],
+          "commitmentId": "breakfast_commitment",
+          "dependencyGroups": [
+            {
+              "mode": "all",
+              "activityIds": [
+                "activity_2"
+              ]
+            }
+          ]
         },
         {
-          "activityId": "a2",
-          "actorId": "r1",
-          "intent": "second",
-          "destinationId": "kitchen",
-          "timing": {
-            "start": {"earliest": "07:00", "preferred": "07:10", "latest": "08:00"},
-            "duration": {"minimumMinutes": 5, "preferredMinutes": 10, "maximumMinutes": 15}
+          "activityId": "activity_2",
+          "actorId": "resident_1",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-12T08:30:00+02:00",
+            "preferred": "2026-10-12T08:35:00+02:00",
+            "latest": "2026-10-12T08:45:00+02:00"
           },
-          "after": ["a1"]
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": false,
+          "dependencyGroups": [
+            {
+              "mode": "all",
+              "activityIds": [
+                "activity_1"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "runtimeEventCandidates": [
+    {
+      "eventId": "event_1",
+      "eligibleWindow": {
+        "earliest": "2026-10-12T08:30:00+02:00",
+        "preferred": "2026-10-12T08:35:00+02:00",
+        "latest": "2026-10-12T08:45:00+02:00"
+      },
+      "occurrenceProbability": 0.2,
+      "triggerActivityId": "activity_2",
+      "effects": [
+        {
+          "operation": "delay_activity_start",
+          "targetId": "activity_2",
+          "minimumAmount": 1.0,
+          "maximumAmount": 3.0
         }
       ]
     }
   ]
 }
-

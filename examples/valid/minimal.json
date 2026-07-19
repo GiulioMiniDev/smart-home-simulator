@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "life_scenario",
-  "scenarioId": "fixed_overlap",
+  "scenarioId": "minimal_valid_scenario",
   "title": "Minimal contract example",
   "language": "en",
   "timeZone": "Europe/Rome",
@@ -134,17 +134,24 @@
             "kitchen"
           ],
           "startWindow": {
-            "earliest": "2026-10-12T08:15:00+02:00",
-            "preferred": "2026-10-12T08:15:00+02:00",
-            "latest": "2026-10-12T08:15:00+02:00"
+            "earliest": "2026-10-12T08:30:00+02:00",
+            "preferred": "2026-10-12T08:35:00+02:00",
+            "latest": "2026-10-12T08:45:00+02:00"
           },
           "duration": {
-            "minimumMinutes": 30.0,
-            "preferredMinutes": 30.0,
-            "maximumMinutes": 30.0
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
           },
-          "mandatory": true,
-          "dependencyGroups": []
+          "mandatory": false,
+          "dependencyGroups": [
+            {
+              "mode": "all",
+              "activityIds": [
+                "activity_1"
+              ]
+            }
+          ]
         }
       ]
     }

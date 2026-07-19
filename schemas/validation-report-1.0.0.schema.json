@@ -1,0 +1,218 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "ValidationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+            "ACTIVITY_COMMITMENT_END_MISMATCH",
+            "ACTIVITY_COMMITMENT_LOCATION_MISMATCH",
+            "ACTIVITY_COMMITMENT_PARTICIPANT_MISMATCH",
+            "ACTIVITY_COMMITMENT_TIME_MISMATCH",
+            "ACTIVITY_WINDOW_OUTSIDE_SIMULATION",
+            "ACTOR_REPEATED_AS_PARTICIPANT",
+            "COMMITMENT_OUTSIDE_SIMULATION",
+            "COMMITMENT_OVERLAP",
+            "COMPOSITE_LOCATION_CYCLE",
+            "COMPOSITE_LOCATION_SELF_REFERENCE",
+            "DAY_OUTSIDE_SIMULATION",
+            "DEPENDENCY_CYCLE",
+            "DUPLICATE_ACTIVITY_ID",
+            "DUPLICATE_ACTIVITY_LABEL",
+            "DUPLICATE_ACTIVITY_LOCATION",
+            "DUPLICATE_COMMITMENT_ID",
+            "DUPLICATE_COMMITMENT_PARTICIPANT",
+            "DUPLICATE_DAY",
+            "DUPLICATE_DECLARED_CONSTRAINT",
+            "DUPLICATE_DEPENDENCY",
+            "DUPLICATE_EXTERNAL_PERSON_ID",
+            "DUPLICATE_INITIAL_STATE",
+            "DUPLICATE_JSON_KEY",
+            "DUPLICATE_LOCATION_ID",
+            "DUPLICATE_OUTPUT_FORMAT",
+            "DUPLICATE_PARTICIPANT",
+            "DUPLICATE_REPAIR_STEP",
+            "DUPLICATE_RESIDENT_ID",
+            "DUPLICATE_RESOURCE_ID",
+            "DUPLICATE_RESOURCE_REQUIREMENT",
+            "DUPLICATE_RUNTIME_EVENT_ID",
+            "EVENT_TARGET_DAY_MISMATCH",
+            "EVENT_TRIGGER_DAY_MISMATCH",
+            "FALLBACK_ACTOR_MISMATCH",
+            "FALLBACK_CYCLE",
+            "FALLBACK_DAY_MISMATCH",
+            "FALLBACK_TARGET_IS_FALLBACK",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "FIXED_ACTIVITY_COMMITMENT_OVERLAP",
+            "FIXED_ACTIVITY_OVERLAP",
+            "FIXED_RESOURCE_CAPACITY_EXCEEDED",
+            "FUTURE_DEPENDENCY",
+            "IMPOSSIBLE_ANY_DEPENDENCY",
+            "IMPOSSIBLE_PRECEDENCE",
+            "INITIAL_STATE_TIME_MISMATCH",
+            "INVALID_REPAIR_ORDER",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "MANDATORY_COMMITMENT_OPTIONAL_ACTIVITY",
+            "MISSING_REQUIRED_DAY",
+            "MISSING_RESIDENT_INITIAL_STATE",
+            "PERSON_ID_COLLISION",
+            "REPAIR_DISABLED_WITH_LOCAL_STEPS",
+            "RESOURCE_LOCATION_MISMATCH",
+            "RESOURCE_REQUIREMENT_EXCEEDS_CAPACITY",
+            "RUNTIME_EVENT_OUTSIDE_SIMULATION",
+            "SELF_DEPENDENCY",
+            "STRUCTURE_INVALID",
+            "TIMEZONE_OFFSET_MISMATCH",
+            "UNKNOWN_ACTIVITY_LOCATION",
+            "UNKNOWN_ACTOR",
+            "UNKNOWN_COMMITMENT",
+            "UNKNOWN_COMMITMENT_LOCATION",
+            "UNKNOWN_COMMITMENT_PARTICIPANT",
+            "UNKNOWN_COMPOSITE_MEMBER",
+            "UNKNOWN_DEPENDENCY",
+            "UNKNOWN_EVENT_TARGET_ACTIVITY",
+            "UNKNOWN_EVENT_TARGET_RESIDENT",
+            "UNKNOWN_EVENT_TRIGGER_ACTIVITY",
+            "UNKNOWN_FALLBACK_TARGET",
+            "UNKNOWN_INITIAL_LOCATION",
+            "UNKNOWN_INITIAL_STATE_RESIDENT",
+            "UNKNOWN_PARTICIPANT",
+            "UNKNOWN_RELATIONSHIP_RESIDENT",
+            "UNKNOWN_REQUIRED_RESOURCE",
+            "UNKNOWN_RESOURCE_LOCATION",
+            "UNKNOWN_RESOURCE_STATE",
+            "UNSUPPORTED_SCHEMA_VERSION",
+            "UNUSED_COMMITMENT"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "level": {
+          "enum": [
+            "structure",
+            "referential",
+            "temporal",
+            "semantic"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "level",
+        "path",
+        "message"
+      ],
+      "title": "ValidationIssue",
+      "type": "object"
+    },
+    "ValidationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        },
+        "warningCount": {
+          "minimum": 0,
+          "title": "Warningcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "errorCount",
+        "warningCount"
+      ],
+      "title": "ValidationSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:validation-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "validatorVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Validatorversion",
+      "type": "string"
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    },
+    "schemaVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Schemaversion"
+    },
+    "scenarioId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Scenarioid"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/ValidationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/ValidationSummary"
+    }
+  },
+  "required": [
+    "valid",
+    "schemaVersion",
+    "scenarioId",
+    "issues",
+    "summary"
+  ],
+  "title": "Smart Home Validation Report 1.0.0",
+  "type": "object"
+}

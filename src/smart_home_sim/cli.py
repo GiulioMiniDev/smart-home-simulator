@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 
 from smart_home_sim.domain.models import Scenario
+from smart_home_sim.domain.report import ValidationReport
 from smart_home_sim.formatting import format_text_report
 from smart_home_sim.validation.service import validate_file
 
@@ -15,6 +16,11 @@ from smart_home_sim.validation.service import validate_file
 class OutputFormat(StrEnum):
     text = "text"
     json = "json"
+
+
+class SchemaContract(StrEnum):
+    scenario = "scenario"
+    validation_report = "validation-report"
 
 
 app = typer.Typer(no_args_is_help=True, help="Smart-home scenario validation")
@@ -47,9 +53,13 @@ def validate(
 
 
 @app.command()
-def schema(output: Annotated[Path | None, typer.Option("--output")] = None) -> None:
-    """Print or write the JSON Schema for scenario version 0.1.0."""
-    content = json.dumps(Scenario.model_json_schema(by_alias=True), indent=2)
+def schema(
+    contract: Annotated[SchemaContract, typer.Option("--contract")] = SchemaContract.scenario,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Print or write a public version 1.0.0 JSON Schema."""
+    model = Scenario if contract is SchemaContract.scenario else ValidationReport
+    content = json.dumps(model.model_json_schema(by_alias=True), indent=2)
     if output is None:
         typer.echo(content)
     else:

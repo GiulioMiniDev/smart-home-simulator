@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field, JsonValue
 
 from smart_home_sim.domain.base import ContractModel
+from smart_home_sim.domain.codes import STABLE_ISSUE_CODES
 
 
 class ValidationIssue(ContractModel):
-    code: str
+    code: str = Field(json_schema_extra={"enum": sorted(STABLE_ISSUE_CODES)})
     severity: Literal["error", "warning"]
     level: Literal["structure", "referential", "temporal", "semantic"]
     path: str
     message: str
+    details: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ValidationSummary(ContractModel):
@@ -21,6 +23,16 @@ class ValidationSummary(ContractModel):
 
 
 class ValidationReport(ContractModel):
+    model_config = ConfigDict(
+        **ContractModel.model_config,
+        json_schema_extra={
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "urn:smart-home-simulator:schema:validation-report:1.0.0",
+            "title": "Smart Home Validation Report 1.0.0",
+        },
+    )
+
+    validator_version: Literal["1.0.0"] = "1.0.0"
     valid: bool
     schema_version: str | None
     scenario_id: str | None
