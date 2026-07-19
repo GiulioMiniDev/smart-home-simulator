@@ -31,3 +31,5 @@ The illustrative Mario week contains 173 activity records and exercises requirem
 The `1.0.0` validator may verify identifiers and definite contradictions. It must not perform work assigned to the plan compiler or simulator.
 
 The migrated acceptance document is `examples/valid/mario_week.json`; `tools/migrate_legacy_week.py` makes the transformation reproducible from the original research note.
+
+During Milestone 2 the compiler proved that the original 08:00 weekday commitments were infeasible: the earliest valid morning chain and minimum commute arrive at 08:08. The acceptance fixture now uses the already-declared latest work start, 08:15. This is a correction to example data, not a change to scenario contract `1.0.0`; the compiler retains a regression test showing that the former value fails with `MAIN_PLAN_INFEASIBLE`.

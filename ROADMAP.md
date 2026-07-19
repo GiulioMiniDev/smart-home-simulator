@@ -6,7 +6,7 @@ Ogni milestone è una feature autonoma con contratto, test e criterio di complet
 |---:|---|---|---|---|
 | 0 | Specifica e confini | proposta di ricerca | contratti e invarianti | Completata |
 | 1 | Motore di validazione | scenario JSON | validation report | **Completata e congelata — 1.0.0** |
-| 2 | Compilatore del piano | scenario valido | canonical daily plan | Non iniziata |
+| 2 | Compilatore del piano | scenario valido | canonical daily plan | **Completata e congelata — 1.0.0** |
 | 3 | Motore di simulazione | canonical plan | abstract execution trace | Non iniziata |
 | 4 | Ambiente topologico | trace + home graph | transizioni tra luoghi | Non iniziata |
 | 5 | Planimetria 2D | topologia + geometria | traiettorie spazio-temporali | Non iniziata |
@@ -63,3 +63,33 @@ Ogni milestone è una feature autonoma con contratto, test e criterio di complet
 ## Regola di avanzamento
 
 La regola di avanzamento è soddisfatta: `scenario-1.0.0.schema.json` è congelato e la settimana di Mario Rossi, composta da 7 giorni e 173 attività, è un acceptance test valido. Qualunque estensione futura del contratto richiede una nuova versione secondo ADR-002; non riapre né muta `1.0.0`.
+
+## Milestone 2 — Compilatore del piano
+
+### Contenuto
+
+- gate obbligatorio sul validatore `1.0.0`;
+- modello CP-SAT per finestre, durate, dipendenze, residenti, impegni e risorse;
+- selezione opzionale ottima e tie-break deterministico;
+- tempo esatto al microsecondo e gestione del fuso IANA;
+- patch giornaliere per fallback e condizioni;
+- piano e compilation report versionati `1.0.0`;
+- CLI, schemi, checksum, golden week e test di invarianti.
+
+### Fuori perimetro
+
+- esecuzione e stato runtime;
+- campionamento degli eventi;
+- riparazione di contingenze simultanee;
+- topologia, coordinate, microazioni, sensori ed export.
+
+### Definition of done
+
+- il caso minimo e la settimana completa compilano con esito `OPTIMAL`;
+- un piano impossibile fallisce senza artefatto parziale;
+- output e digest sono deterministici;
+- gli schemi pubblici coincidono con i modelli e superano la metaschema;
+- vincoli di non sovrapposizione, capacità, dipendenza e commitment sono testati sull'output;
+- suite completa, lint e copertura minima del 95% passano.
+
+La regola di avanzamento della Milestone 2 è soddisfatta dai contratti congelati in ADR-003 e dalla compilazione golden di `examples/valid/mario_week.json`.

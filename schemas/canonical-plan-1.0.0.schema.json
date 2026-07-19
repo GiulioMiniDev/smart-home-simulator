@@ -1,0 +1,598 @@
+{
+  "$defs": {
+    "ActivationMode": {
+      "enum": [
+        "always",
+        "conditional",
+        "fallback"
+      ],
+      "title": "ActivationMode",
+      "type": "string"
+    },
+    "ActivationRule": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/ActivationMode",
+          "default": "always"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Condition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fallbackForActivityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallbackforactivityid"
+        },
+        "fallbackTrigger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FallbackTrigger"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ActivationRule",
+      "type": "object"
+    },
+    "CanonicalActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceActivityId": {
+          "minLength": 1,
+          "title": "Sourceactivityid",
+          "type": "string"
+        },
+        "sequenceIndex": {
+          "minimum": 0,
+          "title": "Sequenceindex",
+          "type": "integer"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "locationIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Locationids",
+          "type": "array"
+        },
+        "scheduledStart": {
+          "format": "date-time",
+          "title": "Scheduledstart",
+          "type": "string"
+        },
+        "scheduledEnd": {
+          "format": "date-time",
+          "title": "Scheduledend",
+          "type": "string"
+        },
+        "durationMicroseconds": {
+          "exclusiveMinimum": 0,
+          "title": "Durationmicroseconds",
+          "type": "integer"
+        },
+        "mandatory": {
+          "title": "Mandatory",
+          "type": "boolean"
+        },
+        "priority": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "canOverlapForActor": {
+          "title": "Canoverlapforactor",
+          "type": "boolean"
+        },
+        "participantIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Participantids",
+          "type": "array"
+        },
+        "requiredResources": {
+          "items": {
+            "$ref": "#/$defs/ResourceRequirement"
+          },
+          "title": "Requiredresources",
+          "type": "array"
+        },
+        "selectedDependencyIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Selecteddependencyids",
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/StateEffect"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "activation": {
+          "$ref": "#/$defs/ActivationRule"
+        },
+        "commitmentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commitmentid"
+        },
+        "truncatedAtSimulationEnd": {
+          "default": false,
+          "title": "Truncatedatsimulationend",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sourceActivityId",
+        "sequenceIndex",
+        "actorId",
+        "intent",
+        "locationIds",
+        "scheduledStart",
+        "scheduledEnd",
+        "durationMicroseconds",
+        "mandatory",
+        "priority",
+        "canOverlapForActor",
+        "activation"
+      ],
+      "title": "CanonicalActivity",
+      "type": "object"
+    },
+    "CanonicalDay": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/CanonicalActivity"
+          },
+          "title": "Activities",
+          "type": "array"
+        },
+        "contingencies": {
+          "items": {
+            "$ref": "#/$defs/ContingencyPlan"
+          },
+          "title": "Contingencies",
+          "type": "array"
+        },
+        "omittedActivities": {
+          "items": {
+            "$ref": "#/$defs/OmittedActivity"
+          },
+          "title": "Omittedactivities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "CanonicalDay",
+      "type": "object"
+    },
+    "CompilerMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "compilerName": {
+          "const": "smart-home-sim-plan-compiler",
+          "default": "smart-home-sim-plan-compiler",
+          "title": "Compilername",
+          "type": "string"
+        },
+        "compilerVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Compilerversion",
+          "type": "string"
+        },
+        "solverBackend": {
+          "const": "or-tools-cp-sat",
+          "default": "or-tools-cp-sat",
+          "title": "Solverbackend",
+          "type": "string"
+        },
+        "solverVersion": {
+          "const": "9.15.6755",
+          "default": "9.15.6755",
+          "title": "Solverversion",
+          "type": "string"
+        },
+        "optimizationPolicyVersion": {
+          "const": "priority-preference-1.0.0",
+          "default": "priority-preference-1.0.0",
+          "title": "Optimizationpolicyversion",
+          "type": "string"
+        },
+        "timeResolution": {
+          "const": "microsecond",
+          "default": "microsecond",
+          "title": "Timeresolution",
+          "type": "string"
+        }
+      },
+      "title": "CompilerMetadata",
+      "type": "object"
+    },
+    "Condition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/ConditionOperator",
+          "default": "truthy"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "fact"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "ConditionOperator": {
+      "enum": [
+        "truthy",
+        "falsy",
+        "exists",
+        "not_exists",
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "in",
+        "not_in"
+      ],
+      "title": "ConditionOperator",
+      "type": "string"
+    },
+    "ContingencyPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "contingencyId": {
+          "minLength": 1,
+          "title": "Contingencyid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "fallback",
+            "conditional"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "activation": {
+          "$ref": "#/$defs/ActivationRule"
+        },
+        "replacesActivityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replacesactivityid"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/CanonicalActivity"
+          },
+          "title": "Activities",
+          "type": "array"
+        },
+        "rescheduledActivities": {
+          "items": {
+            "$ref": "#/$defs/CanonicalActivity"
+          },
+          "title": "Rescheduledactivities",
+          "type": "array"
+        },
+        "omittedActivities": {
+          "items": {
+            "$ref": "#/$defs/OmittedActivity"
+          },
+          "title": "Omittedactivities",
+          "type": "array"
+        },
+        "objectiveValues": {
+          "$ref": "#/$defs/ObjectiveValues"
+        }
+      },
+      "required": [
+        "contingencyId",
+        "kind",
+        "activation",
+        "objectiveValues"
+      ],
+      "title": "ContingencyPlan",
+      "type": "object"
+    },
+    "EffectOperation": {
+      "enum": [
+        "set",
+        "increment",
+        "decrement",
+        "append",
+        "remove"
+      ],
+      "title": "EffectOperation",
+      "type": "string"
+    },
+    "FallbackTrigger": {
+      "enum": [
+        "precondition_failed",
+        "activity_cancelled",
+        "activity_replaced"
+      ],
+      "title": "FallbackTrigger",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "ObjectiveValues": {
+      "additionalProperties": false,
+      "properties": {
+        "optionalPriorityScore": {
+          "minimum": 0,
+          "title": "Optionalpriorityscore",
+          "type": "integer"
+        },
+        "optionalActivityCount": {
+          "minimum": 0,
+          "title": "Optionalactivitycount",
+          "type": "integer"
+        },
+        "durationDeviationMicroseconds": {
+          "minimum": 0,
+          "title": "Durationdeviationmicroseconds",
+          "type": "integer"
+        },
+        "temporalDeviationMicroseconds": {
+          "minimum": 0,
+          "title": "Temporaldeviationmicroseconds",
+          "type": "integer"
+        },
+        "scheduledStartSumMicroseconds": {
+          "minimum": 0,
+          "title": "Scheduledstartsummicroseconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "optionalPriorityScore",
+        "optionalActivityCount",
+        "durationDeviationMicroseconds",
+        "temporalDeviationMicroseconds",
+        "scheduledStartSumMicroseconds"
+      ],
+      "title": "ObjectiveValues",
+      "type": "object"
+    },
+    "OmittedActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceActivityId": {
+          "minLength": 1,
+          "title": "Sourceactivityid",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "optional_not_selected",
+            "contingency_target_not_scheduled",
+            "contingency_optional_not_selected",
+            "contingency_main_activity_omitted"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceActivityId",
+        "reason"
+      ],
+      "title": "OmittedActivity",
+      "type": "object"
+    },
+    "ResourceRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": {
+          "minLength": 1,
+          "title": "Resourceid",
+          "type": "string"
+        },
+        "units": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Units",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resourceId"
+      ],
+      "title": "ResourceRequirement",
+      "type": "object"
+    },
+    "SimulationWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "SimulationWindow",
+      "type": "object"
+    },
+    "StateEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/EffectOperation"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "fact",
+        "operation",
+        "value"
+      ],
+      "title": "StateEffect",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:canonical-plan:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "planVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Planversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "canonical_plan",
+      "default": "canonical_plan",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "sourceScenarioVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Sourcescenarioversion",
+      "type": "string"
+    },
+    "sourceScenarioId": {
+      "minLength": 1,
+      "title": "Sourcescenarioid",
+      "type": "string"
+    },
+    "sourceScenarioSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcescenariosha256",
+      "type": "string"
+    },
+    "timeZone": {
+      "title": "Timezone",
+      "type": "string"
+    },
+    "simulationWindow": {
+      "$ref": "#/$defs/SimulationWindow"
+    },
+    "compiler": {
+      "$ref": "#/$defs/CompilerMetadata"
+    },
+    "objectiveValues": {
+      "$ref": "#/$defs/ObjectiveValues"
+    },
+    "days": {
+      "items": {
+        "$ref": "#/$defs/CanonicalDay"
+      },
+      "minItems": 1,
+      "title": "Days",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sourceScenarioId",
+    "sourceScenarioSha256",
+    "timeZone",
+    "simulationWindow",
+    "objectiveValues",
+    "days"
+  ],
+  "title": "Smart Home Canonical Plan 1.0.0",
+  "type": "object"
+}

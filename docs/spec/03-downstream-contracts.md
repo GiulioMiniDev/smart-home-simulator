@@ -4,7 +4,7 @@ These contracts define boundaries for future milestones without fixing their imp
 
 ## Canonical plan
 
-Produced only from a valid scenario. It will resolve time windows, dependencies and resource assignments into a deterministic daily representation. It must preserve links to original activity identifiers.
+Produced only from a valid and compilable scenario under contract `1.0.0`. It resolves time windows, dependencies, optional selection, resident conflicts, commitments, resources and daily contingency patches. It preserves links to every source activity and is frozen by ADR-003.
 
 ## Execution trace
 
@@ -17,4 +17,3 @@ Produced by sensor models from the execution trace. It contains only device-obse
 ## Dependency rule
 
 Downstream modules may consume accepted upstream artifacts. Upstream modules must not import downstream implementations. In particular, validation must never import the compiler, simulator, geometry or sensors.
-

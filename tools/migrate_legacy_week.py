@@ -150,6 +150,11 @@ def migrate_commitments(
     ids: dict[tuple[str, str], str] = {}
     for item in source["fixedCommitments"]:
         for day_text in item["dates"]:
+            start_text = item["start"]
+            # The compiler proved 08:00 infeasible after the minimum morning chain and commute.
+            # 08:15 is already inside every linked work activity's declared start window.
+            if item["commitmentId"] == "work_weekdays" and start_text == "08:00":
+                start_text = "08:15"
             commitment_id = f"{item['commitmentId']}__{day_text}"
             ids[(item["commitmentId"], day_text)] = commitment_id
             participants = [RESIDENT_ID, *item.get("participants", [])]
@@ -164,7 +169,7 @@ def migrate_commitments(
                     "intent": item["commitmentId"],
                     "participantIds": participants,
                     "locationId": item["location"],
-                    "start": local_datetime(day_text, item["start"]).isoformat(),
+                    "start": local_datetime(day_text, start_text).isoformat(),
                     "end": local_datetime(day_text, item["end"]).isoformat(),
                     "mandatory": True,
                     "attributes": attributes,

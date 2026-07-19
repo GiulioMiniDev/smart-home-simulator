@@ -67,6 +67,23 @@ def test_schema_command_can_emit_validation_report_contract() -> None:
     assert schema["properties"]["validatorVersion"]["const"] == "1.0.0"
 
 
+@pytest.mark.parametrize(
+    ("contract", "property_name"),
+    [
+        ("canonical-plan", "planVersion"),
+        ("compilation-report", "compilerVersion"),
+    ],
+)
+def test_schema_command_emits_compiler_contracts(
+    contract: str,
+    property_name: str,
+) -> None:
+    result = runner.invoke(app, ["schema", "--contract", contract])
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["properties"][property_name]["const"] == "1.0.0"
+
+
 def test_schema_command_can_write_contract(tmp_path: Path) -> None:
     output = tmp_path / "schema.json"
 
@@ -105,3 +122,33 @@ def test_validate_can_write_json_report(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert json.loads(output.read_text(encoding="utf-8"))["valid"] is True
+
+
+def test_compile_writes_plan_and_report(tmp_path: Path) -> None:
+    plan_path = tmp_path / "nested/plan.json"
+    report_path = tmp_path / "nested/report.json"
+    result = runner.invoke(
+        app,
+        [
+            "compile",
+            str(EXAMPLES / "valid/minimal.json"),
+            "--output",
+            str(plan_path),
+            "--report-output",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(plan_path.read_text())["documentType"] == "canonical_plan"
+    assert json.loads(report_path.read_text())["success"] is True
+
+
+def test_compile_invalid_input_returns_report_and_exit_one() -> None:
+    result = runner.invoke(
+        app,
+        ["compile", str(EXAMPLES / "invalid/unknown_references.json")],
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["issues"][0]["code"] == "INPUT_SCENARIO_INVALID"

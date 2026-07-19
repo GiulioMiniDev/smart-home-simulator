@@ -326,7 +326,7 @@
         "resident_mario_rossi"
       ],
       "locationId": "workplace",
-      "start": "2026-10-12T08:00:00+02:00",
+      "start": "2026-10-12T08:15:00+02:00",
       "end": "2026-10-12T15:00:00+02:00",
       "mandatory": true,
       "attributes": {
@@ -340,7 +340,7 @@
         "resident_mario_rossi"
       ],
       "locationId": "workplace",
-      "start": "2026-10-13T08:00:00+02:00",
+      "start": "2026-10-13T08:15:00+02:00",
       "end": "2026-10-13T15:00:00+02:00",
       "mandatory": true,
       "attributes": {
@@ -354,7 +354,7 @@
         "resident_mario_rossi"
       ],
       "locationId": "workplace",
-      "start": "2026-10-14T08:00:00+02:00",
+      "start": "2026-10-14T08:15:00+02:00",
       "end": "2026-10-14T15:00:00+02:00",
       "mandatory": true,
       "attributes": {
@@ -368,7 +368,7 @@
         "resident_mario_rossi"
       ],
       "locationId": "workplace",
-      "start": "2026-10-15T08:00:00+02:00",
+      "start": "2026-10-15T08:15:00+02:00",
       "end": "2026-10-15T15:00:00+02:00",
       "mandatory": true,
       "attributes": {
@@ -382,7 +382,7 @@
         "resident_mario_rossi"
       ],
       "locationId": "workplace",
-      "start": "2026-10-16T08:00:00+02:00",
+      "start": "2026-10-16T08:15:00+02:00",
       "end": "2026-10-16T15:00:00+02:00",
       "mandatory": true,
       "attributes": {
