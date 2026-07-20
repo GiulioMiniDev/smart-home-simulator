@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "ValueType": {
+      "enum": [
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "object",
+        "array"
+      ],
+      "title": "ValueType",
+      "type": "string"
+    },
+    "VariableDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "variableId": {
+          "minLength": 1,
+          "title": "Variableid",
+          "type": "string"
+        },
+        "displayName": {
+          "minLength": 1,
+          "title": "Displayname",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "valueType": {
+          "$ref": "#/$defs/ValueType"
+        },
+        "scope": {
+          "$ref": "#/$defs/VariableScope"
+        },
+        "sourcePath": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcepath"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "allowedValues": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Allowedvalues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "variableId",
+        "displayName",
+        "description",
+        "valueType",
+        "scope"
+      ],
+      "title": "VariableDefinition",
+      "type": "object"
+    },
+    "VariableScope": {
+      "enum": [
+        "resident",
+        "day",
+        "initial_state",
+        "derived_calendar"
+      ],
+      "title": "VariableScope",
+      "type": "string"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:variable-catalog:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "variable_catalog",
+      "default": "variable_catalog",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "catalogId": {
+      "minLength": 1,
+      "title": "Catalogid",
+      "type": "string"
+    },
+    "catalogVersion": {
+      "minLength": 1,
+      "title": "Catalogversion",
+      "type": "string"
+    },
+    "variables": {
+      "items": {
+        "$ref": "#/$defs/VariableDefinition"
+      },
+      "minItems": 1,
+      "title": "Variables",
+      "type": "array"
+    }
+  },
+  "required": [
+    "catalogId",
+    "catalogVersion",
+    "variables"
+  ],
+  "title": "Smart Home Variable Catalog 1.0.0",
+  "type": "object"
+}

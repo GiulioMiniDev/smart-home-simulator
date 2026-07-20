@@ -1,0 +1,224 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "personal_process_package",
+  "packageId": "invalid_missing_binding",
+  "packageVersion": "1.0.0",
+  "sourceScenarioId": "minimal_valid_scenario",
+  "sourceScenarioVersion": "1.0.0",
+  "language": "en",
+  "provenance": {
+    "authorType": "rule_generator",
+    "generatorName": "build_behavior_artifacts",
+    "generatorVersion": "1.0.0",
+    "promptTemplateVersion": "personal-process-models-1.0.0",
+    "generatedAt": "2026-07-20T12:00:00+02:00",
+    "humanReviewed": false,
+    "parameters": {
+      "decompositionTableVersion": "1.0.0"
+    }
+  },
+  "catalogs": {
+    "activityCatalog": {
+      "catalogId": "smart_home_activity_catalog",
+      "version": "1.0.0"
+    },
+    "variableCatalog": {
+      "catalogId": "smart_home_variable_catalog",
+      "version": "1.0.0"
+    },
+    "actionCatalog": {
+      "catalogId": "smart_home_action_catalog",
+      "version": "1.0.0"
+    }
+  },
+  "processModels": [
+    {
+      "processModelId": "resident_1__clean_kitchen",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_1",
+      "title": "resident_1 clean kitchen process",
+      "description": "Resident-specific executable decomposition: clean_surface.",
+      "implementedComponents": [
+        "clean_surface"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start"
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "cleaning_target"
+            }
+          },
+          "durationWeight": 1.0
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "cleaning_tool"
+            }
+          },
+          "durationWeight": 1.0
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "clean",
+          "arguments": {
+            "targetRole": {
+              "source": "activity_intent"
+            }
+          },
+          "durationWeight": 5.0
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "cleaning_tool"
+            }
+          },
+          "durationWeight": 1.0
+        },
+        {
+          "nodeId": "end",
+          "kind": "end"
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1"
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2"
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3"
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4"
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end"
+        }
+      ]
+    },
+    {
+      "processModelId": "resident_1__eat_breakfast",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_1",
+      "title": "resident_1 eat breakfast process",
+      "description": "Resident-specific executable decomposition: consume_meal.",
+      "implementedComponents": [
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start"
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "consumption_area"
+            }
+          },
+          "durationWeight": 1.0
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting"
+            }
+          },
+          "durationWeight": 1.0
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal"
+            }
+          },
+          "durationWeight": 5.0
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing"
+            }
+          },
+          "durationWeight": 1.0
+        },
+        {
+          "nodeId": "end",
+          "kind": "end"
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1"
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2"
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3"
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4"
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end"
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "bindingId": "resident_1__clean_kitchen",
+      "residentId": "resident_1",
+      "intent": "clean_kitchen",
+      "processModelId": "resident_1__clean_kitchen",
+      "fallback": true
+    }
+  ]
+}

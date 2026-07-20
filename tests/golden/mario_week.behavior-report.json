@@ -1,0 +1,16 @@
+{
+  "validatorVersion": "1.0.0",
+  "valid": true,
+  "packageVersion": "1.0.0",
+  "packageId": "mario_rossi_week_2026_10_12__behavior",
+  "scenarioId": "mario_rossi_week_2026_10_12",
+  "packageSha256": "a189dd84b065393f04f8e4a76424aabb9c739b5b81b88f3652ef93d2b57e3cb1",
+  "issues": [],
+  "summary": {
+    "processModelCount": 91,
+    "bindingCount": 91,
+    "coveredActivityCount": 173,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

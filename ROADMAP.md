@@ -19,7 +19,7 @@ relativi controlli di compatibilità.
 | 0 | Specifica e confini | proposta di ricerca | contratti e invarianti | Completata |
 | 1 | Motore di validazione | scenario JSON | validation report | **Completata e congelata — 1.0.0** |
 | 2 | Compilatore del piano | scenario valido | canonical daily plan | **Completata e congelata — 1.0.0** |
-| 3 | Authoring comportamentale e modelli di processo ADL | profilo, abitudini, calendario e vocabolario delle azioni | scenario + pacchetto personale di process model validati | Non iniziata |
+| 3 | Authoring comportamentale e modelli di processo ADL | profilo, abitudini, calendario e vocabolario delle azioni | scenario + pacchetto personale di process model validati | **Completata e congelata — 1.0.0** |
 | 4 | Ambiente domestico eseguibile e binding | process model + definizione della casa | home model validato + simulation bundle completamente risolto | Non iniziata |
 | 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | Non iniziata |
 | 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | Non iniziata |
@@ -180,6 +180,13 @@ runtime.
 - schemi, checksum, esempi, CLI, golden report, test, lint e copertura minima obbligatoria
   del 95% sono completi;
 - lo scenario e il canonical plan congelati non vengono modificati retroattivamente.
+
+La regola di avanzamento della Milestone 3 è soddisfatta dai contratti e cataloghi
+congelati in ADR-004. Il pacchetto comportamentale della settimana di Mario contiene 91
+process model personali specifici per intento, 91 binding e copre senza ambiguità tutte
+le 173 attività dello scenario; il caso minimo copre 2 attività su 2. Gli intenti composti
+sono verificati rispetto alla loro decomposizione ordinata, non soltanto rispetto alla
+presenza nominale di un binding.
 
 ## Milestone 4 — Ambiente domestico eseguibile e binding
 

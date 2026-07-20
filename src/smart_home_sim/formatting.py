@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from smart_home_sim.domain.behavior_report import BehaviorValidationReport
 from smart_home_sim.domain.report import ValidationReport
 
 
@@ -13,5 +14,21 @@ def format_text_report(report: ValidationReport) -> str:
     for item in report.issues:
         lines.append(
             f"[{item.severity.upper()}] {item.code} ({item.level}) {item.path}: {item.message}"
+        )
+    return "\n".join(lines)
+
+
+def format_behavior_text_report(report: BehaviorValidationReport) -> str:
+    status = "VALID" if report.valid else "INVALID"
+    identity = report.package_id or "unknown behavior package"
+    lines = [
+        f"{status}: {identity}",
+        f"Models: {report.summary.process_model_count}; bindings: {report.summary.binding_count}; "
+        f"covered activities: {report.summary.covered_activity_count}",
+        f"Errors: {report.summary.error_count}; warnings: {report.summary.warning_count}",
+    ]
+    for item in report.issues:
+        lines.append(
+            f"[{item.severity.upper()}] {item.code} ({item.stage}) {item.path}: {item.message}"
         )
     return "\n".join(lines)

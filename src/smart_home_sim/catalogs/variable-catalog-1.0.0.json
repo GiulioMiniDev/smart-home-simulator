@@ -1,0 +1,205 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "variable_catalog",
+  "catalogId": "smart_home_variable_catalog",
+  "catalogVersion": "1.0.0",
+  "variables": [
+    {
+      "variableId": "resident.age",
+      "displayName": "Age",
+      "description": "Authoritative behavioral variable: age.",
+      "valueType": "integer",
+      "scope": "resident",
+      "sourcePath": "age",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.household",
+      "displayName": "Household composition",
+      "description": "Authoritative behavioral variable: household composition.",
+      "valueType": "string",
+      "scope": "resident",
+      "sourcePath": "household",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.health_conditions",
+      "displayName": "Health conditions",
+      "description": "Authoritative behavioral variable: health conditions.",
+      "valueType": "array",
+      "scope": "resident",
+      "sourcePath": "health.conditions",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.mobility_profile",
+      "displayName": "Mobility profile",
+      "description": "Authoritative behavioral variable: mobility profile.",
+      "valueType": "string",
+      "scope": "resident",
+      "sourcePath": "mobility.profile",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.walking_speed",
+      "displayName": "Walking speed",
+      "description": "Authoritative behavioral variable: walking speed.",
+      "valueType": "number",
+      "scope": "resident",
+      "sourcePath": "mobility.walkingSpeedMetersPerSecond",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.chronotype",
+      "displayName": "Chronotype",
+      "description": "Authoritative behavioral variable: chronotype.",
+      "valueType": "string",
+      "scope": "resident",
+      "sourcePath": "preferences.chronotype",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.preferred_breakfast_drink",
+      "displayName": "Preferred breakfast drink",
+      "description": "Authoritative behavioral variable: preferred breakfast drink.",
+      "valueType": "string",
+      "scope": "resident",
+      "sourcePath": "preferences.breakfastDrink",
+      "required": false,
+      "allowedValues": [
+        "coffee",
+        "tea",
+        "cold_drink"
+      ]
+    },
+    {
+      "variableId": "resident.fatigue",
+      "displayName": "Fatigue",
+      "description": "Authoritative behavioral variable: fatigue.",
+      "valueType": "number",
+      "scope": "initial_state",
+      "sourcePath": "fatigue",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.hunger",
+      "displayName": "Hunger",
+      "description": "Authoritative behavioral variable: hunger.",
+      "valueType": "number",
+      "scope": "initial_state",
+      "sourcePath": "hunger",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.stress",
+      "displayName": "Stress",
+      "description": "Authoritative behavioral variable: stress.",
+      "valueType": "number",
+      "scope": "initial_state",
+      "sourcePath": "stress",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.social_need",
+      "displayName": "Social need",
+      "description": "Authoritative behavioral variable: social need.",
+      "valueType": "number",
+      "scope": "initial_state",
+      "sourcePath": "socialNeed",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.food_inventory",
+      "displayName": "Food inventory",
+      "description": "Authoritative behavioral variable: food inventory.",
+      "valueType": "object",
+      "scope": "initial_state",
+      "sourcePath": "foodInventory",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "resident.medication_available_doses",
+      "displayName": "Medication available doses",
+      "description": "Authoritative behavioral variable: medication available doses.",
+      "valueType": "integer",
+      "scope": "initial_state",
+      "sourcePath": "medicationAvailableDoses",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "day.type",
+      "displayName": "Day type",
+      "description": "Authoritative behavioral variable: day type.",
+      "valueType": "string",
+      "scope": "day",
+      "sourcePath": "dayType",
+      "required": true,
+      "allowedValues": []
+    },
+    {
+      "variableId": "day.weather",
+      "displayName": "Weather",
+      "description": "Authoritative behavioral variable: weather.",
+      "valueType": "string",
+      "scope": "day",
+      "sourcePath": "facts.weather",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "day.public_holiday",
+      "displayName": "Public holiday",
+      "description": "Authoritative behavioral variable: public holiday.",
+      "valueType": "boolean",
+      "scope": "day",
+      "sourcePath": "facts.publicHoliday",
+      "required": false,
+      "allowedValues": []
+    },
+    {
+      "variableId": "calendar.weekday",
+      "displayName": "Weekday",
+      "description": "Authoritative behavioral variable: weekday.",
+      "valueType": "integer",
+      "scope": "derived_calendar",
+      "sourcePath": "weekday",
+      "required": true,
+      "allowedValues": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "variableId": "calendar.season",
+      "displayName": "Season",
+      "description": "Authoritative behavioral variable: season.",
+      "valueType": "string",
+      "scope": "derived_calendar",
+      "sourcePath": "season",
+      "required": true,
+      "allowedValues": [
+        "winter",
+        "spring",
+        "summer",
+        "autumn"
+      ]
+    }
+  ]
+}

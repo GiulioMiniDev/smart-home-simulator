@@ -1,0 +1,221 @@
+{
+  "$defs": {
+    "BehaviorValidationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTION_ARGUMENT_TYPE_MISMATCH",
+            "AMBIGUOUS_PROCESS_BINDING",
+            "CATALOG_REFERENCE_MISMATCH",
+            "CHOICE_BRANCH_INVALID",
+            "DUPLICATE_ACTION_PARAMETER",
+            "DUPLICATE_BINDING_ID",
+            "DUPLICATE_CATALOG_ENTRY",
+            "DUPLICATE_EDGE",
+            "DUPLICATE_NODE_ID",
+            "DUPLICATE_PROCESS_MODEL_ID",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "GRAPH_CYCLE_UNBOUNDED",
+            "GRAPH_END_INVALID",
+            "GRAPH_NODE_DEAD",
+            "GRAPH_START_INVALID",
+            "INPUT_SCENARIO_INVALID",
+            "INVALID_ACTION_ARGUMENTS",
+            "INVALID_GRAPH_DEGREE",
+            "INVALID_LITERAL_REFERENCE",
+            "INVALID_VARIABLE_VALUE",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "LOOP_BRANCH_INVALID",
+            "MISSING_PROCESS_BINDING",
+            "PACKAGE_SCENARIO_MISMATCH",
+            "PARALLEL_JOIN_MISSING",
+            "PROCESS_COMPONENT_MISMATCH",
+            "PROCESS_MODEL_RESIDENT_MISMATCH",
+            "PROCESS_MOVEMENT_MISSING",
+            "REQUIRED_VARIABLE_MISSING",
+            "STRUCTURE_INVALID",
+            "UNKNOWN_ACTION_TYPE",
+            "UNKNOWN_ACTIVITY_COMPONENT",
+            "UNKNOWN_EDGE_NODE",
+            "UNKNOWN_INTENT",
+            "UNKNOWN_PROCESS_MODEL",
+            "UNKNOWN_RESIDENT",
+            "UNKNOWN_VARIABLE",
+            "UNSUPPORTED_SCHEMA_VERSION",
+            "VARIABLE_SOURCE_TYPE_MISMATCH",
+            "VARIABLE_SOURCE_VALUE_INVALID"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "structure",
+            "catalog",
+            "graph",
+            "compatibility"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "BehaviorValidationIssue",
+      "type": "object"
+    },
+    "BehaviorValidationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "processModelCount": {
+          "minimum": 0,
+          "title": "Processmodelcount",
+          "type": "integer"
+        },
+        "bindingCount": {
+          "minimum": 0,
+          "title": "Bindingcount",
+          "type": "integer"
+        },
+        "coveredActivityCount": {
+          "minimum": 0,
+          "title": "Coveredactivitycount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        },
+        "warningCount": {
+          "minimum": 0,
+          "title": "Warningcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "processModelCount",
+        "bindingCount",
+        "coveredActivityCount",
+        "errorCount",
+        "warningCount"
+      ],
+      "title": "BehaviorValidationSummary",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:smart-home-simulator:schema:behavior-validation-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "validatorVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Validatorversion",
+      "type": "string"
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    },
+    "packageVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Packageversion"
+    },
+    "packageId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Packageid"
+    },
+    "scenarioId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scenarioid"
+    },
+    "packageSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Packagesha256"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/BehaviorValidationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/BehaviorValidationSummary"
+    }
+  },
+  "required": [
+    "valid",
+    "summary"
+  ],
+  "title": "Smart Home Behavior Validation Report 1.0.0",
+  "type": "object"
+}

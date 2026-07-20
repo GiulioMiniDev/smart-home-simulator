@@ -6,6 +6,16 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from smart_home_sim.domain.behavior import (
+    ActionCatalog,
+    ActivityCatalog,
+    PersonalProcessPackage,
+    VariableCatalog,
+)
+from smart_home_sim.domain.behavior_report import (
+    BEHAVIOR_ISSUE_CODES,
+    BehaviorValidationReport,
+)
 from smart_home_sim.domain.compilation import COMPILATION_ISSUE_CODES, CompilationReport
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
@@ -17,6 +27,13 @@ SCHEMA_PATH = PROJECT_ROOT / "schemas/scenario-1.0.0.schema.json"
 REPORT_SCHEMA_PATH = PROJECT_ROOT / "schemas/validation-report-1.0.0.schema.json"
 PLAN_SCHEMA_PATH = PROJECT_ROOT / "schemas/canonical-plan-1.0.0.schema.json"
 COMPILATION_SCHEMA_PATH = PROJECT_ROOT / "schemas/compilation-report-1.0.0.schema.json"
+BEHAVIOR_SCHEMAS = {
+    "activity-catalog-1.0.0.schema.json": ActivityCatalog,
+    "variable-catalog-1.0.0.schema.json": VariableCatalog,
+    "action-catalog-1.0.0.schema.json": ActionCatalog,
+    "personal-process-package-1.0.0.schema.json": PersonalProcessPackage,
+    "behavior-validation-report-1.0.0.schema.json": BehaviorValidationReport,
+}
 
 
 def load_schema() -> dict[str, object]:
@@ -47,6 +64,7 @@ def test_frozen_schema_checksums_match() -> None:
         REPORT_SCHEMA_PATH,
         PLAN_SCHEMA_PATH,
         COMPILATION_SCHEMA_PATH,
+        *(PROJECT_ROOT / "schemas" / name for name in BEHAVIOR_SCHEMAS),
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]
@@ -96,3 +114,38 @@ def test_distributed_schema_forbids_unknown_properties() -> None:
     assert any(
         error.validator == "additionalProperties" for error in validator.iter_errors(payload)
     )
+
+
+def test_behavior_schemas_match_models_and_are_valid() -> None:
+    for filename, model in BEHAVIOR_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / filename).read_text())
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+    report_schema = json.loads(
+        (PROJECT_ROOT / "schemas/behavior-validation-report-1.0.0.schema.json").read_text()
+    )
+    assert (
+        set(report_schema["$defs"]["BehaviorValidationIssue"]["properties"]["code"]["enum"])
+        == BEHAVIOR_ISSUE_CODES
+    )
+
+
+def test_distributed_catalogs_and_behavior_examples_satisfy_schemas() -> None:
+    catalog_files = {
+        "activity-catalog-1.0.0.json": "activity-catalog-1.0.0.schema.json",
+        "variable-catalog-1.0.0.json": "variable-catalog-1.0.0.schema.json",
+        "action-catalog-1.0.0.json": "action-catalog-1.0.0.schema.json",
+    }
+    for catalog_name, schema_name in catalog_files.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / schema_name).read_text())
+        payload = json.loads(
+            (PROJECT_ROOT / "src/smart_home_sim/catalogs" / catalog_name).read_text()
+        )
+        assert list(Draft202012Validator(schema).iter_errors(payload)) == []
+
+    package_schema = json.loads(
+        (PROJECT_ROOT / "schemas/personal-process-package-1.0.0.schema.json").read_text()
+    )
+    for path in sorted((PROJECT_ROOT / "examples/behavior").glob("*.json")):
+        payload = json.loads(path.read_text())
+        assert list(Draft202012Validator(package_schema).iter_errors(payload)) == [], path

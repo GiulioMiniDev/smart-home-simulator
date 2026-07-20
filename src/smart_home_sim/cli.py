@@ -7,12 +7,20 @@ from typing import Annotated
 
 import typer
 
+from smart_home_sim.behavior import validate_behavior_files
 from smart_home_sim.compiler import compile_file
+from smart_home_sim.domain.behavior import (
+    ActionCatalog,
+    ActivityCatalog,
+    PersonalProcessPackage,
+    VariableCatalog,
+)
+from smart_home_sim.domain.behavior_report import BehaviorValidationReport
 from smart_home_sim.domain.compilation import CompilationReport
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
-from smart_home_sim.formatting import format_text_report
+from smart_home_sim.formatting import format_behavior_text_report, format_text_report
 from smart_home_sim.validation.service import validate_file
 
 
@@ -26,9 +34,17 @@ class SchemaContract(StrEnum):
     validation_report = "validation-report"
     canonical_plan = "canonical-plan"
     compilation_report = "compilation-report"
+    activity_catalog = "activity-catalog"
+    variable_catalog = "variable-catalog"
+    action_catalog = "action-catalog"
+    personal_process_package = "personal-process-package"
+    behavior_validation_report = "behavior-validation-report"
 
 
-app = typer.Typer(no_args_is_help=True, help="Smart-home scenario validation and compilation")
+app = typer.Typer(
+    no_args_is_help=True,
+    help="Smart-home scenario, behavior authoring, validation, and compilation",
+)
 
 
 @app.command()
@@ -86,6 +102,39 @@ def compile(
         typer.echo(f"Canonical plan written to: {output.resolve()}")
 
 
+@app.command("validate-behavior")
+def validate_behavior(
+    package_path: Path,
+    scenario_path: Path,
+    output_format: Annotated[OutputFormat, typer.Option("--format")] = OutputFormat.text,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+    activity_catalog: Annotated[Path | None, typer.Option("--activity-catalog")] = None,
+    variable_catalog: Annotated[Path | None, typer.Option("--variable-catalog")] = None,
+    action_catalog: Annotated[Path | None, typer.Option("--action-catalog")] = None,
+) -> None:
+    """Validate personal ADL process models and their scenario compatibility."""
+    report = validate_behavior_files(
+        package_path,
+        scenario_path,
+        activity_catalog_path=activity_catalog,
+        variable_catalog_path=variable_catalog,
+        action_catalog_path=action_catalog,
+    )
+    content = (
+        report.model_dump_json(by_alias=True, indent=2)
+        if output_format is OutputFormat.json
+        else format_behavior_text_report(report)
+    )
+    if output is None:
+        typer.echo(content)
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(content + "\n", encoding="utf-8")
+        typer.echo(f"Behavior validation report written to: {output.resolve()}")
+    if not report.valid:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def schema(
     contract: Annotated[SchemaContract, typer.Option("--contract")] = SchemaContract.scenario,
@@ -97,6 +146,11 @@ def schema(
         SchemaContract.validation_report: ValidationReport,
         SchemaContract.canonical_plan: CanonicalPlan,
         SchemaContract.compilation_report: CompilationReport,
+        SchemaContract.activity_catalog: ActivityCatalog,
+        SchemaContract.variable_catalog: VariableCatalog,
+        SchemaContract.action_catalog: ActionCatalog,
+        SchemaContract.personal_process_package: PersonalProcessPackage,
+        SchemaContract.behavior_validation_report: BehaviorValidationReport,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

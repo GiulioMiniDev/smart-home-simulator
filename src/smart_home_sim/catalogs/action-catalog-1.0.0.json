@@ -1,0 +1,744 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "action_catalog",
+  "catalogId": "smart_home_action_catalog",
+  "catalogVersion": "1.0.0",
+  "actions": [
+    {
+      "actionType": "move_to",
+      "description": "Execute the typed atomic action 'move_to'.",
+      "parameters": [
+        {
+          "parameterName": "destination",
+          "description": "Typed parameter 'destination'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "location",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "destination",
+          "capability": "reachable",
+          "parameterName": "destination"
+        }
+      ],
+      "preconditions": [],
+      "effects": [
+        {
+          "factTemplate": "resident.location",
+          "operation": "set",
+          "value": "{destination}"
+        }
+      ]
+    },
+    {
+      "actionType": "move_to_capability",
+      "description": "Execute the typed atomic action 'move_to_capability'.",
+      "parameters": [
+        {
+          "parameterName": "targetRole",
+          "description": "Typed parameter 'targetRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "interaction_point",
+          "parameterName": "targetRole"
+        }
+      ],
+      "preconditions": [],
+      "effects": [
+        {
+          "factTemplate": "resident.location",
+          "operation": "set",
+          "value": "{targetRole}"
+        }
+      ]
+    },
+    {
+      "actionType": "change_posture",
+      "description": "Execute the typed atomic action 'change_posture'.",
+      "parameters": [
+        {
+          "parameterName": "posture",
+          "description": "Typed parameter 'posture'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": [
+            "standing",
+            "walking",
+            "sitting",
+            "lying"
+          ]
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "resident",
+          "capability": "posture_control"
+        }
+      ],
+      "preconditions": [],
+      "effects": [
+        {
+          "factTemplate": "resident.posture",
+          "operation": "set",
+          "value": "{posture}"
+        }
+      ]
+    },
+    {
+      "actionType": "open",
+      "description": "Execute the typed atomic action 'open'.",
+      "parameters": [
+        {
+          "parameterName": "target",
+          "description": "Typed parameter 'target'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "environment_entity",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "openable",
+          "parameterName": "target"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "entity.{target}.open",
+          "operator": "eq",
+          "value": false
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "entity.{target}.open",
+          "operation": "set",
+          "value": true
+        }
+      ]
+    },
+    {
+      "actionType": "close",
+      "description": "Execute the typed atomic action 'close'.",
+      "parameters": [
+        {
+          "parameterName": "target",
+          "description": "Typed parameter 'target'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "environment_entity",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "openable",
+          "parameterName": "target"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "entity.{target}.open",
+          "operator": "eq",
+          "value": true
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "entity.{target}.open",
+          "operation": "set",
+          "value": false
+        }
+      ]
+    },
+    {
+      "actionType": "take_item",
+      "description": "Execute the typed atomic action 'take_item'.",
+      "parameters": [
+        {
+          "parameterName": "itemRole",
+          "description": "Typed parameter 'itemRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "item",
+          "capability": "graspable",
+          "parameterName": "itemRole"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "capability.{itemRole}.available",
+          "operator": "eq",
+          "value": true
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "resident.carrying.{itemRole}",
+          "operation": "set",
+          "value": true
+        }
+      ]
+    },
+    {
+      "actionType": "put_item",
+      "description": "Execute the typed atomic action 'put_item'.",
+      "parameters": [
+        {
+          "parameterName": "itemRole",
+          "description": "Typed parameter 'itemRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "item",
+          "capability": "storable",
+          "parameterName": "itemRole"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "resident.carrying.{itemRole}",
+          "operator": "eq",
+          "value": true
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "resident.carrying.{itemRole}",
+          "operation": "set",
+          "value": false
+        }
+      ]
+    },
+    {
+      "actionType": "activate",
+      "description": "Execute the typed atomic action 'activate'.",
+      "parameters": [
+        {
+          "parameterName": "target",
+          "description": "Typed parameter 'target'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "environment_entity",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "switchable",
+          "parameterName": "target"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "entity.{target}.active",
+          "operator": "eq",
+          "value": false
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "entity.{target}.active",
+          "operation": "set",
+          "value": true
+        }
+      ]
+    },
+    {
+      "actionType": "deactivate",
+      "description": "Execute the typed atomic action 'deactivate'.",
+      "parameters": [
+        {
+          "parameterName": "target",
+          "description": "Typed parameter 'target'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "environment_entity",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "switchable",
+          "parameterName": "target"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "entity.{target}.active",
+          "operator": "eq",
+          "value": true
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "entity.{target}.active",
+          "operation": "set",
+          "value": false
+        }
+      ]
+    },
+    {
+      "actionType": "wait",
+      "description": "Execute the typed atomic action 'wait'.",
+      "parameters": [
+        {
+          "parameterName": "purpose",
+          "description": "Typed parameter 'purpose'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "inspect",
+      "description": "Execute the typed atomic action 'inspect'.",
+      "parameters": [
+        {
+          "parameterName": "targetRole",
+          "description": "Typed parameter 'targetRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "inspectable",
+          "parameterName": "targetRole"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "consume",
+      "description": "Execute the typed atomic action 'consume'.",
+      "parameters": [
+        {
+          "parameterName": "itemRole",
+          "description": "Typed parameter 'itemRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "item",
+          "capability": "consumable",
+          "parameterName": "itemRole"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "capability.{itemRole}.available",
+          "operator": "eq",
+          "value": true
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "capability.{itemRole}.consumed",
+          "operation": "increment",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "actionType": "personal_care",
+      "description": "Execute the typed atomic action 'personal_care'.",
+      "parameters": [
+        {
+          "parameterName": "procedure",
+          "description": "Typed parameter 'procedure'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "fixture",
+          "capability": "personal_care_support"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "clean",
+      "description": "Execute the typed atomic action 'clean'.",
+      "parameters": [
+        {
+          "parameterName": "targetRole",
+          "description": "Typed parameter 'targetRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "cleanable",
+          "parameterName": "targetRole"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "laundry_step",
+      "description": "Execute the typed atomic action 'laundry_step'.",
+      "parameters": [
+        {
+          "parameterName": "operation",
+          "description": "Typed parameter 'operation'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": [
+            "collect",
+            "load",
+            "start",
+            "unload",
+            "hang",
+            "iron"
+          ]
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "equipment",
+          "capability": "laundry_support"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "organize",
+      "description": "Execute the typed atomic action 'organize'.",
+      "parameters": [
+        {
+          "parameterName": "targetRole",
+          "description": "Typed parameter 'targetRole'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "capability",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "target",
+          "capability": "storage_support",
+          "parameterName": "targetRole"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "dress",
+      "description": "Execute the typed atomic action 'dress'.",
+      "parameters": [
+        {
+          "parameterName": "purpose",
+          "description": "Typed parameter 'purpose'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "item",
+          "capability": "wearable"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "manage_medication",
+      "description": "Execute the typed atomic action 'manage_medication'.",
+      "parameters": [
+        {
+          "parameterName": "operation",
+          "description": "Typed parameter 'operation'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": [
+            "take",
+            "refill",
+            "store"
+          ]
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "item",
+          "capability": "medication_support"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "leave_home",
+      "description": "Execute the typed atomic action 'leave_home'.",
+      "parameters": [],
+      "requiredCapabilities": [
+        {
+          "role": "access",
+          "capability": "home_egress"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "resident.at_home",
+          "operator": "eq",
+          "value": true
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "resident.at_home",
+          "operation": "set",
+          "value": false
+        }
+      ]
+    },
+    {
+      "actionType": "enter_home",
+      "description": "Execute the typed atomic action 'enter_home'.",
+      "parameters": [],
+      "requiredCapabilities": [
+        {
+          "role": "access",
+          "capability": "home_ingress"
+        }
+      ],
+      "preconditions": [
+        {
+          "factTemplate": "resident.at_home",
+          "operator": "eq",
+          "value": false
+        }
+      ],
+      "effects": [
+        {
+          "factTemplate": "resident.at_home",
+          "operation": "set",
+          "value": true
+        }
+      ]
+    },
+    {
+      "actionType": "travel_to",
+      "description": "Execute the typed atomic action 'travel_to'.",
+      "parameters": [
+        {
+          "parameterName": "destination",
+          "description": "Typed parameter 'destination'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "location",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "destination",
+          "capability": "transport_reachable",
+          "parameterName": "destination"
+        }
+      ],
+      "preconditions": [],
+      "effects": [
+        {
+          "factTemplate": "resident.location",
+          "operation": "set",
+          "value": "{destination}"
+        }
+      ]
+    },
+    {
+      "actionType": "shop",
+      "description": "Execute the typed atomic action 'shop'.",
+      "parameters": [
+        {
+          "parameterName": "purpose",
+          "description": "Typed parameter 'purpose'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "place",
+          "capability": "retail_service"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "communicate",
+      "description": "Execute the typed atomic action 'communicate'.",
+      "parameters": [
+        {
+          "parameterName": "channel",
+          "description": "Typed parameter 'channel'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": [
+            "phone",
+            "in_person"
+          ]
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "channel",
+          "capability": "communication",
+          "parameterName": "channel"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "perform_work",
+      "description": "Execute the typed atomic action 'perform_work'.",
+      "parameters": [
+        {
+          "parameterName": "mode",
+          "description": "Typed parameter 'mode'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "place",
+          "capability": "work_support"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "exercise",
+      "description": "Execute the typed atomic action 'exercise'.",
+      "parameters": [
+        {
+          "parameterName": "kind",
+          "description": "Typed parameter 'kind'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "place",
+          "capability": "exercise_support"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "leisure",
+      "description": "Execute the typed atomic action 'leisure'.",
+      "parameters": [
+        {
+          "parameterName": "kind",
+          "description": "Typed parameter 'kind'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "medium",
+          "capability": "leisure_support"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    },
+    {
+      "actionType": "prepare_food",
+      "description": "Execute the typed atomic action 'prepare_food'.",
+      "parameters": [
+        {
+          "parameterName": "mealKind",
+          "description": "Typed parameter 'mealKind'.",
+          "valueType": "string",
+          "required": true,
+          "referenceKind": "none",
+          "allowedValues": []
+        }
+      ],
+      "requiredCapabilities": [
+        {
+          "role": "equipment",
+          "capability": "food_preparation"
+        }
+      ],
+      "preconditions": [],
+      "effects": []
+    }
+  ]
+}

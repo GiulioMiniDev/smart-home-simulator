@@ -1,0 +1,2210 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "activity_catalog",
+  "catalogId": "smart_home_activity_catalog",
+  "catalogVersion": "1.0.0",
+  "components": [
+    {
+      "componentId": "carry_purchases",
+      "description": "Semantic component 'carry_purchases' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item"
+      ]
+    },
+    {
+      "componentId": "carry_recycling",
+      "description": "Semantic component 'carry_recycling' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item"
+      ]
+    },
+    {
+      "componentId": "change_clothes",
+      "description": "Semantic component 'change_clothes' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "dress",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "check_calendar",
+      "description": "Semantic component 'check_calendar' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "inspect"
+      ]
+    },
+    {
+      "componentId": "clean_surface",
+      "description": "Semantic component 'clean_surface' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "clean",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "collect_belongings",
+      "description": "Semantic component 'collect_belongings' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item"
+      ]
+    },
+    {
+      "componentId": "collect_laundry",
+      "description": "Semantic component 'collect_laundry' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "laundry_step"
+      ]
+    },
+    {
+      "componentId": "collect_medication",
+      "description": "Semantic component 'collect_medication' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "manage_medication",
+        "take_item"
+      ]
+    },
+    {
+      "componentId": "consume_drink",
+      "description": "Semantic component 'consume_drink' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "consume"
+      ]
+    },
+    {
+      "componentId": "consume_meal",
+      "description": "Semantic component 'consume_meal' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "consume",
+        "change_posture"
+      ]
+    },
+    {
+      "componentId": "consume_snack",
+      "description": "Semantic component 'consume_snack' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "consume"
+      ]
+    },
+    {
+      "componentId": "discard_recycling",
+      "description": "Semantic component 'discard_recycling' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "dust",
+      "description": "Semantic component 'dust' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "clean",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "enter_home",
+      "description": "Semantic component 'enter_home' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "enter_home"
+      ]
+    },
+    {
+      "componentId": "exercise",
+      "description": "Semantic component 'exercise' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "exercise"
+      ]
+    },
+    {
+      "componentId": "hang_laundry",
+      "description": "Semantic component 'hang_laundry' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "laundry_step"
+      ]
+    },
+    {
+      "componentId": "inspect_supplies",
+      "description": "Semantic component 'inspect_supplies' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "open",
+        "inspect",
+        "close"
+      ]
+    },
+    {
+      "componentId": "iron_laundry",
+      "description": "Semantic component 'iron_laundry' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "laundry_step"
+      ]
+    },
+    {
+      "componentId": "leave_home",
+      "description": "Semantic component 'leave_home' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "leave_home"
+      ]
+    },
+    {
+      "componentId": "listen_radio",
+      "description": "Semantic component 'listen_radio' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "leisure"
+      ]
+    },
+    {
+      "componentId": "load_laundry",
+      "description": "Semantic component 'load_laundry' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "laundry_step"
+      ]
+    },
+    {
+      "componentId": "nap",
+      "description": "Semantic component 'nap' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "wait"
+      ]
+    },
+    {
+      "componentId": "organize_bag",
+      "description": "Semantic component 'organize_bag' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "organize"
+      ]
+    },
+    {
+      "componentId": "organize_clothes",
+      "description": "Semantic component 'organize_clothes' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "organize"
+      ]
+    },
+    {
+      "componentId": "organize_documents",
+      "description": "Semantic component 'organize_documents' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "organize"
+      ]
+    },
+    {
+      "componentId": "personal_hygiene",
+      "description": "Semantic component 'personal_hygiene' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "personal_care"
+      ]
+    },
+    {
+      "componentId": "phone_call",
+      "description": "Semantic component 'phone_call' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "communicate",
+        "change_posture"
+      ]
+    },
+    {
+      "componentId": "portion_food",
+      "description": "Semantic component 'portion_food' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "organize"
+      ]
+    },
+    {
+      "componentId": "prepare_drink",
+      "description": "Semantic component 'prepare_drink' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "activate",
+        "prepare_food",
+        "deactivate"
+      ]
+    },
+    {
+      "componentId": "prepare_food",
+      "description": "Semantic component 'prepare_food' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "open",
+        "take_item",
+        "close",
+        "activate",
+        "prepare_food",
+        "deactivate",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "prepare_salad",
+      "description": "Semantic component 'prepare_salad' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "prepare_food",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "read",
+      "description": "Semantic component 'read' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "leisure"
+      ]
+    },
+    {
+      "componentId": "read_in_bed",
+      "description": "Semantic component 'read_in_bed' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "leisure"
+      ]
+    },
+    {
+      "componentId": "read_news",
+      "description": "Semantic component 'read_news' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "leisure"
+      ]
+    },
+    {
+      "componentId": "reheat_food",
+      "description": "Semantic component 'reheat_food' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "activate",
+        "prepare_food",
+        "deactivate"
+      ]
+    },
+    {
+      "componentId": "rest",
+      "description": "Semantic component 'rest' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "wait"
+      ]
+    },
+    {
+      "componentId": "shop",
+      "description": "Semantic component 'shop' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "shop"
+      ]
+    },
+    {
+      "componentId": "shower",
+      "description": "Semantic component 'shower' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "activate",
+        "personal_care",
+        "deactivate"
+      ]
+    },
+    {
+      "componentId": "sleep",
+      "description": "Semantic component 'sleep' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "wait"
+      ]
+    },
+    {
+      "componentId": "socialize_in_person",
+      "description": "Semantic component 'socialize_in_person' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "communicate"
+      ]
+    },
+    {
+      "componentId": "start_laundry",
+      "description": "Semantic component 'start_laundry' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "laundry_step"
+      ]
+    },
+    {
+      "componentId": "store_food",
+      "description": "Semantic component 'store_food' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "open",
+        "put_item",
+        "close"
+      ]
+    },
+    {
+      "componentId": "store_purchases",
+      "description": "Semantic component 'store_purchases' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "open",
+        "put_item",
+        "close"
+      ]
+    },
+    {
+      "componentId": "take_medication",
+      "description": "Semantic component 'take_medication' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "manage_medication",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "tidy_area",
+      "description": "Semantic component 'tidy_area' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "organize"
+      ]
+    },
+    {
+      "componentId": "travel",
+      "description": "Semantic component 'travel' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "leave_home",
+        "travel_to"
+      ]
+    },
+    {
+      "componentId": "use_toilet",
+      "description": "Semantic component 'use_toilet' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "personal_care"
+      ]
+    },
+    {
+      "componentId": "vacuum",
+      "description": "Semantic component 'vacuum' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "take_item",
+        "activate",
+        "clean",
+        "deactivate",
+        "put_item"
+      ]
+    },
+    {
+      "componentId": "wake_up",
+      "description": "Semantic component 'wake_up' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture"
+      ]
+    },
+    {
+      "componentId": "walk",
+      "description": "Semantic component 'walk' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "exercise"
+      ]
+    },
+    {
+      "componentId": "wash_dishes",
+      "description": "Semantic component 'wash_dishes' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "activate",
+        "clean",
+        "deactivate"
+      ]
+    },
+    {
+      "componentId": "wash_face",
+      "description": "Semantic component 'wash_face' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "activate",
+        "personal_care",
+        "deactivate"
+      ]
+    },
+    {
+      "componentId": "watch_media",
+      "description": "Semantic component 'watch_media' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "activate",
+        "leisure",
+        "deactivate"
+      ]
+    },
+    {
+      "componentId": "work",
+      "description": "Semantic component 'work' implemented at the project trace granularity by its ordered required actions.",
+      "requiredActionTypes": [
+        "change_posture",
+        "perform_work"
+      ]
+    }
+  ],
+  "activities": [
+    {
+      "intent": "aperitivo_with_paolo",
+      "displayName": "Aperitivo With Paolo",
+      "description": "Project-specific activity intent 'aperitivo_with_paolo'. Travel for or participate in an in-person social visit.",
+      "category": "social_visit",
+      "components": [
+        "socialize_in_person",
+        "consume_drink"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.social_need"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "buy_fresh_food_and_household_supplies",
+      "displayName": "Buy Fresh Food And Household Supplies",
+      "description": "Project-specific activity intent 'buy_fresh_food_and_household_supplies'. Acquire goods, medication, or household supplies outside the home.",
+      "category": "errand",
+      "components": [
+        "shop",
+        "carry_purchases"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "buy_groceries",
+      "displayName": "Buy Groceries",
+      "description": "Project-specific activity intent 'buy_groceries'. Acquire goods, medication, or household supplies outside the home.",
+      "category": "errand",
+      "components": [
+        "shop",
+        "carry_purchases"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "call_friend_paolo",
+      "displayName": "Call Friend Paolo",
+      "description": "Project-specific activity intent 'call_friend_paolo'. Communicate or maintain a social relationship.",
+      "category": "communication",
+      "components": [
+        "phone_call"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.social_need",
+        "resident.stress"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "call_mother",
+      "displayName": "Call Mother",
+      "description": "Project-specific activity intent 'call_mother'. Communicate or maintain a social relationship.",
+      "category": "communication",
+      "components": [
+        "phone_call"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.social_need",
+        "resident.stress"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "call_sister_lucia",
+      "displayName": "Call Sister Lucia",
+      "description": "Project-specific activity intent 'call_sister_lucia'. Communicate or maintain a social relationship.",
+      "category": "communication",
+      "components": [
+        "phone_call"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.social_need",
+        "resident.stress"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "change_clothes",
+      "displayName": "Change Clothes",
+      "description": "Project-specific activity intent 'change_clothes'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "change_clothes"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "change_clothes_and_eat_snack",
+      "displayName": "Change Clothes And Eat Snack",
+      "description": "Project-specific activity intent 'change_clothes_and_eat_snack'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "change_clothes",
+        "consume_snack"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "change_clothes_and_have_coffee",
+      "displayName": "Change Clothes And Have Coffee",
+      "description": "Project-specific activity intent 'change_clothes_and_have_coffee'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "change_clothes",
+        "consume_drink"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "change_clothes_and_have_snack",
+      "displayName": "Change Clothes And Have Snack",
+      "description": "Project-specific activity intent 'change_clothes_and_have_snack'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "change_clothes",
+        "consume_snack"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "check_calendar_and_household_supplies",
+      "displayName": "Check Calendar And Household Supplies",
+      "description": "Project-specific activity intent 'check_calendar_and_household_supplies'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "check_calendar",
+        "inspect_supplies"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "clean_bathroom",
+      "displayName": "Clean Bathroom",
+      "description": "Project-specific activity intent 'clean_bathroom'. Clean, tidy, maintain, or organize the home.",
+      "category": "housekeeping",
+      "components": [
+        "clean_surface"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Housekeeping"
+      }
+    },
+    {
+      "intent": "clean_kitchen",
+      "displayName": "Clean Kitchen",
+      "description": "Project-specific activity intent 'clean_kitchen'. Clean, tidy, maintain, or organize the home.",
+      "category": "housekeeping",
+      "components": [
+        "clean_surface"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Housekeeping"
+      }
+    },
+    {
+      "intent": "collect_belongings_and_leave_home",
+      "displayName": "Collect Belongings And Leave Home",
+      "description": "Project-specific activity intent 'collect_belongings_and_leave_home'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "collect_belongings",
+        "leave_home"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Leave_Home"
+      }
+    },
+    {
+      "intent": "collect_medication_refill",
+      "displayName": "Collect Medication Refill",
+      "description": "Project-specific activity intent 'collect_medication_refill'. Take, collect, or manage medication.",
+      "category": "medication",
+      "components": [
+        "collect_medication"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.medication_available_doses",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "commute_home",
+      "displayName": "Commute Home",
+      "description": "Project-specific activity intent 'commute_home'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel",
+        "enter_home"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "commute_to_work",
+      "displayName": "Commute To Work",
+      "description": "Project-specific activity intent 'commute_to_work'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "complete_pending_dishwashing",
+      "displayName": "Complete Pending Dishwashing",
+      "description": "Project-specific activity intent 'complete_pending_dishwashing'. Clean, tidy, maintain, or organize the home.",
+      "category": "housekeeping",
+      "components": [
+        "wash_dishes"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Wash_Dishes"
+      }
+    },
+    {
+      "intent": "cook_chicken_and_vegetables",
+      "displayName": "Cook Chicken And Vegetables",
+      "description": "Project-specific activity intent 'cook_chicken_and_vegetables'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "cook_dinner",
+      "displayName": "Cook Dinner",
+      "description": "Project-specific activity intent 'cook_dinner'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "dress_for_work",
+      "displayName": "Dress For Work",
+      "description": "Project-specific activity intent 'dress_for_work'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "change_clothes"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "eat_afternoon_snack",
+      "displayName": "Eat Afternoon Snack",
+      "description": "Project-specific activity intent 'eat_afternoon_snack'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_snack"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_breakfast",
+      "displayName": "Eat Breakfast",
+      "description": "Project-specific activity intent 'eat_breakfast'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_breakfast_and_listen_to_radio",
+      "displayName": "Eat Breakfast And Listen To Radio",
+      "description": "Project-specific activity intent 'eat_breakfast_and_listen_to_radio'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal",
+        "listen_radio"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_breakfast_and_read_news",
+      "displayName": "Eat Breakfast And Read News",
+      "description": "Project-specific activity intent 'eat_breakfast_and_read_news'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal",
+        "read_news"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_breakfast_with_radio_news",
+      "displayName": "Eat Breakfast With Radio News",
+      "description": "Project-specific activity intent 'eat_breakfast_with_radio_news'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal",
+        "listen_radio"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_dinner",
+      "displayName": "Eat Dinner",
+      "description": "Project-specific activity intent 'eat_dinner'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_light_dinner",
+      "displayName": "Eat Light Dinner",
+      "description": "Project-specific activity intent 'eat_light_dinner'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "eat_lunch",
+      "displayName": "Eat Lunch",
+      "description": "Project-specific activity intent 'eat_lunch'. Consume a meal, snack, or drink.",
+      "category": "eating",
+      "components": [
+        "consume_meal"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Eating"
+      }
+    },
+    {
+      "intent": "evening_hygiene",
+      "displayName": "Evening Hygiene",
+      "description": "Project-specific activity intent 'evening_hygiene'. Perform personal hygiene or bathroom care.",
+      "category": "hygiene",
+      "components": [
+        "personal_hygiene"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "evening_walk",
+      "displayName": "Evening Walk",
+      "description": "Project-specific activity intent 'evening_walk'. Perform intentional physical exercise or walking.",
+      "category": "exercise",
+      "components": [
+        "walk"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "go_to_neighborhood_market",
+      "displayName": "Go To Neighborhood Market",
+      "description": "Project-specific activity intent 'go_to_neighborhood_market'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "hang_bed_linen",
+      "displayName": "Hang Bed Linen",
+      "description": "Project-specific activity intent 'hang_bed_linen'. Wash, dry, hang, or iron clothing and household textiles.",
+      "category": "laundry",
+      "components": [
+        "hang_laundry"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "hang_laundry",
+      "displayName": "Hang Laundry",
+      "description": "Project-specific activity intent 'hang_laundry'. Wash, dry, hang, or iron clothing and household textiles.",
+      "category": "laundry",
+      "components": [
+        "hang_laundry"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "indoor_light_exercise",
+      "displayName": "Indoor Light Exercise",
+      "description": "Project-specific activity intent 'indoor_light_exercise'. Perform intentional physical exercise or walking.",
+      "category": "exercise",
+      "components": [
+        "exercise"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "iron_work_shirts",
+      "displayName": "Iron Work Shirts",
+      "description": "Project-specific activity intent 'iron_work_shirts'. Wash, dry, hang, or iron clothing and household textiles.",
+      "category": "laundry",
+      "components": [
+        "iron_laundry"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "leave_home",
+      "displayName": "Leave Home",
+      "description": "Project-specific activity intent 'leave_home'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "leave_home"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Leave_Home"
+      }
+    },
+    {
+      "intent": "long_sunday_walk",
+      "displayName": "Long Sunday Walk",
+      "description": "Project-specific activity intent 'long_sunday_walk'. Perform intentional physical exercise or walking.",
+      "category": "exercise",
+      "components": [
+        "walk"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "morning_toilet_and_shower",
+      "displayName": "Morning Toilet And Shower",
+      "description": "Project-specific activity intent 'morning_toilet_and_shower'. Perform personal hygiene or bathroom care.",
+      "category": "hygiene",
+      "components": [
+        "use_toilet",
+        "shower"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "morning_toilet_and_wash",
+      "displayName": "Morning Toilet And Wash",
+      "description": "Project-specific activity intent 'morning_toilet_and_wash'. Perform personal hygiene or bathroom care.",
+      "category": "hygiene",
+      "components": [
+        "use_toilet",
+        "wash_face"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "portion_and_store_prepared_food",
+      "displayName": "Portion And Store Prepared Food",
+      "description": "Project-specific activity intent 'portion_and_store_prepared_food'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "portion_food",
+        "store_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "post_walk_shower",
+      "displayName": "Post Walk Shower",
+      "description": "Project-specific activity intent 'post_walk_shower'. Perform personal hygiene or bathroom care.",
+      "category": "hygiene",
+      "components": [
+        "shower"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "prepare_and_eat_breakfast",
+      "displayName": "Prepare And Eat Breakfast",
+      "description": "Project-specific activity intent 'prepare_and_eat_breakfast'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food",
+        "consume_meal"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_breakfast",
+      "displayName": "Prepare Breakfast",
+      "description": "Project-specific activity intent 'prepare_breakfast'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_coffee_and_drink_on_balcony",
+      "displayName": "Prepare Coffee And Drink On Balcony",
+      "description": "Project-specific activity intent 'prepare_coffee_and_drink_on_balcony'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_drink",
+        "consume_drink"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile",
+        "resident.preferred_breakfast_drink"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_friday_clothes_and_bag",
+      "displayName": "Prepare Friday Clothes And Bag",
+      "description": "Project-specific activity intent 'prepare_friday_clothes_and_bag'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "organize_clothes",
+        "organize_bag"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "prepare_light_dinner",
+      "displayName": "Prepare Light Dinner",
+      "description": "Project-specific activity intent 'prepare_light_dinner'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_monday_clothes_bag_and_documents",
+      "displayName": "Prepare Monday Clothes Bag And Documents",
+      "description": "Project-specific activity intent 'prepare_monday_clothes_bag_and_documents'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "organize_clothes",
+        "organize_bag",
+        "organize_documents"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "prepare_next_workday",
+      "displayName": "Prepare Next Workday",
+      "description": "Project-specific activity intent 'prepare_next_workday'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "organize_clothes",
+        "organize_bag"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "prepare_next_workday_clothes_and_bag",
+      "displayName": "Prepare Next Workday Clothes And Bag",
+      "description": "Project-specific activity intent 'prepare_next_workday_clothes_and_bag'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "organize_clothes",
+        "organize_bag"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "prepare_quick_pasta_and_salad",
+      "displayName": "Prepare Quick Pasta And Salad",
+      "description": "Project-specific activity intent 'prepare_quick_pasta_and_salad'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food",
+        "prepare_salad"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_rice_and_vegetables",
+      "displayName": "Prepare Rice And Vegetables",
+      "description": "Project-specific activity intent 'prepare_rice_and_vegetables'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_simple_lunch",
+      "displayName": "Prepare Simple Lunch",
+      "description": "Project-specific activity intent 'prepare_simple_lunch'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_sunday_lunch",
+      "displayName": "Prepare Sunday Lunch",
+      "description": "Project-specific activity intent 'prepare_sunday_lunch'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "prepare_to_visit_mother",
+      "displayName": "Prepare To Visit Mother",
+      "description": "Project-specific activity intent 'prepare_to_visit_mother'. Dress, change clothes, or prepare clothing and personal belongings.",
+      "category": "dressing",
+      "components": [
+        "change_clothes",
+        "collect_belongings"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "prepare_weekend_breakfast",
+      "displayName": "Prepare Weekend Breakfast",
+      "description": "Project-specific activity intent 'prepare_weekend_breakfast'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "put_groceries_away",
+      "displayName": "Put Groceries Away",
+      "description": "Project-specific activity intent 'put_groceries_away'. Acquire goods, medication, or household supplies outside the home.",
+      "category": "errand",
+      "components": [
+        "store_purchases"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "read",
+      "displayName": "Read",
+      "description": "Project-specific activity intent 'read'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "read"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "read_and_rest",
+      "displayName": "Read And Rest",
+      "description": "Project-specific activity intent 'read_and_rest'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "read",
+        "rest"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "read_in_bed",
+      "displayName": "Read In Bed",
+      "description": "Project-specific activity intent 'read_in_bed'. Enter, leave, or maintain a sleeping state.",
+      "category": "sleep",
+      "components": [
+        "read_in_bed"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.chronotype",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Sleeping"
+      }
+    },
+    {
+      "intent": "reheat_leftover_dinner_and_prepare_salad",
+      "displayName": "Reheat Leftover Dinner And Prepare Salad",
+      "description": "Project-specific activity intent 'reheat_leftover_dinner_and_prepare_salad'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "reheat_food",
+        "prepare_salad"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "rest",
+      "displayName": "Rest",
+      "description": "Project-specific activity intent 'rest'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "rest"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "rest_and_read",
+      "displayName": "Rest And Read",
+      "description": "Project-specific activity intent 'rest_and_read'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "rest",
+        "read"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "rest_or_nap",
+      "displayName": "Rest Or Nap",
+      "description": "Project-specific activity intent 'rest_or_nap'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "rest",
+        "nap"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "return_home_and_store_purchases",
+      "displayName": "Return Home And Store Purchases",
+      "description": "Project-specific activity intent 'return_home_and_store_purchases'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel",
+        "enter_home",
+        "store_purchases"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Enter_Home"
+      }
+    },
+    {
+      "intent": "short_evening_walk",
+      "displayName": "Short Evening Walk",
+      "description": "Project-specific activity intent 'short_evening_walk'. Perform intentional physical exercise or walking.",
+      "category": "exercise",
+      "components": [
+        "walk"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "shower_and_get_ready_to_go_out",
+      "displayName": "Shower And Get Ready To Go Out",
+      "description": "Project-specific activity intent 'shower_and_get_ready_to_go_out'. Perform personal hygiene or bathroom care.",
+      "category": "hygiene",
+      "components": [
+        "shower",
+        "change_clothes"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "sleep",
+      "displayName": "Sleep",
+      "description": "Project-specific activity intent 'sleep'. Enter, leave, or maintain a sleeping state.",
+      "category": "sleep",
+      "components": [
+        "sleep"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.chronotype",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Sleeping"
+      }
+    },
+    {
+      "intent": "start_bed_linen_laundry",
+      "displayName": "Start Bed Linen Laundry",
+      "description": "Project-specific activity intent 'start_bed_linen_laundry'. Wash, dry, hang, or iron clothing and household textiles.",
+      "category": "laundry",
+      "components": [
+        "collect_laundry",
+        "load_laundry",
+        "start_laundry"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "start_laundry",
+      "displayName": "Start Laundry",
+      "description": "Project-specific activity intent 'start_laundry'. Wash, dry, hang, or iron clothing and household textiles.",
+      "category": "laundry",
+      "components": [
+        "collect_laundry",
+        "load_laundry",
+        "start_laundry"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "take_morning_medication",
+      "displayName": "Take Morning Medication",
+      "description": "Project-specific activity intent 'take_morning_medication'. Take, collect, or manage medication.",
+      "category": "medication",
+      "components": [
+        "take_medication"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.medication_available_doses",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "take_recycling_out",
+      "displayName": "Take Recycling Out",
+      "description": "Project-specific activity intent 'take_recycling_out'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "carry_recycling",
+        "leave_home",
+        "discard_recycling"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "tidy_living_room_and_hallway",
+      "displayName": "Tidy Living Room And Hallway",
+      "description": "Project-specific activity intent 'tidy_living_room_and_hallway'. Clean, tidy, maintain, or organize the home.",
+      "category": "housekeeping",
+      "components": [
+        "tidy_area"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Housekeeping"
+      }
+    },
+    {
+      "intent": "travel_home",
+      "displayName": "Travel Home",
+      "description": "Project-specific activity intent 'travel_home'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel",
+        "enter_home"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "travel_to_mothers_home",
+      "displayName": "Travel To Mothers Home",
+      "description": "Project-specific activity intent 'travel_to_mothers_home'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "travel_to_neighborhood_bar",
+      "displayName": "Travel To Neighborhood Bar",
+      "description": "Project-specific activity intent 'travel_to_neighborhood_bar'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "travel_to_pharmacy",
+      "displayName": "Travel To Pharmacy",
+      "description": "Project-specific activity intent 'travel_to_pharmacy'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "travel_to_supermarket",
+      "displayName": "Travel To Supermarket",
+      "description": "Project-specific activity intent 'travel_to_supermarket'. Enter, leave, or travel between declared locations.",
+      "category": "travel",
+      "components": [
+        "travel"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.walking_speed"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "vacuum_and_dust_apartment",
+      "displayName": "Vacuum And Dust Apartment",
+      "description": "Project-specific activity intent 'vacuum_and_dust_apartment'. Clean, tidy, maintain, or organize the home.",
+      "category": "housekeeping",
+      "components": [
+        "vacuum",
+        "dust"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Housekeeping"
+      }
+    },
+    {
+      "intent": "visit_mother_and_have_dinner",
+      "displayName": "Visit Mother And Have Dinner",
+      "description": "Project-specific activity intent 'visit_mother_and_have_dinner'. Travel for or participate in an in-person social visit.",
+      "category": "social_visit",
+      "components": [
+        "socialize_in_person",
+        "consume_meal"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "day.weather",
+        "resident.age",
+        "resident.mobility_profile",
+        "resident.social_need"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "wake_up",
+      "displayName": "Wake Up",
+      "description": "Project-specific activity intent 'wake_up'. Enter, leave, or maintain a sleeping state.",
+      "category": "sleep",
+      "components": [
+        "wake_up"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.chronotype",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Sleeping"
+      }
+    },
+    {
+      "intent": "wake_up_without_alarm",
+      "displayName": "Wake Up Without Alarm",
+      "description": "Project-specific activity intent 'wake_up_without_alarm'. Enter, leave, or maintain a sleeping state.",
+      "category": "sleep",
+      "components": [
+        "wake_up"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.chronotype",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Sleeping"
+      }
+    },
+    {
+      "intent": "wash_breakfast_dishes",
+      "displayName": "Wash Breakfast Dishes",
+      "description": "Project-specific activity intent 'wash_breakfast_dishes'. Clean, tidy, maintain, or organize the home.",
+      "category": "housekeeping",
+      "components": [
+        "wash_dishes"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Wash_Dishes"
+      }
+    },
+    {
+      "intent": "wash_face_and_change_shirt",
+      "displayName": "Wash Face And Change Shirt",
+      "description": "Project-specific activity intent 'wash_face_and_change_shirt'. Perform personal hygiene or bathroom care.",
+      "category": "hygiene",
+      "components": [
+        "wash_face",
+        "change_clothes"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.health_conditions",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {}
+    },
+    {
+      "intent": "watch_documentary",
+      "displayName": "Watch Documentary",
+      "description": "Project-specific activity intent 'watch_documentary'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "watch_media"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "watch_evening_television",
+      "displayName": "Watch Evening Television",
+      "description": "Project-specific activity intent 'watch_evening_television'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "watch_media"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "watch_football_highlights",
+      "displayName": "Watch Football Highlights",
+      "description": "Project-specific activity intent 'watch_football_highlights'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "watch_media"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "watch_late_news",
+      "displayName": "Watch Late News",
+      "description": "Project-specific activity intent 'watch_late_news'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "watch_media"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "watch_sunday_program",
+      "displayName": "Watch Sunday Program",
+      "description": "Project-specific activity intent 'watch_sunday_program'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "watch_media"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "watch_television",
+      "displayName": "Watch Television",
+      "description": "Project-specific activity intent 'watch_television'. Rest, read, watch media, or perform another leisure activity.",
+      "category": "leisure",
+      "components": [
+        "watch_media"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Relax"
+      }
+    },
+    {
+      "intent": "weekly_meal_preparation",
+      "displayName": "Weekly Meal Preparation",
+      "description": "Project-specific activity intent 'weekly_meal_preparation'. Prepare, cook, reheat, portion, or store food and drinks.",
+      "category": "meal_preparation",
+      "components": [
+        "prepare_food",
+        "portion_food",
+        "store_food"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.food_inventory",
+        "resident.hunger",
+        "resident.mobility_profile"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Meal_Preparation"
+      }
+    },
+    {
+      "intent": "work_shift",
+      "displayName": "Work Shift",
+      "description": "Project-specific activity intent 'work_shift'. Perform paid work or prepare directly for a work commitment.",
+      "category": "work",
+      "components": [
+        "work"
+      ],
+      "relevantVariableIds": [
+        "calendar.season",
+        "day.type",
+        "resident.age",
+        "resident.fatigue",
+        "resident.mobility_profile",
+        "resident.stress"
+      ],
+      "externalMappings": {
+        "casas_aruba": "Work"
+      }
+    }
+  ]
+}

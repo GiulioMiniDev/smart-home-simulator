@@ -1,0 +1,640 @@
+{
+  "$defs": {
+    "AuthorType": {
+      "enum": [
+        "human",
+        "external_llm",
+        "rule_generator",
+        "import"
+      ],
+      "title": "AuthorType",
+      "type": "string"
+    },
+    "BehaviorCatalogReferences": {
+      "additionalProperties": false,
+      "properties": {
+        "activityCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        },
+        "variableCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        },
+        "actionCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        }
+      },
+      "required": [
+        "activityCatalog",
+        "variableCatalog",
+        "actionCatalog"
+      ],
+      "title": "BehaviorCatalogReferences",
+      "type": "object"
+    },
+    "CatalogReference": {
+      "additionalProperties": false,
+      "properties": {
+        "catalogId": {
+          "minLength": 1,
+          "title": "Catalogid",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "catalogId",
+        "version"
+      ],
+      "title": "CatalogReference",
+      "type": "object"
+    },
+    "ConditionOperator": {
+      "enum": [
+        "truthy",
+        "falsy",
+        "exists",
+        "not_exists",
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "in",
+        "not_in"
+      ],
+      "title": "ConditionOperator",
+      "type": "string"
+    },
+    "DurationRange": {
+      "additionalProperties": false,
+      "properties": {
+        "minimumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Minimumminutes",
+          "type": "number"
+        },
+        "preferredMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Preferredminutes",
+          "type": "number"
+        },
+        "maximumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Maximumminutes",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minimumMinutes",
+        "preferredMinutes",
+        "maximumMinutes"
+      ],
+      "title": "DurationRange",
+      "type": "object"
+    },
+    "EffectOperation": {
+      "enum": [
+        "set",
+        "increment",
+        "decrement",
+        "append",
+        "remove"
+      ],
+      "title": "EffectOperation",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "ProcessBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "bindingId": {
+          "minLength": 1,
+          "title": "Bindingid",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "applicability": {
+          "items": {
+            "$ref": "#/$defs/VariableCondition"
+          },
+          "title": "Applicability",
+          "type": "array"
+        },
+        "fallback": {
+          "default": false,
+          "title": "Fallback",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bindingId",
+        "residentId",
+        "intent",
+        "processModelId"
+      ],
+      "title": "ProcessBinding",
+      "type": "object"
+    },
+    "ProcessEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceNodeId": {
+          "minLength": 1,
+          "title": "Sourcenodeid",
+          "type": "string"
+        },
+        "targetNodeId": {
+          "minLength": 1,
+          "title": "Targetnodeid",
+          "type": "string"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VariableCondition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "isDefault": {
+          "default": false,
+          "title": "Isdefault",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sourceNodeId",
+        "targetNodeId"
+      ],
+      "title": "ProcessEdge",
+      "type": "object"
+    },
+    "ProcessModel": {
+      "additionalProperties": false,
+      "properties": {
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "processModelVersion": {
+          "minLength": 1,
+          "title": "Processmodelversion",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "implementedComponents": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Implementedcomponents",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ProcessNode"
+          },
+          "minItems": 2,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/ProcessEdge"
+          },
+          "minItems": 1,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "processModelId",
+        "processModelVersion",
+        "residentId",
+        "title",
+        "description",
+        "implementedComponents",
+        "nodes",
+        "edges"
+      ],
+      "title": "ProcessModel",
+      "type": "object"
+    },
+    "ProcessNode": {
+      "additionalProperties": false,
+      "properties": {
+        "nodeId": {
+          "minLength": 1,
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ProcessNodeKind"
+        },
+        "actionType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actiontype"
+        },
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ValueExpression"
+          },
+          "title": "Arguments",
+          "type": "object"
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DurationRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "durationWeight": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationweight"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/VariableCondition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/StateEffect"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "maxIterations": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxiterations"
+        }
+      },
+      "required": [
+        "nodeId",
+        "kind"
+      ],
+      "title": "ProcessNode",
+      "type": "object"
+    },
+    "ProcessNodeKind": {
+      "enum": [
+        "start",
+        "end",
+        "action",
+        "choice",
+        "parallel_split",
+        "parallel_join",
+        "loop"
+      ],
+      "title": "ProcessNodeKind",
+      "type": "string"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "$ref": "#/$defs/AuthorType"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "generatorVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorversion"
+        },
+        "modelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        },
+        "generatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatedat"
+        },
+        "humanReviewed": {
+          "default": false,
+          "title": "Humanreviewed",
+          "type": "boolean"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "StateEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/EffectOperation"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "fact",
+        "operation",
+        "value"
+      ],
+      "title": "StateEffect",
+      "type": "object"
+    },
+    "ValueExpression": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/ValueSource"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "variableId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Variableid"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Index"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ValueExpression",
+      "type": "object"
+    },
+    "ValueSource": {
+      "enum": [
+        "literal",
+        "variable",
+        "activity_location",
+        "activity_resource",
+        "activity_intent",
+        "actor"
+      ],
+      "title": "ValueSource",
+      "type": "string"
+    },
+    "VariableCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "variableId": {
+          "minLength": 1,
+          "title": "Variableid",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/ConditionOperator",
+          "default": "truthy"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "variableId"
+      ],
+      "title": "VariableCondition",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:personal-process-package:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "personal_process_package",
+      "default": "personal_process_package",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "packageId": {
+      "minLength": 1,
+      "title": "Packageid",
+      "type": "string"
+    },
+    "packageVersion": {
+      "minLength": 1,
+      "title": "Packageversion",
+      "type": "string"
+    },
+    "sourceScenarioId": {
+      "minLength": 1,
+      "title": "Sourcescenarioid",
+      "type": "string"
+    },
+    "sourceScenarioVersion": {
+      "minLength": 1,
+      "title": "Sourcescenarioversion",
+      "type": "string"
+    },
+    "language": {
+      "minLength": 2,
+      "title": "Language",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "catalogs": {
+      "$ref": "#/$defs/BehaviorCatalogReferences"
+    },
+    "processModels": {
+      "items": {
+        "$ref": "#/$defs/ProcessModel"
+      },
+      "minItems": 1,
+      "title": "Processmodels",
+      "type": "array"
+    },
+    "bindings": {
+      "items": {
+        "$ref": "#/$defs/ProcessBinding"
+      },
+      "minItems": 1,
+      "title": "Bindings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "packageId",
+    "packageVersion",
+    "sourceScenarioId",
+    "sourceScenarioVersion",
+    "language",
+    "provenance",
+    "catalogs",
+    "processModels",
+    "bindings"
+  ],
+  "title": "Smart Home Personal Process Package 1.0.0",
+  "type": "object"
+}

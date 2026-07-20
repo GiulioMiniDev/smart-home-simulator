@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "ActivityComponentDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "componentId": {
+          "minLength": 1,
+          "title": "Componentid",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "requiredActionTypes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Requiredactiontypes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "componentId",
+        "description",
+        "requiredActionTypes"
+      ],
+      "title": "ActivityComponentDefinition",
+      "type": "object"
+    },
+    "ActivityDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "displayName": {
+          "minLength": 1,
+          "title": "Displayname",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "components": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Components",
+          "type": "array"
+        },
+        "relevantVariableIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Relevantvariableids",
+          "type": "array"
+        },
+        "externalMappings": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Externalmappings",
+          "type": "object"
+        }
+      },
+      "required": [
+        "intent",
+        "displayName",
+        "description",
+        "category",
+        "components",
+        "relevantVariableIds"
+      ],
+      "title": "ActivityDefinition",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:activity-catalog:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "activity_catalog",
+      "default": "activity_catalog",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "catalogId": {
+      "minLength": 1,
+      "title": "Catalogid",
+      "type": "string"
+    },
+    "catalogVersion": {
+      "minLength": 1,
+      "title": "Catalogversion",
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "$ref": "#/$defs/ActivityComponentDefinition"
+      },
+      "minItems": 1,
+      "title": "Components",
+      "type": "array"
+    },
+    "activities": {
+      "items": {
+        "$ref": "#/$defs/ActivityDefinition"
+      },
+      "minItems": 1,
+      "title": "Activities",
+      "type": "array"
+    }
+  },
+  "required": [
+    "catalogId",
+    "catalogVersion",
+    "components",
+    "activities"
+  ],
+  "title": "Smart Home Activity Catalog 1.0.0",
+  "type": "object"
+}

@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "ActionDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "actionType": {
+          "minLength": 1,
+          "title": "Actiontype",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/ActionParameterDefinition"
+          },
+          "title": "Parameters",
+          "type": "array"
+        },
+        "requiredCapabilities": {
+          "items": {
+            "$ref": "#/$defs/CapabilityRequirement"
+          },
+          "title": "Requiredcapabilities",
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/ActionPreconditionTemplate"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/ActionEffectTemplate"
+          },
+          "title": "Effects",
+          "type": "array"
+        }
+      },
+      "required": [
+        "actionType",
+        "description"
+      ],
+      "title": "ActionDefinition",
+      "type": "object"
+    },
+    "ActionEffectTemplate": {
+      "additionalProperties": false,
+      "properties": {
+        "factTemplate": {
+          "minLength": 1,
+          "title": "Facttemplate",
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/EffectOperation"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "factTemplate",
+        "operation",
+        "value"
+      ],
+      "title": "ActionEffectTemplate",
+      "type": "object"
+    },
+    "ActionParameterDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "parameterName": {
+          "minLength": 1,
+          "title": "Parametername",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "valueType": {
+          "$ref": "#/$defs/ValueType"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "referenceKind": {
+          "$ref": "#/$defs/ReferenceKind",
+          "default": "none"
+        },
+        "allowedValues": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Allowedvalues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "parameterName",
+        "description",
+        "valueType"
+      ],
+      "title": "ActionParameterDefinition",
+      "type": "object"
+    },
+    "ActionPreconditionTemplate": {
+      "additionalProperties": false,
+      "properties": {
+        "factTemplate": {
+          "minLength": 1,
+          "title": "Facttemplate",
+          "type": "string"
+        },
+        "operator": {
+          "enum": [
+            "exists",
+            "not_exists",
+            "eq",
+            "ne"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "factTemplate",
+        "operator"
+      ],
+      "title": "ActionPreconditionTemplate",
+      "type": "object"
+    },
+    "CapabilityRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "capability": {
+          "minLength": 1,
+          "title": "Capability",
+          "type": "string"
+        },
+        "parameterName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parametername"
+        }
+      },
+      "required": [
+        "role",
+        "capability"
+      ],
+      "title": "CapabilityRequirement",
+      "type": "object"
+    },
+    "EffectOperation": {
+      "enum": [
+        "set",
+        "increment",
+        "decrement",
+        "append",
+        "remove"
+      ],
+      "title": "EffectOperation",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "ReferenceKind": {
+      "enum": [
+        "none",
+        "location",
+        "resource",
+        "resident",
+        "external_person",
+        "environment_entity",
+        "capability"
+      ],
+      "title": "ReferenceKind",
+      "type": "string"
+    },
+    "ValueType": {
+      "enum": [
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "object",
+        "array"
+      ],
+      "title": "ValueType",
+      "type": "string"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:action-catalog:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "action_catalog",
+      "default": "action_catalog",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "catalogId": {
+      "minLength": 1,
+      "title": "Catalogid",
+      "type": "string"
+    },
+    "catalogVersion": {
+      "minLength": 1,
+      "title": "Catalogversion",
+      "type": "string"
+    },
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/ActionDefinition"
+      },
+      "minItems": 1,
+      "title": "Actions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "catalogId",
+    "catalogVersion",
+    "actions"
+  ],
+  "title": "Smart Home Atomic Action Catalog 1.0.0",
+  "type": "object"
+}
