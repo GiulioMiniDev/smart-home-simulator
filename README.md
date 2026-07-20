@@ -4,7 +4,7 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1 e 2 sono completate e congelate alla versione contrattuale 1.0.0**. Il sistema valida lo scenario flessibile e lo compila in un piano canonico deterministico; il prossimo sviluppo previsto è la Milestone 3, il motore di simulazione.
+Le **Milestone 1 e 2 sono completate e congelate alla versione contrattuale 1.0.0**. Il sistema valida lo scenario flessibile e lo compila in un piano canonico deterministico; il prossimo sviluppo previsto è la Milestone 3, dedicata all'authoring comportamentale e ai modelli di processo ADL personali che costituiranno un input completo del futuro simulatore.
 
 Sono intenzionalmente assenti:
 
@@ -67,6 +67,7 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Motore di validazione](docs/spec/02-validation-engine.md)
 - [Contratti downstream](docs/spec/03-downstream-contracts.md)
 - [Compilatore del piano](docs/spec/05-plan-compiler.md)
+- [Blueprint del futuro motore di simulazione](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
 - [Freeze del compilatore 1.0.0](docs/decisions/ADR-003-freeze-plan-compiler-1.0.0.md)

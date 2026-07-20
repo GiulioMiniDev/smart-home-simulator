@@ -22,7 +22,7 @@ No canonical plan is produced unless the main plan and every active contingency 
 
 ## Consequences
 
-- Milestone 3 consumes exact planned intervals without resolving flexible windows again.
+- The downstream simulation engine, currently scheduled for Milestone 5, consumes exact planned intervals without resolving flexible windows again.
 - The meaning of `OPTIMAL` is precise: globally optimal optional selection plus proven-feasible deterministic preference locking, not global minimum deviation.
 - A solver upgrade or changed tie-break policy requires an explicit compiler-version decision and regenerated golden plans.
 - Simultaneous runtime contingencies remain a simulator revalidation concern.

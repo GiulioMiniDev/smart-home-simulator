@@ -50,7 +50,7 @@ For a fallback, the target is removed and the selected main activities of that d
 - `rescheduledActivities`: main activities whose timing or selected dependency changes;
 - `omittedActivities`: optional branch or main activities unavailable in that alternate day.
 
-This is necessary when a replacement changes downstream timing. Unchanged activities are inherited from the main day. Each contingency is proven feasible independently. Simultaneous contingencies are not pre-composed; Milestone 3 must revalidate the active day before execution and either apply a compatible patch or invoke the declared local-repair policy.
+This is necessary when a replacement changes downstream timing. Unchanged activities are inherited from the main day. Each contingency is proven feasible independently. Simultaneous contingencies are not pre-composed; the complete simulation engine in Milestone 5 must revalidate the active day before execution and either apply a compatible patch or invoke the declared local-repair policy.
 
 An optional fallback target omitted from the main plan yields an inactive empty patch and warning `CONTINGENCY_TARGET_NOT_SCHEDULED`. Unsupported dependencies between unrelated branches are rejected during preflight.
 
