@@ -16,6 +16,9 @@ external authoring
 |---|---|---|---|
 | Scenario | human, rule generator or external LLM | intended life | No |
 | Personal ADL process package | human, rule generator or external LLM | possible resident-specific action flow | No |
+| Simulation authoring bundle | external LLM | transport envelope containing scenario and personal process package | No |
+| Authoring ingestion report | deterministic ingestor | whole-response validity and canonical artifact digests | No |
+| Authoring repair request | deterministic ingestor | rejected source, diagnostics and immutable repair context | No |
 | Behavior validation report | behavior validator | structural, graph and scenario compatibility | No |
 | Validation report | validator | admissibility of the scenario | No |
 | Canonical plan | compiler | planned activities for execution | No |
@@ -27,8 +30,10 @@ external authoring
 
 The scenario and personal process package are stable, independently versioned authoring
 contracts. No LLM controls the world or produces sensor measurements directly. Validators
-are read-only: they accept or reject data and never repair it silently. The process package
-describes possible behavior; only the simulator may turn it into an executed trace.
+are read-only: they accept or reject data and never repair it silently. A repair request
+only packages feedback for a new external authoring pass; it does not edit or accept the
+source. The process package describes possible behavior; only the simulator may turn it
+into an executed trace.
 
 ## Fundamental invariants
 

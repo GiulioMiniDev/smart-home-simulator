@@ -1,0 +1,414 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "simulation_authoring_bundle",
+  "scenario": {
+    "schemaVersion": "1.0.0",
+    "documentType": "life_scenario",
+    "scenarioId": "minimal_valid_scenario",
+    "title": "Minimal contract example",
+    "language": "en",
+    "timeZone": "Europe/Rome",
+    "simulationWindow": {
+      "start": "2026-10-12T00:00:00+02:00",
+      "end": "2026-10-13T00:00:00+02:00"
+    },
+    "seed": 1,
+    "provenance": {
+      "authorType": "human",
+      "humanReviewed": true
+    },
+    "modelReferences": {
+      "activityCatalog": {
+        "referenceId": "activity_catalog",
+        "version": "1.0.0"
+      },
+      "homeModel": {
+        "referenceId": "minimal_home",
+        "version": "1.0.0"
+      }
+    },
+    "residents": [
+      {
+        "residentId": "resident_1",
+        "displayName": "Resident One"
+      }
+    ],
+    "externalPeople": [
+      {
+        "externalPersonId": "friend_1",
+        "displayName": "Friend One",
+        "relationshipToResidents": {
+          "resident_1": "friend"
+        }
+      }
+    ],
+    "locations": [
+      {
+        "locationId": "bedroom",
+        "kind": "room"
+      },
+      {
+        "locationId": "kitchen",
+        "kind": "room"
+      },
+      {
+        "locationId": "home",
+        "kind": "composite",
+        "memberLocationIds": [
+          "bedroom",
+          "kitchen"
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "resourceId": "kettle_1",
+        "resourceType": "kettle",
+        "locationId": "kitchen",
+        "capacity": 1
+      }
+    ],
+    "initialState": {
+      "at": "2026-10-12T00:00:00+02:00",
+      "residents": [
+        {
+          "residentId": "resident_1",
+          "locationId": "bedroom",
+          "facts": {
+            "awake": false
+          }
+        }
+      ],
+      "resourceFacts": {
+        "kettle_1": {
+          "available": true
+        }
+      }
+    },
+    "commitments": [
+      {
+        "commitmentId": "breakfast_commitment",
+        "intent": "eat_breakfast",
+        "participantIds": [
+          "resident_1"
+        ],
+        "locationId": "kitchen",
+        "start": "2026-10-12T08:00:00+02:00",
+        "end": "2026-10-12T08:30:00+02:00"
+      }
+    ],
+    "days": [
+      {
+        "date": "2026-10-12",
+        "context": {
+          "dayType": "working_day"
+        },
+        "activities": [
+          {
+            "activityId": "activity_1",
+            "actorId": "resident_1",
+            "intent": "eat_breakfast",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2026-10-12T08:00:00+02:00",
+              "preferred": "2026-10-12T08:00:00+02:00",
+              "latest": "2026-10-12T08:00:00+02:00"
+            },
+            "duration": {
+              "minimumMinutes": 30.0,
+              "preferredMinutes": 30.0,
+              "maximumMinutes": 30.0
+            },
+            "requiredResources": [
+              {
+                "resourceId": "kettle_1",
+                "units": 1
+              }
+            ],
+            "commitmentId": "breakfast_commitment"
+          },
+          {
+            "activityId": "activity_2",
+            "actorId": "resident_1",
+            "intent": "clean_kitchen",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2026-10-12T08:30:00+02:00",
+              "preferred": "2026-10-12T08:35:00+02:00",
+              "latest": "2026-10-12T08:45:00+02:00"
+            },
+            "duration": {
+              "minimumMinutes": 5.0,
+              "preferredMinutes": 10.0,
+              "maximumMinutes": 15.0
+            },
+            "mandatory": false,
+            "dependencyGroups": [
+              {
+                "mode": "all",
+                "activityIds": [
+                  "activity_1"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "runtimeEventCandidates": [
+      {
+        "eventId": "event_1",
+        "eligibleWindow": {
+          "earliest": "2026-10-12T08:30:00+02:00",
+          "preferred": "2026-10-12T08:35:00+02:00",
+          "latest": "2026-10-12T08:45:00+02:00"
+        },
+        "occurrenceProbability": 0.2,
+        "triggerActivityId": "activity_2",
+        "effects": [
+          {
+            "operation": "delay_activity_start",
+            "targetId": "activity_2",
+            "minimumAmount": 1.0,
+            "maximumAmount": 3.0
+          }
+        ]
+      }
+    ]
+  },
+  "personalProcessPackage": {
+    "schemaVersion": "1.0.0",
+    "documentType": "personal_process_package",
+    "packageId": "minimal_valid_scenario__behavior",
+    "packageVersion": "1.0.0",
+    "sourceScenarioId": "minimal_valid_scenario",
+    "sourceScenarioVersion": "1.0.0",
+    "language": "en",
+    "provenance": {
+      "authorType": "rule_generator",
+      "generatorName": "build_behavior_artifacts",
+      "generatorVersion": "1.0.0",
+      "promptTemplateVersion": "personal-process-models-1.0.0",
+      "generatedAt": "2026-07-20T12:00:00+02:00",
+      "humanReviewed": false,
+      "parameters": {
+        "decompositionTableVersion": "1.0.0"
+      }
+    },
+    "catalogs": {
+      "activityCatalog": {
+        "catalogId": "smart_home_activity_catalog",
+        "version": "1.0.0"
+      },
+      "variableCatalog": {
+        "catalogId": "smart_home_variable_catalog",
+        "version": "1.0.0"
+      },
+      "actionCatalog": {
+        "catalogId": "smart_home_action_catalog",
+        "version": "1.0.0"
+      }
+    },
+    "processModels": [
+      {
+        "processModelId": "resident_1__clean_kitchen",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_1",
+        "title": "resident_1 clean kitchen process",
+        "description": "Resident-specific executable decomposition: clean_surface.",
+        "implementedComponents": [
+          "clean_surface"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "step_1",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "cleaning_target"
+              }
+            },
+            "durationWeight": 1.0
+          },
+          {
+            "nodeId": "step_2",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "cleaning_tool"
+              }
+            },
+            "durationWeight": 1.0
+          },
+          {
+            "nodeId": "step_3",
+            "kind": "action",
+            "actionType": "clean",
+            "arguments": {
+              "targetRole": {
+                "source": "activity_intent"
+              }
+            },
+            "durationWeight": 5.0
+          },
+          {
+            "nodeId": "step_4",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "cleaning_tool"
+              }
+            },
+            "durationWeight": 1.0
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "step_1"
+          },
+          {
+            "sourceNodeId": "step_1",
+            "targetNodeId": "step_2"
+          },
+          {
+            "sourceNodeId": "step_2",
+            "targetNodeId": "step_3"
+          },
+          {
+            "sourceNodeId": "step_3",
+            "targetNodeId": "step_4"
+          },
+          {
+            "sourceNodeId": "step_4",
+            "targetNodeId": "end"
+          }
+        ]
+      },
+      {
+        "processModelId": "resident_1__eat_breakfast",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_1",
+        "title": "resident_1 eat breakfast process",
+        "description": "Resident-specific executable decomposition: consume_meal.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "step_1",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "consumption_area"
+              }
+            },
+            "durationWeight": 1.0
+          },
+          {
+            "nodeId": "step_2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0
+          },
+          {
+            "nodeId": "step_3",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal"
+              }
+            },
+            "durationWeight": 5.0
+          },
+          {
+            "nodeId": "step_4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "step_1"
+          },
+          {
+            "sourceNodeId": "step_1",
+            "targetNodeId": "step_2"
+          },
+          {
+            "sourceNodeId": "step_2",
+            "targetNodeId": "step_3"
+          },
+          {
+            "sourceNodeId": "step_3",
+            "targetNodeId": "step_4"
+          },
+          {
+            "sourceNodeId": "step_4",
+            "targetNodeId": "end"
+          }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "resident_1__eat_breakfast",
+        "residentId": "resident_1",
+        "intent": "eat_breakfast",
+        "processModelId": "resident_1__eat_breakfast",
+        "fallback": true
+      },
+      {
+        "bindingId": "resident_1__clean_kitchen",
+        "residentId": "resident_1",
+        "intent": "clean_kitchen",
+        "processModelId": "resident_1__clean_kitchen",
+        "fallback": true
+      }
+    ]
+  }
+}

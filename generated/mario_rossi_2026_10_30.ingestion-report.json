@@ -1,0 +1,27 @@
+{
+  "ingestorVersion": "1.1.0",
+  "valid": true,
+  "bundleVersion": "1.0.0",
+  "scenarioId": "mario_rossi_autonomous_elderly_2026_10_30",
+  "packageId": "mario_rossi_autonomous_elderly_2026_10_30__behavior",
+  "canonicalPlanSha256": "3a89b4acd9b86d910f62a3e7a31909b5d086be3919536ba6d9e3eefe1bc61e0f",
+  "issues": [],
+  "artifacts": [
+    {
+      "filename": "scenario.json",
+      "sha256": "4f0294eba51af244755838104798b4c3653c3688dc12bddb204ebc16ffb936c6"
+    },
+    {
+      "filename": "personal-process-package.json",
+      "sha256": "df7196f31d65a64157dcec6380fb7ba9e103ced365d4790833e0c6fb2f4cb6eb"
+    }
+  ],
+  "summary": {
+    "scenarioErrorCount": 0,
+    "compilationErrorCount": 0,
+    "behaviorErrorCount": 0,
+    "outputErrorCount": 0,
+    "warningCount": 0,
+    "errorCount": 0
+  }
+}

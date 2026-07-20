@@ -7,8 +7,14 @@ from typing import Annotated
 
 import typer
 
+from smart_home_sim.authoring import ingest_authoring_file, prepare_authoring_repair_file
 from smart_home_sim.behavior import validate_behavior_files
 from smart_home_sim.compiler import compile_file
+from smart_home_sim.domain.authoring import (
+    AuthoringIngestionReport,
+    AuthoringRepairRequest,
+    SimulationAuthoringBundle,
+)
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
     ActivityCatalog,
@@ -20,7 +26,11 @@ from smart_home_sim.domain.compilation import CompilationReport
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
-from smart_home_sim.formatting import format_behavior_text_report, format_text_report
+from smart_home_sim.formatting import (
+    format_authoring_text_report,
+    format_behavior_text_report,
+    format_text_report,
+)
 from smart_home_sim.validation.service import validate_file
 
 
@@ -39,6 +49,9 @@ class SchemaContract(StrEnum):
     action_catalog = "action-catalog"
     personal_process_package = "personal-process-package"
     behavior_validation_report = "behavior-validation-report"
+    simulation_authoring_bundle = "simulation-authoring-bundle"
+    authoring_ingestion_report = "authoring-ingestion-report"
+    authoring_repair_request = "authoring-repair-request"
 
 
 app = typer.Typer(
@@ -135,12 +148,98 @@ def validate_behavior(
         raise typer.Exit(code=1)
 
 
+@app.command("ingest-authoring-output")
+def ingest_authoring_output(
+    bundle_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir")],
+    output_format: Annotated[OutputFormat, typer.Option("--format")] = OutputFormat.text,
+    report_output: Annotated[Path | None, typer.Option("--report-output")] = None,
+    repair_request_output: Annotated[Path | None, typer.Option("--repair-request-output")] = None,
+    repair_attempt: Annotated[int, typer.Option("--repair-attempt", min=1)] = 1,
+) -> None:
+    """Validate an LLM bundle, publishing inputs or an optional repair request."""
+    if report_output is not None and report_output.resolve() == bundle_path.resolve():
+        raise typer.BadParameter(
+            "Report output must not overwrite the authoring bundle.",
+            param_hint="--report-output",
+        )
+    if repair_request_output is not None:
+        if repair_request_output.resolve() == bundle_path.resolve():
+            raise typer.BadParameter(
+                "Repair request output must not overwrite the rejected bundle.",
+                param_hint="--repair-request-output",
+            )
+        if report_output is not None and repair_request_output.resolve() == report_output.resolve():
+            raise typer.BadParameter(
+                "Repair request and report outputs must be different files.",
+                param_hint="--repair-request-output",
+            )
+    report = ingest_authoring_file(bundle_path, output_dir)
+    content = (
+        report.model_dump_json(by_alias=True, indent=2)
+        if output_format is OutputFormat.json
+        else format_authoring_text_report(report)
+    )
+    if report_output is None:
+        typer.echo(content)
+    else:
+        report_output.parent.mkdir(parents=True, exist_ok=True)
+        report_output.write_text(content + "\n", encoding="utf-8")
+        typer.echo(f"Authoring ingestion report written to: {report_output.resolve()}")
+    if report.valid:
+        typer.echo(f"Canonical authoring inputs written to: {output_dir.resolve()}")
+    else:
+        if repair_request_output is not None:
+            preparation = prepare_authoring_repair_file(bundle_path, attempt=repair_attempt)
+            if preparation.request is None:
+                typer.echo(
+                    f"Repair request unavailable: {preparation.unavailable_reason}",
+                    err=True,
+                )
+            else:
+                repair_request_output.parent.mkdir(parents=True, exist_ok=True)
+                repair_request_output.write_text(
+                    preparation.request.model_dump_json(by_alias=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                typer.echo(
+                    f"Authoring repair request written to: {repair_request_output.resolve()}",
+                    err=True,
+                )
+        raise typer.Exit(code=1)
+
+
+@app.command("prepare-authoring-repair")
+def prepare_authoring_repair(
+    bundle_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    attempt: Annotated[int, typer.Option("--attempt", min=1)] = 1,
+) -> None:
+    """Create a self-contained external-LLM request for one rejected bundle."""
+    if output.resolve() == bundle_path.resolve():
+        raise typer.BadParameter(
+            "Repair request output must not overwrite the rejected bundle.",
+            param_hint="--output",
+        )
+    preparation = prepare_authoring_repair_file(bundle_path, attempt=attempt)
+    if preparation.request is None:
+        typer.echo(format_authoring_text_report(preparation.report))
+        typer.echo(f"Repair request unavailable: {preparation.unavailable_reason}", err=True)
+        raise typer.Exit(code=1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        preparation.request.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    typer.echo(f"Authoring repair request written to: {output.resolve()}")
+
+
 @app.command()
 def schema(
     contract: Annotated[SchemaContract, typer.Option("--contract")] = SchemaContract.scenario,
     output: Annotated[Path | None, typer.Option("--output")] = None,
 ) -> None:
-    """Print or write a public version 1.0.0 JSON Schema."""
+    """Print or write one public versioned JSON Schema."""
     models = {
         SchemaContract.scenario: Scenario,
         SchemaContract.validation_report: ValidationReport,
@@ -151,6 +250,9 @@ def schema(
         SchemaContract.action_catalog: ActionCatalog,
         SchemaContract.personal_process_package: PersonalProcessPackage,
         SchemaContract.behavior_validation_report: BehaviorValidationReport,
+        SchemaContract.simulation_authoring_bundle: SimulationAuthoringBundle,
+        SchemaContract.authoring_ingestion_report: AuthoringIngestionReport,
+        SchemaContract.authoring_repair_request: AuthoringRepairRequest,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

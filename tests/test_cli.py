@@ -124,6 +124,134 @@ def test_validate_can_write_json_report(tmp_path: Path) -> None:
     assert json.loads(output.read_text(encoding="utf-8"))["valid"] is True
 
 
+def test_ingest_authoring_output_writes_both_canonical_inputs(tmp_path: Path) -> None:
+    output_dir = tmp_path / "authoring-output"
+    result = runner.invoke(
+        app,
+        [
+            "ingest-authoring-output",
+            str(EXAMPLES / "authoring/minimal.authoring-bundle.json"),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "VALID: authoring bundle" in result.stdout
+    assert (output_dir / "scenario.json").is_file()
+    assert (output_dir / "personal-process-package.json").is_file()
+
+
+def test_ingest_authoring_output_emits_json_failure_report(tmp_path: Path) -> None:
+    payload = json.loads(
+        (EXAMPLES / "authoring/minimal.authoring-bundle.json").read_text(encoding="utf-8")
+    )
+    payload["personalProcessPackage"]["bindings"] = []
+    bundle_path = tmp_path / "invalid.json"
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+    output_dir = tmp_path / "must-not-exist"
+
+    result = runner.invoke(
+        app,
+        [
+            "ingest-authoring-output",
+            str(bundle_path),
+            "--output-dir",
+            str(output_dir),
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    report = json.loads(result.stdout)
+    assert report["valid"] is False
+    assert report["summary"]["behaviorErrorCount"] > 0
+    assert report["summary"]["compilationErrorCount"] == 0
+    assert not output_dir.exists()
+
+
+def test_ingestion_failure_can_emit_repair_request_for_next_llm_pass(
+    tmp_path: Path,
+) -> None:
+    payload = json.loads(
+        (EXAMPLES / "authoring/minimal.authoring-bundle.json").read_text(encoding="utf-8")
+    )
+    payload["personalProcessPackage"]["bindings"] = []
+    bundle_path = tmp_path / "invalid.json"
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+    repair_path = tmp_path / "repair/request.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "ingest-authoring-output",
+            str(bundle_path),
+            "--output-dir",
+            str(tmp_path / "must-not-exist"),
+            "--repair-request-output",
+            str(repair_path),
+            "--repair-attempt",
+            "3",
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["valid"] is False
+    assert "Authoring repair request written to" in result.stderr
+    assert repair_path.is_file()
+    request = json.loads(repair_path.read_text(encoding="utf-8"))
+    assert request["documentType"] == "simulation_authoring_repair_request"
+    assert request["attempt"] == 3
+    assert request["repairRequestId"].endswith("_attempt_3")
+    assert request["validationReport"]["valid"] is False
+    assert json.loads(request["source"]["bundleText"]) == payload
+
+
+def test_prepare_authoring_repair_command_writes_standalone_request(tmp_path: Path) -> None:
+    malformed_path = tmp_path / "malformed.json"
+    malformed_path.write_text("{not-json", encoding="utf-8")
+    output = tmp_path / "repair.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "prepare-authoring-repair",
+            str(malformed_path),
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    request = json.loads(output.read_text(encoding="utf-8"))
+    assert request["source"]["bundleText"] == "{not-json"
+    assert request["validationReport"]["issues"][0]["code"] == "JSON_SYNTAX"
+
+
+def test_prepare_authoring_repair_rejects_valid_input_and_in_place_output(
+    tmp_path: Path,
+) -> None:
+    valid_path = EXAMPLES / "authoring/minimal.authoring-bundle.json"
+    no_repair = runner.invoke(
+        app,
+        ["prepare-authoring-repair", str(valid_path), "--output", str(tmp_path / "repair.json")],
+    )
+    assert no_repair.exit_code == 1
+    assert "already valid" in no_repair.stderr
+
+    invalid_path = tmp_path / "invalid.json"
+    invalid_path.write_text("{not-json", encoding="utf-8")
+    in_place = runner.invoke(
+        app,
+        ["prepare-authoring-repair", str(invalid_path), "--output", str(invalid_path)],
+    )
+    assert in_place.exit_code != 0
+    assert invalid_path.read_text(encoding="utf-8") == "{not-json"
+
+
 def test_compile_writes_plan_and_report(tmp_path: Path) -> None:
     plan_path = tmp_path / "nested/plan.json"
     report_path = tmp_path / "nested/report.json"

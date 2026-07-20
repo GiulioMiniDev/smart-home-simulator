@@ -27,6 +27,7 @@ make validate-behavior
 make compile
 make schema
 make behavior-artifacts
+make authoring-artifacts
 ```
 
 Per validare un file specifico:
@@ -61,6 +62,59 @@ Il comando usa i cataloghi `1.0.0` distribuiti con il pacchetto. I prompt in `pr
 permettono a un ricercatore di produrre scenario e process model tramite un LLM esterno;
 il runtime non invoca alcun provider.
 
+Il flusso di authoring consigliato usa un solo file:
+`prompts/generate-simulation-inputs-1.2.0.md`. Il ricercatore sostituisce il marcatore
+`PERSON_AND_CASE_DESCRIPTION` con una descrizione libera della persona, invia l'intero
+prompt a un LLM esterno e salva il solo JSON restituito. Non deve allegare separatamente
+schemi o cataloghi.
+
+La risposta viene validata e trasformata atomicamente nei due input canonici con:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim ingest-authoring-output \
+  risposta-llm.json \
+  --output-dir generated/mario
+```
+
+La directory di destinazione non deve esistere. L'ingestione esegue validazione dello
+scenario, compilazione completa e validazione ADL nello stesso passaggio. Se un gate
+fallisce non viene prodotto alcun input parziale. Il piano può essere rigenerato con il
+normale comando `compile`; dopo l'accettazione l'LLM non viene più utilizzato.
+
+Se il bundle viene rifiutato, lo stesso passaggio può produrre una richiesta di
+riparazione autosufficiente:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim ingest-authoring-output \
+  risposta-llm.json \
+  --output-dir generated/mario \
+  --format json \
+  --report-output generated/mario-ingestion-report.json \
+  --repair-request-output generated/mario-repair-attempt-1.json \
+  --repair-attempt 1
+```
+
+In caso di errore il comando termina con exit code `1`, non crea `generated/mario` e
+scrive sia il report sia `mario-repair-attempt-1.json`. Quest'ultimo contiene il bundle
+originale, il suo digest, tutti gli errori con i relativi percorsi JSON, le istruzioni di
+correzione e gli schemi/cataloghi autorevoli. Il ricercatore allega questo unico file
+all'LLM e salva il bundle JSON completo corretto; non deve richiedere una rigenerazione da
+zero né gestire manualmente i singoli errori. Il nuovo bundle rientra nello stesso comando.
+Se fallisce ancora, si ripete indicando `--repair-attempt 2`, e così via. Il simulatore non
+applica patch e non accetta il risultato finché tutti i gate non passano.
+
+Una richiesta può anche essere preparata separatamente:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim prepare-authoring-repair \
+  risposta-llm.json \
+  --output generated/mario-repair-attempt-1.json \
+  --attempt 1
+```
+
+Il ciclo riguarda esclusivamente l'authoring esterno: non introduce chiamate LLM durante
+compilazione o simulazione.
+
 Gli artefatti pubblici congelati sono:
 
 - `schemas/scenario-1.0.0.schema.json`;
@@ -72,6 +126,10 @@ Gli artefatti pubblici congelati sono:
 - `schemas/action-catalog-1.0.0.schema.json`;
 - `schemas/personal-process-package-1.0.0.schema.json`;
 - `schemas/behavior-validation-report-1.0.0.schema.json`;
+- `schemas/simulation-authoring-bundle-1.0.0.schema.json`;
+- `schemas/authoring-ingestion-report-1.0.0.schema.json`;
+- `schemas/authoring-ingestion-report-1.1.0.schema.json`;
+- `schemas/authoring-repair-request-1.0.0.schema.json`;
 - i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
@@ -91,8 +149,13 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Contratti downstream](docs/spec/03-downstream-contracts.md)
 - [Compilatore del piano](docs/spec/05-plan-compiler.md)
 - [Authoring comportamentale e process model ADL](docs/spec/06-behavioral-authoring.md)
+- [Authoring end-to-end tramite LLM esterno](docs/spec/07-end-to-end-llm-authoring.md)
 - [Blueprint del futuro motore di simulazione](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
 - [Freeze del compilatore 1.0.0](docs/decisions/ADR-003-freeze-plan-compiler-1.0.0.md)
 - [Freeze dell'authoring comportamentale 1.0.0](docs/decisions/ADR-004-freeze-behavioral-authoring-1.0.0.md)
+- [Envelope di authoring a prompt singolo 1.0.0](docs/decisions/ADR-005-single-prompt-authoring-envelope-1.0.0.md)
+- [Authoring con gate del compilatore 1.1.0](docs/decisions/ADR-006-compilation-gated-authoring-1.1.0.md)
+- [Prompt con riferimenti compatibili 1.2.0](docs/decisions/ADR-007-reference-compatible-authoring-prompt-1.2.0.md)
+- [Ciclo esterno di riparazione dell'authoring 1.0.0](docs/decisions/ADR-008-external-authoring-repair-loop-1.0.0.md)

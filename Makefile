@@ -1,4 +1,4 @@
-.PHONY: sync validate validate-behavior compile schema behavior-artifacts test lint check
+.PHONY: sync validate validate-behavior compile schema behavior-artifacts authoring-artifacts test lint check
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
@@ -16,6 +16,9 @@ behavior-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_behavior_artifacts.py
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_invalid_behavior_examples.py
 
+authoring-artifacts:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_authoring_artifacts.py
+
 schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --output schemas/scenario-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract validation-report --output schemas/validation-report-1.0.0.schema.json
@@ -26,6 +29,9 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract action-catalog --output schemas/action-catalog-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract personal-process-package --output schemas/personal-process-package-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract behavior-validation-report --output schemas/behavior-validation-report-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-authoring-bundle --output schemas/simulation-authoring-bundle-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-ingestion-report --output schemas/authoring-ingestion-report-1.1.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-repair-request --output schemas/authoring-repair-request-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/write_schema_checksums.py
 
 test:
@@ -35,4 +41,4 @@ lint:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff check .
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff format --check .
 
-check: behavior-artifacts schema test lint validate compile validate-behavior
+check: behavior-artifacts schema authoring-artifacts test lint validate compile validate-behavior

@@ -10,7 +10,8 @@ The authoring flow is external to the simulator runtime:
 
 ```text
 researcher + external LLM
-    -> scenario JSON + personal process package
+    -> one simulation authoring bundle
+    -> atomic ingestion into scenario JSON + personal process package
     -> deterministic scenario and behavior validators
     -> accepted immutable authoring artifacts
 ```
@@ -28,6 +29,8 @@ file.
 | Action catalog | Closed vocabulary of typed atomic actions and parameters |
 | Personal process package | Resident-specific process graphs and bindings to intents |
 | Behavior validation report | Deterministic structural, graph and compatibility result |
+| Simulation authoring bundle | Pure-JSON transport envelope for one external-LLM response |
+| Authoring ingestion report | Whole-response validation and canonical artifact digests |
 
 Dataset labels may be recorded in `externalMappings` for analysis. They never determine
 runtime identity or replace the project activity `intent`.
@@ -126,6 +129,19 @@ The public Draft 2020-12 schemas are:
 - `personal-process-package-1.0.0.schema.json`;
 - `behavior-validation-report-1.0.0.schema.json`.
 
-The official prompt templates are versioned in `prompts/`. JSON is authoritative. Mermaid
-may be generated later as a visual projection but is neither accepted input nor a runtime
-dependency in version `1.0.0`.
+The end-to-end transport schema is `simulation-authoring-bundle-1.0.0.schema.json`. The
+current ingestion report is `authoring-ingestion-report-1.1.0.schema.json`; historical
+report `1.0.0` remains frozen. They compose rather than modify the frozen scenario and
+personal-process contracts.
+
+Rejected external-LLM bundles may be wrapped in the self-contained
+`authoring-repair-request-1.0.0.schema.json` contract. The request preserves the original
+text, diagnostics and authoritative contracts; it never edits or publishes the rejected
+bundle. A complete externally repaired bundle must pass the same ingestion gates from the
+beginning.
+
+The preferred researcher-facing prompt is the single self-contained
+`generate-simulation-inputs-1.2.0.md`; prompts `1.0.0`, `1.1.0` and the focused scenario
+and process templates remain available as contract documentation. JSON is authoritative.
+Mermaid may be generated later as a visual projection but is neither accepted input nor a
+runtime dependency in version `1.0.0`.

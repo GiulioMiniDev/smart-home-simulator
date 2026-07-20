@@ -1,0 +1,348 @@
+{
+  "$defs": {
+    "AuthoringArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "enum": [
+            "scenario.json",
+            "personal-process-package.json"
+          ],
+          "title": "Filename",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "sha256"
+      ],
+      "title": "AuthoringArtifact",
+      "type": "object"
+    },
+    "AuthoringIngestionIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTION_ARGUMENT_TYPE_MISMATCH",
+            "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+            "ACTIVITY_COMMITMENT_END_MISMATCH",
+            "ACTIVITY_COMMITMENT_LOCATION_MISMATCH",
+            "ACTIVITY_COMMITMENT_PARTICIPANT_MISMATCH",
+            "ACTIVITY_COMMITMENT_TIME_MISMATCH",
+            "ACTIVITY_WINDOW_OUTSIDE_SIMULATION",
+            "ACTOR_REPEATED_AS_PARTICIPANT",
+            "AMBIGUOUS_PROCESS_BINDING",
+            "BEHAVIOR_VALIDATION_SKIPPED",
+            "BUNDLE_STRUCTURE_INVALID",
+            "CANONICAL_PLAN_INVALID",
+            "CATALOG_REFERENCE_MISMATCH",
+            "CHOICE_BRANCH_INVALID",
+            "COMMITMENT_OUTSIDE_SIMULATION",
+            "COMMITMENT_OVERLAP",
+            "COMPILATION_VALIDATION_SKIPPED",
+            "COMPOSITE_LOCATION_CYCLE",
+            "COMPOSITE_LOCATION_SELF_REFERENCE",
+            "CONTINGENCY_PLAN_INFEASIBLE",
+            "CONTINGENCY_TARGET_NOT_SCHEDULED",
+            "CROSS_BRANCH_DEPENDENCY",
+            "DAY_OUTSIDE_SIMULATION",
+            "DEPENDENCY_CYCLE",
+            "DUPLICATE_ACTION_PARAMETER",
+            "DUPLICATE_ACTIVITY_ID",
+            "DUPLICATE_ACTIVITY_LABEL",
+            "DUPLICATE_ACTIVITY_LOCATION",
+            "DUPLICATE_BINDING_ID",
+            "DUPLICATE_CATALOG_ENTRY",
+            "DUPLICATE_COMMITMENT_ID",
+            "DUPLICATE_COMMITMENT_PARTICIPANT",
+            "DUPLICATE_DAY",
+            "DUPLICATE_DECLARED_CONSTRAINT",
+            "DUPLICATE_DEPENDENCY",
+            "DUPLICATE_EDGE",
+            "DUPLICATE_EXTERNAL_PERSON_ID",
+            "DUPLICATE_INITIAL_STATE",
+            "DUPLICATE_JSON_KEY",
+            "DUPLICATE_LOCATION_ID",
+            "DUPLICATE_NODE_ID",
+            "DUPLICATE_OUTPUT_FORMAT",
+            "DUPLICATE_PARTICIPANT",
+            "DUPLICATE_PROCESS_MODEL_ID",
+            "DUPLICATE_REPAIR_STEP",
+            "DUPLICATE_RESIDENT_ID",
+            "DUPLICATE_RESOURCE_ID",
+            "DUPLICATE_RESOURCE_REQUIREMENT",
+            "DUPLICATE_RUNTIME_EVENT_ID",
+            "EVENT_TARGET_DAY_MISMATCH",
+            "EVENT_TRIGGER_DAY_MISMATCH",
+            "FALLBACK_ACTOR_MISMATCH",
+            "FALLBACK_CYCLE",
+            "FALLBACK_DAY_MISMATCH",
+            "FALLBACK_TARGET_IS_FALLBACK",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "FIXED_ACTIVITY_COMMITMENT_OVERLAP",
+            "FIXED_ACTIVITY_OVERLAP",
+            "FIXED_RESOURCE_CAPACITY_EXCEEDED",
+            "FUTURE_DEPENDENCY",
+            "GRAPH_CYCLE_UNBOUNDED",
+            "GRAPH_END_INVALID",
+            "GRAPH_NODE_DEAD",
+            "GRAPH_START_INVALID",
+            "HORIZON_EXCEEDS_SOLVER_RANGE",
+            "IMPOSSIBLE_ANY_DEPENDENCY",
+            "IMPOSSIBLE_PRECEDENCE",
+            "INITIAL_STATE_TIME_MISMATCH",
+            "INPUT_SCENARIO_INVALID",
+            "INVALID_ACTION_ARGUMENTS",
+            "INVALID_GRAPH_DEGREE",
+            "INVALID_LITERAL_REFERENCE",
+            "INVALID_REPAIR_ORDER",
+            "INVALID_VARIABLE_VALUE",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "LOOP_BRANCH_INVALID",
+            "MAIN_PLAN_INFEASIBLE",
+            "MANDATORY_COMMITMENT_OPTIONAL_ACTIVITY",
+            "MISSING_PROCESS_BINDING",
+            "MISSING_REQUIRED_DAY",
+            "MISSING_RESIDENT_INITIAL_STATE",
+            "OUTPUT_DIRECTORY_EXISTS",
+            "OUTPUT_WRITE_ERROR",
+            "PACKAGE_SCENARIO_MISMATCH",
+            "PARALLEL_JOIN_MISSING",
+            "PERSON_ID_COLLISION",
+            "PROCESS_COMPONENT_MISMATCH",
+            "PROCESS_MODEL_RESIDENT_MISMATCH",
+            "PROCESS_MOVEMENT_MISSING",
+            "REPAIR_DISABLED_WITH_LOCAL_STEPS",
+            "REQUIRED_VARIABLE_MISSING",
+            "RESOURCE_LOCATION_MISMATCH",
+            "RESOURCE_REQUIREMENT_EXCEEDS_CAPACITY",
+            "RUNTIME_EVENT_OUTSIDE_SIMULATION",
+            "SELF_DEPENDENCY",
+            "SOLVER_MODEL_INVALID",
+            "SOLVER_NOT_OPTIMAL",
+            "STRUCTURE_INVALID",
+            "TIMEZONE_OFFSET_MISMATCH",
+            "TIME_PRECISION_UNREPRESENTABLE",
+            "UNKNOWN_ACTION_TYPE",
+            "UNKNOWN_ACTIVITY_COMPONENT",
+            "UNKNOWN_ACTIVITY_LOCATION",
+            "UNKNOWN_ACTOR",
+            "UNKNOWN_COMMITMENT",
+            "UNKNOWN_COMMITMENT_LOCATION",
+            "UNKNOWN_COMMITMENT_PARTICIPANT",
+            "UNKNOWN_COMPOSITE_MEMBER",
+            "UNKNOWN_DEPENDENCY",
+            "UNKNOWN_EDGE_NODE",
+            "UNKNOWN_EVENT_TARGET_ACTIVITY",
+            "UNKNOWN_EVENT_TARGET_RESIDENT",
+            "UNKNOWN_EVENT_TRIGGER_ACTIVITY",
+            "UNKNOWN_FALLBACK_TARGET",
+            "UNKNOWN_INITIAL_LOCATION",
+            "UNKNOWN_INITIAL_STATE_RESIDENT",
+            "UNKNOWN_INTENT",
+            "UNKNOWN_PARTICIPANT",
+            "UNKNOWN_PROCESS_MODEL",
+            "UNKNOWN_RELATIONSHIP_RESIDENT",
+            "UNKNOWN_REQUIRED_RESOURCE",
+            "UNKNOWN_RESIDENT",
+            "UNKNOWN_RESOURCE_LOCATION",
+            "UNKNOWN_RESOURCE_STATE",
+            "UNKNOWN_VARIABLE",
+            "UNSUPPORTED_SCHEMA_VERSION",
+            "UNUSED_COMMITMENT",
+            "VARIABLE_SOURCE_TYPE_MISMATCH",
+            "VARIABLE_SOURCE_VALUE_INVALID"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "bundle",
+            "scenario",
+            "compilation",
+            "behavior",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "AuthoringIngestionIssue",
+      "type": "object"
+    },
+    "AuthoringIngestionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "scenarioErrorCount": {
+          "minimum": 0,
+          "title": "Scenarioerrorcount",
+          "type": "integer"
+        },
+        "compilationErrorCount": {
+          "minimum": 0,
+          "title": "Compilationerrorcount",
+          "type": "integer"
+        },
+        "behaviorErrorCount": {
+          "minimum": 0,
+          "title": "Behaviorerrorcount",
+          "type": "integer"
+        },
+        "outputErrorCount": {
+          "minimum": 0,
+          "title": "Outputerrorcount",
+          "type": "integer"
+        },
+        "warningCount": {
+          "minimum": 0,
+          "title": "Warningcount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scenarioErrorCount",
+        "compilationErrorCount",
+        "behaviorErrorCount",
+        "outputErrorCount",
+        "warningCount",
+        "errorCount"
+      ],
+      "title": "AuthoringIngestionSummary",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:smart-home-simulator:schema:authoring-ingestion-report:1.1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "ingestorVersion": {
+      "const": "1.1.0",
+      "default": "1.1.0",
+      "title": "Ingestorversion",
+      "type": "string"
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    },
+    "bundleVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bundleversion"
+    },
+    "scenarioId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scenarioid"
+    },
+    "packageId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Packageid"
+    },
+    "canonicalPlanSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Canonicalplansha256"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/AuthoringIngestionIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/AuthoringArtifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/AuthoringIngestionSummary"
+    }
+  },
+  "required": [
+    "valid",
+    "summary"
+  ],
+  "title": "Smart Home Authoring Ingestion Report 1.1.0",
+  "type": "object"
+}

@@ -149,10 +149,17 @@ provider né invoca un LLM durante validazione, compilazione o simulazione.
   solo process model, con fallback espliciti e senza risoluzioni implicite;
 - prompt ufficiali, istruzioni e JSON Schema per far generare a un LLM esterno sia lo
   scenario sia i process model personali;
+- prompt end-to-end unico e autosufficiente, arricchito dal ricercatore con una descrizione
+  libera della persona e generato deterministicamente dagli schemi e cataloghi ufficiali;
+- envelope JSON di trasporto per ricevere scenario e process model nella stessa risposta,
+  con ingestione transazionale che non pubblica input parziali;
 - validazione strutturale, referenziale e semantica dei process model, inclusi
   raggiungibilità, terminazione, completezza dei rami e uso esclusivo di azioni ammesse;
 - CLI e report machine-readable per validare un pacchetto comportamentale e verificarne
   la compatibilità con uno scenario;
+- ciclo di riparazione esterno e versionato che impacchetta bundle rifiutato, errori,
+  percorsi JSON, schema e cataloghi in una singola richiesta autosufficiente, senza
+  correzioni locali o dipendenze LLM nel runtime;
 - provenance completa di modello, prompt, parametri, timestamp, revisione umana e digest.
 
 Il formato autorevole è strutturato e validabile. Una rappresentazione Mermaid può essere
@@ -176,7 +183,14 @@ runtime.
   espliciti;
 - gli output prodotti seguendo i prompt ufficiali sono accettati dagli stessi validatori
   usati per gli artefatti scritti manualmente;
+- il ricercatore allega un solo prompt, non deve creare un profilo intermedio strutturato e
+  ottiene una risposta JSON univocamente parsabile;
+- un bundle valido viene separato nei due contratti canonici, mentre qualunque errore in
+  uno dei due impedisce atomicamente la pubblicazione di entrambi;
 - input invalidi o incompatibili producono report completi senza correzioni silenziose;
+- un input rifiutato e riparabile produce una richiesta autosufficiente; ogni risposta
+  completa dell'LLM rientra da zero negli stessi gate e soltanto un esito valido viene
+  pubblicato;
 - schemi, checksum, esempi, CLI, golden report, test, lint e copertura minima obbligatoria
   del 95% sono completi;
 - lo scenario e il canonical plan congelati non vengono modificati retroattivamente.
@@ -186,7 +200,13 @@ congelati in ADR-004. Il pacchetto comportamentale della settimana di Mario cont
 process model personali specifici per intento, 91 binding e copre senza ambiguità tutte
 le 173 attività dello scenario; il caso minimo copre 2 attività su 2. Gli intenti composti
 sono verificati rispetto alla loro decomposizione ordinata, non soltanto rispetto alla
-presenza nominale di un binding.
+presenza nominale di un binding. Il flusso a prompt singolo è congelato da ADR-005: il
+prompt distribuibile incorpora schema e cataloghi. ADR-006 aggiunge il gate del compilatore
+dopo la prima prova esterna; ADR-007 promuove il prompt `1.2.0` con la matrice esplicita tra
+sorgenti dei valori e riferimenti delle azioni. ADR-008 congela il contratto della richiesta
+di riparazione `1.0.0` e il ciclo esterno a risposta completa. L'envelope deve superare
+validazione dello scenario, compilazione completa e validazione del comportamento prima
+della pubblicazione.
 
 ## Milestone 4 — Ambiente domestico eseguibile e binding
 

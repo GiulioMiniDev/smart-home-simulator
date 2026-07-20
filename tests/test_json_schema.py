@@ -6,6 +6,12 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from smart_home_sim.domain.authoring import (
+    AUTHORING_ISSUE_CODES,
+    AuthoringIngestionReport,
+    AuthoringRepairRequest,
+    SimulationAuthoringBundle,
+)
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
     ActivityCatalog,
@@ -34,6 +40,14 @@ BEHAVIOR_SCHEMAS = {
     "personal-process-package-1.0.0.schema.json": PersonalProcessPackage,
     "behavior-validation-report-1.0.0.schema.json": BehaviorValidationReport,
 }
+AUTHORING_SCHEMAS = {
+    "simulation-authoring-bundle-1.0.0.schema.json": SimulationAuthoringBundle,
+    "authoring-ingestion-report-1.1.0.schema.json": AuthoringIngestionReport,
+    "authoring-repair-request-1.0.0.schema.json": AuthoringRepairRequest,
+}
+HISTORICAL_AUTHORING_REPORT_SCHEMA = (
+    PROJECT_ROOT / "schemas/authoring-ingestion-report-1.0.0.schema.json"
+)
 
 
 def load_schema() -> dict[str, object]:
@@ -65,6 +79,8 @@ def test_frozen_schema_checksums_match() -> None:
         PLAN_SCHEMA_PATH,
         COMPILATION_SCHEMA_PATH,
         *(PROJECT_ROOT / "schemas" / name for name in BEHAVIOR_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in AUTHORING_SCHEMAS),
+        HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]
@@ -149,3 +165,29 @@ def test_distributed_catalogs_and_behavior_examples_satisfy_schemas() -> None:
     for path in sorted((PROJECT_ROOT / "examples/behavior").glob("*.json")):
         payload = json.loads(path.read_text())
         assert list(Draft202012Validator(package_schema).iter_errors(payload)) == [], path
+
+
+def test_authoring_schemas_match_models_and_example_bundle() -> None:
+    for filename, model in AUTHORING_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / filename).read_text())
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+    report_schema = json.loads(
+        (PROJECT_ROOT / "schemas/authoring-ingestion-report-1.1.0.schema.json").read_text()
+    )
+    assert (
+        set(report_schema["$defs"]["AuthoringIngestionIssue"]["properties"]["code"]["enum"])
+        == AUTHORING_ISSUE_CODES
+    )
+    bundle_schema = json.loads(
+        (PROJECT_ROOT / "schemas/simulation-authoring-bundle-1.0.0.schema.json").read_text()
+    )
+    bundle = json.loads(
+        (PROJECT_ROOT / "examples/authoring/minimal.authoring-bundle.json").read_text()
+    )
+    assert list(Draft202012Validator(bundle_schema).iter_errors(bundle)) == []
+    historical_report_schema = json.loads(
+        HISTORICAL_AUTHORING_REPORT_SCHEMA.read_text(encoding="utf-8")
+    )
+    Draft202012Validator.check_schema(historical_report_schema)
+    assert historical_report_schema["properties"]["ingestorVersion"]["const"] == "1.0.0"
