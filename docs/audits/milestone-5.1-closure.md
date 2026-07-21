@@ -19,6 +19,7 @@
 | Resume | Only hash- and digest-consistent completed runs are reused |
 | Publication safety | Unique atomic temporaries and a non-blocking output lock prevent collisions |
 | Platform gate | Lazy POSIX/Windows lock backends plus a mandatory Python 3.12 CI matrix for Linux, macOS and Windows |
+| Byte portability | Git checkout and every project artifact writer pin LF, preserving identical SHA-256 checksums on Windows and POSIX |
 | Public contracts | Manifest and report schemas are Draft 2020-12 with checksum sidecars |
 | Performance | The four-run parallel benchmark remains below its 30-second target |
 | Quality | Full tests, lint, exact coverage gate and end-to-end benchmark pass |

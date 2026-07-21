@@ -428,7 +428,7 @@ def main() -> None:
     source = json.loads(SOURCE.read_text(encoding="utf-8"))
     scenario = build_scenario(source)
     TARGET.parent.mkdir(parents=True, exist_ok=True)
-    TARGET.write_text(json.dumps(scenario, indent=2) + "\n", encoding="utf-8")
+    TARGET.write_text(json.dumps(scenario, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Migrated {len(scenario['days'])} days to {TARGET}")
 
 

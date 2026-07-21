@@ -76,6 +76,7 @@ def main() -> None:
     TARGET.write_text(
         json.dumps(scenario, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
 
 

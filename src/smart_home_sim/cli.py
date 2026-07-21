@@ -103,7 +103,7 @@ def validate(
         typer.echo(content)
     else:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(content + "\n", encoding="utf-8")
+        output.write_text(content + "\n", encoding="utf-8", newline="\n")
         typer.echo(f"Validation report written to: {output.resolve()}")
 
     failed = not report.valid or (warnings_as_errors and report.summary.warning_count > 0)
@@ -124,6 +124,7 @@ def compile(
         report_output.write_text(
             result.report.model_dump_json(by_alias=True, indent=2) + "\n",
             encoding="utf-8",
+            newline="\n",
         )
 
     if result.plan is None:
@@ -136,7 +137,7 @@ def compile(
         typer.echo(content)
     else:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(content + "\n", encoding="utf-8")
+        output.write_text(content + "\n", encoding="utf-8", newline="\n")
         typer.echo(f"Canonical plan written to: {output.resolve()}")
 
 
@@ -167,7 +168,7 @@ def validate_behavior(
         typer.echo(content)
     else:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(content + "\n", encoding="utf-8")
+        output.write_text(content + "\n", encoding="utf-8", newline="\n")
         typer.echo(f"Behavior validation report written to: {output.resolve()}")
     if not report.valid:
         raise typer.Exit(code=1)
@@ -190,7 +191,7 @@ def validate_home(
         typer.echo(content)
     else:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(content + "\n", encoding="utf-8")
+        output.write_text(content + "\n", encoding="utf-8", newline="\n")
         typer.echo(f"Environment validation report written to: {output.resolve()}")
     if not report.valid:
         raise typer.Exit(code=1)
@@ -222,7 +223,9 @@ def build_simulation_bundle(
     if report_output is not None:
         report_output.parent.mkdir(parents=True, exist_ok=True)
         report_output.write_text(
-            result.report.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+            result.report.model_dump_json(by_alias=True, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
         )
     if result.bundle is None:
         if report_output is None:
@@ -230,7 +233,9 @@ def build_simulation_bundle(
         raise typer.Exit(code=1)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        result.bundle.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+        result.bundle.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     typer.echo(f"Simulation bundle written to: {output.resolve()}")
 
@@ -239,7 +244,7 @@ def _atomic_write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")
     try:
-        temporary.write_text(content + "\n", encoding="utf-8")
+        temporary.write_text(content + "\n", encoding="utf-8", newline="\n")
         temporary.replace(path)
     finally:
         if temporary.exists():
@@ -369,7 +374,7 @@ def ingest_authoring_output(
         typer.echo(content)
     else:
         report_output.parent.mkdir(parents=True, exist_ok=True)
-        report_output.write_text(content + "\n", encoding="utf-8")
+        report_output.write_text(content + "\n", encoding="utf-8", newline="\n")
         typer.echo(f"Authoring ingestion report written to: {report_output.resolve()}")
     if report.valid:
         typer.echo(f"Canonical authoring inputs written to: {output_dir.resolve()}")
@@ -386,6 +391,7 @@ def ingest_authoring_output(
                 repair_request_output.write_text(
                     preparation.request.model_dump_json(by_alias=True, indent=2) + "\n",
                     encoding="utf-8",
+                    newline="\n",
                 )
                 typer.echo(
                     f"Authoring repair request written to: {repair_request_output.resolve()}",
@@ -415,6 +421,7 @@ def prepare_authoring_repair(
     output.write_text(
         preparation.request.model_dump_json(by_alias=True, indent=2) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
     typer.echo(f"Authoring repair request written to: {output.resolve()}")
 
@@ -453,7 +460,7 @@ def schema(
         typer.echo(content)
     else:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(content + "\n", encoding="utf-8")
+        output.write_text(content + "\n", encoding="utf-8", newline="\n")
         typer.echo(f"Schema written to: {output.resolve()}")
 
 

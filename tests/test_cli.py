@@ -90,6 +90,7 @@ def test_schema_command_can_write_contract(tmp_path: Path) -> None:
     result = runner.invoke(app, ["schema", "--output", str(output)])
 
     assert result.exit_code == 0
+    assert b"\r\n" not in output.read_bytes()
     assert json.loads(output.read_text(encoding="utf-8"))["$id"].endswith("scenario:1.0.0")
 
 

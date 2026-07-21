@@ -17,6 +17,7 @@ def write(name: str, value: dict[str, Any]) -> None:
     (TARGET / name).write_text(
         json.dumps(value, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
 
 

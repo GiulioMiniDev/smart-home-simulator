@@ -509,9 +509,11 @@ def ingest_authoring_file(path: Path, output_dir: Path) -> AuthoringIngestionRep
         temporary_dir = Path(
             tempfile.mkdtemp(prefix=f".{output_dir.name}.tmp-", dir=output_dir.parent)
         )
-        (temporary_dir / "scenario.json").write_text(result.scenario_json, encoding="utf-8")
+        (temporary_dir / "scenario.json").write_text(
+            result.scenario_json, encoding="utf-8", newline="\n"
+        )
         (temporary_dir / "personal-process-package.json").write_text(
-            result.behavior_json, encoding="utf-8"
+            result.behavior_json, encoding="utf-8", newline="\n"
         )
         os.rename(temporary_dir, output_dir)
         temporary_dir = None

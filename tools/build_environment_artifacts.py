@@ -465,7 +465,9 @@ def main() -> None:
     output = ROOT / "examples/environment/mario_monteverde.home.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        build_home().model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+        build_home().model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     from smart_home_sim.environment import build_bundle_files
 
@@ -480,10 +482,14 @@ def main() -> None:
     bundle_dir = ROOT / "examples/bundles"
     bundle_dir.mkdir(parents=True, exist_ok=True)
     (bundle_dir / "mario_week.simulation-bundle.json").write_text(
-        result.bundle.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+        result.bundle.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     (bundle_dir / "mario_week.environment-report.json").write_text(
-        result.report.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+        result.report.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
 
 

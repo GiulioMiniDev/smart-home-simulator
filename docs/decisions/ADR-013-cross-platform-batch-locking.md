@@ -24,6 +24,9 @@ interface with standard-library operating-system backends:
 - acquisition is non-blocking and release is guaranteed by a context manager;
 - CI executes lint, formatting, the full test suite and the parallel benchmark on Python
   3.12 for Windows, macOS and Linux.
+- Repository text and generated textual artifacts use canonical UTF-8 with LF newlines;
+  Git attributes and explicit writer configuration prevent Windows CRLF translation from
+  changing byte-level checksums.
 
 The change is operational: manifest, report, trace, replay and semantic-digest contracts
 remain byte-for-byte compatible with M5.1 `1.0.0`.

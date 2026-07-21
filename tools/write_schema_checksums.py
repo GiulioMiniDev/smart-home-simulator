@@ -15,7 +15,7 @@ def main() -> None:
             existing = checksum_path.read_text(encoding="utf-8").strip().split(maxsplit=1)
             if len(existing) == 2:
                 label = existing[1]
-        checksum_path.write_text(f"{checksum}  {label}\n", encoding="utf-8")
+        checksum_path.write_text(f"{checksum}  {label}\n", encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

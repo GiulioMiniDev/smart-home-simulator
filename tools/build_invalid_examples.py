@@ -13,7 +13,9 @@ TARGET_DIR = PROJECT_ROOT / "examples/invalid"
 
 
 def write(name: str, payload: dict[str, Any]) -> None:
-    (TARGET_DIR / name).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    (TARGET_DIR / name).write_text(
+        json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
 
 
 def main() -> None:

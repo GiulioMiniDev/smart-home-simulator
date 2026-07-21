@@ -47,7 +47,9 @@ def _embed_authoritative_artifacts(prompt: str) -> str:
 def build_prompt() -> None:
     for template_path, prompt_path in PROMPTS:
         prompt = template_path.read_text(encoding="utf-8")
-        prompt_path.write_text(_embed_authoritative_artifacts(prompt), encoding="utf-8")
+        prompt_path.write_text(
+            _embed_authoritative_artifacts(prompt), encoding="utf-8", newline="\n"
+        )
 
     prompt_1_2 = PROMPTS[-1][0].read_text(encoding="utf-8").replace("1.1.0", "1.2.0")
     insertion_point = "## Required final consistency checks"
@@ -55,7 +57,9 @@ def build_prompt() -> None:
         raise RuntimeError("Prompt 1.2 insertion point is missing or ambiguous")
     fragment = REFERENCE_COMPATIBILITY_FRAGMENT.read_text(encoding="utf-8").strip()
     prompt_1_2 = prompt_1_2.replace(insertion_point, f"{fragment}\n\n{insertion_point}")
-    PROMPT_1_2_PATH.write_text(_embed_authoritative_artifacts(prompt_1_2), encoding="utf-8")
+    PROMPT_1_2_PATH.write_text(
+        _embed_authoritative_artifacts(prompt_1_2), encoding="utf-8", newline="\n"
+    )
 
 
 def build_example() -> None:
@@ -73,7 +77,9 @@ def build_example() -> None:
     }
     EXAMPLE_PATH.parent.mkdir(parents=True, exist_ok=True)
     EXAMPLE_PATH.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
 
 

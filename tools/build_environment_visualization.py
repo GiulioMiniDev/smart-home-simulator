@@ -543,7 +543,7 @@ document.querySelectorAll('.layer').forEach(b=>b.addEventListener('click',()=>{{
 
 def build_visualization(output_path: Path = OUTPUT_PATH) -> dict[str, Any]:
     data = build_visualization_data()
-    output_path.write_text(render_visualization(data), encoding="utf-8")
+    output_path.write_text(render_visualization(data), encoding="utf-8", newline="\n")
     return data
 
 

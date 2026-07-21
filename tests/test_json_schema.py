@@ -102,6 +102,7 @@ def test_frozen_schema_checksums_match() -> None:
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]
+        assert b"\r\n" not in schema_path.read_bytes()
         assert sha256(schema_path.read_bytes()).hexdigest() == expected
 
 

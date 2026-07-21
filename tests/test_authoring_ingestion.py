@@ -51,6 +51,7 @@ def test_valid_bundle_is_published_as_two_valid_canonical_documents(tmp_path: Pa
     assert scenario["scenarioId"] == behavior["sourceScenarioId"]
     for artifact in report.artifacts:
         content = (output_dir / artifact.filename).read_bytes()
+        assert b"\r\n" not in content
         assert sha256(content).hexdigest() == artifact.sha256
 
 

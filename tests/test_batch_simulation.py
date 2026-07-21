@@ -74,6 +74,9 @@ def test_parallel_batch_isolated_workers_and_replayable_artifacts(parallel_batch
         assert run.trace_path is not None
         bundle_path = output / run.effective_bundle_path
         trace_path = output / run.trace_path
+        assert b"\r\n" not in bundle_path.read_bytes()
+        assert b"\r\n" not in trace_path.read_bytes()
+        assert b"\r\n" not in (output / run.simulation_report_path).read_bytes()
         simulation_report = SimulationReport.model_validate_json(
             (output / run.simulation_report_path).read_text(encoding="utf-8")
         )
