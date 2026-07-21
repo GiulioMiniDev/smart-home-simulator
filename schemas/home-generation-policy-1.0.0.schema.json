@@ -1,0 +1,68 @@
+{
+  "$id": "urn:smart-home-simulator:schema:home-generation-policy:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "home_generation_policy",
+      "default": "home_generation_policy",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "policyId": {
+      "const": "compact-grid",
+      "default": "compact-grid",
+      "title": "Policyid",
+      "type": "string"
+    },
+    "policyVersion": {
+      "const": "1.1.0",
+      "default": "1.1.0",
+      "title": "Policyversion",
+      "type": "string"
+    },
+    "roomWidthMeters": {
+      "default": 6.0,
+      "maximum": 20.0,
+      "minimum": 4.0,
+      "title": "Roomwidthmeters",
+      "type": "number"
+    },
+    "roomHeightMeters": {
+      "default": 6.0,
+      "maximum": 20.0,
+      "minimum": 4.0,
+      "title": "Roomheightmeters",
+      "type": "number"
+    },
+    "externalSpacingMeters": {
+      "default": 12.0,
+      "maximum": 1000.0,
+      "minimum": 8.0,
+      "title": "Externalspacingmeters",
+      "type": "number"
+    },
+    "doorwayWidthMeters": {
+      "default": 1.0,
+      "maximum": 3.0,
+      "minimum": 0.8,
+      "title": "Doorwaywidthmeters",
+      "type": "number"
+    },
+    "transportDistanceMeters": {
+      "default": 500.0,
+      "exclusiveMinimum": 0,
+      "maximum": 1000000.0,
+      "title": "Transportdistancemeters",
+      "type": "number"
+    }
+  },
+  "title": "Smart Home Deterministic Home Generation Policy 1.0.0",
+  "type": "object"
+}

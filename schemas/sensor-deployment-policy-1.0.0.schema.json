@@ -1,0 +1,102 @@
+{
+  "$id": "urn:smart-home-simulator:schema:sensor-deployment-policy:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "sensor_deployment_policy",
+      "default": "sensor_deployment_policy",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "policyVersion": {
+      "const": "1.1.0",
+      "default": "1.1.0",
+      "title": "Policyversion",
+      "type": "string"
+    },
+    "preset": {
+      "default": "room_coverage",
+      "enum": [
+        "minimal",
+        "room_coverage",
+        "dense"
+      ],
+      "title": "Preset",
+      "type": "string"
+    },
+    "pirHoldMilliseconds": {
+      "default": 5000,
+      "exclusiveMinimum": 0,
+      "title": "Pirholdmilliseconds",
+      "type": "number"
+    },
+    "pirCooldownMilliseconds": {
+      "default": 750,
+      "minimum": 0,
+      "title": "Pircooldownmilliseconds",
+      "type": "number"
+    },
+    "contactPulseMilliseconds": {
+      "default": 1000,
+      "exclusiveMinimum": 0,
+      "title": "Contactpulsemilliseconds",
+      "type": "number"
+    },
+    "temperatureBaselineCelsius": {
+      "default": 20.0,
+      "maximum": 100,
+      "minimum": -100,
+      "title": "Temperaturebaselinecelsius",
+      "type": "number"
+    },
+    "temperatureSampleIntervalSeconds": {
+      "default": 900,
+      "exclusiveMinimum": 0,
+      "title": "Temperaturesampleintervalseconds",
+      "type": "number"
+    },
+    "temperatureSourceDeltaCelsius": {
+      "default": 0.5,
+      "exclusiveMinimum": 0,
+      "maximum": 20,
+      "title": "Temperaturesourcedeltacelsius",
+      "type": "number"
+    },
+    "dropoutProbability": {
+      "default": 0.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Dropoutprobability",
+      "type": "number"
+    },
+    "falseNegativeProbability": {
+      "default": 0.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Falsenegativeprobability",
+      "type": "number"
+    },
+    "falsePositiveProbabilityPerDay": {
+      "default": 0.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Falsepositiveprobabilityperday",
+      "type": "number"
+    },
+    "temperatureNoiseStandardDeviation": {
+      "default": 0.0,
+      "minimum": 0,
+      "title": "Temperaturenoisestandarddeviation",
+      "type": "number"
+    }
+  },
+  "title": "Smart Home Deterministic Sensor Deployment Policy 1.0.0",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+  "compilerVersion": "1.0.0",
+  "success": true,
+  "sourceScenarioVersion": "1.0.0",
+  "sourceScenarioId": "mario_rossi_autonomous_elderly_2026_10_30",
+  "canonicalPlanSha256": "5b334b9dad40501afb1cdbf11661b8f38fe5599d028802fd035453be10de7c5b",
+  "solverStatus": "OPTIMAL",
+  "objectiveValues": {
+    "optionalPriorityScore": 160,
+    "optionalActivityCount": 4,
+    "durationDeviationMicroseconds": 0,
+    "temporalDeviationMicroseconds": 60000000,
+    "scheduledStartSumMicroseconds": 7217760000000
+  },
+  "issues": [],
+  "summary": {
+    "scheduledActivityCount": 57,
+    "omittedActivityCount": 0,
+    "contingencyCount": 4,
+    "contingencyActivityCount": 4,
+    "rescheduledActivityCount": 1,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

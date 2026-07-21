@@ -24,7 +24,8 @@ relativi controlli di compatibilità.
 | 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | **Completata e congelata — 1.0.0** |
 | 5.1 | Orchestrazione parallela degli esperimenti | batch manifest + simulation bundle | run isolate replayabili + batch report | **Completata e congelata — 1.0.0** |
 | 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | **Completata e congelata — 1.0.0** |
-| 7 | Materializzazione automatica, applicazione UI, workspace, export e replay | authoring M3 accettato + artefatti M1–M6 | casa e sensori materializzati + applicazione end-to-end + dataset JSONL/CSV/XES + replay | Non iniziata |
+| 6.1 | Materializzazione automatica scenario-first | scenario + process package M3 accettati + policy | casa, sensori e workspace M3–M6 transazionale | **Completata e congelata — 1.0.0** |
+| 7 | Applicazione UI, workspace, export e replay | workspace M6.1 + artefatti M1–M6 | applicazione end-to-end + dataset JSONL/CSV/XES + replay | Non iniziata |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
@@ -426,7 +427,58 @@ coverage dei sensori devono essere contenuti nelle regioni dell'home model incor
 L'audit terminale è in
 `docs/audits/milestone-6-closure.md`.
 
-## Decisione ponte M6 → M7 — scenario-first
+## Milestone 6.1 — Materializzazione automatica scenario-first
+
+### Responsabilità
+
+Trasformare i due JSON accettati dall'authoring M3 in un primo esperimento M4–M6 completo,
+senza richiedere una planimetria o una configurazione sensoriale manuale e senza introdurre
+un LLM nel runtime.
+
+### Contenuto
+
+- policy `compact-grid 1.1.0` per layout metrico deterministico, siti esterni e connessioni;
+- sintesi deterministica di interaction point, entità, capacità e binding per tutte le
+  location e risorse dichiarate;
+- policy sensoriale `1.1.0` con preset `minimal`, `room_coverage` e `dense`, contatti
+  derivati dai binding fisici, attività PIR intra-stanza e temperatura periodica;
+- generatori headless separati per `home_model 1.0.0` e `sensor_model 1.0.0`;
+- orchestratore `scenario-first-1.0.0` che compila, materializza, esegue e proietta in una
+  directory pubblicata atomicamente;
+- manifest con ruoli, path relativi e digest dei diciassette artefatti prodotti;
+- CLI, policy custom, report, schemi, checksum, golden workspace, test e benchmark;
+- migrazione riproducibile del pacchetto Mario ai cataloghi runtime `1.1.0`, necessaria per
+  eliminare l'uscita duplicata in `travel_home` e materializzare gli output di
+  `prepare_food` senza riparazioni silenziose durante la run.
+
+### Fuori perimetro
+
+- inferenza di una vera planimetria fisica o fedeltà estetica dell'abitazione;
+- calibrazione statistica dei sensori rispetto a CASAS o ad altri dataset reali;
+- editor visuali e persistenza applicativa, assegnati a M7;
+- fusione automatica di scenari indipendenti in una casa multi-residente;
+- modifica silenziosa degli input durante generazione o simulazione.
+
+### Definition of done
+
+- stessi input, policy e seed producono byte e digest identici;
+- ogni output attraversa i gate M2, M3, M4, M5 e M6 già autorevoli;
+- un fallimento elimina lo staging e non pubblica una directory parziale;
+- `generated/mario_rossi_2026_10_30_ingested` produce 17 artefatti verificati partendo dai
+  soli `scenario.json` e `personal-process-package.json`;
+- i tre preset sensoriali sono validi contro la casa esatta incorporata nel bundle;
+- casa o sensori importati restano utilizzabili attraverso i comandi M4/M6 originali;
+- schemi, checksum, esempio golden, test, lint, benchmark e copertura minima obbligatoria
+  del 95% sono completi.
+
+La milestone è chiusa da ADR-015. Il caso di accettazione genera nove regioni, otto
+connessioni, ventisette entità, diciassette resource binding e quindici sensori nel preset
+predefinito; il bundle risolve 312 action binding. La run completa esegue 293 azioni e 49
+movimenti, quindi pubblica 6.764 osservazioni (4.826 PIR, 1.896 temperatura e 42 contatto)
+e un oracle separato. Il benchmark end-to-end ha una soglia obbligatoria di 10 secondi
+sulla macchina di sviluppo.
+
+### Decisione architetturale scenario-first
 
 ADR-015 stabilisce che il percorso predefinito non richiede al ricercatore di disegnare
 prima una casa. Dopo l'ingestion deterministico dello scenario e del pacchetto personale,
@@ -443,18 +495,20 @@ manuale di JSON e senza usare un secondo LLM nel runtime.
 
 La geometria generata non è decorativa: condiziona traiettorie e sequenze PIR. Per questo
 policy, seed, home model, sensor model, report e digest sono provenance sperimentale e
-devono restare costanti nei confronti. La validità strutturale non implica somiglianza ai
-dati reali; nomi come `casas-like` restano vietati finché M9 non completa la calibrazione.
-Le questioni ancora da congelare—algoritmo di layout, siti esterni, sintesi delle capacità,
-separazione fra casa fisica e binding di scenario, policy sensoriali, identità e
-multi-residenza—sono registrate esplicitamente in ADR-015 e devono essere risolte prima
-dell'implementazione dei generatori.
+devono restare costanti nei confronti. La validità strutturale non implica equivalenza ai
+dati reali. Un controllo di plausibilità contro CASAS Aruba normalizza i volumi per
+sensore/giorno; la calibrazione statistica e l'eventuale nome di preset dataset-specifico
+restano responsabilità di M9.
+Layout, siti esterni, sintesi delle capacità, policy sensoriali, identità e regole di
+rigenerazione sono congelati in ADR-015. La separazione futura fra casa fisica riusabile e
+binding di scenario, insieme alla fusione multi-residente, resta una decisione esplicita
+per M7/M8 e non è necessaria per la semantica completa del flusso M6.1.
 
-## Milestone 7 — Materializzazione automatica, applicazione UI, workspace, export e replay
+## Milestone 7 — Applicazione UI, workspace, export e replay
 
 ### Responsabilità
 
-Consegnare i servizi di materializzazione deterministica e un'applicazione moderna con cui
+Consegnare un'applicazione moderna con cui
 il ricercatore possa usare senza CLI tutte le funzioni disponibili fino alla Milestone 7:
 importare un authoring M3 accettato, ottenere automaticamente casa e sensori, creare e
 organizzare ambienti e residenti, configurare gli input, avviare e seguire simulazioni,
@@ -467,14 +521,7 @@ semantica alternativa né aggira alcun gate.
 - shell applicativa desktop-first, moderna, accessibile e adattabile alle comuni
   risoluzioni, con navigazione coerente, tema chiaro/scuro e stati vuoti, di caricamento e
   di errore completi;
-- contratto e servizio headless di generazione deterministica dell'home model da scenario
-  e pacchetto personale accettati, con policy, seed, provenance, report, errori stabili e
-  uscita sottoposta all'intero gate M4;
-- contratto e servizio headless di deployment deterministico dei sensori dal bundle M4,
-  con preset almeno `minimal`, `room-coverage` e `dense`, override espliciti e gate M6;
-- orchestratore transazionale che, dai due JSON pubblicati dall'ingestion, materializza
-  piano, casa, bundle, sensori, trace, log osservabile, oracle e report senza output
-  parziali;
+- integrazione dei servizi headless M6.1 senza duplicarne o modificarne la semantica;
 - workspace persistente con dashboard dei recenti, ricerca e filtri, organizzato per
   ambiente domestico; ogni casa raggruppa residenti, scenari, modelli comportamentali,
   configurazioni sensoriali, bundle ed esecuzioni, inclusi ambienti multi-residente;
@@ -528,10 +575,7 @@ del workspace e la separazione tra UI e motore devono restare indipendenti dal f
 
 - l'intero flusso M1–M7, dalla creazione o importazione degli input al replay e all'export,
   è completabile dalla UI senza ricorrere alla CLI o modificare manualmente JSON;
-- `generated/mario_rossi_2026_10_30_ingested` raggiunge bundle, simulazione e proiezione
-  sensoriale completi partendo soltanto dai due JSON accettati e dalle policy esplicite;
-- stessi input, versioni di policy e seed rigenerano home model, sensor model e digest
-  identici sia dal servizio headless sia dalla UI;
+- la UI riproduce gli stessi digest del servizio M6.1 a parità di input, policy e seed;
 - ogni risorsa e capacità richiesta è materializzata e legata oppure la procedura fallisce
   con diagnostica completa, senza fallback o riparazioni silenziose;
 - la casa golden può essere ricostruita o importata nel configuratore, validata e salvata

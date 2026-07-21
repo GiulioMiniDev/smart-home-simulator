@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "HomeGenerationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "regionCount": {
+          "minimum": 0,
+          "title": "Regioncount",
+          "type": "integer"
+        },
+        "connectionCount": {
+          "minimum": 0,
+          "title": "Connectioncount",
+          "type": "integer"
+        },
+        "entityCount": {
+          "minimum": 0,
+          "title": "Entitycount",
+          "type": "integer"
+        },
+        "locationBindingCount": {
+          "minimum": 0,
+          "title": "Locationbindingcount",
+          "type": "integer"
+        },
+        "resourceBindingCount": {
+          "minimum": 0,
+          "title": "Resourcebindingcount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "regionCount",
+        "connectionCount",
+        "entityCount",
+        "locationBindingCount",
+        "resourceBindingCount",
+        "errorCount"
+      ],
+      "title": "HomeGenerationSummary",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "MaterializationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "home",
+            "compile",
+            "bundle",
+            "sensor",
+            "simulation",
+            "projection",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "MaterializationIssue",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:home-generation-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Reportversion",
+      "type": "string"
+    },
+    "generatorName": {
+      "const": "smart-home-sim-home-generator",
+      "default": "smart-home-sim-home-generator",
+      "title": "Generatorname",
+      "type": "string"
+    },
+    "generatorVersion": {
+      "const": "1.1.0",
+      "default": "1.1.0",
+      "title": "Generatorversion",
+      "type": "string"
+    },
+    "success": {
+      "title": "Success",
+      "type": "boolean"
+    },
+    "policyId": {
+      "title": "Policyid",
+      "type": "string"
+    },
+    "policyVersion": {
+      "title": "Policyversion",
+      "type": "string"
+    },
+    "policySha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policysha256",
+      "type": "string"
+    },
+    "sourceScenarioId": {
+      "title": "Sourcescenarioid",
+      "type": "string"
+    },
+    "sourceScenarioSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcescenariosha256",
+      "type": "string"
+    },
+    "sourceBehaviorPackageId": {
+      "title": "Sourcebehaviorpackageid",
+      "type": "string"
+    },
+    "sourceBehaviorPackageSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcebehaviorpackagesha256",
+      "type": "string"
+    },
+    "homeId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homeid"
+    },
+    "homeVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homeversion"
+    },
+    "homeSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homesha256"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/MaterializationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/HomeGenerationSummary"
+    }
+  },
+  "required": [
+    "success",
+    "policyId",
+    "policyVersion",
+    "policySha256",
+    "sourceScenarioId",
+    "sourceScenarioSha256",
+    "sourceBehaviorPackageId",
+    "sourceBehaviorPackageSha256",
+    "summary"
+  ],
+  "title": "Smart Home Deterministic Home Generation Report 1.0.0",
+  "type": "object"
+}

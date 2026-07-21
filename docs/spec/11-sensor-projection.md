@@ -33,6 +33,14 @@ maps to the source trace as initial state.
   drive an additive response curve with explicit delay, rise, decay and sampling interval.
   Optional Gaussian measurement noise affects only the public value, never the oracle cause.
 
+Generated sensor models `1.1.0` select projection policy `event-driven-sensors-1.1.0`.
+In addition to crossings, a PIR receives causally linked, irregularly retriggered pulses
+while motor actions execute at a covered entity interaction point. Temperature sensors
+emit periodic 15-minute samples with a deterministic daily component, 0.5 °C quantization
+and source deltas. Samples caused only by this exogenous component use the explicit
+`environment_model` oracle origin. Sensor models `1.0.0` retain the frozen original
+projection behavior for reproducible historical artifacts.
+
 Every type supports its declared position, latency, clock jitter, cooldown, dropout,
 false negatives, daily false positives and non-overlapping failure windows. Temperature
 also supports measurement noise; PIR and contact reject non-zero measurement noise rather

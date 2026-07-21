@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "WorkspaceArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "relativePath": {
+          "minLength": 1,
+          "title": "Relativepath",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "relativePath",
+        "sha256"
+      ],
+      "title": "WorkspaceArtifact",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:synthetic-workspace-manifest:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "synthetic_workspace_manifest",
+      "default": "synthetic_workspace_manifest",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "workflowVersion": {
+      "const": "scenario-first-1.0.0",
+      "default": "scenario-first-1.0.0",
+      "title": "Workflowversion",
+      "type": "string"
+    },
+    "success": {
+      "const": true,
+      "default": true,
+      "title": "Success",
+      "type": "boolean"
+    },
+    "scenarioId": {
+      "title": "Scenarioid",
+      "type": "string"
+    },
+    "bundleId": {
+      "title": "Bundleid",
+      "type": "string"
+    },
+    "traceId": {
+      "title": "Traceid",
+      "type": "string"
+    },
+    "sensorLogId": {
+      "title": "Sensorlogid",
+      "type": "string"
+    },
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceArtifact"
+      },
+      "minItems": 1,
+      "title": "Artifacts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "scenarioId",
+    "bundleId",
+    "traceId",
+    "sensorLogId",
+    "artifacts"
+  ],
+  "title": "Smart Home Synthetic Workspace Manifest 1.0.0",
+  "type": "object"
+}

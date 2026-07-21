@@ -32,6 +32,13 @@ from smart_home_sim.domain.environment import (
     SimulationBundle,
 )
 from smart_home_sim.domain.execution import ExecutionTrace, ReplayReport, SimulationReport
+from smart_home_sim.domain.materialization import (
+    HomeGenerationPolicy,
+    HomeGenerationReport,
+    SensorDeploymentPolicy,
+    SensorDeploymentReport,
+    SyntheticWorkspaceManifest,
+)
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
@@ -48,6 +55,12 @@ from smart_home_sim.formatting import (
     format_behavior_text_report,
     format_environment_text_report,
     format_text_report,
+)
+from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
+from smart_home_sim.materialization.service import (
+    load_home_policy,
+    load_sensor_policy,
+    load_source_models,
 )
 from smart_home_sim.sensors import project_sensor_files
 from smart_home_sim.simulation import (
@@ -90,6 +103,11 @@ class SchemaContract(StrEnum):
     observable_sensor_log = "observable-sensor-log"
     oracle_mapping = "oracle-mapping"
     sensor_projection_report = "sensor-projection-report"
+    home_generation_policy = "home-generation-policy"
+    home_generation_report = "home-generation-report"
+    sensor_deployment_policy = "sensor-deployment-policy"
+    sensor_deployment_report = "sensor-deployment-report"
+    synthetic_workspace_manifest = "synthetic-workspace-manifest"
 
 
 app = typer.Typer(
@@ -387,6 +405,96 @@ def project_sensors_command(
     typer.echo(f"Oracle mapping written to: {oracle_output.resolve()}")
 
 
+@app.command("generate-home")
+def generate_home_command(
+    scenario_path: Path,
+    package_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    report_output: Annotated[Path, typer.Option("--report-output")],
+    policy_path: Annotated[Path | None, typer.Option("--policy")] = None,
+) -> None:
+    """Generate a deterministic executable home from accepted M3 artifacts."""
+    inputs = {scenario_path.resolve(), package_path.resolve()}
+    if policy_path is not None:
+        inputs.add(policy_path.resolve())
+    outputs = {output.resolve(), report_output.resolve()}
+    if len(outputs) != 2 or inputs & outputs:
+        raise typer.BadParameter("Home outputs must be distinct and must not overwrite inputs.")
+    behavior_report = validate_behavior_files(package_path, scenario_path)
+    if not behavior_report.valid:
+        typer.echo(behavior_report.model_dump_json(by_alias=True, indent=2), err=True)
+        raise typer.Exit(code=1)
+    try:
+        scenario, package = load_source_models(scenario_path, package_path)
+        result = generate_home(scenario, package, load_home_policy(policy_path))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot generate home: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    _atomic_write(report_output, result.report.model_dump_json(by_alias=True, indent=2))
+    if result.home is None:
+        typer.echo(result.report.model_dump_json(by_alias=True, indent=2), err=True)
+        raise typer.Exit(code=1)
+    _atomic_write(output, result.home.model_dump_json(by_alias=True, indent=2))
+    typer.echo(f"Generated home written to: {output.resolve()}")
+
+
+@app.command("deploy-sensors")
+def deploy_sensors_command(
+    bundle_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    report_output: Annotated[Path, typer.Option("--report-output")],
+    policy_path: Annotated[Path | None, typer.Option("--policy")] = None,
+) -> None:
+    """Derive a deterministic sensor deployment from one resolved M4 bundle."""
+    inputs = {bundle_path.resolve()}
+    if policy_path is not None:
+        inputs.add(policy_path.resolve())
+    outputs = {output.resolve(), report_output.resolve()}
+    if len(outputs) != 2 or inputs & outputs:
+        raise typer.BadParameter("Sensor outputs must be distinct and must not overwrite inputs.")
+    try:
+        bundle = SimulationBundle.model_validate_json(bundle_path.read_text(encoding="utf-8"))
+        result = deploy_sensors(bundle, load_sensor_policy(policy_path))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot deploy sensors: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    _atomic_write(report_output, result.report.model_dump_json(by_alias=True, indent=2))
+    if result.sensor_model is None:
+        typer.echo(result.report.model_dump_json(by_alias=True, indent=2), err=True)
+        raise typer.Exit(code=1)
+    _atomic_write(output, result.sensor_model.model_dump_json(by_alias=True, indent=2))
+    typer.echo(f"Generated sensor model written to: {output.resolve()}")
+
+
+@app.command("run-synthetic")
+def run_synthetic_command(
+    scenario_path: Path,
+    package_path: Path,
+    output_directory: Annotated[Path, typer.Option("--output-dir", "-o")],
+    home_policy_path: Annotated[Path | None, typer.Option("--home-policy")] = None,
+    sensor_policy_path: Annotated[Path | None, typer.Option("--sensor-policy")] = None,
+) -> None:
+    """Run the transactional scenario-first M3-to-M6 workflow."""
+    try:
+        manifest = materialize_workspace(
+            scenario_path,
+            package_path,
+            output_directory,
+            home_policy=load_home_policy(home_policy_path),
+            sensor_policy=load_sensor_policy(sensor_policy_path),
+        )
+    except FileExistsError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=2) from error
+    except (OSError, UnicodeDecodeError, ValueError, RuntimeError) as error:
+        typer.echo(f"Synthetic workflow failed transactionally: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(
+        f"Synthetic workspace written to: {output_directory.resolve()} "
+        f"({len(manifest.artifacts)} verified artifacts)"
+    )
+
+
 @app.command("simulate-batch")
 def simulate_batch(
     manifest_path: Path,
@@ -543,6 +651,11 @@ def schema(
         SchemaContract.observable_sensor_log: ObservableSensorLog,
         SchemaContract.oracle_mapping: OracleMapping,
         SchemaContract.sensor_projection_report: SensorProjectionReport,
+        SchemaContract.home_generation_policy: HomeGenerationPolicy,
+        SchemaContract.home_generation_report: HomeGenerationReport,
+        SchemaContract.sensor_deployment_policy: SensorDeploymentPolicy,
+        SchemaContract.sensor_deployment_report: SensorDeploymentReport,
+        SchemaContract.synthetic_workspace_manifest: SyntheticWorkspaceManifest,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

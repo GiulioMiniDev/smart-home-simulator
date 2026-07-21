@@ -226,14 +226,20 @@
       "type": "string"
     },
     "projectorVersion": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "default": "1.1.0",
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ],
       "title": "Projectorversion",
       "type": "string"
     },
     "projectionPolicyVersion": {
-      "const": "event-driven-sensors-1.0.0",
       "default": "event-driven-sensors-1.0.0",
+      "enum": [
+        "event-driven-sensors-1.0.0",
+        "event-driven-sensors-1.1.0"
+      ],
       "title": "Projectionpolicyversion",
       "type": "string"
     },

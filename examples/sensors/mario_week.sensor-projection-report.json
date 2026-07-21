@@ -1,7 +1,7 @@
 {
   "reportVersion": "1.0.0",
   "projectorName": "smart-home-sim-sensor-projector",
-  "projectorVersion": "1.0.0",
+  "projectorVersion": "1.1.0",
   "projectionPolicyVersion": "event-driven-sensors-1.0.0",
   "randomStreamPolicy": "sha256-named-streams-1.0.0",
   "success": true,

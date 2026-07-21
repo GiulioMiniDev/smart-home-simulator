@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "MaterializationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "home",
+            "compile",
+            "bundle",
+            "sensor",
+            "simulation",
+            "projection",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "MaterializationIssue",
+      "type": "object"
+    },
+    "SensorDeploymentSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "sensorCount": {
+          "minimum": 0,
+          "title": "Sensorcount",
+          "type": "integer"
+        },
+        "pirCount": {
+          "minimum": 0,
+          "title": "Pircount",
+          "type": "integer"
+        },
+        "contactCount": {
+          "minimum": 0,
+          "title": "Contactcount",
+          "type": "integer"
+        },
+        "temperatureCount": {
+          "minimum": 0,
+          "title": "Temperaturecount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sensorCount",
+        "pirCount",
+        "contactCount",
+        "temperatureCount",
+        "errorCount"
+      ],
+      "title": "SensorDeploymentSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:sensor-deployment-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Reportversion",
+      "type": "string"
+    },
+    "generatorName": {
+      "const": "smart-home-sim-sensor-deployer",
+      "default": "smart-home-sim-sensor-deployer",
+      "title": "Generatorname",
+      "type": "string"
+    },
+    "generatorVersion": {
+      "const": "1.1.0",
+      "default": "1.1.0",
+      "title": "Generatorversion",
+      "type": "string"
+    },
+    "success": {
+      "title": "Success",
+      "type": "boolean"
+    },
+    "preset": {
+      "title": "Preset",
+      "type": "string"
+    },
+    "policyVersion": {
+      "title": "Policyversion",
+      "type": "string"
+    },
+    "policySha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policysha256",
+      "type": "string"
+    },
+    "sourceBundleId": {
+      "title": "Sourcebundleid",
+      "type": "string"
+    },
+    "sourceBundleSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcebundlesha256",
+      "type": "string"
+    },
+    "sourceHomeSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcehomesha256",
+      "type": "string"
+    },
+    "sensorModelId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensormodelid"
+    },
+    "sensorModelVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensormodelversion"
+    },
+    "sensorModelSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensormodelsha256"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/MaterializationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/SensorDeploymentSummary"
+    }
+  },
+  "required": [
+    "success",
+    "preset",
+    "policyVersion",
+    "policySha256",
+    "sourceBundleId",
+    "sourceBundleSha256",
+    "sourceHomeSha256",
+    "summary"
+  ],
+  "title": "Smart Home Deterministic Sensor Deployment Report 1.0.0",
+  "type": "object"
+}

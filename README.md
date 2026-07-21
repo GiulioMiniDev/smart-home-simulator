@@ -4,14 +4,16 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1–6 e l'estensione M5.1 sono completate e congelate alla versione
+Le **Milestone 1–6.1 e l'estensione M5.1 sono completate e congelate alla versione
 contrattuale 1.0.0**. Il
 sistema valida e compila lo scenario, lega i process model personali a una casa metrica e
 ne esegue integralmente attività, azioni, movimenti, risorse, eventi e stato tramite un
 clock discreto deterministico. M5.1 orchestra run indipendenti in processi isolati con
 seed, snapshot, resume e failure isolation. M6 proietta la traccia in osservazioni PIR,
-contatto e temperatura mantenendo le etichette causali in un oracle mapping separato. Il
-prossimo sviluppo previsto è la Milestone 7, dedicata a UI, workspace, export e replay.
+contatto e temperatura mantenendo le etichette causali in un oracle mapping separato.
+M6.1 genera deterministicamente casa e sensori dai due JSON M3 e pubblica una simulazione
+M4–M6 completa in un workspace transazionale. Il prossimo sviluppo previsto è la
+Milestone 7, dedicata a UI, workspace persistente, export e replay.
 
 Il runtime richiede Python 3.12 e supporta Windows, macOS e Linux. La CI impone su tutti e
 tre i sistemi suite completa, lint e benchmark multiprocesso.
@@ -36,10 +38,12 @@ make bundle
 make simulate
 make replay
 make project-sensors
+make run-synthetic
 make benchmark-environment
 make benchmark-simulation
 make benchmark-batch-simulation
 make benchmark-sensors
+make benchmark-materialization
 make schema
 make behavior-artifacts
 make authoring-artifacts
@@ -65,6 +69,31 @@ make check
 
 `validate` non corregge né esegue lo scenario. `compile` risolve vincoli, attività
 opzionali e contingenze; `simulate` consuma esclusivamente un bundle M4 completo.
+
+Per ottenere la prima simulazione dai due JSON pubblicati dall'ingestion, senza disegnare
+la casa o collocare manualmente i sensori:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim run-synthetic \
+  generated/mario_rossi_2026_10_30_ingested/scenario.json \
+  generated/mario_rossi_2026_10_30_ingested/personal-process-package.json \
+  --output-dir generated/mario_rossi_2026_10_30_simulation
+```
+
+Il comando usa per default le policy `compact-grid 1.1.0` e sensori `room_coverage
+1.1.0`, ma accetta file custom con `--home-policy` e `--sensor-policy`. Pubblica la
+directory solo dopo il successo di compilazione, binding M4, simulazione M5 e proiezione
+M6; se un gate fallisce rimuove lo staging. Il manifest finale verifica 17 artefatti con
+digest canonici. I generatori possono essere usati separatamente con `generate-home` e
+`deploy-sensors`; home e sensor model manuali restano supportati dai comandi originali.
+
+Il layout generato è sintetico e controllato dalla policy: non ricostruisce una vera
+planimetria. La policy sensoriale `1.1.0` aggiunge attività PIR intra-stanza, campionamento
+termico periodico quantizzato e contatti sugli oggetti fisici effettivamente risolti. Il
+confronto con CASAS Aruba è un controllo di plausibilità, non la calibrazione statistica
+formale assegnata a M9. Questa scelta, insieme alle
+questioni future sulla riusabilità della casa e sul multi-residente, è registrata in
+[ADR-015](docs/decisions/ADR-015-scenario-first-environment-materialization.md).
 
 Per eseguire e riprodurre deterministicamente il golden M5:
 
@@ -247,6 +276,11 @@ Gli artefatti pubblici congelati sono:
 - `schemas/observable-sensor-log-1.0.0.schema.json`;
 - `schemas/oracle-mapping-1.0.0.schema.json`;
 - `schemas/sensor-projection-report-1.0.0.schema.json`;
+- `schemas/home-generation-policy-1.0.0.schema.json`;
+- `schemas/home-generation-report-1.0.0.schema.json`;
+- `schemas/sensor-deployment-policy-1.0.0.schema.json`;
+- `schemas/sensor-deployment-report-1.0.0.schema.json`;
+- `schemas/synthetic-workspace-manifest-1.0.0.schema.json`;
 - i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
@@ -290,3 +324,4 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Audit di chiusura M5](docs/audits/milestone-5-closure.md)
 - [Audit di chiusura M5.1](docs/audits/milestone-5.1-closure.md)
 - [Audit di chiusura M6](docs/audits/milestone-6-closure.md)
+- [Audit di chiusura M6.1](docs/audits/milestone-6.1-closure.md)

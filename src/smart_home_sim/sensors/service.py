@@ -48,6 +48,31 @@ from smart_home_sim.validation.service import (
 SUPPORTED_SENSOR_MODEL_VERSION = "1.0.0"
 SUPPORTED_TRACE_VERSION = "1.0.0"
 SUPPORTED_BUNDLE_VERSION = "1.0.0"
+ENHANCED_SENSOR_MODEL_VERSION = "1.1.0"
+PIR_ACTIVITY_ACTION_TYPES = frozenset(
+    {
+        "activate",
+        "change_posture",
+        "clean",
+        "close",
+        "consume",
+        "deactivate",
+        "exercise",
+        "inspect",
+        "laundry_step",
+        "manage_medication",
+        "open",
+        "organize",
+        "personal_care",
+        "prepare_food",
+        "put_item",
+        "take_item",
+    }
+)
+PIR_RETRIGGER_MEAN_SECONDS = 18.0
+PIR_RETRIGGER_LOG_SIGMA = 0.6
+TEMPERATURE_DAILY_AMPLITUDE_CELSIUS = 1.0
+TEMPERATURE_QUANTUM_CELSIUS = 0.5
 
 
 @dataclass(frozen=True)
@@ -147,7 +172,13 @@ def _causal_context(
     return (), (), ()
 
 
-def _pir_candidates(trace: ExecutionTrace, sensor: PirSensor) -> list[Candidate]:
+def _pir_candidates(
+    trace: ExecutionTrace,
+    bundle: SimulationBundle,
+    sensor: PirSensor,
+    *,
+    enhanced: bool,
+) -> list[Candidate]:
     coverage = Polygon([(item.x, item.y) for item in sensor.coverage.vertices])
     candidates: list[Candidate] = []
     actions = {item.action_execution_id: item for item in trace.action_executions}
@@ -208,6 +239,72 @@ def _pir_candidates(trace: ExecutionTrace, sensor: PirSensor) -> list[Candidate]
                 ),
             ]
         )
+    if not enhanced:
+        return candidates
+
+    entities = {item.entity_id: item for item in bundle.home_model.entities}
+    points = {item.interaction_point_id: item for item in bundle.home_model.interaction_points}
+    hold = timedelta(milliseconds=sensor.hold_milliseconds)
+    retrigger = _stream(trace.seed, sensor.sensor_id, "activity-pir-timing")
+    for action in trace.action_executions:
+        if action.action_type not in PIR_ACTIVITY_ACTION_TYPES or action.status != "completed":
+            continue
+        entity = next(
+            (
+                entities[provider_id]
+                for provider_id in action.provider_ids
+                if provider_id in entities
+            ),
+            None,
+        )
+        point = points.get(entity.interaction_point_id) if entity is not None else None
+        if (
+            point is None
+            or point.region_id not in sensor.region_ids
+            or not coverage.covers(ShapelyPoint(point.position.x, point.position.y))
+        ):
+            continue
+        pulse_at = action.started_at
+        pulse_index = 0
+        while pulse_at <= action.ended_at:
+            group_id = f"{action.action_execution_id}:pir:{pulse_index}"
+            common = dict(
+                origin="simulated_cause",
+                cause_type="action_execution",
+                cause_ids=(action.action_execution_id,),
+                resident_ids=(action.actor_id,),
+                activity_ids=(action.activity_execution_id,),
+                action_ids=(action.action_execution_id,),
+                group_id=group_id,
+            )
+            candidates.extend(
+                [
+                    Candidate(
+                        at=pulse_at,
+                        value="ON",
+                        measurement="motion",
+                        unit=None,
+                        group_start=True,
+                        **common,
+                    ),
+                    Candidate(
+                        at=min(pulse_at + hold, action.ended_at),
+                        value="OFF",
+                        measurement="motion",
+                        unit=None,
+                        applies_cooldown=False,
+                        applies_false_negative=False,
+                        **common,
+                    ),
+                ]
+            )
+            pulse_index += 1
+            interval = retrigger.lognormvariate(
+                math.log(PIR_RETRIGGER_MEAN_SECONDS) - PIR_RETRIGGER_LOG_SIGMA**2 / 2,
+                PIR_RETRIGGER_LOG_SIGMA,
+            )
+            minimum_interval = sensor.hold_milliseconds / 1000 + 0.5
+            pulse_at += timedelta(seconds=max(minimum_interval, min(60.0, interval)))
     return candidates
 
 
@@ -292,7 +389,7 @@ def _matching_source(
     return None
 
 
-def _temperature_candidates(trace: ExecutionTrace, sensor: TemperatureSensor) -> list[Candidate]:
+def _temperature_deltas(trace: ExecutionTrace, sensor: TemperatureSensor) -> list[TemperatureDelta]:
     deltas: list[TemperatureDelta] = []
     for transition in trace.state_transitions:
         if transition.subject_type != "entity":
@@ -318,7 +415,64 @@ def _temperature_candidates(trace: ExecutionTrace, sensor: TemperatureSensor) ->
                 )
             )
 
+    return sorted(deltas, key=lambda item: (item.at, item.transition.transition_id))
+
+
+def _temperature_candidates(
+    trace: ExecutionTrace, sensor: TemperatureSensor, *, enhanced: bool
+) -> list[Candidate]:
+    deltas = _temperature_deltas(trace, sensor)
     current = sensor.baseline_celsius
+    if enhanced:
+        interval = min(source.sample_interval_seconds for source in sensor.sources)
+        candidates: list[Candidate] = []
+        delta_index = 0
+        sample_at = trace.started_at
+        while sample_at <= trace.ended_at:
+            sample_transition: StateTransition | None = None
+            while delta_index < len(deltas) and deltas[delta_index].at <= sample_at:
+                delta = deltas[delta_index]
+                current += delta.amount
+                sample_transition = delta.transition
+                delta_index += 1
+            local_hour = sample_at.hour + sample_at.minute / 60 + sample_at.second / 3600
+            daily_component = TEMPERATURE_DAILY_AMPLITUDE_CELSIUS * math.sin(
+                2 * math.pi * (local_hour - 9) / 24
+            )
+            value = (
+                round((current + daily_component) / TEMPERATURE_QUANTUM_CELSIUS)
+                * TEMPERATURE_QUANTUM_CELSIUS
+            )
+            if sample_transition is None:
+                common = dict(
+                    origin="environment_model",
+                    cause_type="trace",
+                    cause_ids=(trace.trace_id,),
+                )
+            else:
+                residents, activities, actions = _causal_context(
+                    trace, sample_transition.causality.cause_id
+                )
+                common = dict(
+                    origin="simulated_cause",
+                    cause_type="state_transition",
+                    cause_ids=(sample_transition.transition_id,),
+                    resident_ids=residents,
+                    activity_ids=activities,
+                    action_ids=actions,
+                )
+            candidates.append(
+                Candidate(
+                    at=sample_at,
+                    value=round(value, 6),
+                    measurement="temperature",
+                    unit="celsius",
+                    **common,
+                )
+            )
+            sample_at += timedelta(seconds=interval)
+        return candidates
+
     candidates = [
         Candidate(
             at=trace.started_at,
@@ -330,7 +484,7 @@ def _temperature_candidates(trace: ExecutionTrace, sensor: TemperatureSensor) ->
             cause_ids=(trace.trace_id,),
         )
     ]
-    for delta in sorted(deltas, key=lambda item: (item.at, item.transition.transition_id)):
+    for delta in deltas:
         current += delta.amount
         transition = delta.transition
         residents, activities, actions = _causal_context(trace, transition.causality.cause_id)
@@ -422,14 +576,19 @@ def _false_positive_candidates(
 
 
 def _sensor_candidates(
-    trace: ExecutionTrace, sensor: SensorDefinition, seed: int
+    trace: ExecutionTrace,
+    bundle: SimulationBundle,
+    sensor: SensorDefinition,
+    seed: int,
+    *,
+    enhanced: bool,
 ) -> list[Candidate]:
     if isinstance(sensor, PirSensor):
-        nominal = _pir_candidates(trace, sensor)
+        nominal = _pir_candidates(trace, bundle, sensor, enhanced=enhanced)
     elif isinstance(sensor, ContactSensor):
         nominal = _contact_candidates(trace, sensor)
     else:
-        nominal = _temperature_candidates(trace, sensor)
+        nominal = _temperature_candidates(trace, sensor, enhanced=enhanced)
     return sorted(
         [*nominal, *_false_positive_candidates(trace, sensor, seed)],
         key=lambda item: (item.at, item.origin, item.cause_ids),
@@ -443,10 +602,13 @@ def _observation_identifier(sensor_id: str, index: int, candidate: Candidate) ->
 
 def _project_sensor(
     trace: ExecutionTrace,
+    bundle: SimulationBundle,
     sensor: SensorDefinition,
     seed: int,
+    *,
+    enhanced: bool,
 ) -> tuple[list[ObservableSensorRecord], list[OracleObservationLink], Counters]:
-    candidates = _sensor_candidates(trace, sensor, seed)
+    candidates = _sensor_candidates(trace, bundle, sensor, seed, enhanced=enhanced)
     counters = Counters(candidate_count=len(candidates))
     dropout = _stream(seed, sensor.sensor_id, "dropout")
     false_negative = _stream(seed, sensor.sensor_id, "false-negative")
@@ -584,6 +746,11 @@ def _failed_result(
             sensor_model_id=model.sensor_model_id if model else None,
             sensor_model_version=model.sensor_model_version if model else None,
             sensor_model_sha256=canonical_sha256(model) if model else None,
+            projection_policy_version=(
+                "event-driven-sensors-1.1.0"
+                if model and model.sensor_model_version == ENHANCED_SENSOR_MODEL_VERSION
+                else "event-driven-sensors-1.0.0"
+            ),
             projected_at=trace.ended_at if trace else datetime(1970, 1, 1, tzinfo=UTC),
             issues=issues,
             summary=_summary([], issues),
@@ -724,12 +891,18 @@ def project_sensors(
     if issues:
         return _failed_result(issues, trace=trace, model=model, bundle=bundle)
 
+    enhanced = model.sensor_model_version == ENHANCED_SENSOR_MODEL_VERSION
+    projection_policy_version = (
+        "event-driven-sensors-1.1.0" if enhanced else "event-driven-sensors-1.0.0"
+    )
     records: list[ObservableSensorRecord] = []
     links: list[OracleObservationLink] = []
     sensor_summaries: list[SensorProjectionSensorSummary] = []
     try:
         for sensor in model.sensors:
-            sensor_records, sensor_links, counters = _project_sensor(trace, sensor, trace.seed)
+            sensor_records, sensor_links, counters = _project_sensor(
+                trace, bundle, sensor, trace.seed, enhanced=enhanced
+            )
             records.extend(sensor_records)
             links.extend(sensor_links)
             sensor_summaries.append(
@@ -789,6 +962,7 @@ def project_sensors(
         sensor_model_id=model.sensor_model_id,
         sensor_model_version=model.sensor_model_version,
         sensor_model_sha256=canonical_sha256(model),
+        projection_policy_version=projection_policy_version,
         observable_log_sha256=canonical_sha256(observable_log),
         oracle_mapping_sha256=canonical_sha256(oracle_mapping),
         projected_at=trace.ended_at,

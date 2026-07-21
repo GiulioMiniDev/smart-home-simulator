@@ -1,4 +1,4 @@
-.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts authoring-artifacts test lint check
+.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
@@ -39,6 +39,12 @@ replay:
 project-sensors:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim project-sensors examples/execution/mario_week.execution-trace.json examples/sensors/mario_monteverde.sensor-model.json --bundle examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json --output examples/sensors/mario_week.observable-sensor-log.json --oracle-output examples/sensors/mario_week.oracle-mapping.json --report-output examples/sensors/mario_week.sensor-projection-report.json
 
+run-synthetic:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim run-synthetic generated/mario_rossi_2026_10_30_ingested/scenario.json generated/mario_rossi_2026_10_30_ingested/personal-process-package.json --output-dir generated/mario_rossi_2026_10_30_simulation
+
+compare-sensor-density:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/compare_sensor_density.py
+
 benchmark-environment:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_environment.py
 
@@ -50,6 +56,9 @@ benchmark-batch-simulation:
 
 benchmark-sensors:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_sensors.py
+
+benchmark-materialization:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_materialization.py
 
 behavior-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_behavior_artifacts.py
@@ -77,6 +86,10 @@ simulation-artifacts: bundle-1.1
 sensor-artifacts: simulation-artifacts
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_sensor_artifacts.py
 
+materialization-artifacts:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/migrate_ingested_behavior_1_1.py
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_materialization_artifacts.py
+
 schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --output schemas/scenario-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract validation-report --output schemas/validation-report-1.0.0.schema.json
@@ -102,6 +115,11 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract observable-sensor-log --output schemas/observable-sensor-log-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract oracle-mapping --output schemas/oracle-mapping-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-projection-report --output schemas/sensor-projection-report-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract home-generation-policy --output schemas/home-generation-policy-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract home-generation-report --output schemas/home-generation-report-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-deployment-policy --output schemas/sensor-deployment-policy-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-deployment-report --output schemas/sensor-deployment-report-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract synthetic-workspace-manifest --output schemas/synthetic-workspace-manifest-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/write_schema_checksums.py
 
 test:
@@ -111,4 +129,4 @@ lint:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff check .
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff format --check .
 
-check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts sensor-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors
+check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts sensor-artifacts materialization-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization

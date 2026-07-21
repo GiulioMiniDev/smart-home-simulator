@@ -11,6 +11,7 @@
         "origin": {
           "enum": [
             "simulated_cause",
+            "environment_model",
             "false_positive",
             "initial_state"
           ],

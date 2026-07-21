@@ -1,6 +1,6 @@
 # ADR-015: Scenario-first deterministic environment materialization
 
-- **Status:** accepted direction; implementation pending in M7
+- **Status:** accepted and implemented in M6.1
 - **Date:** 2026-07-21
 
 ## Context
@@ -26,7 +26,7 @@ versioned home-generation policy. It will produce the existing frozen `home_mode
 plus a new versioned generation report; M4 remains the authoritative validation and
 binding gate.
 
-A second deterministic service will derive a `sensor_model 1.0.0` from the resolved
+A second deterministic service derives a `sensor_model 1.0.0` from the resolved
 simulation bundle and a separately versioned sensor-deployment policy. Initial policies
 will distinguish at least minimal, room-coverage and dense deployments. Policy names must
 not claim empirical similarity to CASAS until M9 calibration supports that claim.
@@ -69,21 +69,31 @@ M5/M6 artifact set without hand-editing JSON.
 - M9 remains responsible for testing and calibrating statistical realism against real
   datasets; structural validity must not be described as empirical fidelity.
 
-## Open design work before implementation
+## Implemented resolution
 
-M7 must resolve and record, before coding the generators:
+M6.1 freezes `compact-grid 1.1.0`: primitive room locations form an adjacent metric row;
+external/transit locations are disjoint regions joined by explicit transport links.
+Composite locations bind to the ordered union of their primitive members. Scenario
+resources retain their identifiers as concrete entities; generated regional service
+entities provide only the remaining role-based capabilities. Every generated artifact is
+then rejected or accepted by the unchanged M4 gate.
 
-1. the home-policy contract, layout algorithm, template vocabulary and handling of
-   external locations;
-2. deterministic entity/capability synthesis and conflict handling when requirements are
-   incomplete or incompatible;
-3. whether reusable physical-home definition and scenario-specific location/resource
-   bindings become separate versioned artifacts or remain a generated composite;
-4. sensor-policy parameters for density, coverage, doors, object contacts, temperature
-   cadence and researcher overrides;
-5. stable identity, versioning, digest and regeneration rules for generated homes;
-6. multi-resident merging when accepted scenarios share one physical environment;
-7. CLI/service-layer contracts and transactional workspace publication.
+Sensor policy `1.1.0` exposes `minimal`, `room_coverage` and `dense`. PIR coverage is
+contained in exact source-home regions; movement crossings and motor actions at resolved
+interaction points produce held pulses with deterministic irregular retrigger intervals.
+Contacts are derived from the concrete providers selected by M4, including a generated
+entrance door. Temperature is sampled every fifteen minutes, quantized to 0.5 °C, follows
+a deterministic daily component and incorporates active-source response deltas. Error
+probabilities are explicit policy values and default to zero. CASAS Aruba is used only for
+a scale sanity check; no preset claims completed empirical calibration.
 
-No unresolved item permits a nondeterministic fallback or an output presented as valid
-without passing the existing authoritative gates.
+`run-synthetic` publishes a workspace only after compilation, M4 binding, M5 execution
+and M6 projection all succeed. The manifest hashes seventeen source, policy, report and
+data artifacts. Existing output directories are refused and a failed staging directory
+is removed. Stable identity is derived from frozen source identifiers, policy versions,
+seed and canonical digests.
+
+Reusable physical homes remain supported as M4 overrides. Separating a reusable physical
+shell from scenario-specific bindings, and merging independently authored residents into
+one physical home, remain explicit M7/M8 design work; neither is required for the complete
+single-scenario M6.1 workflow.

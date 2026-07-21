@@ -279,7 +279,7 @@ class ObservableSensorLog(ContractModel):
 
 class OracleObservationLink(ContractModel):
     observation_id: str = Field(min_length=1)
-    origin: Literal["simulated_cause", "false_positive", "initial_state"]
+    origin: Literal["simulated_cause", "environment_model", "false_positive", "initial_state"]
     cause_type: Literal["movement", "state_transition", "action_execution", "trace", "noise"]
     cause_ids: list[str] = Field(default_factory=list)
     resident_ids: list[str] = Field(default_factory=list)
@@ -294,6 +294,8 @@ class OracleObservationLink(ContractModel):
             raise ValueError("non-noise oracle links require at least one causeId")
         if self.origin == "initial_state" and self.cause_type != "trace":
             raise ValueError("initial-state links require a trace cause")
+        if self.origin == "environment_model" and self.cause_type != "trace":
+            raise ValueError("environment-model links require a trace cause")
         if self.origin == "simulated_cause" and self.cause_type not in {
             "movement",
             "state_transition",
@@ -404,8 +406,10 @@ class SensorProjectionReport(ContractModel):
 
     report_version: Literal["1.0.0"] = "1.0.0"
     projector_name: Literal["smart-home-sim-sensor-projector"] = "smart-home-sim-sensor-projector"
-    projector_version: Literal["1.0.0"] = "1.0.0"
-    projection_policy_version: Literal["event-driven-sensors-1.0.0"] = "event-driven-sensors-1.0.0"
+    projector_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
+    projection_policy_version: Literal[
+        "event-driven-sensors-1.0.0", "event-driven-sensors-1.1.0"
+    ] = "event-driven-sensors-1.0.0"
     random_stream_policy: Literal["sha256-named-streams-1.0.0"] = "sha256-named-streams-1.0.0"
     success: bool
     source_bundle_id: str | None = None
