@@ -94,6 +94,106 @@ def test_schema_command_can_write_contract(tmp_path: Path) -> None:
     assert json.loads(output.read_text(encoding="utf-8"))["$id"].endswith("scenario:1.0.0")
 
 
+def test_project_sensors_writes_three_separated_outputs(tmp_path: Path) -> None:
+    observable = tmp_path / "observable.json"
+    oracle = tmp_path / "oracle.json"
+    report = tmp_path / "report.json"
+    result = runner.invoke(
+        app,
+        [
+            "project-sensors",
+            str(EXAMPLES / "execution/mario_week.execution-trace.json"),
+            str(EXAMPLES / "sensors/mario_monteverde.sensor-model.json"),
+            "--bundle",
+            str(EXAMPLES / "bundles/mario_week.simulation-bundle-behavior-1.1.0.json"),
+            "--output",
+            str(observable),
+            "--oracle-output",
+            str(oracle),
+            "--report-output",
+            str(report),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert json.loads(observable.read_text())["documentType"] == "observable_sensor_log"
+    assert json.loads(oracle.read_text())["documentType"] == "oracle_mapping"
+    assert json.loads(report.read_text())["success"] is True
+
+
+def test_project_sensors_rejects_conflicting_outputs_and_invalid_input(tmp_path: Path) -> None:
+    trace = EXAMPLES / "execution/mario_week.execution-trace.json"
+    model = EXAMPLES / "sensors/mario_monteverde.sensor-model.json"
+    conflict = runner.invoke(
+        app,
+        [
+            "project-sensors",
+            str(trace),
+            str(model),
+            "--bundle",
+            str(EXAMPLES / "bundles/mario_week.simulation-bundle-behavior-1.1.0.json"),
+            "--output",
+            str(trace),
+            "--oracle-output",
+            str(tmp_path / "oracle"),
+            "--report-output",
+            str(tmp_path / "report"),
+        ],
+    )
+    assert conflict.exit_code != 0
+    failed = runner.invoke(
+        app,
+        [
+            "project-sensors",
+            str(tmp_path / "missing"),
+            str(model),
+            "--bundle",
+            str(EXAMPLES / "bundles/mario_week.simulation-bundle-behavior-1.1.0.json"),
+            "--output",
+            str(tmp_path / "observable"),
+            "--oracle-output",
+            str(tmp_path / "oracle"),
+            "--report-output",
+            str(tmp_path / "report"),
+        ],
+    )
+    assert failed.exit_code == 1
+    assert json.loads((tmp_path / "report").read_text())["success"] is False
+
+
+def test_project_sensors_does_not_publish_partial_success_on_output_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(_outputs: object) -> None:
+        raise OSError("synthetic output failure")
+
+    monkeypatch.setattr("smart_home_sim.cli._atomic_write_many", fail)
+    observable = tmp_path / "observable.json"
+    oracle = tmp_path / "oracle.json"
+    report = tmp_path / "report.json"
+    result = runner.invoke(
+        app,
+        [
+            "project-sensors",
+            str(EXAMPLES / "execution/mario_week.execution-trace.json"),
+            str(EXAMPLES / "sensors/mario_monteverde.sensor-model.json"),
+            "--bundle",
+            str(EXAMPLES / "bundles/mario_week.simulation-bundle-behavior-1.1.0.json"),
+            "--output",
+            str(observable),
+            "--oracle-output",
+            str(oracle),
+            "--report-output",
+            str(report),
+        ],
+    )
+    assert result.exit_code == 1
+    assert not observable.exists()
+    assert not oracle.exists()
+    failure = json.loads(report.read_text())
+    assert failure["success"] is False
+    assert failure["issues"][0]["code"] == "OUTPUT_WRITE_ERROR"
+
+
 def test_warning_can_be_promoted_to_failure(tmp_path: Path) -> None:
     payload = json.loads((EXAMPLES / "valid/minimal.json").read_text(encoding="utf-8"))
     payload["declaredConstraints"] = ["same", "same"]

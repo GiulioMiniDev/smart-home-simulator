@@ -1,0 +1,228 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "sensor_model",
+  "sensorModelId": "mario_monteverde_ambient_sensors",
+  "sensorModelVersion": "1.0.0",
+  "sourceBundleId": "mario_rossi_week_2026_10_12__runtime_1.1.0__home_mario_monteverde__behavior_1.1.0__1.0.0",
+  "sourceBundleSha256": "f862277616a4b5e1ef7a88b904c0d69c644982bb2ab8d02a1e4a383c1f17145e",
+  "seed": 20261012,
+  "regionIds": [
+    "bedroom", "bathroom", "hallway", "entrance", "kitchen", "living_room",
+    "balcony", "market", "mothers_home", "neighborhood_bar", "outside",
+    "pharmacy", "supermarket", "workplace"
+  ],
+  "entityIds": [
+    "bedroom_storage", "bathroom_fixture", "entrance_access", "kitchen_workstation",
+    "living_room_media", "balcony_utility", "market_service", "mothers_home_service",
+    "neighborhood_bar_service", "outside_service", "pharmacy_service",
+    "supermarket_service", "workplace_service"
+  ],
+  "sensors": [
+    {
+      "sensorId": "pir_bedroom_01",
+      "sensorType": "pir",
+      "position": {"x": 3.5, "y": 9.0},
+      "regionIds": ["bedroom"],
+      "coverage": {
+        "vertices": [
+          {"x": 0.0, "y": 6.0}, {"x": 7.0, "y": 6.0},
+          {"x": 7.0, "y": 12.0}, {"x": 0.0, "y": 12.0}
+        ]
+      },
+      "holdMilliseconds": 30000.0,
+      "timing": {
+        "latencyMilliseconds": 120.0,
+        "clockJitterMilliseconds": 20.0,
+        "cooldownMilliseconds": 30000.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.01,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.05,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": []
+    },
+    {
+      "sensorId": "pir_hallway_01",
+      "sensorType": "pir",
+      "position": {"x": 9.0, "y": 6.5},
+      "regionIds": ["hallway"],
+      "coverage": {
+        "vertices": [
+          {"x": 7.0, "y": 3.0}, {"x": 11.0, "y": 3.0},
+          {"x": 11.0, "y": 10.0}, {"x": 7.0, "y": 10.0}
+        ]
+      },
+      "holdMilliseconds": 30000.0,
+      "timing": {
+        "latencyMilliseconds": 100.0,
+        "clockJitterMilliseconds": 15.0,
+        "cooldownMilliseconds": 120000.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.01,
+        "falseNegativeProbability": 0.01,
+        "falsePositiveProbabilityPerDay": 0.05,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [
+        {
+          "startsAt": "2026-10-15T06:29:00+02:00",
+          "endsAt": "2026-10-15T06:31:00+02:00"
+        }
+      ]
+    },
+    {
+      "sensorId": "pir_bathroom_01",
+      "sensorType": "pir",
+      "position": {"x": 3.5, "y": 3.0},
+      "regionIds": ["bathroom"],
+      "coverage": {
+        "vertices": [
+          {"x": 0.0, "y": 0.0}, {"x": 7.0, "y": 0.0},
+          {"x": 7.0, "y": 6.0}, {"x": 0.0, "y": 6.0}
+        ]
+      },
+      "holdMilliseconds": 30000.0,
+      "timing": {
+        "latencyMilliseconds": 110.0,
+        "clockJitterMilliseconds": 20.0,
+        "cooldownMilliseconds": 30000.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.01,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.05,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": []
+    },
+    {
+      "sensorId": "pir_kitchen_01",
+      "sensorType": "pir",
+      "position": {"x": 14.5, "y": 3.0},
+      "regionIds": ["kitchen"],
+      "coverage": {
+        "vertices": [
+          {"x": 11.0, "y": 0.0}, {"x": 18.0, "y": 0.0},
+          {"x": 18.0, "y": 6.0}, {"x": 11.0, "y": 6.0}
+        ]
+      },
+      "holdMilliseconds": 30000.0,
+      "timing": {
+        "latencyMilliseconds": 130.0,
+        "clockJitterMilliseconds": 25.0,
+        "cooldownMilliseconds": 30000.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.01,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.05,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": []
+    },
+    {
+      "sensorId": "pir_living_01",
+      "sensorType": "pir",
+      "position": {"x": 15.5, "y": 9.0},
+      "regionIds": ["living_room"],
+      "coverage": {
+        "vertices": [
+          {"x": 11.0, "y": 6.0}, {"x": 20.0, "y": 6.0},
+          {"x": 20.0, "y": 12.0}, {"x": 11.0, "y": 12.0}
+        ]
+      },
+      "holdMilliseconds": 30000.0,
+      "timing": {
+        "latencyMilliseconds": 125.0,
+        "clockJitterMilliseconds": 20.0,
+        "cooldownMilliseconds": 30000.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.01,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.05,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": []
+    },
+    {
+      "sensorId": "contact_front_door_01",
+      "sensorType": "contact",
+      "position": {"x": 9.0, "y": 1.2},
+      "entityId": "entrance_access",
+      "fact": null,
+      "actionTypes": ["enter_home", "leave_home"],
+      "actionTrigger": "ended",
+      "pulseMilliseconds": 1000.0,
+      "openValue": true,
+      "closedValue": false,
+      "timing": {
+        "latencyMilliseconds": 40.0,
+        "clockJitterMilliseconds": 5.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.005,
+        "falsePositiveProbabilityPerDay": 0.02,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": []
+    },
+    {
+      "sensorId": "contact_kitchen_storage_01",
+      "sensorType": "contact",
+      "position": {"x": 16.0, "y": 2.0},
+      "entityId": "kitchen_workstation",
+      "fact": "open",
+      "openValue": true,
+      "closedValue": false,
+      "timing": {
+        "latencyMilliseconds": 50.0,
+        "clockJitterMilliseconds": 5.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.005,
+        "falsePositiveProbabilityPerDay": 0.02,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": []
+    },
+    {
+      "sensorId": "temperature_bathroom_01",
+      "sensorType": "temperature",
+      "position": {"x": 2.0, "y": 4.5},
+      "regionId": "bathroom",
+      "baselineCelsius": 20.5,
+      "sources": [
+        {
+          "entityId": "bathroom_fixture",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 2.4,
+          "responseDelaySeconds": 5.0,
+          "riseDurationSeconds": 240.0,
+          "decayDurationSeconds": 600.0,
+          "sampleIntervalSeconds": 60.0
+        }
+      ],
+      "timing": {
+        "latencyMilliseconds": 500.0,
+        "clockJitterMilliseconds": 100.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.0,
+        "falsePositiveProbabilityPerDay": 0.01,
+        "measurementNoiseStandardDeviation": 0.08
+      },
+      "failureWindows": []
+    }
+  ]
+}

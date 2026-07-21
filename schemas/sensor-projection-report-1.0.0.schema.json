@@ -1,0 +1,443 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "SensorProjectionIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "BUNDLE_TRACE_MISMATCH",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "HOME_SENSOR_MISMATCH",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "MODEL_TRACE_MISMATCH",
+            "OUTPUT_CONFLICT",
+            "OUTPUT_WRITE_ERROR",
+            "PROJECTION_FAILED",
+            "SENSOR_REFERENCE_INVALID",
+            "STRUCTURE_INVALID",
+            "TRACE_DIGEST_MISMATCH",
+            "UNSUPPORTED_SCHEMA_VERSION"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "compatibility",
+            "projection",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "SensorProjectionIssue",
+      "type": "object"
+    },
+    "SensorProjectionSensorSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "sensorId": {
+          "minLength": 1,
+          "title": "Sensorid",
+          "type": "string"
+        },
+        "candidateCount": {
+          "minimum": 0,
+          "title": "Candidatecount",
+          "type": "integer"
+        },
+        "observationCount": {
+          "minimum": 0,
+          "title": "Observationcount",
+          "type": "integer"
+        },
+        "dropoutCount": {
+          "minimum": 0,
+          "title": "Dropoutcount",
+          "type": "integer"
+        },
+        "falseNegativeCount": {
+          "minimum": 0,
+          "title": "Falsenegativecount",
+          "type": "integer"
+        },
+        "cooldownSuppressedCount": {
+          "minimum": 0,
+          "title": "Cooldownsuppressedcount",
+          "type": "integer"
+        },
+        "failureSuppressedCount": {
+          "minimum": 0,
+          "title": "Failuresuppressedcount",
+          "type": "integer"
+        },
+        "falsePositiveCount": {
+          "minimum": 0,
+          "title": "Falsepositivecount",
+          "type": "integer"
+        },
+        "noisyObservationCount": {
+          "minimum": 0,
+          "title": "Noisyobservationcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sensorId",
+        "candidateCount",
+        "observationCount",
+        "dropoutCount",
+        "falseNegativeCount",
+        "cooldownSuppressedCount",
+        "failureSuppressedCount",
+        "falsePositiveCount",
+        "noisyObservationCount"
+      ],
+      "title": "SensorProjectionSensorSummary",
+      "type": "object"
+    },
+    "SensorProjectionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "sensorCount": {
+          "minimum": 0,
+          "title": "Sensorcount",
+          "type": "integer"
+        },
+        "candidateCount": {
+          "minimum": 0,
+          "title": "Candidatecount",
+          "type": "integer"
+        },
+        "observationCount": {
+          "minimum": 0,
+          "title": "Observationcount",
+          "type": "integer"
+        },
+        "dropoutCount": {
+          "minimum": 0,
+          "title": "Dropoutcount",
+          "type": "integer"
+        },
+        "falseNegativeCount": {
+          "minimum": 0,
+          "title": "Falsenegativecount",
+          "type": "integer"
+        },
+        "cooldownSuppressedCount": {
+          "minimum": 0,
+          "title": "Cooldownsuppressedcount",
+          "type": "integer"
+        },
+        "failureSuppressedCount": {
+          "minimum": 0,
+          "title": "Failuresuppressedcount",
+          "type": "integer"
+        },
+        "falsePositiveCount": {
+          "minimum": 0,
+          "title": "Falsepositivecount",
+          "type": "integer"
+        },
+        "noisyObservationCount": {
+          "minimum": 0,
+          "title": "Noisyobservationcount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        },
+        "warningCount": {
+          "minimum": 0,
+          "title": "Warningcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sensorCount",
+        "candidateCount",
+        "observationCount",
+        "dropoutCount",
+        "falseNegativeCount",
+        "cooldownSuppressedCount",
+        "failureSuppressedCount",
+        "falsePositiveCount",
+        "noisyObservationCount",
+        "errorCount",
+        "warningCount"
+      ],
+      "title": "SensorProjectionSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:sensor-projection-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Reportversion",
+      "type": "string"
+    },
+    "projectorName": {
+      "const": "smart-home-sim-sensor-projector",
+      "default": "smart-home-sim-sensor-projector",
+      "title": "Projectorname",
+      "type": "string"
+    },
+    "projectorVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Projectorversion",
+      "type": "string"
+    },
+    "projectionPolicyVersion": {
+      "const": "event-driven-sensors-1.0.0",
+      "default": "event-driven-sensors-1.0.0",
+      "title": "Projectionpolicyversion",
+      "type": "string"
+    },
+    "randomStreamPolicy": {
+      "const": "sha256-named-streams-1.0.0",
+      "default": "sha256-named-streams-1.0.0",
+      "title": "Randomstreampolicy",
+      "type": "string"
+    },
+    "success": {
+      "title": "Success",
+      "type": "boolean"
+    },
+    "sourceBundleId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcebundleid"
+    },
+    "sourceBundleSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcebundlesha256"
+    },
+    "sourceHomeId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcehomeid"
+    },
+    "sourceHomeVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcehomeversion"
+    },
+    "sourceHomeSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcehomesha256"
+    },
+    "sourceTraceId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcetraceid"
+    },
+    "sourceTraceSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcetracesha256"
+    },
+    "sourceTraceSemanticDigest": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcetracesemanticdigest"
+    },
+    "sensorModelId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensormodelid"
+    },
+    "sensorModelVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensormodelversion"
+    },
+    "sensorModelSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensormodelsha256"
+    },
+    "observableLogSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observablelogsha256"
+    },
+    "oracleMappingSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Oraclemappingsha256"
+    },
+    "projectedAt": {
+      "format": "date-time",
+      "title": "Projectedat",
+      "type": "string"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/SensorProjectionIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "sensors": {
+      "items": {
+        "$ref": "#/$defs/SensorProjectionSensorSummary"
+      },
+      "title": "Sensors",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/SensorProjectionSummary"
+    }
+  },
+  "required": [
+    "success",
+    "projectedAt",
+    "summary"
+  ],
+  "title": "Smart Home Sensor Projection Report 1.0.0",
+  "type": "object"
+}

@@ -23,8 +23,8 @@ relativi controlli di compatibilità.
 | 4 | Ambiente domestico eseguibile e binding | process model + definizione della casa | home model validato + simulation bundle completamente risolto | **Completata e congelata — 1.0.0** |
 | 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | **Completata e congelata — 1.0.0** |
 | 5.1 | Orchestrazione parallela degli esperimenti | batch manifest + simulation bundle | run isolate replayabili + batch report | **Completata e congelata — 1.0.0** |
-| 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | Non iniziata |
-| 7 | Applicazione UI, workspace, export e replay | artefatti M1–M6 completi | applicazione moderna end-to-end + dataset JSONL/CSV/XES + replay deterministico | Non iniziata |
+| 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | **Completata e congelata — 1.0.0** |
+| 7 | Materializzazione automatica, applicazione UI, workspace, export e replay | authoring M3 accettato + artefatti M1–M6 | casa e sensori materializzati + applicazione end-to-end + dataset JSONL/CSV/XES + replay | Non iniziata |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
@@ -412,22 +412,69 @@ trasferire nel dataset informazioni oracle non misurabili dai dispositivi.
 - schema, checksum, esempi, golden log, test, lint, benchmark e copertura minima
   obbligatoria del 95% sono completi.
 
-## Milestone 7 — Applicazione UI, workspace, export e replay
+La regola di avanzamento della Milestone 6 è soddisfatta dai quattro contratti congelati
+in ADR-014. Il modello di accettazione contiene otto dispositivi: cinque PIR geometrici,
+un contatto porta derivato dalle azioni, un contatto oggetto derivato dallo stato e un
+sensore di temperatura con curva di risposta. La settimana golden produce 1.108 record
+pubblici e altrettanti link oracle separati a partire da 1.173 candidati. Latenza, jitter,
+cooldown, dropout, falsi negativi, falsi positivi, guasti e rumore di misura hanno tutti
+evidenza non nulla nel golden e sono riproducibili tramite stream indipendenti per sensore
+e concern. Integrità semantica del trace, seed, contabilità e digest degli artefatti sono
+riverificati prima della pubblicazione atomica. Il bundle M4 sorgente è obbligatorio: la
+planimetria sintetica fornita dal ricercatore resta autorevole e cataloghi, posizioni e
+coverage dei sensori devono essere contenuti nelle regioni dell'home model incorporato.
+L'audit terminale è in
+`docs/audits/milestone-6-closure.md`.
+
+## Decisione ponte M6 → M7 — scenario-first
+
+ADR-015 stabilisce che il percorso predefinito non richiede al ricercatore di disegnare
+prima una casa. Dopo l'ingestion deterministico dello scenario e del pacchetto personale,
+il sistema materializza una casa eseguibile dai luoghi, dalle risorse, dalle capacità, dai
+vincoli di mobilità e dal seed dichiarati, usando una policy versionata. Una seconda policy
+versionata genera la configurazione sensoriale dal bundle risolto. Home e sensor model
+importati o personalizzati restano override supportati.
+
+La scelta nasce dal caso reale
+`generated/mario_rossi_2026_10_30_ingested`: scenario, comportamento e compilazione sono
+validi, ma manca la casa indicata dall'LLM e diciassette risorse non hanno un binding nella
+casa golden. Questo gap deve essere chiuso come flusso di prodotto, senza richiedere editing
+manuale di JSON e senza usare un secondo LLM nel runtime.
+
+La geometria generata non è decorativa: condiziona traiettorie e sequenze PIR. Per questo
+policy, seed, home model, sensor model, report e digest sono provenance sperimentale e
+devono restare costanti nei confronti. La validità strutturale non implica somiglianza ai
+dati reali; nomi come `casas-like` restano vietati finché M9 non completa la calibrazione.
+Le questioni ancora da congelare—algoritmo di layout, siti esterni, sintesi delle capacità,
+separazione fra casa fisica e binding di scenario, policy sensoriali, identità e
+multi-residenza—sono registrate esplicitamente in ADR-015 e devono essere risolte prima
+dell'implementazione dei generatori.
+
+## Milestone 7 — Materializzazione automatica, applicazione UI, workspace, export e replay
 
 ### Responsabilità
 
-Consegnare un'applicazione moderna con cui il ricercatore possa usare senza CLI tutte le
-funzioni disponibili fino alla Milestone 7: creare e organizzare ambienti e residenti,
-importare, validare e configurare gli input, avviare e seguire simulazioni, ispezionare i
-risultati, effettuare replay ed esportare dataset riproducibili. La UI è un client dei
-medesimi contratti e servizi applicativi usati dalla CLI e non introduce semantica
-alternativa né aggira alcun gate.
+Consegnare i servizi di materializzazione deterministica e un'applicazione moderna con cui
+il ricercatore possa usare senza CLI tutte le funzioni disponibili fino alla Milestone 7:
+importare un authoring M3 accettato, ottenere automaticamente casa e sensori, creare e
+organizzare ambienti e residenti, configurare gli input, avviare e seguire simulazioni,
+ispezionare i risultati, effettuare replay ed esportare dataset riproducibili. La UI è un
+client dei medesimi contratti e servizi applicativi usati dalla CLI e non introduce
+semantica alternativa né aggira alcun gate.
 
 ### Contenuto
 
 - shell applicativa desktop-first, moderna, accessibile e adattabile alle comuni
   risoluzioni, con navigazione coerente, tema chiaro/scuro e stati vuoti, di caricamento e
   di errore completi;
+- contratto e servizio headless di generazione deterministica dell'home model da scenario
+  e pacchetto personale accettati, con policy, seed, provenance, report, errori stabili e
+  uscita sottoposta all'intero gate M4;
+- contratto e servizio headless di deployment deterministico dei sensori dal bundle M4,
+  con preset almeno `minimal`, `room-coverage` e `dense`, override espliciti e gate M6;
+- orchestratore transazionale che, dai due JSON pubblicati dall'ingestion, materializza
+  piano, casa, bundle, sensori, trace, log osservabile, oracle e report senza output
+  parziali;
 - workspace persistente con dashboard dei recenti, ricerca e filtri, organizzato per
   ambiente domestico; ogni casa raggruppa residenti, scenari, modelli comportamentali,
   configurazioni sensoriali, bundle ed esecuzioni, inclusi ambienti multi-residente;
@@ -473,12 +520,20 @@ del workspace e la separazione tra UI e motore devono restare indipendenti dal f
 - app mobile nativa;
 - editor generico che permetta di bypassare schemi, cataloghi o validatori;
 - comandi UI per feature non ancora implementate, in particolare esecuzione annuale e
-  calibrazione, che vengono aggiunti dalle rispettive milestone successive.
+  calibrazione, che vengono aggiunti dalle rispettive milestone successive;
+- generazione LLM della casa o dei sensori durante il runtime e preset che dichiarano
+  fedeltà empirica a un dataset reale prima della calibrazione M9.
 
 ### Definition of done
 
 - l'intero flusso M1–M7, dalla creazione o importazione degli input al replay e all'export,
   è completabile dalla UI senza ricorrere alla CLI o modificare manualmente JSON;
+- `generated/mario_rossi_2026_10_30_ingested` raggiunge bundle, simulazione e proiezione
+  sensoriale completi partendo soltanto dai due JSON accettati e dalle policy esplicite;
+- stessi input, versioni di policy e seed rigenerano home model, sensor model e digest
+  identici sia dal servizio headless sia dalla UI;
+- ogni risorsa e capacità richiesta è materializzata e legata oppure la procedura fallisce
+  con diagnostica completa, senza fallback o riparazioni silenziose;
 - la casa golden può essere ricostruita o importata nel configuratore, validata e salvata
   senza perdita semantica; porte, ostacoli, capacità e percorsi errati sono evidenziati
   direttamente sulla planimetria;

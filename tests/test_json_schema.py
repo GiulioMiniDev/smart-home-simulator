@@ -33,6 +33,12 @@ from smart_home_sim.domain.environment import (
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
+from smart_home_sim.domain.sensors import (
+    ObservableSensorLog,
+    OracleMapping,
+    SensorModel,
+    SensorProjectionReport,
+)
 from smart_home_sim.validation.codes import STABLE_ISSUE_CODES
 
 PROJECT_ROOT = Path(__file__).parents[1]
@@ -63,6 +69,12 @@ ENVIRONMENT_SCHEMAS = {
 BATCH_SCHEMAS = {
     "simulation-batch-manifest-1.0.0.schema.json": SimulationBatchManifest,
     "simulation-batch-report-1.0.0.schema.json": SimulationBatchReport,
+}
+SENSOR_SCHEMAS = {
+    "sensor-model-1.0.0.schema.json": SensorModel,
+    "observable-sensor-log-1.0.0.schema.json": ObservableSensorLog,
+    "oracle-mapping-1.0.0.schema.json": OracleMapping,
+    "sensor-projection-report-1.0.0.schema.json": SensorProjectionReport,
 }
 
 
@@ -98,6 +110,7 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in AUTHORING_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in SENSOR_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
@@ -251,3 +264,18 @@ def test_batch_schemas_match_models_and_manifest_example() -> None:
     )
     manifest = json.loads((PROJECT_ROOT / "examples/batch/mario_week.seed-sweep.json").read_text())
     assert list(Draft202012Validator(manifest_schema).iter_errors(manifest)) == []
+
+
+def test_sensor_schemas_match_models_and_golden_artifacts() -> None:
+    artifacts = {
+        "sensor-model-1.0.0.schema.json": "mario_monteverde.sensor-model.json",
+        "observable-sensor-log-1.0.0.schema.json": "mario_week.observable-sensor-log.json",
+        "oracle-mapping-1.0.0.schema.json": "mario_week.oracle-mapping.json",
+        "sensor-projection-report-1.0.0.schema.json": "mario_week.sensor-projection-report.json",
+    }
+    for filename, model in SENSOR_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / filename).read_text())
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+        payload = json.loads((PROJECT_ROOT / "examples/sensors" / artifacts[filename]).read_text())
+        assert list(Draft202012Validator(schema).iter_errors(payload)) == []

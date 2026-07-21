@@ -1,0 +1,475 @@
+{
+  "$defs": {
+    "ContactSensor": {
+      "additionalProperties": false,
+      "properties": {
+        "sensorId": {
+          "minLength": 1,
+          "title": "Sensorid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "timing": {
+          "$ref": "#/$defs/SensorTiming"
+        },
+        "errorModel": {
+          "$ref": "#/$defs/SensorErrorModel"
+        },
+        "failureWindows": {
+          "items": {
+            "$ref": "#/$defs/SensorFailureWindow"
+          },
+          "title": "Failurewindows",
+          "type": "array"
+        },
+        "sensorType": {
+          "const": "contact",
+          "default": "contact",
+          "title": "Sensortype",
+          "type": "string"
+        },
+        "entityId": {
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "fact": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "open",
+          "title": "Fact"
+        },
+        "actionTypes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actiontypes",
+          "type": "array"
+        },
+        "actionTrigger": {
+          "default": "ended",
+          "enum": [
+            "started",
+            "ended"
+          ],
+          "title": "Actiontrigger",
+          "type": "string"
+        },
+        "pulseMilliseconds": {
+          "default": 1000,
+          "exclusiveMinimum": 0,
+          "title": "Pulsemilliseconds",
+          "type": "number"
+        },
+        "openValue": {
+          "$ref": "#/$defs/JsonValue",
+          "default": true
+        },
+        "closedValue": {
+          "$ref": "#/$defs/JsonValue",
+          "default": false
+        }
+      },
+      "required": [
+        "sensorId",
+        "position",
+        "entityId"
+      ],
+      "title": "ContactSensor",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PirSensor": {
+      "additionalProperties": false,
+      "properties": {
+        "sensorId": {
+          "minLength": 1,
+          "title": "Sensorid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "timing": {
+          "$ref": "#/$defs/SensorTiming"
+        },
+        "errorModel": {
+          "$ref": "#/$defs/SensorErrorModel"
+        },
+        "failureWindows": {
+          "items": {
+            "$ref": "#/$defs/SensorFailureWindow"
+          },
+          "title": "Failurewindows",
+          "type": "array"
+        },
+        "sensorType": {
+          "const": "pir",
+          "default": "pir",
+          "title": "Sensortype",
+          "type": "string"
+        },
+        "regionIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Regionids",
+          "type": "array"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Polygon2D"
+        },
+        "holdMilliseconds": {
+          "default": 30000,
+          "exclusiveMinimum": 0,
+          "title": "Holdmilliseconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "sensorId",
+        "position",
+        "regionIds",
+        "coverage"
+      ],
+      "title": "PirSensor",
+      "type": "object"
+    },
+    "Point2D": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point2D",
+      "type": "object"
+    },
+    "Polygon2D": {
+      "additionalProperties": false,
+      "properties": {
+        "vertices": {
+          "items": {
+            "$ref": "#/$defs/Point2D"
+          },
+          "minItems": 3,
+          "title": "Vertices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "vertices"
+      ],
+      "title": "Polygon2D",
+      "type": "object"
+    },
+    "SensorErrorModel": {
+      "additionalProperties": false,
+      "properties": {
+        "dropoutProbability": {
+          "default": 0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Dropoutprobability",
+          "type": "number"
+        },
+        "falseNegativeProbability": {
+          "default": 0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Falsenegativeprobability",
+          "type": "number"
+        },
+        "falsePositiveProbabilityPerDay": {
+          "default": 0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Falsepositiveprobabilityperday",
+          "type": "number"
+        },
+        "measurementNoiseStandardDeviation": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Measurementnoisestandarddeviation",
+          "type": "number"
+        }
+      },
+      "title": "SensorErrorModel",
+      "type": "object"
+    },
+    "SensorFailureWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "startsAt": {
+          "format": "date-time",
+          "title": "Startsat",
+          "type": "string"
+        },
+        "endsAt": {
+          "format": "date-time",
+          "title": "Endsat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "startsAt",
+        "endsAt"
+      ],
+      "title": "SensorFailureWindow",
+      "type": "object"
+    },
+    "SensorTiming": {
+      "additionalProperties": false,
+      "properties": {
+        "latencyMilliseconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Latencymilliseconds",
+          "type": "number"
+        },
+        "clockJitterMilliseconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Clockjittermilliseconds",
+          "type": "number"
+        },
+        "cooldownMilliseconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cooldownmilliseconds",
+          "type": "number"
+        }
+      },
+      "title": "SensorTiming",
+      "type": "object"
+    },
+    "TemperatureSensor": {
+      "additionalProperties": false,
+      "properties": {
+        "sensorId": {
+          "minLength": 1,
+          "title": "Sensorid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "timing": {
+          "$ref": "#/$defs/SensorTiming"
+        },
+        "errorModel": {
+          "$ref": "#/$defs/SensorErrorModel"
+        },
+        "failureWindows": {
+          "items": {
+            "$ref": "#/$defs/SensorFailureWindow"
+          },
+          "title": "Failurewindows",
+          "type": "array"
+        },
+        "sensorType": {
+          "const": "temperature",
+          "default": "temperature",
+          "title": "Sensortype",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "baselineCelsius": {
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Baselinecelsius",
+          "type": "number"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/TemperatureSource"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sensorId",
+        "position",
+        "regionId",
+        "baselineCelsius",
+        "sources"
+      ],
+      "title": "TemperatureSensor",
+      "type": "object"
+    },
+    "TemperatureSource": {
+      "additionalProperties": false,
+      "properties": {
+        "entityId": {
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "activeValue": {
+          "$ref": "#/$defs/JsonValue",
+          "default": true
+        },
+        "deltaCelsius": {
+          "title": "Deltacelsius",
+          "type": "number"
+        },
+        "responseDelaySeconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Responsedelayseconds",
+          "type": "number"
+        },
+        "riseDurationSeconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Risedurationseconds",
+          "type": "number"
+        },
+        "decayDurationSeconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Decaydurationseconds",
+          "type": "number"
+        },
+        "sampleIntervalSeconds": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "title": "Sampleintervalseconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "entityId",
+        "fact",
+        "deltaCelsius"
+      ],
+      "title": "TemperatureSource",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:sensor-model:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "sensor_model",
+      "default": "sensor_model",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "sensorModelId": {
+      "minLength": 1,
+      "title": "Sensormodelid",
+      "type": "string"
+    },
+    "sensorModelVersion": {
+      "minLength": 1,
+      "title": "Sensormodelversion",
+      "type": "string"
+    },
+    "sourceBundleId": {
+      "minLength": 1,
+      "title": "Sourcebundleid",
+      "type": "string"
+    },
+    "sourceBundleSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcebundlesha256",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "regionIds": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Regionids",
+      "type": "array"
+    },
+    "entityIds": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Entityids",
+      "type": "array"
+    },
+    "sensors": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "contact": "#/$defs/ContactSensor",
+            "pir": "#/$defs/PirSensor",
+            "temperature": "#/$defs/TemperatureSensor"
+          },
+          "propertyName": "sensorType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/PirSensor"
+          },
+          {
+            "$ref": "#/$defs/ContactSensor"
+          },
+          {
+            "$ref": "#/$defs/TemperatureSensor"
+          }
+        ]
+      },
+      "minItems": 1,
+      "title": "Sensors",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sensorModelId",
+    "sensorModelVersion",
+    "sourceBundleId",
+    "sourceBundleSha256",
+    "seed",
+    "regionIds",
+    "entityIds",
+    "sensors"
+  ],
+  "title": "Smart Home Sensor Model 1.0.0",
+  "type": "object"
+}

@@ -4,20 +4,20 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1–5 e l'estensione M5.1 sono completate e congelate alla versione
+Le **Milestone 1–6 e l'estensione M5.1 sono completate e congelate alla versione
 contrattuale 1.0.0**. Il
 sistema valida e compila lo scenario, lega i process model personali a una casa metrica e
 ne esegue integralmente attività, azioni, movimenti, risorse, eventi e stato tramite un
 clock discreto deterministico. M5.1 orchestra run indipendenti in processi isolati con
-seed, snapshot, resume e failure isolation. Il prossimo sviluppo previsto è la Milestone
-6, dedicata ai sensori e alla separazione fra oracle e osservabile.
+seed, snapshot, resume e failure isolation. M6 proietta la traccia in osservazioni PIR,
+contatto e temperatura mantenendo le etichette causali in un oracle mapping separato. Il
+prossimo sviluppo previsto è la Milestone 7, dedicata a UI, workspace, export e replay.
 
 Il runtime richiede Python 3.12 e supporta Windows, macOS e Linux. La CI impone su tutti e
 tre i sistemi suite completa, lint e benchmark multiprocesso.
 
 Sono intenzionalmente assenti:
 
-- sensori;
 - exporter dei dataset;
 - applicazione UI completa, prevista nella Milestone 7 dopo simulazione e sensori;
 - chiamate integrate a provider LLM.
@@ -35,9 +35,11 @@ make compile
 make bundle
 make simulate
 make replay
+make project-sensors
 make benchmark-environment
 make benchmark-simulation
 make benchmark-batch-simulation
+make benchmark-sensors
 make schema
 make behavior-artifacts
 make authoring-artifacts
@@ -80,6 +82,32 @@ Il trace golden contiene 172 esiti di attività, 769 azioni, 202 movimenti geome
 1.139 transizioni di stato. Tutti i 27 action type sono eseguiti; nessun handler è un
 no-op di compatibilità. La correzione semantica upstream `1.1.0` è parallela e lascia
 immutati gli artefatti M1–M4 originali.
+
+Per proiettare il trace M5 senza mescolare osservabile e ground truth:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim project-sensors \
+  examples/execution/mario_week.execution-trace.json \
+  examples/sensors/mario_monteverde.sensor-model.json \
+  --bundle examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json \
+  --output examples/sensors/mario_week.observable-sensor-log.json \
+  --oracle-output examples/sensors/mario_week.oracle-mapping.json \
+  --report-output examples/sensors/mario_week.sensor-projection-report.json
+```
+
+Il golden M6 usa otto sensori e produce 1.108 osservazioni e altrettanti link oracle. I
+1.173 candidati includono evidenza non nulla per dropout, falsi negativi, cooldown,
+guasti, falsi positivi e rumore. Il log pubblico contiene
+soltanto campi misurabili dal dispositivo; persona, attività, azione e causa sono
+accessibili esclusivamente attraverso l'oracle mapping. Tutto il rumore è derivato da
+stream indipendenti per sensore e non modifica la traccia M5.
+
+Il ricercatore colloca i dispositivi nel sensor model usando lo stesso sistema metrico
+locale dell'home model: `position` per tutti i sensori, `regionIds` e poligono `coverage`
+per i PIR, entità/stato o azioni per i contatti e regione/sorgenti per la temperatura. Il
+bundle passato con `--bundle` incorpora la planimetria sintetica effettivamente usata dalla
+simulazione; cataloghi, posizioni e coverage vengono controllati contro quella planimetria
+prima di produrre qualsiasi record.
 
 Per eseguire più simulazioni indipendenti in parallelo:
 
@@ -215,6 +243,10 @@ Gli artefatti pubblici congelati sono:
 - `schemas/replay-report-1.0.0.schema.json`;
 - `schemas/simulation-batch-manifest-1.0.0.schema.json`;
 - `schemas/simulation-batch-report-1.0.0.schema.json`;
+- `schemas/sensor-model-1.0.0.schema.json`;
+- `schemas/observable-sensor-log-1.0.0.schema.json`;
+- `schemas/oracle-mapping-1.0.0.schema.json`;
+- `schemas/sensor-projection-report-1.0.0.schema.json`;
 - i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
@@ -238,6 +270,7 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Ambiente domestico eseguibile e binding](docs/spec/08-executable-home-and-binding.md)
 - [Motore di simulazione completo](docs/spec/09-simulation-engine.md)
 - [Orchestrazione dei batch paralleli](docs/spec/10-parallel-batch-orchestration.md)
+- [Sensori e separazione oracle/observable](docs/spec/11-sensor-projection.md)
 - [Blueprint architetturale del motore](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
@@ -252,5 +285,8 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Freeze del motore di simulazione 1.0.0](docs/decisions/ADR-011-freeze-simulation-engine-1.0.0.md)
 - [Orchestrazione batch parallela 1.0.0](docs/decisions/ADR-012-parallel-batch-orchestration-1.0.0.md)
 - [Lock batch multipiattaforma](docs/decisions/ADR-013-cross-platform-batch-locking.md)
+- [Freeze della proiezione sensoriale 1.0.0](docs/decisions/ADR-014-freeze-sensor-projection-1.0.0.md)
+- [Materializzazione scenario-first di casa e sensori](docs/decisions/ADR-015-scenario-first-environment-materialization.md)
 - [Audit di chiusura M5](docs/audits/milestone-5-closure.md)
 - [Audit di chiusura M5.1](docs/audits/milestone-5.1-closure.md)
+- [Audit di chiusura M6](docs/audits/milestone-6-closure.md)

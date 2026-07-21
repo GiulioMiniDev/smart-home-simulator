@@ -1,7 +1,7 @@
 [project]
 name = "smart-home-simulator"
 version = "1.0.0"
-description = "Validated scenarios, ADL process models, deterministic plans, and executable smart-home environments"
+description = "Deterministic smart-home simulation with validated ADL models and sensor projection"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

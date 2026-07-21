@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "OracleObservationLink": {
+      "additionalProperties": false,
+      "properties": {
+        "observationId": {
+          "minLength": 1,
+          "title": "Observationid",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "simulated_cause",
+            "false_positive",
+            "initial_state"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "causeType": {
+          "enum": [
+            "movement",
+            "state_transition",
+            "action_execution",
+            "trace",
+            "noise"
+          ],
+          "title": "Causetype",
+          "type": "string"
+        },
+        "causeIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Causeids",
+          "type": "array"
+        },
+        "residentIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Residentids",
+          "type": "array"
+        },
+        "activityExecutionIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Activityexecutionids",
+          "type": "array"
+        },
+        "actionExecutionIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actionexecutionids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "observationId",
+        "origin",
+        "causeType"
+      ],
+      "title": "OracleObservationLink",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:oracle-mapping:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "oracle_mapping",
+      "default": "oracle_mapping",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "mappingId": {
+      "minLength": 1,
+      "title": "Mappingid",
+      "type": "string"
+    },
+    "observableLogId": {
+      "minLength": 1,
+      "title": "Observablelogid",
+      "type": "string"
+    },
+    "sourceTraceId": {
+      "minLength": 1,
+      "title": "Sourcetraceid",
+      "type": "string"
+    },
+    "sourceTraceSemanticDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcetracesemanticdigest",
+      "type": "string"
+    },
+    "links": {
+      "items": {
+        "$ref": "#/$defs/OracleObservationLink"
+      },
+      "title": "Links",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mappingId",
+    "observableLogId",
+    "sourceTraceId",
+    "sourceTraceSemanticDigest",
+    "links"
+  ],
+  "title": "Smart Home Sensor Oracle Mapping 1.0.0",
+  "type": "object"
+}

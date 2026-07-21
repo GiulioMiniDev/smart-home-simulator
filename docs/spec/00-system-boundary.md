@@ -23,8 +23,10 @@ external authoring
 | Validation report | validator | admissibility of the scenario | No |
 | Canonical plan | compiler | planned activities for execution | No |
 | Execution trace | simulator | what happened in the virtual world | Yes |
+| Sensor model | researcher | device placement, timing and error semantics | No |
 | Observable log | sensor models | what devices measured | No |
 | Oracle ground truth | trace projector | semantic and causal truth | Yes |
+| Sensor projection report | trace projector | projection counts, losses, noise and provenance | No |
 
 ## Stable boundary
 

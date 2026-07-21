@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "ObservableSensorRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "observationId": {
+          "minLength": 1,
+          "title": "Observationid",
+          "type": "string"
+        },
+        "sensorId": {
+          "minLength": 1,
+          "title": "Sensorid",
+          "type": "string"
+        },
+        "sensorType": {
+          "enum": [
+            "pir",
+            "contact",
+            "temperature"
+          ],
+          "title": "Sensortype",
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "title": "Observedat",
+          "type": "string"
+        },
+        "measurement": {
+          "enum": [
+            "motion",
+            "contact",
+            "temperature"
+          ],
+          "title": "Measurement",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "const": "celsius",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "quality": {
+          "default": "nominal",
+          "enum": [
+            "nominal",
+            "noisy"
+          ],
+          "title": "Quality",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observationId",
+        "sensorId",
+        "sensorType",
+        "observedAt",
+        "measurement",
+        "value"
+      ],
+      "title": "ObservableSensorRecord",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:observable-sensor-log:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "observable_sensor_log",
+      "default": "observable_sensor_log",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "logId": {
+      "minLength": 1,
+      "title": "Logid",
+      "type": "string"
+    },
+    "sensorModelId": {
+      "minLength": 1,
+      "title": "Sensormodelid",
+      "type": "string"
+    },
+    "sensorModelVersion": {
+      "minLength": 1,
+      "title": "Sensormodelversion",
+      "type": "string"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "title": "Startedat",
+      "type": "string"
+    },
+    "endedAt": {
+      "format": "date-time",
+      "title": "Endedat",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/ObservableSensorRecord"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "semanticDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Semanticdigest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "logId",
+    "sensorModelId",
+    "sensorModelVersion",
+    "startedAt",
+    "endedAt",
+    "records",
+    "semanticDigest"
+  ],
+  "title": "Smart Home Observable Sensor Log 1.0.0",
+  "type": "object"
+}

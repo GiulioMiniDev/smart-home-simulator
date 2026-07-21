@@ -5,6 +5,7 @@ import os
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
+from uuid import uuid4
 
 import typer
 
@@ -34,6 +35,13 @@ from smart_home_sim.domain.execution import ExecutionTrace, ReplayReport, Simula
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
+from smart_home_sim.domain.sensors import (
+    ObservableSensorLog,
+    OracleMapping,
+    SensorModel,
+    SensorProjectionIssue,
+    SensorProjectionReport,
+)
 from smart_home_sim.environment import build_bundle_files, validate_home_file
 from smart_home_sim.formatting import (
     format_authoring_text_report,
@@ -41,6 +49,7 @@ from smart_home_sim.formatting import (
     format_environment_text_report,
     format_text_report,
 )
+from smart_home_sim.sensors import project_sensor_files
 from smart_home_sim.simulation import (
     BatchLockedError,
     BatchManifestError,
@@ -77,6 +86,10 @@ class SchemaContract(StrEnum):
     replay_report = "replay-report"
     simulation_batch_manifest = "simulation-batch-manifest"
     simulation_batch_report = "simulation-batch-report"
+    sensor_model = "sensor-model"
+    observable_sensor_log = "observable-sensor-log"
+    oracle_mapping = "oracle-mapping"
+    sensor_projection_report = "sensor-projection-report"
 
 
 app = typer.Typer(
@@ -251,6 +264,22 @@ def _atomic_write(path: Path, content: str) -> None:
             temporary.unlink()
 
 
+def _atomic_write_many(outputs: dict[Path, str]) -> None:
+    temporary_paths: dict[Path, Path] = {}
+    try:
+        for path, content in outputs.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+            temporary.write_text(content + "\n", encoding="utf-8", newline="\n")
+            temporary_paths[path] = temporary
+        for path, temporary in temporary_paths.items():
+            temporary.replace(path)
+    finally:
+        for temporary in temporary_paths.values():
+            if temporary.exists():
+                temporary.unlink()
+
+
 @app.command()
 def simulate(
     bundle_path: Path,
@@ -299,6 +328,63 @@ def replay(
         typer.echo(f"Replay report written to: {output.resolve()}")
     if not report.matches:
         raise typer.Exit(code=1)
+
+
+@app.command("project-sensors")
+def project_sensors_command(
+    trace_path: Path,
+    sensor_model_path: Path,
+    bundle_path: Annotated[Path, typer.Option("--bundle")],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    oracle_output: Annotated[Path, typer.Option("--oracle-output")],
+    report_output: Annotated[Path, typer.Option("--report-output")],
+) -> None:
+    """Project an M5 trace into a public sensor log and separate oracle mapping."""
+    inputs = {trace_path.resolve(), bundle_path.resolve(), sensor_model_path.resolve()}
+    outputs = {output.resolve(), oracle_output.resolve(), report_output.resolve()}
+    if len(outputs) != 3 or inputs & outputs:
+        raise typer.BadParameter(
+            "Sensor outputs must be distinct and must not overwrite either input."
+        )
+    result = project_sensor_files(trace_path, bundle_path, sensor_model_path)
+    if result.observable_log is None or result.oracle_mapping is None:
+        _atomic_write(report_output, result.report.model_dump_json(by_alias=True, indent=2))
+        typer.echo(result.report.model_dump_json(by_alias=True, indent=2), err=True)
+        raise typer.Exit(code=1)
+    try:
+        _atomic_write_many(
+            {
+                output: result.observable_log.model_dump_json(by_alias=True, indent=2),
+                oracle_output: result.oracle_mapping.model_dump_json(by_alias=True, indent=2),
+                report_output: result.report.model_dump_json(by_alias=True, indent=2),
+            }
+        )
+    except OSError as error:
+        issue = SensorProjectionIssue(
+            code="OUTPUT_WRITE_ERROR",
+            stage="output",
+            path="$",
+            message=f"Cannot publish sensor projection artifacts: {error}",
+        )
+        failed_summary = result.report.summary.model_copy(update={"error_count": 1})
+        failed_report = SensorProjectionReport.model_validate(
+            result.report.model_copy(
+                update={
+                    "success": False,
+                    "observable_log_sha256": None,
+                    "oracle_mapping_sha256": None,
+                    "issues": [issue],
+                    "summary": failed_summary,
+                }
+            ).model_dump()
+        )
+        try:
+            _atomic_write(report_output, failed_report.model_dump_json(by_alias=True, indent=2))
+        except OSError:
+            typer.echo(failed_report.model_dump_json(by_alias=True, indent=2), err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Observable sensor log written to: {output.resolve()}")
+    typer.echo(f"Oracle mapping written to: {oracle_output.resolve()}")
 
 
 @app.command("simulate-batch")
@@ -453,6 +539,10 @@ def schema(
         SchemaContract.replay_report: ReplayReport,
         SchemaContract.simulation_batch_manifest: SimulationBatchManifest,
         SchemaContract.simulation_batch_report: SimulationBatchReport,
+        SchemaContract.sensor_model: SensorModel,
+        SchemaContract.observable_sensor_log: ObservableSensorLog,
+        SchemaContract.oracle_mapping: OracleMapping,
+        SchemaContract.sensor_projection_report: SensorProjectionReport,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)
