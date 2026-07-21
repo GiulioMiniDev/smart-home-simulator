@@ -3767,13 +3767,6 @@
             "kind": "start"
           },
           {
-            "nodeId": "step_1",
-            "kind": "action",
-            "actionType": "leave_home",
-            "arguments": {},
-            "durationWeight": 1.0
-          },
-          {
             "nodeId": "step_2",
             "kind": "action",
             "actionType": "travel_to",
@@ -3812,10 +3805,6 @@
         "edges": [
           {
             "sourceNodeId": "start",
-            "targetNodeId": "step_1"
-          },
-          {
-            "sourceNodeId": "step_1",
             "targetNodeId": "step_2"
           },
           {

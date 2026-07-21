@@ -1,0 +1,19 @@
+{
+  "validatorVersion": "1.0.0",
+  "valid": true,
+  "homeId": "default_home_model",
+  "homeVersion": "1.0.0",
+  "homeSha256": "46f5a4f202a1253ab0827aed81ce7b404a8dc5be70b6253eb02ffec6fd44a18e",
+  "bundleSha256": "11cd1088219b1f0a919cb971af23f18172e8d5cb4fa72b4be655d50bbf0607f0",
+  "issues": [],
+  "summary": {
+    "regionCount": 5,
+    "connectionCount": 4,
+    "entityCount": 9,
+    "interactionPointCount": 14,
+    "actionBindingCount": 75,
+    "routeCheckCount": 25,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

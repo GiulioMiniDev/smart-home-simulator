@@ -1,0 +1,22 @@
+{
+  "reportVersion": "1.0.0",
+  "success": true,
+  "sourceBundleId": "sim_marco_rossi_2026__default_home_model__1.0.0",
+  "sourceBundleSha256": "11cd1088219b1f0a919cb971af23f18172e8d5cb4fa72b4be655d50bbf0607f0",
+  "traceSha256": "4f1411b49dbb9e01b18129d5b83e6c1ba8b0e1ea4144ebf9db2e74192ec39e59",
+  "semanticDigest": "9b093543c2415f6d94488a462de664be682841c6a1d36ffb067ec33c8e6a6a5f",
+  "issues": [],
+  "summary": {
+    "plannedActivityCount": 15,
+    "completedActivityCount": 15,
+    "deviatedActivityCount": 0,
+    "failedActivityCount": 0,
+    "droppedActivityCount": 0,
+    "actionExecutionCount": 75,
+    "movementCount": 12,
+    "stateTransitionCount": 95,
+    "runtimeEventCount": 0,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

@@ -1,0 +1,759 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "life_scenario",
+  "scenarioId": "sim_marco_rossi_2026",
+  "title": "Giornate lavorative di Marco Rossi",
+  "language": "en",
+  "timeZone": "Europe/Rome",
+  "simulationWindow": {
+    "start": "2026-10-30T00:00:00+01:00",
+    "end": "2026-10-31T23:59:59+01:00"
+  },
+  "seed": 1,
+  "provenance": {
+    "authorType": "external_llm",
+    "generatorName": "smart-home-simulator-external-llm-authoring",
+    "generatorVersion": "1.2.0",
+    "modelName": "qwen2.5-coder-7b-q4_k_m",
+    "promptTemplateVersion": "generate-simulation-inputs-1.2.0-simplified",
+    "generatedAt": "2026-10-29T20:00:00+01:00",
+    "humanReviewed": false,
+    "parameters": {}
+  },
+  "modelReferences": {
+    "activityCatalog": {
+      "referenceId": "smart_home_activity_catalog",
+      "version": "1.0.0"
+    },
+    "homeModel": {
+      "referenceId": "default_home_model",
+      "version": "1.0.0"
+    },
+    "sensorModel": null
+  },
+  "materializationPolicy": {
+    "authoritativeStateSource": "scenario_initial_then_previous_execution",
+    "revalidateBeforeEachDay": true,
+    "requireEveryDate": true,
+    "allowLocalRepair": true,
+    "repairOrder": [
+      "shift_within_window",
+      "shorten_within_range",
+      "apply_declared_fallback",
+      "drop_optional_activity",
+      "reject_day_plan"
+    ]
+  },
+  "residents": [
+    {
+      "residentId": "marco_rossi",
+      "displayName": "Marco Rossi",
+      "profile": {
+        "age": 34,
+        "gender": "male",
+        "occupation": "software_engineer",
+        "chronotype": "morning"
+      }
+    }
+  ],
+  "externalPeople": [],
+  "locations": [
+    {
+      "locationId": "bedroom",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "bathroom",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "kitchen",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "living_room",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "workplace",
+      "kind": "external",
+      "memberLocationIds": [],
+      "attributes": {}
+    }
+  ],
+  "resources": [
+    {
+      "resourceId": "refrigerator",
+      "resourceType": "refrigerator",
+      "locationId": "kitchen",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "television",
+      "resourceType": "television",
+      "locationId": "living_room",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "shower",
+      "resourceType": "shower",
+      "locationId": "bathroom",
+      "capacity": 1,
+      "attributes": {}
+    }
+  ],
+  "initialState": {
+    "at": "2026-10-30T00:00:00+01:00",
+    "residents": [
+      {
+        "residentId": "marco_rossi",
+        "locationId": "bedroom",
+        "facts": {}
+      }
+    ],
+    "environmentFacts": {},
+    "resourceFacts": {}
+  },
+  "commitments": [],
+  "days": [
+    {
+      "date": "2026-10-30",
+      "context": {
+        "dayType": "weekday",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_wake_up_day1",
+          "actorId": "marco_rossi",
+          "intent": "wake_up_without_alarm",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T07:00:00+01:00",
+            "preferred": "2026-10-30T07:00:00+01:00",
+            "latest": "2026-10-30T07:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 90,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_hygiene_day1",
+          "actorId": "marco_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T07:15:00+01:00",
+            "preferred": "2026-10-30T07:20:00+01:00",
+            "latest": "2026-10-30T07:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 20.0,
+            "maximumMinutes": 30.0
+          },
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "shower",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_breakfast_day1",
+          "actorId": "marco_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T07:45:00+01:00",
+            "preferred": "2026-10-30T07:50:00+01:00",
+            "latest": "2026-10-30T08:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 20.0,
+            "maximumMinutes": 30.0
+          },
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "refrigerator",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_work_day1",
+          "actorId": "marco_rossi",
+          "intent": "work_shift",
+          "locationIds": [
+            "workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T08:30:00+01:00",
+            "preferred": "2026-10-30T09:00:00+01:00",
+            "latest": "2026-10-30T09:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 100,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_dinner_day1",
+          "actorId": "marco_rossi",
+          "intent": "cook_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T19:30:00+01:00",
+            "preferred": "2026-10-30T20:00:00+01:00",
+            "latest": "2026-10-30T20:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "refrigerator",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tv_day1",
+          "actorId": "marco_rossi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T21:00:00+01:00",
+            "preferred": "2026-10-30T21:15:00+01:00",
+            "latest": "2026-10-30T21:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 60.0,
+            "maximumMinutes": 90.0
+          },
+          "mandatory": true,
+          "priority": 60,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_evening_hygiene_day1",
+          "actorId": "marco_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T22:45:00+01:00",
+            "preferred": "2026-10-30T23:00:00+01:00",
+            "latest": "2026-10-30T23:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 10.0,
+            "preferredMinutes": 15.0,
+            "maximumMinutes": 20.0
+          },
+          "mandatory": true,
+          "priority": 70,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sleep_day1",
+          "actorId": "marco_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-30T23:15:00+01:00",
+            "preferred": "2026-10-30T23:30:00+01:00",
+            "latest": "2026-10-30T23:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 360.0,
+            "preferredMinutes": 420.0,
+            "maximumMinutes": 450.0
+          },
+          "mandatory": true,
+          "priority": 100,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "context": {
+        "dayType": "weekend",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_wake_up_day2",
+          "actorId": "marco_rossi",
+          "intent": "wake_up_without_alarm",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T08:00:00+01:00",
+            "preferred": "2026-10-31T08:30:00+01:00",
+            "latest": "2026-10-31T09:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 90,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_hygiene_day2",
+          "actorId": "marco_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T08:45:00+01:00",
+            "preferred": "2026-10-31T09:00:00+01:00",
+            "latest": "2026-10-31T09:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 20.0,
+            "maximumMinutes": 30.0
+          },
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "shower",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_breakfast_day2",
+          "actorId": "marco_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T09:30:00+01:00",
+            "preferred": "2026-10-31T09:45:00+01:00",
+            "latest": "2026-10-31T10:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 20.0,
+            "maximumMinutes": 30.0
+          },
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "refrigerator",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_dinner_day2",
+          "actorId": "marco_rossi",
+          "intent": "cook_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T19:30:00+01:00",
+            "preferred": "2026-10-31T20:00:00+01:00",
+            "latest": "2026-10-31T20:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "refrigerator",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tv_day2",
+          "actorId": "marco_rossi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T21:00:00+01:00",
+            "preferred": "2026-10-31T21:15:00+01:00",
+            "latest": "2026-10-31T21:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 60.0,
+            "maximumMinutes": 90.0
+          },
+          "mandatory": true,
+          "priority": 60,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television",
+              "units": 1
+            }
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_evening_hygiene_day2",
+          "actorId": "marco_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T22:45:00+01:00",
+            "preferred": "2026-10-31T23:00:00+01:00",
+            "latest": "2026-10-31T23:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 10.0,
+            "preferredMinutes": 15.0,
+            "maximumMinutes": 20.0
+          },
+          "mandatory": true,
+          "priority": 70,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sleep_day2",
+          "actorId": "marco_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-10-31T22:00:00+01:00",
+            "preferred": "2026-10-31T22:30:00+01:00",
+            "latest": "2026-10-31T22:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 60.0,
+            "maximumMinutes": 80.0
+          },
+          "mandatory": true,
+          "priority": 100,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    }
+  ],
+  "runtimeEventCandidates": [],
+  "declaredConstraints": [],
+  "requestedOutputs": {
+    "observableSensorLog": true,
+    "oracleGroundTruth": true,
+    "executedActivityTrace": true,
+    "planExecutionDiff": true,
+    "finalDailyDiaries": true,
+    "finalScenarioState": true,
+    "formats": [
+      "jsonl"
+    ]
+  },
+  "extensions": {}
+}

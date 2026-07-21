@@ -1,0 +1,22 @@
+{
+  "reportVersion": "1.0.0",
+  "success": true,
+  "sourceBundleId": "mario_rossi_week_2026__synthetic_mario_rome_apartment_logical_v1__1.0.0",
+  "sourceBundleSha256": "baf137e7adba5e3969fa2b5cff80aeed119961ed15e780bcf4bde9e93ad00a93",
+  "traceSha256": "6c15cbf7055660aa2a5501b9a2b9f3fa42f923d76862bb431e1e341f2ba63de4",
+  "semanticDigest": "e3abbea050389f963236b34dcabad5878826118b2b1b878416ba3dc9204415e6",
+  "issues": [],
+  "summary": {
+    "plannedActivityCount": 98,
+    "completedActivityCount": 98,
+    "deviatedActivityCount": 0,
+    "failedActivityCount": 0,
+    "droppedActivityCount": 0,
+    "actionExecutionCount": 487,
+    "movementCount": 86,
+    "stateTransitionCount": 647,
+    "runtimeEventCount": 0,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

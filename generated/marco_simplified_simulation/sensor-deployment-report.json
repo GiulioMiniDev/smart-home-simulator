@@ -1,0 +1,23 @@
+{
+  "reportVersion": "1.0.0",
+  "generatorName": "smart-home-sim-sensor-deployer",
+  "generatorVersion": "1.1.0",
+  "success": true,
+  "preset": "room_coverage",
+  "policyVersion": "1.1.0",
+  "policySha256": "96b38fad7b58ebd6784094feb46bde201a125f65f4939a0637aa6dc9065f4fea",
+  "sourceBundleId": "sim_marco_rossi_2026__default_home_model__1.0.0",
+  "sourceBundleSha256": "11cd1088219b1f0a919cb971af23f18172e8d5cb4fa72b4be655d50bbf0607f0",
+  "sourceHomeSha256": "46f5a4f202a1253ab0827aed81ce7b404a8dc5be70b6253eb02ffec6fd44a18e",
+  "sensorModelId": "default_home_model__room_coverage__sensors",
+  "sensorModelVersion": "1.1.0",
+  "sensorModelSha256": "5321b275d80f7c0e772e9aebe9482f69a1e9c57eb87dbb0c686b6bc9b3e51deb",
+  "issues": [],
+  "summary": {
+    "sensorCount": 10,
+    "pirCount": 4,
+    "contactCount": 2,
+    "temperatureCount": 4,
+    "errorCount": 0
+  }
+}

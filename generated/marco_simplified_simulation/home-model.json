@@ -1,0 +1,2470 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "home_model",
+  "homeId": "default_home_model",
+  "homeVersion": "1.0.0",
+  "coordinateSystem": {
+    "unit": "meter",
+    "axisConvention": "x_east_y_north",
+    "originLabel": "home_local_origin"
+  },
+  "regions": [
+    {
+      "regionId": "bedroom",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 6.0,
+            "y": 0.0
+          },
+          {
+            "x": 6.0,
+            "y": 6.0
+          },
+          {
+            "x": 0.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "bathroom",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 6.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 6.0
+          },
+          {
+            "x": 6.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "kitchen",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 12.0,
+            "y": 0.0
+          },
+          {
+            "x": 18.0,
+            "y": 0.0
+          },
+          {
+            "x": 18.0,
+            "y": 6.0
+          },
+          {
+            "x": 12.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "living_room",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 18.0,
+            "y": 0.0
+          },
+          {
+            "x": 24.0,
+            "y": 0.0
+          },
+          {
+            "x": 24.0,
+            "y": 6.0
+          },
+          {
+            "x": 18.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "workplace",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.0,
+            "y": 18.0
+          },
+          {
+            "x": 6.0,
+            "y": 18.0
+          },
+          {
+            "x": 6.0,
+            "y": 24.0
+          },
+          {
+            "x": 0.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    }
+  ],
+  "connections": [
+    {
+      "connectionId": "door_bedroom_bathroom",
+      "kind": "doorway",
+      "regionAId": "bedroom",
+      "regionBId": "bathroom",
+      "portalA": {
+        "x": 5.6,
+        "y": 3.0
+      },
+      "portalB": {
+        "x": 6.4,
+        "y": 3.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_bathroom_kitchen",
+      "kind": "doorway",
+      "regionAId": "bathroom",
+      "regionBId": "kitchen",
+      "portalA": {
+        "x": 11.6,
+        "y": 3.0
+      },
+      "portalB": {
+        "x": 12.4,
+        "y": 3.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_kitchen_living_room",
+      "kind": "doorway",
+      "regionAId": "kitchen",
+      "regionBId": "living_room",
+      "portalA": {
+        "x": 17.6,
+        "y": 3.0
+      },
+      "portalB": {
+        "x": 18.4,
+        "y": 3.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_bedroom_workplace",
+      "kind": "transit",
+      "regionAId": "bedroom",
+      "regionBId": "workplace",
+      "portalA": {
+        "x": 3.0,
+        "y": 3.0
+      },
+      "portalB": {
+        "x": 3.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 500.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    }
+  ],
+  "obstacles": [],
+  "interactionPoints": [
+    {
+      "interactionPointId": "anchor_bedroom",
+      "regionId": "bedroom",
+      "position": {
+        "x": 3.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "anchor_bathroom",
+      "regionId": "bathroom",
+      "position": {
+        "x": 9.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "anchor_kitchen",
+      "regionId": "kitchen",
+      "position": {
+        "x": 15.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "anchor_living_room",
+      "regionId": "living_room",
+      "position": {
+        "x": 21.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "anchor_workplace",
+      "regionId": "workplace",
+      "position": {
+        "x": 3.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_refrigerator",
+      "regionId": "kitchen",
+      "position": {
+        "x": 15.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_television",
+      "regionId": "living_room",
+      "position": {
+        "x": 21.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_shower",
+      "regionId": "bathroom",
+      "position": {
+        "x": 9.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_entrance_door",
+      "regionId": "bedroom",
+      "position": {
+        "x": 0.75,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_service_bedroom",
+      "regionId": "bedroom",
+      "position": {
+        "x": 3.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_service_bathroom",
+      "regionId": "bathroom",
+      "position": {
+        "x": 9.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_service_kitchen",
+      "regionId": "kitchen",
+      "position": {
+        "x": 15.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_service_living_room",
+      "regionId": "living_room",
+      "position": {
+        "x": 21.0,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "point_service_workplace",
+      "regionId": "workplace",
+      "position": {
+        "x": 3.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    }
+  ],
+  "entities": [
+    {
+      "entityId": "refrigerator",
+      "entityType": "refrigerator",
+      "regionId": "kitchen",
+      "interactionPointId": "point_refrigerator",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "coffee_and_breakfast_storage",
+            "food_storage",
+            "ingredients",
+            "prepared_food_portions",
+            "prepared_meal",
+            "refrigerator"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "television",
+      "entityType": "television",
+      "regionId": "living_room",
+      "interactionPointId": "point_television",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "media",
+            "television"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "shower",
+      "entityType": "shower",
+      "regionId": "bathroom",
+      "interactionPointId": "point_shower",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "personal_care_fixture",
+            "shower"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "entrance_door",
+      "entityType": "entrance_door",
+      "regionId": "bedroom",
+      "interactionPointId": "point_entrance_door",
+      "capabilities": [
+        {
+          "capability": "openable",
+          "roles": [
+            "entrance",
+            "home_entrance",
+            "home_exit"
+          ],
+          "supportedOperations": [
+            "enter_home",
+            "leave_home"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "service_bedroom",
+      "entityType": "generated_environment_service",
+      "regionId": "bedroom",
+      "interactionPointId": "point_service_bedroom",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "service_bathroom",
+      "entityType": "generated_environment_service",
+      "regionId": "bathroom",
+      "interactionPointId": "point_service_bathroom",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "service_kitchen",
+      "entityType": "generated_environment_service",
+      "regionId": "kitchen",
+      "interactionPointId": "point_service_kitchen",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "service_living_room",
+      "entityType": "generated_environment_service",
+      "regionId": "living_room",
+      "interactionPointId": "point_service_living_room",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "service_workplace",
+      "entityType": "generated_environment_service",
+      "regionId": "workplace",
+      "interactionPointId": "point_service_workplace",
+      "capabilities": [
+        {
+          "capability": "consumable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "close",
+            "open"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [
+            "breakfast",
+            "cook_dinner",
+            "desk_work",
+            "dinner",
+            "evening_hygiene",
+            "hygiene",
+            "lying",
+            "meal",
+            "morning_toilet_and_shower",
+            "prepare_and_eat_breakfast",
+            "refrigerator",
+            "shower",
+            "sitting",
+            "sleep",
+            "sleeping",
+            "standing",
+            "television",
+            "toilet",
+            "wake_up_without_alarm",
+            "walking",
+            "watch_television",
+            "watching_tv",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    }
+  ],
+  "locationBindings": [
+    {
+      "scenarioLocationId": "bedroom",
+      "regionIds": [
+        "bedroom"
+      ],
+      "anchorInteractionPointId": "anchor_bedroom"
+    },
+    {
+      "scenarioLocationId": "bathroom",
+      "regionIds": [
+        "bathroom"
+      ],
+      "anchorInteractionPointId": "anchor_bathroom"
+    },
+    {
+      "scenarioLocationId": "kitchen",
+      "regionIds": [
+        "kitchen"
+      ],
+      "anchorInteractionPointId": "anchor_kitchen"
+    },
+    {
+      "scenarioLocationId": "living_room",
+      "regionIds": [
+        "living_room"
+      ],
+      "anchorInteractionPointId": "anchor_living_room"
+    },
+    {
+      "scenarioLocationId": "workplace",
+      "regionIds": [
+        "workplace"
+      ],
+      "anchorInteractionPointId": "anchor_workplace"
+    }
+  ],
+  "resourceBindings": [
+    {
+      "scenarioResourceId": "refrigerator",
+      "entityId": "refrigerator"
+    },
+    {
+      "scenarioResourceId": "television",
+      "entityId": "television"
+    },
+    {
+      "scenarioResourceId": "shower",
+      "entityId": "shower"
+    }
+  ],
+  "kinematicDefaults": {
+    "bodyRadiusMeters": 0.25,
+    "minimumWalkingSpeedMetersPerSecond": 0.2,
+    "defaultWalkingSpeedMetersPerSecond": 1.2,
+    "postureTransitionSeconds": {
+      "standing": 1.5,
+      "walking": 0.5,
+      "sitting": 2.0,
+      "lying": 3.0
+    }
+  }
+}

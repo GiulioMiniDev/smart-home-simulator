@@ -1,0 +1,4116 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "execution_trace",
+  "traceId": "trace_11cd1088219b1f0a",
+  "sourceBundleId": "sim_marco_rossi_2026__default_home_model__1.0.0",
+  "sourceBundleSha256": "11cd1088219b1f0a919cb971af23f18172e8d5cb4fa72b4be655d50bbf0607f0",
+  "seed": 1,
+  "engine": {
+    "engineName": "smart-home-sim-engine",
+    "engineVersion": "1.0.0",
+    "eventBackend": "simpy",
+    "eventBackendVersion": "4.1.1",
+    "timeResolution": "microsecond",
+    "randomStreamPolicy": "sha256-named-streams-1.0.0",
+    "repairPolicyVersion": "local-repair-1.0.0"
+  },
+  "startedAt": "2026-10-30T00:00:00+01:00",
+  "endedAt": "2026-10-31T23:59:59+01:00",
+  "status": "completed",
+  "activityExecutions": [
+    {
+      "activityExecutionId": "activity_a7b4daf5c34ad64c",
+      "sourceActivityId": "act_wake_up_day1",
+      "actorId": "marco_rossi",
+      "intent": "wake_up_without_alarm",
+      "processModelId": "pm_marco_wake_up",
+      "plannedStart": "2026-10-30T07:00:00+01:00",
+      "plannedEnd": "2026-10-30T07:10:00+01:00",
+      "actualStart": "2026-10-30T07:00:00+01:00",
+      "actualEnd": "2026-10-30T07:10:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_421572717374a4ed",
+        "action_29bedd1d630e3574"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "sourceActivityId": "act_hygiene_day1",
+      "actorId": "marco_rossi",
+      "intent": "morning_toilet_and_shower",
+      "processModelId": "pm_marco_hygiene",
+      "plannedStart": "2026-10-30T07:20:00+01:00",
+      "plannedEnd": "2026-10-30T07:40:00+01:00",
+      "actualStart": "2026-10-30T07:20:00+01:00",
+      "actualEnd": "2026-10-30T07:40:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_b68e981bb40a7782",
+        "action_7030838905aca797",
+        "action_7e5ea00cc6be33fe",
+        "action_c36e55c59c534f09",
+        "action_e07247c712a9b167"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "sourceActivityId": "act_breakfast_day1",
+      "actorId": "marco_rossi",
+      "intent": "prepare_and_eat_breakfast",
+      "processModelId": "pm_marco_breakfast",
+      "plannedStart": "2026-10-30T07:50:00+01:00",
+      "plannedEnd": "2026-10-30T08:10:00+01:00",
+      "actualStart": "2026-10-30T07:50:00+01:00",
+      "actualEnd": "2026-10-30T08:09:59.999999+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_f3dbb53edf9df3bd",
+        "action_b7c67ca1a8af6686",
+        "action_8ece0cfb614a8df4",
+        "action_29d65171834d7d0f",
+        "action_961b145862709fcf",
+        "action_30207fda323c4072",
+        "action_f2237e9d85bc34d3",
+        "action_8a8f53d2b70a9f0f",
+        "action_82c8260d80c5f3dc",
+        "action_f527937bfc819873",
+        "action_40472a83b5209a2f"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_f7ae2c39eb8d54a0",
+      "sourceActivityId": "act_work_day1",
+      "actorId": "marco_rossi",
+      "intent": "work_shift",
+      "processModelId": "pm_marco_work",
+      "plannedStart": "2026-10-30T09:00:00+01:00",
+      "plannedEnd": "2026-10-30T17:00:00+01:00",
+      "actualStart": "2026-10-30T09:00:00+01:00",
+      "actualEnd": "2026-10-30T17:00:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_e4daaf275f167b1a",
+        "action_8dc9edc9ee6a0c1f",
+        "action_d0763509af4f8b11"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "sourceActivityId": "act_dinner_day1",
+      "actorId": "marco_rossi",
+      "intent": "cook_dinner",
+      "processModelId": "pm_marco_cook_dinner",
+      "plannedStart": "2026-10-30T20:00:00+01:00",
+      "plannedEnd": "2026-10-30T20:30:00+01:00",
+      "actualStart": "2026-10-30T20:00:00+01:00",
+      "actualEnd": "2026-10-30T20:30:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_57b20ea33d957a23",
+        "action_8bfb96d4ca5e3695",
+        "action_703d69c52cb7571e",
+        "action_b6110c8abfbcfbe0",
+        "action_854db3eaaebcdd22",
+        "action_894fd145248e9a14",
+        "action_c9b8bf325728c47a",
+        "action_359ff3148a072722"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "sourceActivityId": "act_tv_day1",
+      "actorId": "marco_rossi",
+      "intent": "watch_television",
+      "processModelId": "pm_marco_watch_tv",
+      "plannedStart": "2026-10-30T21:15:00+01:00",
+      "plannedEnd": "2026-10-30T22:15:00+01:00",
+      "actualStart": "2026-10-30T21:15:00+01:00",
+      "actualEnd": "2026-10-30T22:15:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_433cc375e6f1db37",
+        "action_5444e524c7a209f5",
+        "action_34684709abeada52",
+        "action_a270683f9204effa",
+        "action_dda6ca5a4c35f77d"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_92c51107fe1867bd",
+      "sourceActivityId": "act_evening_hygiene_day1",
+      "actorId": "marco_rossi",
+      "intent": "evening_hygiene",
+      "processModelId": "pm_marco_evening_hygiene",
+      "plannedStart": "2026-10-30T23:00:00+01:00",
+      "plannedEnd": "2026-10-30T23:15:00+01:00",
+      "actualStart": "2026-10-30T23:00:00+01:00",
+      "actualEnd": "2026-10-30T23:15:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_21e27f2555a474c1",
+        "action_1bdd34f1c7045850"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_4ff46daab22f1935",
+      "sourceActivityId": "act_sleep_day1",
+      "actorId": "marco_rossi",
+      "intent": "sleep",
+      "processModelId": "pm_marco_sleep",
+      "plannedStart": "2026-10-30T23:30:00+01:00",
+      "plannedEnd": "2026-10-31T06:30:00+01:00",
+      "actualStart": "2026-10-30T23:30:00+01:00",
+      "actualEnd": "2026-10-31T06:30:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_215c6b15e196d7e7",
+        "action_da06b72d69d7eb73",
+        "action_686afd878e65c1e7"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_67c2a679687370fb",
+      "sourceActivityId": "act_wake_up_day2",
+      "actorId": "marco_rossi",
+      "intent": "wake_up_without_alarm",
+      "processModelId": "pm_marco_wake_up",
+      "plannedStart": "2026-10-31T08:30:00+01:00",
+      "plannedEnd": "2026-10-31T08:40:00+01:00",
+      "actualStart": "2026-10-31T08:30:00+01:00",
+      "actualEnd": "2026-10-31T08:40:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_b2a12666c5e85192",
+        "action_9e81cdb33926c56d"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "sourceActivityId": "act_hygiene_day2",
+      "actorId": "marco_rossi",
+      "intent": "morning_toilet_and_shower",
+      "processModelId": "pm_marco_hygiene",
+      "plannedStart": "2026-10-31T09:00:00+01:00",
+      "plannedEnd": "2026-10-31T09:20:00+01:00",
+      "actualStart": "2026-10-31T09:00:00+01:00",
+      "actualEnd": "2026-10-31T09:20:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_b848036e587482ed",
+        "action_146418461b4c79c9",
+        "action_5bbfe6875515d530",
+        "action_7b45a1d03fd79b73",
+        "action_e5b83fb7cd08c7c1"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "sourceActivityId": "act_breakfast_day2",
+      "actorId": "marco_rossi",
+      "intent": "prepare_and_eat_breakfast",
+      "processModelId": "pm_marco_breakfast",
+      "plannedStart": "2026-10-31T09:45:00+01:00",
+      "plannedEnd": "2026-10-31T10:05:00+01:00",
+      "actualStart": "2026-10-31T09:45:00+01:00",
+      "actualEnd": "2026-10-31T10:04:59.999999+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_8ff234b1e38f96b0",
+        "action_10f88b0bc107067b",
+        "action_759f57522acb3d87",
+        "action_848d63693b8ad495",
+        "action_e6b41f5adfcebdb8",
+        "action_393a71014a2e8257",
+        "action_91b1e5a6fe63c8cb",
+        "action_505c1e25f69da667",
+        "action_0d98748997d02b3f",
+        "action_639d89727950ae4d",
+        "action_63834f381b19f886"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "sourceActivityId": "act_dinner_day2",
+      "actorId": "marco_rossi",
+      "intent": "cook_dinner",
+      "processModelId": "pm_marco_cook_dinner",
+      "plannedStart": "2026-10-31T20:00:00+01:00",
+      "plannedEnd": "2026-10-31T20:30:00+01:00",
+      "actualStart": "2026-10-31T20:00:00+01:00",
+      "actualEnd": "2026-10-31T20:30:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_6e68965bf10097b3",
+        "action_d30131e5439988d7",
+        "action_363a5367791d8d05",
+        "action_5d1525df8e3769ff",
+        "action_d4fed1eb5c47cc89",
+        "action_5d099fbe170d5499",
+        "action_52050378c3197e05",
+        "action_38f8c5730491cdca"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_807225d576d90bac",
+      "sourceActivityId": "act_tv_day2",
+      "actorId": "marco_rossi",
+      "intent": "watch_television",
+      "processModelId": "pm_marco_watch_tv",
+      "plannedStart": "2026-10-31T21:15:00+01:00",
+      "plannedEnd": "2026-10-31T22:15:00+01:00",
+      "actualStart": "2026-10-31T21:15:00+01:00",
+      "actualEnd": "2026-10-31T22:15:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_579fbd7956b6b4ef",
+        "action_6cb14cc2d0ec7116",
+        "action_d450005d95d0beea",
+        "action_9122e85b3b615592",
+        "action_e847ab90cad9e1a1"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_ff77db0eb2a1ed2d",
+      "sourceActivityId": "act_sleep_day2",
+      "actorId": "marco_rossi",
+      "intent": "sleep",
+      "processModelId": "pm_marco_sleep",
+      "plannedStart": "2026-10-31T22:30:00+01:00",
+      "plannedEnd": "2026-10-31T23:00:00+01:00",
+      "actualStart": "2026-10-31T22:30:00+01:00",
+      "actualEnd": "2026-10-31T23:00:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_2e34f319026b9b4c",
+        "action_68b03ee59e285810",
+        "action_35a49cc19f65ef96"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    },
+    {
+      "activityExecutionId": "activity_5bd4dd384aae9581",
+      "sourceActivityId": "act_evening_hygiene_day2",
+      "actorId": "marco_rossi",
+      "intent": "evening_hygiene",
+      "processModelId": "pm_marco_evening_hygiene",
+      "plannedStart": "2026-10-31T23:00:00+01:00",
+      "plannedEnd": "2026-10-31T23:15:00+01:00",
+      "actualStart": "2026-10-31T23:00:00+01:00",
+      "actualEnd": "2026-10-31T23:15:00+01:00",
+      "status": "completed",
+      "actionExecutionIds": [
+        "action_98aaf32e59cedc64",
+        "action_150d4a2c511a2c2e"
+      ],
+      "deviationIds": [],
+      "failureCode": null
+    }
+  ],
+  "actionExecutions": [
+    {
+      "actionExecutionId": "action_421572717374a4ed",
+      "activityExecutionId": "activity_a7b4daf5c34ad64c",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:00:00+01:00",
+      "endedAt": "2026-10-30T07:05:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bedroom"
+      },
+      "providerIds": [
+        "location:bedroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_29bedd1d630e3574",
+      "activityExecutionId": "activity_a7b4daf5c34ad64c",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:05:00+01:00",
+      "endedAt": "2026-10-30T07:10:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "standing"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_b68e981bb40a7782",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:20:00+01:00",
+      "endedAt": "2026-10-30T07:24:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bathroom"
+      },
+      "providerIds": [
+        "location:bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_7030838905aca797",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "personal_care",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:24:00+01:00",
+      "endedAt": "2026-10-30T07:28:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "procedure": "toilet"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_7e5ea00cc6be33fe",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:28:00+01:00",
+      "endedAt": "2026-10-30T07:32:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "shower"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_c36e55c59c534f09",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "personal_care",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:32:00+01:00",
+      "endedAt": "2026-10-30T07:36:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "procedure": "shower"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_e07247c712a9b167",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:36:00+01:00",
+      "endedAt": "2026-10-30T07:40:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "shower"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_f3dbb53edf9df3bd",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:50:00+01:00",
+      "endedAt": "2026-10-30T07:51:49.090909+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "kitchen"
+      },
+      "providerIds": [
+        "location:kitchen"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_b7c67ca1a8af6686",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "open",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:51:49.090909+01:00",
+      "endedAt": "2026-10-30T07:53:38.181818+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_8ece0cfb614a8df4",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "take_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:53:38.181818+01:00",
+      "endedAt": "2026-10-30T07:55:27.272727+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_29d65171834d7d0f",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "close",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:55:27.272727+01:00",
+      "endedAt": "2026-10-30T07:57:16.363636+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_961b145862709fcf",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:57:16.363636+01:00",
+      "endedAt": "2026-10-30T07:59:05.454545+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_30207fda323c4072",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_5",
+      "occurrenceIndex": 0,
+      "actionType": "prepare_food",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:59:05.454545+01:00",
+      "endedAt": "2026-10-30T08:00:54.545454+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "mealKind": "breakfast"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_f2237e9d85bc34d3",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_6",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T08:00:54.545454+01:00",
+      "endedAt": "2026-10-30T08:02:43.636363+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_8a8f53d2b70a9f0f",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_7",
+      "occurrenceIndex": 0,
+      "actionType": "put_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T08:02:43.636363+01:00",
+      "endedAt": "2026-10-30T08:04:32.727272+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_82c8260d80c5f3dc",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_8",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T08:04:32.727272+01:00",
+      "endedAt": "2026-10-30T08:06:21.818181+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "sitting"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_f527937bfc819873",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_9",
+      "occurrenceIndex": 0,
+      "actionType": "consume",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T08:06:21.818181+01:00",
+      "endedAt": "2026-10-30T08:08:10.909090+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "meal"
+      },
+      "providerIds": [
+        "service_kitchen"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_40472a83b5209a2f",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "nodeId": "act_10",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T08:08:10.909090+01:00",
+      "endedAt": "2026-10-30T08:09:59.999999+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "standing"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_e4daaf275f167b1a",
+      "activityExecutionId": "activity_f7ae2c39eb8d54a0",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "travel_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T09:00:00+01:00",
+      "endedAt": "2026-10-30T11:40:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "workplace"
+      },
+      "providerIds": [
+        "location:workplace"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_8dc9edc9ee6a0c1f",
+      "activityExecutionId": "activity_f7ae2c39eb8d54a0",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T11:40:00+01:00",
+      "endedAt": "2026-10-30T14:20:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "sitting"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_d0763509af4f8b11",
+      "activityExecutionId": "activity_f7ae2c39eb8d54a0",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "perform_work",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T14:20:00+01:00",
+      "endedAt": "2026-10-30T17:00:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "mode": "desk_work"
+      },
+      "providerIds": [
+        "service_workplace"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_57b20ea33d957a23",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:00:00+01:00",
+      "endedAt": "2026-10-30T20:03:45+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "kitchen"
+      },
+      "providerIds": [
+        "location:kitchen"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_8bfb96d4ca5e3695",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "open",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:03:45+01:00",
+      "endedAt": "2026-10-30T20:07:30+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_703d69c52cb7571e",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "take_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:07:30+01:00",
+      "endedAt": "2026-10-30T20:11:15+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_b6110c8abfbcfbe0",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "close",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:11:15+01:00",
+      "endedAt": "2026-10-30T20:15:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_854db3eaaebcdd22",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:15:00+01:00",
+      "endedAt": "2026-10-30T20:18:45+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_894fd145248e9a14",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_5",
+      "occurrenceIndex": 0,
+      "actionType": "prepare_food",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:18:45+01:00",
+      "endedAt": "2026-10-30T20:22:30+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "mealKind": "dinner"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_c9b8bf325728c47a",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_6",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:22:30+01:00",
+      "endedAt": "2026-10-30T20:26:15+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_359ff3148a072722",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "nodeId": "act_7",
+      "occurrenceIndex": 0,
+      "actionType": "put_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:26:15+01:00",
+      "endedAt": "2026-10-30T20:30:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_433cc375e6f1db37",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T21:15:00+01:00",
+      "endedAt": "2026-10-30T21:27:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "living_room"
+      },
+      "providerIds": [
+        "location:living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_5444e524c7a209f5",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T21:27:00+01:00",
+      "endedAt": "2026-10-30T21:39:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "sitting"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_34684709abeada52",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T21:39:00+01:00",
+      "endedAt": "2026-10-30T21:51:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "television"
+      },
+      "providerIds": [
+        "service_living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_a270683f9204effa",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "leisure",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T21:51:00+01:00",
+      "endedAt": "2026-10-30T22:03:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "kind": "watching_tv"
+      },
+      "providerIds": [
+        "service_living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_dda6ca5a4c35f77d",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T22:03:00+01:00",
+      "endedAt": "2026-10-30T22:15:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "television"
+      },
+      "providerIds": [
+        "service_living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_21e27f2555a474c1",
+      "activityExecutionId": "activity_92c51107fe1867bd",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T23:00:00+01:00",
+      "endedAt": "2026-10-30T23:07:30+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bathroom"
+      },
+      "providerIds": [
+        "location:bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_1bdd34f1c7045850",
+      "activityExecutionId": "activity_92c51107fe1867bd",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "personal_care",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T23:07:30+01:00",
+      "endedAt": "2026-10-30T23:15:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "procedure": "hygiene"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_215c6b15e196d7e7",
+      "activityExecutionId": "activity_4ff46daab22f1935",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T23:30:00+01:00",
+      "endedAt": "2026-10-31T01:50:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bedroom"
+      },
+      "providerIds": [
+        "location:bedroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_da06b72d69d7eb73",
+      "activityExecutionId": "activity_4ff46daab22f1935",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T01:50:00+01:00",
+      "endedAt": "2026-10-31T04:10:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "lying"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_686afd878e65c1e7",
+      "activityExecutionId": "activity_4ff46daab22f1935",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "wait",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T04:10:00+01:00",
+      "endedAt": "2026-10-31T06:30:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "purpose": "sleeping"
+      },
+      "providerIds": [],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_b2a12666c5e85192",
+      "activityExecutionId": "activity_67c2a679687370fb",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T08:30:00+01:00",
+      "endedAt": "2026-10-31T08:35:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bedroom"
+      },
+      "providerIds": [
+        "location:bedroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_9e81cdb33926c56d",
+      "activityExecutionId": "activity_67c2a679687370fb",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T08:35:00+01:00",
+      "endedAt": "2026-10-31T08:40:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "standing"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_b848036e587482ed",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:00:00+01:00",
+      "endedAt": "2026-10-31T09:04:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bathroom"
+      },
+      "providerIds": [
+        "location:bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_146418461b4c79c9",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "personal_care",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:04:00+01:00",
+      "endedAt": "2026-10-31T09:08:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "procedure": "toilet"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_5bbfe6875515d530",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:08:00+01:00",
+      "endedAt": "2026-10-31T09:12:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "shower"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_7b45a1d03fd79b73",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "personal_care",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:12:00+01:00",
+      "endedAt": "2026-10-31T09:16:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "procedure": "shower"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_e5b83fb7cd08c7c1",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:16:00+01:00",
+      "endedAt": "2026-10-31T09:20:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "shower"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_8ff234b1e38f96b0",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:45:00+01:00",
+      "endedAt": "2026-10-31T09:46:49.090909+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "kitchen"
+      },
+      "providerIds": [
+        "location:kitchen"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_10f88b0bc107067b",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "open",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:46:49.090909+01:00",
+      "endedAt": "2026-10-31T09:48:38.181818+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_759f57522acb3d87",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "take_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:48:38.181818+01:00",
+      "endedAt": "2026-10-31T09:50:27.272727+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_848d63693b8ad495",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "close",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:50:27.272727+01:00",
+      "endedAt": "2026-10-31T09:52:16.363636+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_e6b41f5adfcebdb8",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:52:16.363636+01:00",
+      "endedAt": "2026-10-31T09:54:05.454545+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_393a71014a2e8257",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_5",
+      "occurrenceIndex": 0,
+      "actionType": "prepare_food",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:54:05.454545+01:00",
+      "endedAt": "2026-10-31T09:55:54.545454+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "mealKind": "breakfast"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_91b1e5a6fe63c8cb",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_6",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:55:54.545454+01:00",
+      "endedAt": "2026-10-31T09:57:43.636363+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_505c1e25f69da667",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_7",
+      "occurrenceIndex": 0,
+      "actionType": "put_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:57:43.636363+01:00",
+      "endedAt": "2026-10-31T09:59:32.727272+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_0d98748997d02b3f",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_8",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:59:32.727272+01:00",
+      "endedAt": "2026-10-31T10:01:21.818181+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "sitting"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_639d89727950ae4d",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_9",
+      "occurrenceIndex": 0,
+      "actionType": "consume",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T10:01:21.818181+01:00",
+      "endedAt": "2026-10-31T10:03:10.909090+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "meal"
+      },
+      "providerIds": [
+        "service_kitchen"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_63834f381b19f886",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "nodeId": "act_10",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T10:03:10.909090+01:00",
+      "endedAt": "2026-10-31T10:04:59.999999+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "standing"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_6e68965bf10097b3",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:00:00+01:00",
+      "endedAt": "2026-10-31T20:03:45+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "kitchen"
+      },
+      "providerIds": [
+        "location:kitchen"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_d30131e5439988d7",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "open",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:03:45+01:00",
+      "endedAt": "2026-10-31T20:07:30+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_363a5367791d8d05",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "take_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:07:30+01:00",
+      "endedAt": "2026-10-31T20:11:15+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_5d1525df8e3769ff",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "close",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:11:15+01:00",
+      "endedAt": "2026-10-31T20:15:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_d4fed1eb5c47cc89",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:15:00+01:00",
+      "endedAt": "2026-10-31T20:18:45+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_5d099fbe170d5499",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_5",
+      "occurrenceIndex": 0,
+      "actionType": "prepare_food",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:18:45+01:00",
+      "endedAt": "2026-10-31T20:22:30+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "mealKind": "dinner"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_52050378c3197e05",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_6",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:22:30+01:00",
+      "endedAt": "2026-10-31T20:26:15+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "refrigerator"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_38f8c5730491cdca",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "nodeId": "act_7",
+      "occurrenceIndex": 0,
+      "actionType": "put_item",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T20:26:15+01:00",
+      "endedAt": "2026-10-31T20:30:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "itemRole": "food_storage"
+      },
+      "providerIds": [
+        "refrigerator"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_579fbd7956b6b4ef",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T21:15:00+01:00",
+      "endedAt": "2026-10-31T21:27:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "living_room"
+      },
+      "providerIds": [
+        "location:living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_6cb14cc2d0ec7116",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T21:27:00+01:00",
+      "endedAt": "2026-10-31T21:39:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "sitting"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_d450005d95d0beea",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "activate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T21:39:00+01:00",
+      "endedAt": "2026-10-31T21:51:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "television"
+      },
+      "providerIds": [
+        "service_living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_9122e85b3b615592",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "nodeId": "act_3",
+      "occurrenceIndex": 0,
+      "actionType": "leisure",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T21:51:00+01:00",
+      "endedAt": "2026-10-31T22:03:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "kind": "watching_tv"
+      },
+      "providerIds": [
+        "service_living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_e847ab90cad9e1a1",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "nodeId": "act_4",
+      "occurrenceIndex": 0,
+      "actionType": "deactivate",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T22:03:00+01:00",
+      "endedAt": "2026-10-31T22:15:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "target": "television"
+      },
+      "providerIds": [
+        "service_living_room"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_2e34f319026b9b4c",
+      "activityExecutionId": "activity_ff77db0eb2a1ed2d",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T22:30:00+01:00",
+      "endedAt": "2026-10-31T22:40:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bedroom"
+      },
+      "providerIds": [
+        "location:bedroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_68b03ee59e285810",
+      "activityExecutionId": "activity_ff77db0eb2a1ed2d",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "change_posture",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T22:40:00+01:00",
+      "endedAt": "2026-10-31T22:50:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "posture": "lying"
+      },
+      "providerIds": [
+        "marco_rossi"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_35a49cc19f65ef96",
+      "activityExecutionId": "activity_ff77db0eb2a1ed2d",
+      "nodeId": "act_2",
+      "occurrenceIndex": 0,
+      "actionType": "wait",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T22:50:00+01:00",
+      "endedAt": "2026-10-31T23:00:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "purpose": "sleeping"
+      },
+      "providerIds": [],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_98aaf32e59cedc64",
+      "activityExecutionId": "activity_5bd4dd384aae9581",
+      "nodeId": "move_1",
+      "occurrenceIndex": 0,
+      "actionType": "move_to",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T23:00:00+01:00",
+      "endedAt": "2026-10-31T23:07:30+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "destination": "bathroom"
+      },
+      "providerIds": [
+        "location:bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    },
+    {
+      "actionExecutionId": "action_150d4a2c511a2c2e",
+      "activityExecutionId": "activity_5bd4dd384aae9581",
+      "nodeId": "act_1",
+      "occurrenceIndex": 0,
+      "actionType": "personal_care",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T23:07:30+01:00",
+      "endedAt": "2026-10-31T23:15:00+01:00",
+      "status": "completed",
+      "resolvedArguments": {
+        "procedure": "hygiene"
+      },
+      "providerIds": [
+        "service_bathroom"
+      ],
+      "selectedEdgeTargetId": null,
+      "failureCode": null
+    }
+  ],
+  "movements": [
+    {
+      "movementId": "movement_7c2b520d9d057cab",
+      "actionExecutionId": "action_b68e981bb40a7782",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:20:00+01:00",
+      "endedAt": "2026-10-30T07:20:05+01:00",
+      "originRegionId": "bedroom",
+      "destinationRegionId": "bathroom",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T07:20:00+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T07:20:02.166667+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T07:20:02.833333+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T07:20:05+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_132dd24316f6c06a",
+      "actionExecutionId": "action_f3dbb53edf9df3bd",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T07:50:00+01:00",
+      "endedAt": "2026-10-30T07:50:05+01:00",
+      "originRegionId": "bathroom",
+      "destinationRegionId": "kitchen",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T07:50:00+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T07:50:02.166667+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 11.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T07:50:02.833333+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 12.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T07:50:05+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 15.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_3cf18a9abc3631b4",
+      "actionExecutionId": "action_e4daaf275f167b1a",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T09:00:00+01:00",
+      "endedAt": "2026-10-30T09:01:12.500000+01:00",
+      "originRegionId": "kitchen",
+      "destinationRegionId": "workplace",
+      "distanceMeters": 512.0,
+      "durationMicroseconds": 72500000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T09:00:00+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 15.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T09:00:00.368164+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 12.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T09:00:00.481445+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 11.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T09:00:01.217773+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T09:00:01.331055+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T09:00:01.699219+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T09:00:04.248047+01:00",
+          "regionId": "workplace",
+          "position": {
+            "x": 3.0,
+            "y": 21.0
+          },
+          "traversalMode": "transport"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_55d05ffd25eb1ccf",
+      "actionExecutionId": "action_57b20ea33d957a23",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T20:00:00+01:00",
+      "endedAt": "2026-10-30T20:01:12.500000+01:00",
+      "originRegionId": "workplace",
+      "destinationRegionId": "kitchen",
+      "distanceMeters": 512.0,
+      "durationMicroseconds": 72500000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T20:00:00+01:00",
+          "regionId": "workplace",
+          "position": {
+            "x": 3.0,
+            "y": 21.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T20:00:02.548828+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "transport"
+        },
+        {
+          "at": "2026-10-30T20:00:02.916992+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T20:00:03.030273+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T20:00:03.766602+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 11.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T20:00:03.879883+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 12.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T20:00:04.248047+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 15.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_38d9b3ead9979579",
+      "actionExecutionId": "action_433cc375e6f1db37",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T21:15:00+01:00",
+      "endedAt": "2026-10-30T21:15:05+01:00",
+      "originRegionId": "kitchen",
+      "destinationRegionId": "living_room",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T21:15:00+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 15.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T21:15:02.166667+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 17.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T21:15:02.833333+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 18.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T21:15:05+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 21.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_46b7a56892b57fd0",
+      "actionExecutionId": "action_21e27f2555a474c1",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T23:00:00+01:00",
+      "endedAt": "2026-10-30T23:00:10+01:00",
+      "originRegionId": "living_room",
+      "destinationRegionId": "bathroom",
+      "distanceMeters": 12.0,
+      "durationMicroseconds": 10000000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T23:00:00+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 21.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:00:02.166667+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 18.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:00:02.833333+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 17.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:00:07.166667+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 12.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:00:07.833333+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 11.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:00:10+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_a74c1aeb491bc3a5",
+      "actionExecutionId": "action_215c6b15e196d7e7",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-30T23:30:00+01:00",
+      "endedAt": "2026-10-30T23:30:05+01:00",
+      "originRegionId": "bathroom",
+      "destinationRegionId": "bedroom",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-30T23:30:00+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:30:02.166667+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:30:02.833333+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T23:30:05+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_73b809fe66c270d5",
+      "actionExecutionId": "action_b848036e587482ed",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:00:00+01:00",
+      "endedAt": "2026-10-31T09:00:05+01:00",
+      "originRegionId": "bedroom",
+      "destinationRegionId": "bathroom",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-31T09:00:00+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T09:00:02.166667+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T09:00:02.833333+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T09:00:05+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_2c29d4ffc4df1f1d",
+      "actionExecutionId": "action_8ff234b1e38f96b0",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T09:45:00+01:00",
+      "endedAt": "2026-10-31T09:45:05+01:00",
+      "originRegionId": "bathroom",
+      "destinationRegionId": "kitchen",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-31T09:45:00+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T09:45:02.166667+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 11.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T09:45:02.833333+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 12.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T09:45:05+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 15.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_78370c458e806b35",
+      "actionExecutionId": "action_579fbd7956b6b4ef",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T21:15:00+01:00",
+      "endedAt": "2026-10-31T21:15:05+01:00",
+      "originRegionId": "kitchen",
+      "destinationRegionId": "living_room",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-31T21:15:00+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 15.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T21:15:02.166667+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 17.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T21:15:02.833333+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 18.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T21:15:05+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 21.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_56fcc1513876d17c",
+      "actionExecutionId": "action_2e34f319026b9b4c",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T22:30:00+01:00",
+      "endedAt": "2026-10-31T22:30:15+01:00",
+      "originRegionId": "living_room",
+      "destinationRegionId": "bedroom",
+      "distanceMeters": 18.0,
+      "durationMicroseconds": 15000000,
+      "waypoints": [
+        {
+          "at": "2026-10-31T22:30:00+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 21.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:02.166667+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 18.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:02.833333+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 17.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:07.166667+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 12.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:07.833333+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 11.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:12.166667+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:12.833333+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T22:30:15+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    },
+    {
+      "movementId": "movement_9dd2abb43834b484",
+      "actionExecutionId": "action_98aaf32e59cedc64",
+      "actorId": "marco_rossi",
+      "startedAt": "2026-10-31T23:00:00+01:00",
+      "endedAt": "2026-10-31T23:00:05+01:00",
+      "originRegionId": "bedroom",
+      "destinationRegionId": "bathroom",
+      "distanceMeters": 6.0,
+      "durationMicroseconds": 5000000,
+      "waypoints": [
+        {
+          "at": "2026-10-31T23:00:00+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T23:00:02.166667+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 5.6,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T23:00:02.833333+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 6.4,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T23:00:05+01:00",
+          "regionId": "bathroom",
+          "position": {
+            "x": 9.0,
+            "y": 3.0
+          },
+          "traversalMode": "walking"
+        }
+      ]
+    }
+  ],
+  "stateTransitions": [
+    {
+      "transitionId": "state_806fd04e1c611a13",
+      "at": "2026-10-30T07:05:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": null,
+      "value": "bedroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_421572717374a4ed"
+      }
+    },
+    {
+      "transitionId": "state_93f5880c970e2875",
+      "at": "2026-10-30T07:10:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_29bedd1d630e3574"
+      }
+    },
+    {
+      "transitionId": "state_fe3a0e13d72207fc",
+      "at": "2026-10-30T07:10:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": null,
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_29bedd1d630e3574"
+      }
+    },
+    {
+      "transitionId": "state_84d4a750ae636548",
+      "at": "2026-10-30T07:20:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_b68e981bb40a7782"
+      }
+    },
+    {
+      "transitionId": "state_b36715b2c9ef8a9d",
+      "at": "2026-10-30T07:20:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_b68e981bb40a7782"
+      }
+    },
+    {
+      "transitionId": "state_ff4ccde4e46e4d6d",
+      "at": "2026-10-30T07:24:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bedroom",
+      "value": "bathroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_b68e981bb40a7782"
+      }
+    },
+    {
+      "transitionId": "state_b5d24c33e4441898",
+      "at": "2026-10-30T07:32:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_bathroom",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_7e5ea00cc6be33fe"
+      }
+    },
+    {
+      "transitionId": "state_111fa271f6670e0a",
+      "at": "2026-10-30T07:40:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_bathroom",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_e07247c712a9b167"
+      }
+    },
+    {
+      "transitionId": "state_49c59e49ff2c177f",
+      "at": "2026-10-30T07:50:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_f3dbb53edf9df3bd"
+      }
+    },
+    {
+      "transitionId": "state_074b48bf7463accf",
+      "at": "2026-10-30T07:50:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_f3dbb53edf9df3bd"
+      }
+    },
+    {
+      "transitionId": "state_5db104f33c8a4cb7",
+      "at": "2026-10-30T07:51:49.090909+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bathroom",
+      "value": "kitchen",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_f3dbb53edf9df3bd"
+      }
+    },
+    {
+      "transitionId": "state_1ae90a2b8027350a",
+      "at": "2026-10-30T07:53:38.181818+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_b7c67ca1a8af6686"
+      }
+    },
+    {
+      "transitionId": "state_f42bc164f994ca79",
+      "at": "2026-10-30T07:55:27.272727+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": null,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8ece0cfb614a8df4"
+      }
+    },
+    {
+      "transitionId": "state_ea88368ec83d234d",
+      "at": "2026-10-30T07:57:16.363636+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_29d65171834d7d0f"
+      }
+    },
+    {
+      "transitionId": "state_5819953f5e9f0d4c",
+      "at": "2026-10-30T07:59:05.454545+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_961b145862709fcf"
+      }
+    },
+    {
+      "transitionId": "state_6538d732376ebd32",
+      "at": "2026-10-30T08:02:43.636363+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_f2237e9d85bc34d3"
+      }
+    },
+    {
+      "transitionId": "state_94bdc839ebed7d56",
+      "at": "2026-10-30T08:04:32.727272+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8a8f53d2b70a9f0f"
+      }
+    },
+    {
+      "transitionId": "state_8db1a00516ab8fab",
+      "at": "2026-10-30T08:06:21.818181+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_82c8260d80c5f3dc"
+      }
+    },
+    {
+      "transitionId": "state_9e9a18d9f3cfb12a",
+      "at": "2026-10-30T08:06:21.818181+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_82c8260d80c5f3dc"
+      }
+    },
+    {
+      "transitionId": "state_29b4e09fbd1d4afe",
+      "at": "2026-10-30T08:08:10.909090+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_kitchen",
+      "fact": "service_kitchen.meal.consumed",
+      "previousValue": 0,
+      "value": 1,
+      "operation": "increment",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_f527937bfc819873"
+      }
+    },
+    {
+      "transitionId": "state_44741d8b679a22fd",
+      "at": "2026-10-30T08:09:59.999999+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_40472a83b5209a2f"
+      }
+    },
+    {
+      "transitionId": "state_e68ec619389c9c60",
+      "at": "2026-10-30T08:09:59.999999+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_40472a83b5209a2f"
+      }
+    },
+    {
+      "transitionId": "state_ada380263ce6b10c",
+      "at": "2026-10-30T09:00:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_e4daaf275f167b1a"
+      }
+    },
+    {
+      "transitionId": "state_611d5437fb6aae8a",
+      "at": "2026-10-30T09:01:12.500000+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_e4daaf275f167b1a"
+      }
+    },
+    {
+      "transitionId": "state_e5ef06502c59b647",
+      "at": "2026-10-30T11:40:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "kitchen",
+      "value": "workplace",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_e4daaf275f167b1a"
+      }
+    },
+    {
+      "transitionId": "state_3e5efc9ee81755c8",
+      "at": "2026-10-30T14:20:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8dc9edc9ee6a0c1f"
+      }
+    },
+    {
+      "transitionId": "state_c80068189199ee0a",
+      "at": "2026-10-30T14:20:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8dc9edc9ee6a0c1f"
+      }
+    },
+    {
+      "transitionId": "state_4c9904ae21644dd9",
+      "at": "2026-10-30T20:00:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_57b20ea33d957a23"
+      }
+    },
+    {
+      "transitionId": "state_b6cfea971d7a65f9",
+      "at": "2026-10-30T20:01:12.500000+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_57b20ea33d957a23"
+      }
+    },
+    {
+      "transitionId": "state_6c5e9a4385a1db30",
+      "at": "2026-10-30T20:03:45+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "workplace",
+      "value": "kitchen",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_57b20ea33d957a23"
+      }
+    },
+    {
+      "transitionId": "state_dea955e958fa0cf1",
+      "at": "2026-10-30T20:07:30+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8bfb96d4ca5e3695"
+      }
+    },
+    {
+      "transitionId": "state_97840642d865c309",
+      "at": "2026-10-30T20:11:15+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_703d69c52cb7571e"
+      }
+    },
+    {
+      "transitionId": "state_102642333fa0a01f",
+      "at": "2026-10-30T20:15:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_b6110c8abfbcfbe0"
+      }
+    },
+    {
+      "transitionId": "state_a6688f70bab8b7b4",
+      "at": "2026-10-30T20:18:45+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_854db3eaaebcdd22"
+      }
+    },
+    {
+      "transitionId": "state_d92f0e36cdbe113b",
+      "at": "2026-10-30T20:26:15+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_c9b8bf325728c47a"
+      }
+    },
+    {
+      "transitionId": "state_abe7536e97276f07",
+      "at": "2026-10-30T20:30:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_359ff3148a072722"
+      }
+    },
+    {
+      "transitionId": "state_4c76c52f809a24b0",
+      "at": "2026-10-30T21:15:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_433cc375e6f1db37"
+      }
+    },
+    {
+      "transitionId": "state_d9c33760ab579220",
+      "at": "2026-10-30T21:15:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_433cc375e6f1db37"
+      }
+    },
+    {
+      "transitionId": "state_cd614a56d13e407a",
+      "at": "2026-10-30T21:27:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "kitchen",
+      "value": "living_room",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_433cc375e6f1db37"
+      }
+    },
+    {
+      "transitionId": "state_0456409dd743ba71",
+      "at": "2026-10-30T21:39:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_5444e524c7a209f5"
+      }
+    },
+    {
+      "transitionId": "state_bf5c2fc146115e94",
+      "at": "2026-10-30T21:39:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_5444e524c7a209f5"
+      }
+    },
+    {
+      "transitionId": "state_088f6d0cfb215388",
+      "at": "2026-10-30T21:51:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_living_room",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_34684709abeada52"
+      }
+    },
+    {
+      "transitionId": "state_e7b625743984d111",
+      "at": "2026-10-30T22:15:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_living_room",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_dda6ca5a4c35f77d"
+      }
+    },
+    {
+      "transitionId": "state_aae2fddce78929e2",
+      "at": "2026-10-30T23:00:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_21e27f2555a474c1"
+      }
+    },
+    {
+      "transitionId": "state_e4d44a2f9a8443f4",
+      "at": "2026-10-30T23:00:10+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_21e27f2555a474c1"
+      }
+    },
+    {
+      "transitionId": "state_e07494b3d66413b3",
+      "at": "2026-10-30T23:07:30+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "living_room",
+      "value": "bathroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_21e27f2555a474c1"
+      }
+    },
+    {
+      "transitionId": "state_38d4a4d39cb4b0a8",
+      "at": "2026-10-30T23:30:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_215c6b15e196d7e7"
+      }
+    },
+    {
+      "transitionId": "state_5e21f46685ac78d5",
+      "at": "2026-10-30T23:30:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_215c6b15e196d7e7"
+      }
+    },
+    {
+      "transitionId": "state_897b2c5c8de2c7e7",
+      "at": "2026-10-31T01:50:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bathroom",
+      "value": "bedroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_215c6b15e196d7e7"
+      }
+    },
+    {
+      "transitionId": "state_235d0c70a971f96e",
+      "at": "2026-10-31T04:10:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "lying",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_da06b72d69d7eb73"
+      }
+    },
+    {
+      "transitionId": "state_596e4da2bdd43fb5",
+      "at": "2026-10-31T04:10:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "lying",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_da06b72d69d7eb73"
+      }
+    },
+    {
+      "transitionId": "state_d1dcd4d48da27371",
+      "at": "2026-10-31T08:35:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bedroom",
+      "value": "bedroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_b2a12666c5e85192"
+      }
+    },
+    {
+      "transitionId": "state_1d30969bf5beabd2",
+      "at": "2026-10-31T08:40:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "lying",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_9e81cdb33926c56d"
+      }
+    },
+    {
+      "transitionId": "state_fed77639ce075260",
+      "at": "2026-10-31T08:40:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "lying",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_9e81cdb33926c56d"
+      }
+    },
+    {
+      "transitionId": "state_28cce896e7dc21fd",
+      "at": "2026-10-31T09:00:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_b848036e587482ed"
+      }
+    },
+    {
+      "transitionId": "state_fe9334a5a26073ba",
+      "at": "2026-10-31T09:00:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_b848036e587482ed"
+      }
+    },
+    {
+      "transitionId": "state_aefcead1597d13fc",
+      "at": "2026-10-31T09:04:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bedroom",
+      "value": "bathroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_b848036e587482ed"
+      }
+    },
+    {
+      "transitionId": "state_be2208941f2abfd8",
+      "at": "2026-10-31T09:12:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_bathroom",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_5bbfe6875515d530"
+      }
+    },
+    {
+      "transitionId": "state_b9bdc764b1ab438f",
+      "at": "2026-10-31T09:20:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_bathroom",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_e5b83fb7cd08c7c1"
+      }
+    },
+    {
+      "transitionId": "state_d6242ac13c8e92f2",
+      "at": "2026-10-31T09:45:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_8ff234b1e38f96b0"
+      }
+    },
+    {
+      "transitionId": "state_9813ca569fe08947",
+      "at": "2026-10-31T09:45:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_8ff234b1e38f96b0"
+      }
+    },
+    {
+      "transitionId": "state_8ce4a0acb62aef3b",
+      "at": "2026-10-31T09:46:49.090909+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bathroom",
+      "value": "kitchen",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8ff234b1e38f96b0"
+      }
+    },
+    {
+      "transitionId": "state_d4b9aa660297e0c4",
+      "at": "2026-10-31T09:48:38.181818+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_10f88b0bc107067b"
+      }
+    },
+    {
+      "transitionId": "state_b8e1f08bc1953b27",
+      "at": "2026-10-31T09:50:27.272727+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_759f57522acb3d87"
+      }
+    },
+    {
+      "transitionId": "state_a72b213f37bc750e",
+      "at": "2026-10-31T09:52:16.363636+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_848d63693b8ad495"
+      }
+    },
+    {
+      "transitionId": "state_b4df48a830c79da1",
+      "at": "2026-10-31T09:54:05.454545+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_e6b41f5adfcebdb8"
+      }
+    },
+    {
+      "transitionId": "state_e209914e16b7ab74",
+      "at": "2026-10-31T09:57:43.636363+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_91b1e5a6fe63c8cb"
+      }
+    },
+    {
+      "transitionId": "state_aeb306e24b95906e",
+      "at": "2026-10-31T09:59:32.727272+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_505c1e25f69da667"
+      }
+    },
+    {
+      "transitionId": "state_3b0ac60fdbdb415a",
+      "at": "2026-10-31T10:01:21.818181+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_0d98748997d02b3f"
+      }
+    },
+    {
+      "transitionId": "state_6f02ea5c4e003a3a",
+      "at": "2026-10-31T10:01:21.818181+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_0d98748997d02b3f"
+      }
+    },
+    {
+      "transitionId": "state_b3e01bd8dd616752",
+      "at": "2026-10-31T10:03:10.909090+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_kitchen",
+      "fact": "service_kitchen.meal.consumed",
+      "previousValue": 1,
+      "value": 2,
+      "operation": "increment",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_639d89727950ae4d"
+      }
+    },
+    {
+      "transitionId": "state_91cc6713222f517e",
+      "at": "2026-10-31T10:04:59.999999+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_63834f381b19f886"
+      }
+    },
+    {
+      "transitionId": "state_a974bfb81fd60c87",
+      "at": "2026-10-31T10:04:59.999999+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "standing",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_63834f381b19f886"
+      }
+    },
+    {
+      "transitionId": "state_41918ea588f40d5a",
+      "at": "2026-10-31T20:03:45+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "kitchen",
+      "value": "kitchen",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_6e68965bf10097b3"
+      }
+    },
+    {
+      "transitionId": "state_c824d66f011f363e",
+      "at": "2026-10-31T20:07:30+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_d30131e5439988d7"
+      }
+    },
+    {
+      "transitionId": "state_95b4dd06e69af139",
+      "at": "2026-10-31T20:11:15+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_363a5367791d8d05"
+      }
+    },
+    {
+      "transitionId": "state_ed0a340657f1a774",
+      "at": "2026-10-31T20:15:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "open",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_5d1525df8e3769ff"
+      }
+    },
+    {
+      "transitionId": "state_259ab3481d0695b2",
+      "at": "2026-10-31T20:18:45+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_d4fed1eb5c47cc89"
+      }
+    },
+    {
+      "transitionId": "state_e956914532ab62ca",
+      "at": "2026-10-31T20:26:15+01:00",
+      "subjectType": "entity",
+      "subjectId": "refrigerator",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_52050378c3197e05"
+      }
+    },
+    {
+      "transitionId": "state_6b9769a6f23388ea",
+      "at": "2026-10-31T20:30:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "carrying.food_storage",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_38f8c5730491cdca"
+      }
+    },
+    {
+      "transitionId": "state_43d61a3b59beca92",
+      "at": "2026-10-31T21:15:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_579fbd7956b6b4ef"
+      }
+    },
+    {
+      "transitionId": "state_29ec0faa9a87ac9b",
+      "at": "2026-10-31T21:15:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_579fbd7956b6b4ef"
+      }
+    },
+    {
+      "transitionId": "state_9b013888dbd364f5",
+      "at": "2026-10-31T21:27:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "kitchen",
+      "value": "living_room",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_579fbd7956b6b4ef"
+      }
+    },
+    {
+      "transitionId": "state_3c6b1b40ab6d4f35",
+      "at": "2026-10-31T21:39:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_6cb14cc2d0ec7116"
+      }
+    },
+    {
+      "transitionId": "state_484be64b5e3d187c",
+      "at": "2026-10-31T21:39:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_6cb14cc2d0ec7116"
+      }
+    },
+    {
+      "transitionId": "state_42ba79cdd500991f",
+      "at": "2026-10-31T21:51:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_living_room",
+      "fact": "active",
+      "previousValue": false,
+      "value": true,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_d450005d95d0beea"
+      }
+    },
+    {
+      "transitionId": "state_e8185a4883ea108e",
+      "at": "2026-10-31T22:15:00+01:00",
+      "subjectType": "entity",
+      "subjectId": "service_living_room",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_e847ab90cad9e1a1"
+      }
+    },
+    {
+      "transitionId": "state_820245c4a39f68bf",
+      "at": "2026-10-31T22:30:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_2e34f319026b9b4c"
+      }
+    },
+    {
+      "transitionId": "state_f5eae5de067a71b1",
+      "at": "2026-10-31T22:30:15+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_2e34f319026b9b4c"
+      }
+    },
+    {
+      "transitionId": "state_f48bc3f4780f592c",
+      "at": "2026-10-31T22:40:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "living_room",
+      "value": "bedroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_2e34f319026b9b4c"
+      }
+    },
+    {
+      "transitionId": "state_747cb8a03bdd7240",
+      "at": "2026-10-31T22:50:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "lying",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_68b03ee59e285810"
+      }
+    },
+    {
+      "transitionId": "state_7a314c23279fdc52",
+      "at": "2026-10-31T22:50:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "lying",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_68b03ee59e285810"
+      }
+    },
+    {
+      "transitionId": "state_1f2a8d0f7e9a04a8",
+      "at": "2026-10-31T23:00:00+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_98aaf32e59cedc64"
+      }
+    },
+    {
+      "transitionId": "state_a9d0473a49029648",
+      "at": "2026-10-31T23:00:05+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_98aaf32e59cedc64"
+      }
+    },
+    {
+      "transitionId": "state_1974967dcfc63d27",
+      "at": "2026-10-31T23:07:30+01:00",
+      "subjectType": "resident",
+      "subjectId": "marco_rossi",
+      "fact": "location",
+      "previousValue": "bedroom",
+      "value": "bathroom",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_98aaf32e59cedc64"
+      }
+    }
+  ],
+  "resourceEvents": [
+    {
+      "resourceEventId": "resource_6b1776f36fe29841",
+      "at": "2026-10-30T07:20:00+01:00",
+      "resourceId": "shower",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_f507f4f0929a8bfc",
+      "at": "2026-10-30T07:20:00+01:00",
+      "resourceId": "shower",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_844df45952e91ce3",
+      "at": "2026-10-30T07:40:00+01:00",
+      "resourceId": "shower",
+      "activityExecutionId": "activity_b2afb1d3432387a9",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_747ff99cb8145045",
+      "at": "2026-10-30T07:50:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_a9b3a55b76a3dafb",
+      "at": "2026-10-30T07:50:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_fab47e0272dbe7d4",
+      "at": "2026-10-30T08:09:59.999999+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_8555da726a4b8b72",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_65acd6d2bf853586",
+      "at": "2026-10-30T20:00:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_799459c5385c6797",
+      "at": "2026-10-30T20:00:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_e12b7036dd082362",
+      "at": "2026-10-30T20:30:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_e6971f411f0f6dd7",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_0ef21b2b55c90e43",
+      "at": "2026-10-30T21:15:00+01:00",
+      "resourceId": "television",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_c131ae75d47d911c",
+      "at": "2026-10-30T21:15:00+01:00",
+      "resourceId": "television",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_fb2a9636c641065e",
+      "at": "2026-10-30T22:15:00+01:00",
+      "resourceId": "television",
+      "activityExecutionId": "activity_861bc2deaf180872",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_3041a00854234703",
+      "at": "2026-10-31T09:00:00+01:00",
+      "resourceId": "shower",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_8a0686386fb5ffe2",
+      "at": "2026-10-31T09:00:00+01:00",
+      "resourceId": "shower",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_8e6badc0946c1b6f",
+      "at": "2026-10-31T09:20:00+01:00",
+      "resourceId": "shower",
+      "activityExecutionId": "activity_7e37b23296d63ecb",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_5f0e61de79e3b7ce",
+      "at": "2026-10-31T09:45:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_8a6f9381c3476381",
+      "at": "2026-10-31T09:45:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_301d6080824989b2",
+      "at": "2026-10-31T10:04:59.999999+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_3e03b68e93e7f7eb",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_202fe55e020ea9d9",
+      "at": "2026-10-31T20:00:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_24136730329be672",
+      "at": "2026-10-31T20:00:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_b04ea5c5ccdd92e9",
+      "at": "2026-10-31T20:30:00+01:00",
+      "resourceId": "refrigerator",
+      "activityExecutionId": "activity_d39675819d01f2b3",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_5f8dab8d9062bdd5",
+      "at": "2026-10-31T21:15:00+01:00",
+      "resourceId": "television",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "actorId": "marco_rossi",
+      "operation": "requested",
+      "units": 1,
+      "availableUnitsAfter": 1
+    },
+    {
+      "resourceEventId": "resource_b5ff67d63595be06",
+      "at": "2026-10-31T21:15:00+01:00",
+      "resourceId": "television",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "actorId": "marco_rossi",
+      "operation": "acquired",
+      "units": 1,
+      "availableUnitsAfter": 0
+    },
+    {
+      "resourceEventId": "resource_6b326fe85f013c42",
+      "at": "2026-10-31T22:15:00+01:00",
+      "resourceId": "television",
+      "activityExecutionId": "activity_807225d576d90bac",
+      "actorId": "marco_rossi",
+      "operation": "released",
+      "units": 1,
+      "availableUnitsAfter": 1
+    }
+  ],
+  "runtimeEvents": [],
+  "planDeviations": [],
+  "dailySummaries": [
+    {
+      "date": "2026-10-30",
+      "completedActivityCount": 8,
+      "deviatedActivityCount": 0,
+      "failedActivityCount": 0,
+      "droppedActivityCount": 0
+    },
+    {
+      "date": "2026-10-31",
+      "completedActivityCount": 7,
+      "deviatedActivityCount": 0,
+      "failedActivityCount": 0,
+      "droppedActivityCount": 0
+    }
+  ],
+  "finalState": {
+    "at": "2026-10-31T23:59:59+01:00",
+    "residents": [
+      {
+        "residentId": "marco_rossi",
+        "regionId": "bathroom",
+        "position": {
+          "x": 9.0,
+          "y": 3.0
+        },
+        "posture": "lying",
+        "executionState": "idle",
+        "facts": {
+          "at_home": true,
+          "location": "bathroom",
+          "posture": "lying",
+          "carrying.food_storage": false
+        },
+        "heldResourceIds": []
+      }
+    ],
+    "entityStates": {
+      "refrigerator": {
+        "open": false,
+        "active": false
+      },
+      "television": {
+        "open": false,
+        "active": false
+      },
+      "shower": {
+        "open": false,
+        "active": false
+      },
+      "entrance_door": {
+        "open": false
+      },
+      "service_bedroom": {
+        "open": false,
+        "active": false
+      },
+      "service_bathroom": {
+        "open": false,
+        "active": false
+      },
+      "service_kitchen": {
+        "open": false,
+        "active": false
+      },
+      "service_living_room": {
+        "open": false,
+        "active": false
+      },
+      "service_workplace": {
+        "open": false,
+        "active": false
+      }
+    },
+    "environmentFacts": {},
+    "resourceAvailableUnits": {
+      "refrigerator": 1,
+      "shower": 1,
+      "television": 1
+    }
+  },
+  "semanticDigest": "9b093543c2415f6d94488a462de664be682841c6a1d36ffb067ec33c8e6a6a5f"
+}

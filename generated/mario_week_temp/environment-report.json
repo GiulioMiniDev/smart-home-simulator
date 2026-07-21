@@ -1,0 +1,19 @@
+{
+  "validatorVersion": "1.0.0",
+  "valid": true,
+  "homeId": "synthetic_mario_rome_apartment_logical_v1",
+  "homeVersion": "1.0.0",
+  "homeSha256": "1cc3b54ca5efce50c1b02ec3bac6ff23e00b731ed445cccd9a4491098596716e",
+  "bundleSha256": "0b7d9acc5509307b38a84f4ba979890fc147f68f037ee01da3a9d6e25cbcd8c1",
+  "issues": [],
+  "summary": {
+    "regionCount": 8,
+    "connectionCount": 7,
+    "entityCount": 13,
+    "interactionPointCount": 21,
+    "actionBindingCount": 495,
+    "routeCheckCount": 64,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

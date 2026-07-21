@@ -1,0 +1,25 @@
+{
+  "reportVersion": "1.0.0",
+  "generatorName": "smart-home-sim-home-generator",
+  "generatorVersion": "1.1.0",
+  "success": true,
+  "policyId": "compact-grid",
+  "policyVersion": "1.1.0",
+  "policySha256": "d1c380a341f97f88df2d15635753a871c8d66780970f66d282a0fa8776646392",
+  "sourceScenarioId": "sim_marco_rossi_2026",
+  "sourceScenarioSha256": "bff97ddd0764bd78f58eeb4b76199659777adbc20399d5fc4c3738f497f1b642",
+  "sourceBehaviorPackageId": "pkg_marco_rossi_behavior",
+  "sourceBehaviorPackageSha256": "6319d26a88ef654f2651c52e53f4733701a85662b70c230dc7879e87e2fce65b",
+  "homeId": "default_home_model",
+  "homeVersion": "1.0.0",
+  "homeSha256": "46f5a4f202a1253ab0827aed81ce7b404a8dc5be70b6253eb02ffec6fd44a18e",
+  "issues": [],
+  "summary": {
+    "regionCount": 5,
+    "connectionCount": 4,
+    "entityCount": 9,
+    "locationBindingCount": 5,
+    "resourceBindingCount": 3,
+    "errorCount": 0
+  }
+}

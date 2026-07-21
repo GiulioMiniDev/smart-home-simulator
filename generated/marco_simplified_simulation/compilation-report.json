@@ -1,0 +1,25 @@
+{
+  "compilerVersion": "1.0.0",
+  "success": true,
+  "sourceScenarioVersion": "1.0.0",
+  "sourceScenarioId": "sim_marco_rossi_2026",
+  "canonicalPlanSha256": "180e9627448c11c7fd2f30c1f1a99edf90c106971b2d86a7582899cccccd4d75",
+  "solverStatus": "OPTIMAL",
+  "objectiveValues": {
+    "optionalPriorityScore": 0,
+    "optionalActivityCount": 0,
+    "durationDeviationMicroseconds": 1800000000,
+    "temporalDeviationMicroseconds": 0,
+    "scheduledStartSumMicroseconds": 1443300000000
+  },
+  "issues": [],
+  "summary": {
+    "scheduledActivityCount": 15,
+    "omittedActivityCount": 0,
+    "contingencyCount": 0,
+    "contingencyActivityCount": 0,
+    "rescheduledActivityCount": 0,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

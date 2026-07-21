@@ -1,0 +1,1375 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "personal_process_package",
+  "packageId": "pkg_marco_rossi_behavior",
+  "packageVersion": "1.0.0",
+  "sourceScenarioId": "sim_marco_rossi_2026",
+  "sourceScenarioVersion": "1.0.0",
+  "language": "it",
+  "provenance": {
+    "authorType": "external_llm",
+    "generatorName": "smart-home-simulator-external-llm-authoring",
+    "generatorVersion": "1.2.0",
+    "modelName": "qwen2.5-coder-7b-q4_k_m",
+    "promptTemplateVersion": "generate-simulation-inputs-1.2.0-simplified",
+    "generatedAt": "2026-10-29T20:00:00+01:00",
+    "humanReviewed": false,
+    "parameters": {}
+  },
+  "catalogs": {
+    "activityCatalog": {
+      "catalogId": "smart_home_activity_catalog",
+      "version": "1.0.0"
+    },
+    "variableCatalog": {
+      "catalogId": "smart_home_variable_catalog",
+      "version": "1.0.0"
+    },
+    "actionCatalog": {
+      "catalogId": "smart_home_action_catalog",
+      "version": "1.0.0"
+    }
+  },
+  "processModels": [
+    {
+      "processModelId": "pm_marco_wake_up",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Wake up process",
+      "description": "Marco wakes up and stands up",
+      "implementedComponents": [
+        "wake_up"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_hygiene",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Morning hygiene process",
+      "description": "Marco uses toilet and takes a shower",
+      "implementedComponents": [
+        "use_toilet",
+        "shower"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "toilet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_2",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "shower",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_3",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "shower",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_4",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "shower",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "act_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_2",
+          "targetNodeId": "act_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_3",
+          "targetNodeId": "act_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_breakfast",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Prepare and eat breakfast",
+      "description": "Marco prepares breakfast and eats at the table",
+      "implementedComponents": [
+        "prepare_food",
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_2",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_3",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_4",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_5",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "literal",
+              "value": "breakfast",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_6",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_7",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_8",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_9",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_10",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "act_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_2",
+          "targetNodeId": "act_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_3",
+          "targetNodeId": "act_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_4",
+          "targetNodeId": "act_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_5",
+          "targetNodeId": "act_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_6",
+          "targetNodeId": "act_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_7",
+          "targetNodeId": "act_8",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_8",
+          "targetNodeId": "act_9",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_9",
+          "targetNodeId": "act_10",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_10",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_work",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Work shift process",
+      "description": "Marco performs work shift",
+      "implementedComponents": [
+        "work"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "travel_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_2",
+          "kind": "action",
+          "actionType": "perform_work",
+          "arguments": {
+            "mode": {
+              "source": "literal",
+              "value": "desk_work",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "act_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_cook_dinner",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Cook dinner process",
+      "description": "Marco cooks dinner",
+      "implementedComponents": [
+        "prepare_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_2",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_3",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_4",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_5",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "literal",
+              "value": "dinner",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_6",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "refrigerator",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_7",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "act_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_2",
+          "targetNodeId": "act_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_3",
+          "targetNodeId": "act_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_4",
+          "targetNodeId": "act_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_5",
+          "targetNodeId": "act_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_6",
+          "targetNodeId": "act_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_7",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_watch_tv",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Watch TV process",
+      "description": "Marco watches television",
+      "implementedComponents": [
+        "watch_media"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_2",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "television",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_3",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "watching_tv",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_4",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "television",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "act_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_2",
+          "targetNodeId": "act_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_3",
+          "targetNodeId": "act_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_evening_hygiene",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Evening hygiene process",
+      "description": "Marco performs evening personal hygiene",
+      "implementedComponents": [
+        "personal_hygiene"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "hygiene",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_marco_sleep",
+      "processModelVersion": "1.0.0",
+      "residentId": "marco_rossi",
+      "title": "Sleep process",
+      "description": "Marco goes to sleep",
+      "implementedComponents": [
+        "sleep"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_1",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "lying",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "act_2",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "sleeping",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_1",
+          "targetNodeId": "act_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_1",
+          "targetNodeId": "act_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "act_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "bindingId": "bind_wake_up",
+      "residentId": "marco_rossi",
+      "intent": "wake_up_without_alarm",
+      "processModelId": "pm_marco_wake_up",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_hygiene",
+      "residentId": "marco_rossi",
+      "intent": "morning_toilet_and_shower",
+      "processModelId": "pm_marco_hygiene",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_breakfast",
+      "residentId": "marco_rossi",
+      "intent": "prepare_and_eat_breakfast",
+      "processModelId": "pm_marco_breakfast",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_work",
+      "residentId": "marco_rossi",
+      "intent": "work_shift",
+      "processModelId": "pm_marco_work",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_dinner",
+      "residentId": "marco_rossi",
+      "intent": "cook_dinner",
+      "processModelId": "pm_marco_cook_dinner",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_tv",
+      "residentId": "marco_rossi",
+      "intent": "watch_television",
+      "processModelId": "pm_marco_watch_tv",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_evening_hygiene",
+      "residentId": "marco_rossi",
+      "intent": "evening_hygiene",
+      "processModelId": "pm_marco_evening_hygiene",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_sleep",
+      "residentId": "marco_rossi",
+      "intent": "sleep",
+      "processModelId": "pm_marco_sleep",
+      "applicability": [],
+      "fallback": false
+    }
+  ]
+}
