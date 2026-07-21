@@ -1,6 +1,6 @@
 # Simulation engine blueprint
 
-- **Status:** design note for future implementation
+- **Status:** implemented by ADR-010 and ADR-011; retained as architectural rationale
 - **Date:** 2026-07-20
 - **Scope:** Milestones 3–9
 

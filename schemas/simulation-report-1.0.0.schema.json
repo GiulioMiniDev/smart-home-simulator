@@ -1,0 +1,234 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "SimulationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTION_EXECUTION_FAILED",
+            "BUNDLE_INVALID",
+            "DAY_REPAIR_FAILED",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "OUTPUT_CONFLICT",
+            "OUTPUT_WRITE_ERROR",
+            "PRECONDITION_FAILED",
+            "PROCESS_EXECUTION_FAILED",
+            "RESOURCE_DEADLOCK",
+            "SIMULATION_FAILED",
+            "STRUCTURE_INVALID",
+            "TRACE_INVARIANT_FAILED",
+            "UNSUPPORTED_SCHEMA_VERSION"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "preflight",
+            "execution",
+            "invariant",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "SimulationIssue",
+      "type": "object"
+    },
+    "SimulationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "plannedActivityCount": {
+          "minimum": 0,
+          "title": "Plannedactivitycount",
+          "type": "integer"
+        },
+        "completedActivityCount": {
+          "minimum": 0,
+          "title": "Completedactivitycount",
+          "type": "integer"
+        },
+        "deviatedActivityCount": {
+          "minimum": 0,
+          "title": "Deviatedactivitycount",
+          "type": "integer"
+        },
+        "failedActivityCount": {
+          "minimum": 0,
+          "title": "Failedactivitycount",
+          "type": "integer"
+        },
+        "droppedActivityCount": {
+          "minimum": 0,
+          "title": "Droppedactivitycount",
+          "type": "integer"
+        },
+        "actionExecutionCount": {
+          "minimum": 0,
+          "title": "Actionexecutioncount",
+          "type": "integer"
+        },
+        "movementCount": {
+          "minimum": 0,
+          "title": "Movementcount",
+          "type": "integer"
+        },
+        "stateTransitionCount": {
+          "minimum": 0,
+          "title": "Statetransitioncount",
+          "type": "integer"
+        },
+        "runtimeEventCount": {
+          "minimum": 0,
+          "title": "Runtimeeventcount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        },
+        "warningCount": {
+          "minimum": 0,
+          "title": "Warningcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "plannedActivityCount",
+        "completedActivityCount",
+        "deviatedActivityCount",
+        "failedActivityCount",
+        "droppedActivityCount",
+        "actionExecutionCount",
+        "movementCount",
+        "stateTransitionCount",
+        "runtimeEventCount",
+        "errorCount",
+        "warningCount"
+      ],
+      "title": "SimulationSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:simulation-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Reportversion",
+      "type": "string"
+    },
+    "success": {
+      "title": "Success",
+      "type": "boolean"
+    },
+    "sourceBundleId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcebundleid"
+    },
+    "sourceBundleSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcebundlesha256"
+    },
+    "traceSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tracesha256"
+    },
+    "semanticDigest": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Semanticdigest"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/SimulationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/SimulationSummary"
+    }
+  },
+  "required": [
+    "success",
+    "summary"
+  ],
+  "title": "Smart Home Simulation Report 1.0.0",
+  "type": "object"
+}

@@ -1,0 +1,19 @@
+{
+  "validatorVersion": "1.0.0",
+  "valid": true,
+  "homeId": "home_mario_monteverde",
+  "homeVersion": "mario-apartment-0.1-example",
+  "homeSha256": "2e8b3257fe1c760c3b820443ff62d1824395ec40ce09e1fb5c65f616d3239ca6",
+  "bundleSha256": "f862277616a4b5e1ef7a88b904c0d69c644982bb2ab8d02a1e4a383c1f17145e",
+  "issues": [],
+  "summary": {
+    "regionCount": 14,
+    "connectionCount": 13,
+    "entityCount": 13,
+    "interactionPointCount": 14,
+    "actionBindingCount": 779,
+    "routeCheckCount": 441,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

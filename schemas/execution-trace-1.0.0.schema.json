@@ -1,0 +1,957 @@
+{
+  "$defs": {
+    "ActionExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "actionExecutionId": {
+          "minLength": 1,
+          "title": "Actionexecutionid",
+          "type": "string"
+        },
+        "activityExecutionId": {
+          "minLength": 1,
+          "title": "Activityexecutionid",
+          "type": "string"
+        },
+        "nodeId": {
+          "minLength": 1,
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "occurrenceIndex": {
+          "minimum": 0,
+          "title": "Occurrenceindex",
+          "type": "integer"
+        },
+        "actionType": {
+          "minLength": 1,
+          "title": "Actiontype",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "title": "Startedat",
+          "type": "string"
+        },
+        "endedAt": {
+          "format": "date-time",
+          "title": "Endedat",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "interrupted",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "resolvedArguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Resolvedarguments",
+          "type": "object"
+        },
+        "providerIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Providerids",
+          "type": "array"
+        },
+        "selectedEdgeTargetId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selectededgetargetid"
+        },
+        "failureCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failurecode"
+        }
+      },
+      "required": [
+        "actionExecutionId",
+        "activityExecutionId",
+        "nodeId",
+        "occurrenceIndex",
+        "actionType",
+        "actorId",
+        "startedAt",
+        "endedAt",
+        "status"
+      ],
+      "title": "ActionExecution",
+      "type": "object"
+    },
+    "ActivityExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "activityExecutionId": {
+          "minLength": 1,
+          "title": "Activityexecutionid",
+          "type": "string"
+        },
+        "sourceActivityId": {
+          "minLength": 1,
+          "title": "Sourceactivityid",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "plannedStart": {
+          "format": "date-time",
+          "title": "Plannedstart",
+          "type": "string"
+        },
+        "plannedEnd": {
+          "format": "date-time",
+          "title": "Plannedend",
+          "type": "string"
+        },
+        "actualStart": {
+          "format": "date-time",
+          "title": "Actualstart",
+          "type": "string"
+        },
+        "actualEnd": {
+          "format": "date-time",
+          "title": "Actualend",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "deviated",
+            "failed",
+            "dropped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "actionExecutionIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actionexecutionids",
+          "type": "array"
+        },
+        "deviationIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deviationids",
+          "type": "array"
+        },
+        "failureCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failurecode"
+        }
+      },
+      "required": [
+        "activityExecutionId",
+        "sourceActivityId",
+        "actorId",
+        "intent",
+        "processModelId",
+        "plannedStart",
+        "plannedEnd",
+        "actualStart",
+        "actualEnd",
+        "status"
+      ],
+      "title": "ActivityExecution",
+      "type": "object"
+    },
+    "DailyExecutionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "completedActivityCount": {
+          "minimum": 0,
+          "title": "Completedactivitycount",
+          "type": "integer"
+        },
+        "deviatedActivityCount": {
+          "minimum": 0,
+          "title": "Deviatedactivitycount",
+          "type": "integer"
+        },
+        "failedActivityCount": {
+          "minimum": 0,
+          "title": "Failedactivitycount",
+          "type": "integer"
+        },
+        "droppedActivityCount": {
+          "minimum": 0,
+          "title": "Droppedactivitycount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "date",
+        "completedActivityCount",
+        "deviatedActivityCount",
+        "failedActivityCount",
+        "droppedActivityCount"
+      ],
+      "title": "DailyExecutionSummary",
+      "type": "object"
+    },
+    "EngineMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "engineName": {
+          "const": "smart-home-sim-engine",
+          "default": "smart-home-sim-engine",
+          "title": "Enginename",
+          "type": "string"
+        },
+        "engineVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Engineversion",
+          "type": "string"
+        },
+        "eventBackend": {
+          "const": "simpy",
+          "default": "simpy",
+          "title": "Eventbackend",
+          "type": "string"
+        },
+        "eventBackendVersion": {
+          "const": "4.1.1",
+          "default": "4.1.1",
+          "title": "Eventbackendversion",
+          "type": "string"
+        },
+        "timeResolution": {
+          "const": "microsecond",
+          "default": "microsecond",
+          "title": "Timeresolution",
+          "type": "string"
+        },
+        "randomStreamPolicy": {
+          "const": "sha256-named-streams-1.0.0",
+          "default": "sha256-named-streams-1.0.0",
+          "title": "Randomstreampolicy",
+          "type": "string"
+        },
+        "repairPolicyVersion": {
+          "const": "local-repair-1.0.0",
+          "default": "local-repair-1.0.0",
+          "title": "Repairpolicyversion",
+          "type": "string"
+        }
+      },
+      "title": "EngineMetadata",
+      "type": "object"
+    },
+    "FinalWorldState": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "residents": {
+          "items": {
+            "$ref": "#/$defs/ResidentFinalState"
+          },
+          "minItems": 1,
+          "title": "Residents",
+          "type": "array"
+        },
+        "entityStates": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "title": "Entitystates",
+          "type": "object"
+        },
+        "environmentFacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Environmentfacts",
+          "type": "object"
+        },
+        "resourceAvailableUnits": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Resourceavailableunits",
+          "type": "object"
+        }
+      },
+      "required": [
+        "at",
+        "residents"
+      ],
+      "title": "FinalWorldState",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "MovementExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "movementId": {
+          "minLength": 1,
+          "title": "Movementid",
+          "type": "string"
+        },
+        "actionExecutionId": {
+          "minLength": 1,
+          "title": "Actionexecutionid",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "title": "Startedat",
+          "type": "string"
+        },
+        "endedAt": {
+          "format": "date-time",
+          "title": "Endedat",
+          "type": "string"
+        },
+        "originRegionId": {
+          "minLength": 1,
+          "title": "Originregionid",
+          "type": "string"
+        },
+        "destinationRegionId": {
+          "minLength": 1,
+          "title": "Destinationregionid",
+          "type": "string"
+        },
+        "distanceMeters": {
+          "minimum": 0,
+          "title": "Distancemeters",
+          "type": "number"
+        },
+        "durationMicroseconds": {
+          "minimum": 0,
+          "title": "Durationmicroseconds",
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/TrajectoryWaypoint"
+          },
+          "minItems": 1,
+          "title": "Waypoints",
+          "type": "array"
+        }
+      },
+      "required": [
+        "movementId",
+        "actionExecutionId",
+        "actorId",
+        "startedAt",
+        "endedAt",
+        "originRegionId",
+        "destinationRegionId",
+        "distanceMeters",
+        "durationMicroseconds",
+        "waypoints"
+      ],
+      "title": "MovementExecution",
+      "type": "object"
+    },
+    "PlanDeviation": {
+      "additionalProperties": false,
+      "properties": {
+        "deviationId": {
+          "minLength": 1,
+          "title": "Deviationid",
+          "type": "string"
+        },
+        "activityExecutionId": {
+          "minLength": 1,
+          "title": "Activityexecutionid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "delayed_start",
+            "extended_duration",
+            "interrupted",
+            "shifted_by_local_repair",
+            "shortened_by_local_repair",
+            "fallback_applied",
+            "optional_dropped"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "amountMicroseconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Amountmicroseconds",
+          "type": "integer"
+        },
+        "causeId": {
+          "minLength": 1,
+          "title": "Causeid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "deviationId",
+        "activityExecutionId",
+        "kind",
+        "causeId"
+      ],
+      "title": "PlanDeviation",
+      "type": "object"
+    },
+    "Point2D": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point2D",
+      "type": "object"
+    },
+    "ResidentFinalState": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "posture": {
+          "enum": [
+            "standing",
+            "walking",
+            "sitting",
+            "lying"
+          ],
+          "title": "Posture",
+          "type": "string"
+        },
+        "executionState": {
+          "enum": [
+            "idle",
+            "moving",
+            "performing_activity",
+            "interrupted"
+          ],
+          "title": "Executionstate",
+          "type": "string"
+        },
+        "facts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Facts",
+          "type": "object"
+        },
+        "heldResourceIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Heldresourceids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "residentId",
+        "regionId",
+        "position",
+        "posture",
+        "executionState"
+      ],
+      "title": "ResidentFinalState",
+      "type": "object"
+    },
+    "ResourceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "resourceEventId": {
+          "minLength": 1,
+          "title": "Resourceeventid",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "resourceId": {
+          "minLength": 1,
+          "title": "Resourceid",
+          "type": "string"
+        },
+        "activityExecutionId": {
+          "minLength": 1,
+          "title": "Activityexecutionid",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "requested",
+            "acquired",
+            "preempted",
+            "released"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "units": {
+          "minimum": 1,
+          "title": "Units",
+          "type": "integer"
+        },
+        "availableUnitsAfter": {
+          "minimum": 0,
+          "title": "Availableunitsafter",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resourceEventId",
+        "at",
+        "resourceId",
+        "activityExecutionId",
+        "actorId",
+        "operation",
+        "units",
+        "availableUnitsAfter"
+      ],
+      "title": "ResourceEvent",
+      "type": "object"
+    },
+    "RuntimeEventExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "eventExecutionId": {
+          "minLength": 1,
+          "title": "Eventexecutionid",
+          "type": "string"
+        },
+        "eventId": {
+          "minLength": 1,
+          "title": "Eventid",
+          "type": "string"
+        },
+        "sampled": {
+          "title": "Sampled",
+          "type": "boolean"
+        },
+        "occurred": {
+          "title": "Occurred",
+          "type": "boolean"
+        },
+        "evaluatedAt": {
+          "format": "date-time",
+          "title": "Evaluatedat",
+          "type": "string"
+        },
+        "triggerActivityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Triggeractivityid"
+        },
+        "sampledAmounts": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Sampledamounts",
+          "type": "array"
+        },
+        "outcome": {
+          "enum": [
+            "not_sampled",
+            "precondition_failed",
+            "applied"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        }
+      },
+      "required": [
+        "eventExecutionId",
+        "eventId",
+        "sampled",
+        "occurred",
+        "evaluatedAt",
+        "outcome"
+      ],
+      "title": "RuntimeEventExecution",
+      "type": "object"
+    },
+    "StateTransition": {
+      "additionalProperties": false,
+      "properties": {
+        "transitionId": {
+          "minLength": 1,
+          "title": "Transitionid",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "subjectType": {
+          "enum": [
+            "resident",
+            "entity",
+            "resource",
+            "environment"
+          ],
+          "title": "Subjecttype",
+          "type": "string"
+        },
+        "subjectId": {
+          "minLength": 1,
+          "title": "Subjectid",
+          "type": "string"
+        },
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "previousValue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "operation": {
+          "enum": [
+            "set",
+            "increment",
+            "decrement",
+            "append",
+            "remove",
+            "invalidate"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "causality": {
+          "$ref": "#/$defs/TraceCausality"
+        }
+      },
+      "required": [
+        "transitionId",
+        "at",
+        "subjectType",
+        "subjectId",
+        "fact",
+        "operation",
+        "causality"
+      ],
+      "title": "StateTransition",
+      "type": "object"
+    },
+    "TraceCausality": {
+      "additionalProperties": false,
+      "properties": {
+        "causeType": {
+          "enum": [
+            "plan",
+            "process_edge",
+            "action_effect",
+            "runtime_event",
+            "resource",
+            "local_repair"
+          ],
+          "title": "Causetype",
+          "type": "string"
+        },
+        "causeId": {
+          "minLength": 1,
+          "title": "Causeid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "causeType",
+        "causeId"
+      ],
+      "title": "TraceCausality",
+      "type": "object"
+    },
+    "TrajectoryWaypoint": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "traversalMode": {
+          "enum": [
+            "walking",
+            "transport"
+          ],
+          "title": "Traversalmode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "regionId",
+        "position",
+        "traversalMode"
+      ],
+      "title": "TrajectoryWaypoint",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:execution-trace:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "execution_trace",
+      "default": "execution_trace",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "traceId": {
+      "minLength": 1,
+      "title": "Traceid",
+      "type": "string"
+    },
+    "sourceBundleId": {
+      "minLength": 1,
+      "title": "Sourcebundleid",
+      "type": "string"
+    },
+    "sourceBundleSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcebundlesha256",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "engine": {
+      "$ref": "#/$defs/EngineMetadata"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "title": "Startedat",
+      "type": "string"
+    },
+    "endedAt": {
+      "format": "date-time",
+      "title": "Endedat",
+      "type": "string"
+    },
+    "status": {
+      "const": "completed",
+      "default": "completed",
+      "title": "Status",
+      "type": "string"
+    },
+    "activityExecutions": {
+      "items": {
+        "$ref": "#/$defs/ActivityExecution"
+      },
+      "title": "Activityexecutions",
+      "type": "array"
+    },
+    "actionExecutions": {
+      "items": {
+        "$ref": "#/$defs/ActionExecution"
+      },
+      "title": "Actionexecutions",
+      "type": "array"
+    },
+    "movements": {
+      "items": {
+        "$ref": "#/$defs/MovementExecution"
+      },
+      "title": "Movements",
+      "type": "array"
+    },
+    "stateTransitions": {
+      "items": {
+        "$ref": "#/$defs/StateTransition"
+      },
+      "title": "Statetransitions",
+      "type": "array"
+    },
+    "resourceEvents": {
+      "items": {
+        "$ref": "#/$defs/ResourceEvent"
+      },
+      "title": "Resourceevents",
+      "type": "array"
+    },
+    "runtimeEvents": {
+      "items": {
+        "$ref": "#/$defs/RuntimeEventExecution"
+      },
+      "title": "Runtimeevents",
+      "type": "array"
+    },
+    "planDeviations": {
+      "items": {
+        "$ref": "#/$defs/PlanDeviation"
+      },
+      "title": "Plandeviations",
+      "type": "array"
+    },
+    "dailySummaries": {
+      "items": {
+        "$ref": "#/$defs/DailyExecutionSummary"
+      },
+      "title": "Dailysummaries",
+      "type": "array"
+    },
+    "finalState": {
+      "$ref": "#/$defs/FinalWorldState"
+    },
+    "semanticDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Semanticdigest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "traceId",
+    "sourceBundleId",
+    "sourceBundleSha256",
+    "seed",
+    "startedAt",
+    "endedAt",
+    "activityExecutions",
+    "actionExecutions",
+    "movements",
+    "stateTransitions",
+    "resourceEvents",
+    "runtimeEvents",
+    "planDeviations",
+    "dailySummaries",
+    "finalState",
+    "semanticDigest"
+  ],
+  "title": "Smart Home Authoritative Execution Trace 1.0.0",
+  "type": "object"
+}

@@ -1,0 +1,22 @@
+{
+  "reportVersion": "1.0.0",
+  "success": true,
+  "sourceBundleId": "mario_rossi_week_2026_10_12__runtime_1.1.0__home_mario_monteverde__behavior_1.1.0__1.0.0",
+  "sourceBundleSha256": "f862277616a4b5e1ef7a88b904c0d69c644982bb2ab8d02a1e4a383c1f17145e",
+  "traceSha256": "d6f3f68d44cacd0c4793207c3035d611a874ad71fe1c515f95f28cfcaac63254",
+  "semanticDigest": "4bd320f3987d9e06ae804898beefa6351f39a3a0247112199ee7c0229dab2685",
+  "issues": [],
+  "summary": {
+    "plannedActivityCount": 169,
+    "completedActivityCount": 123,
+    "deviatedActivityCount": 46,
+    "failedActivityCount": 0,
+    "droppedActivityCount": 3,
+    "actionExecutionCount": 769,
+    "movementCount": 202,
+    "stateTransitionCount": 1139,
+    "runtimeEventCount": 2,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

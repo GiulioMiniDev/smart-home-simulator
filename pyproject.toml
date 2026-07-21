@@ -8,6 +8,7 @@ dependencies = [
   "networkx==3.6.1",
   "ortools==9.15.6755",
   "pydantic>=2.13,<3",
+  "simpy==4.1.1",
   "shapely==2.1.2",
   "typer>=0.27,<1",
 ]
@@ -34,6 +35,9 @@ packages = ["src/smart_home_sim"]
 addopts = "-q --cov=src/smart_home_sim --cov-report=term-missing --cov-fail-under=95"
 pythonpath = [".", "src"]
 testpaths = ["tests"]
+
+[tool.coverage.report]
+precision = 2
 
 [tool.ruff]
 line-length = 100

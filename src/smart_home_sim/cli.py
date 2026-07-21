@@ -28,6 +28,7 @@ from smart_home_sim.domain.environment import (
     HomeModel,
     SimulationBundle,
 )
+from smart_home_sim.domain.execution import ExecutionTrace, ReplayReport, SimulationReport
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
@@ -38,6 +39,7 @@ from smart_home_sim.formatting import (
     format_environment_text_report,
     format_text_report,
 )
+from smart_home_sim.simulation import replay_files, simulate_file
 from smart_home_sim.validation.service import validate_file
 
 
@@ -62,6 +64,9 @@ class SchemaContract(StrEnum):
     home_model = "home-model"
     environment_validation_report = "environment-validation-report"
     simulation_bundle = "simulation-bundle"
+    execution_trace = "execution-trace"
+    simulation_report = "simulation-report"
+    replay_report = "replay-report"
 
 
 app = typer.Typer(
@@ -220,6 +225,67 @@ def build_simulation_bundle(
     typer.echo(f"Simulation bundle written to: {output.resolve()}")
 
 
+def _atomic_write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    try:
+        temporary.write_text(content + "\n", encoding="utf-8")
+        temporary.replace(path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+@app.command()
+def simulate(
+    bundle_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    report_output: Annotated[Path | None, typer.Option("--report-output")] = None,
+) -> None:
+    """Execute one M4 bundle into an authoritative M5 trace."""
+    paths = [bundle_path.resolve(), output.resolve()]
+    if len(set(paths)) != len(paths):
+        raise typer.BadParameter(
+            "Trace output must not overwrite the bundle.", param_hint="--output"
+        )
+    if report_output is not None and report_output.resolve() in set(paths):
+        raise typer.BadParameter(
+            "Report output must differ from the bundle and trace output.",
+            param_hint="--report-output",
+        )
+    result = simulate_file(bundle_path)
+    if report_output is not None:
+        _atomic_write(report_output, result.report.model_dump_json(by_alias=True, indent=2))
+    if result.trace is None:
+        if report_output is None:
+            typer.echo(result.report.model_dump_json(by_alias=True, indent=2))
+        raise typer.Exit(code=1)
+    _atomic_write(output, result.trace.model_dump_json(by_alias=True, indent=2))
+    typer.echo(f"Execution trace written to: {output.resolve()}")
+
+
+@app.command()
+def replay(
+    bundle_path: Path,
+    trace_path: Path,
+    output: Annotated[Path | None, typer.Option("--output", "-o")] = None,
+) -> None:
+    """Re-execute a bundle and compare its semantic digest with a trace."""
+    report = replay_files(bundle_path, trace_path)
+    content = report.model_dump_json(by_alias=True, indent=2)
+    if output is None:
+        typer.echo(content)
+    else:
+        if output.resolve() in {bundle_path.resolve(), trace_path.resolve()}:
+            raise typer.BadParameter(
+                "Replay output must not overwrite an input.", param_hint="--output"
+            )
+        _atomic_write(output, content)
+        typer.echo(f"Replay report written to: {output.resolve()}")
+    if not report.matches:
+        raise typer.Exit(code=1)
+
+
 @app.command("ingest-authoring-output")
 def ingest_authoring_output(
     bundle_path: Path,
@@ -328,6 +394,9 @@ def schema(
         SchemaContract.home_model: HomeModel,
         SchemaContract.environment_validation_report: EnvironmentValidationReport,
         SchemaContract.simulation_bundle: SimulationBundle,
+        SchemaContract.execution_trace: ExecutionTrace,
+        SchemaContract.simulation_report: SimulationReport,
+        SchemaContract.replay_report: ReplayReport,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

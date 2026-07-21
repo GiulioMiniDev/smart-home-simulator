@@ -4,13 +4,14 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1, 2, 3 e 4 sono completate e congelate alla versione contrattuale 1.0.0**. Il sistema valida lo scenario flessibile, lo compila in un piano canonico deterministico, valida i modelli di processo ADL personali e lega ogni loro azione a una casa metrica eseguibile. Il prossimo sviluppo previsto è la Milestone 5, il motore di simulazione completo.
+Le **Milestone 1–5 sono completate e congelate alla versione contrattuale 1.0.0**. Il
+sistema valida e compila lo scenario, lega i process model personali a una casa metrica e
+ne esegue integralmente attività, azioni, movimenti, risorse, eventi e stato tramite un
+clock discreto deterministico. Il prossimo sviluppo previsto è la Milestone 6, dedicata
+ai sensori e alla separazione fra oracle e osservabile.
 
 Sono intenzionalmente assenti:
 
-- motore di simulazione;
-- SimPy;
-- microesecuzione;
 - sensori;
 - exporter dei dataset;
 - applicazione UI completa, prevista nella Milestone 7 dopo simulazione e sensori;
@@ -27,7 +28,10 @@ make validate-behavior
 make validate-home
 make compile
 make bundle
+make simulate
+make replay
 make benchmark-environment
+make benchmark-simulation
 make schema
 make behavior-artifacts
 make authoring-artifacts
@@ -51,7 +55,25 @@ make lint
 make check
 ```
 
-`validate` non corregge né esegue lo scenario. `compile` risolve vincoli, attività opzionali e contingenze, ma non esegue ancora le attività.
+`validate` non corregge né esegue lo scenario. `compile` risolve vincoli, attività
+opzionali e contingenze; `simulate` consuma esclusivamente un bundle M4 completo.
+
+Per eseguire e riprodurre deterministicamente il golden M5:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim simulate \
+  examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json \
+  --output examples/execution/mario_week.execution-trace.json \
+  --report-output examples/execution/mario_week.simulation-report.json
+UV_NO_EDITABLE=1 uv run smart-home-sim replay \
+  examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json \
+  examples/execution/mario_week.execution-trace.json
+```
+
+Il trace golden contiene 172 esiti di attività, 769 azioni, 202 movimenti geometrici e
+1.139 transizioni di stato. Tutti i 27 action type sono eseguiti; nessun handler è un
+no-op di compatibilità. La correzione semantica upstream `1.1.0` è parallela e lascia
+immutati gli artefatti M1–M4 originali.
 
 Per validare un pacchetto personale di process model contro il relativo scenario:
 
@@ -165,6 +187,9 @@ Gli artefatti pubblici congelati sono:
 - `schemas/home-model-1.0.0.schema.json`;
 - `schemas/environment-validation-report-1.0.0.schema.json`;
 - `schemas/simulation-bundle-1.0.0.schema.json`;
+- `schemas/execution-trace-1.0.0.schema.json`;
+- `schemas/simulation-report-1.0.0.schema.json`;
+- `schemas/replay-report-1.0.0.schema.json`;
 - i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
@@ -186,7 +211,8 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Authoring comportamentale e process model ADL](docs/spec/06-behavioral-authoring.md)
 - [Authoring end-to-end tramite LLM esterno](docs/spec/07-end-to-end-llm-authoring.md)
 - [Ambiente domestico eseguibile e binding](docs/spec/08-executable-home-and-binding.md)
-- [Blueprint del futuro motore di simulazione](docs/design/simulation-engine-blueprint.md)
+- [Motore di simulazione completo](docs/spec/09-simulation-engine.md)
+- [Blueprint architetturale del motore](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
 - [Freeze del compilatore 1.0.0](docs/decisions/ADR-003-freeze-plan-compiler-1.0.0.md)
@@ -196,3 +222,6 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Prompt con riferimenti compatibili 1.2.0](docs/decisions/ADR-007-reference-compatible-authoring-prompt-1.2.0.md)
 - [Ciclo esterno di riparazione dell'authoring 1.0.0](docs/decisions/ADR-008-external-authoring-repair-loop-1.0.0.md)
 - [Freeze dell'ambiente eseguibile 1.0.0](docs/decisions/ADR-009-freeze-executable-environment-1.0.0.md)
+- [Correzione semantica runtime 1.1.0](docs/decisions/ADR-010-strict-runtime-semantics-1.1.0.md)
+- [Freeze del motore di simulazione 1.0.0](docs/decisions/ADR-011-freeze-simulation-engine-1.0.0.md)
+- [Audit di chiusura M5](docs/audits/milestone-5-closure.md)

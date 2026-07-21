@@ -54,16 +54,20 @@ def _default_catalog_path(filename: str) -> Path:
     return Path(str(files("smart_home_sim.catalogs").joinpath(filename)))
 
 
-def default_activity_catalog_path() -> Path:
-    return _default_catalog_path("activity-catalog-1.0.0.json")
+def default_activity_catalog_path(version: str = "1.0.0") -> Path:
+    if version not in {"1.0.0", "1.1.0"}:
+        raise ValueError(f"unsupported built-in activity catalog version: {version}")
+    return _default_catalog_path(f"activity-catalog-{version}.json")
 
 
 def default_variable_catalog_path() -> Path:
     return _default_catalog_path("variable-catalog-1.0.0.json")
 
 
-def default_action_catalog_path() -> Path:
-    return _default_catalog_path("action-catalog-1.0.0.json")
+def default_action_catalog_path(version: str = "1.0.0") -> Path:
+    if version not in {"1.0.0", "1.1.0"}:
+        raise ValueError(f"unsupported built-in action catalog version: {version}")
+    return _default_catalog_path(f"action-catalog-{version}.json")
 
 
 def _read_json(path: Path, artifact_name: str) -> tuple[Any | None, BehaviorValidationIssue | None]:
@@ -206,10 +210,40 @@ def validate_behavior_files(
     assert scenario_error is None
     scenario = Scenario.model_validate_json(json.dumps(scenario_payload, separators=(",", ":")))
 
+    package_preview: Any = None
+    if action_catalog_path is None or activity_catalog_path is None:
+        package_preview, _ = _read_json(package_path, "personal process package")
+    if action_catalog_path is None:
+        catalog_version = "1.0.0"
+        if isinstance(package_preview, dict):
+            catalogs = package_preview.get("catalogs")
+            if isinstance(catalogs, dict):
+                action_reference = catalogs.get("actionCatalog")
+                if isinstance(action_reference, dict):
+                    catalog_version = str(action_reference.get("version", "1.0.0"))
+        try:
+            action_catalog_path = default_action_catalog_path(catalog_version)
+        except ValueError:
+            action_catalog_path = _default_catalog_path(f"action-catalog-{catalog_version}.json")
+    if activity_catalog_path is None:
+        activity_catalog_version = "1.0.0"
+        if isinstance(package_preview, dict):
+            catalogs = package_preview.get("catalogs")
+            if isinstance(catalogs, dict):
+                activity_reference = catalogs.get("activityCatalog")
+                if isinstance(activity_reference, dict):
+                    activity_catalog_version = str(activity_reference.get("version", "1.0.0"))
+        try:
+            activity_catalog_path = default_activity_catalog_path(activity_catalog_version)
+        except ValueError:
+            activity_catalog_path = _default_catalog_path(
+                f"activity-catalog-{activity_catalog_version}.json"
+            )
+
     paths = (
         (package_path, "personal process package", PersonalProcessPackage),
         (
-            activity_catalog_path or default_activity_catalog_path(),
+            activity_catalog_path,
             "activity catalog",
             ActivityCatalog,
         ),
@@ -219,7 +253,7 @@ def validate_behavior_files(
             VariableCatalog,
         ),
         (
-            action_catalog_path or default_action_catalog_path(),
+            action_catalog_path,
             "action catalog",
             ActionCatalog,
         ),

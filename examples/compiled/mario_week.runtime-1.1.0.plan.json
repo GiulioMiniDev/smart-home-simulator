@@ -1,0 +1,5943 @@
+{
+  "planVersion": "1.0.0",
+  "documentType": "canonical_plan",
+  "sourceScenarioVersion": "1.0.0",
+  "sourceScenarioId": "mario_rossi_week_2026_10_12__runtime_1.1.0",
+  "sourceScenarioSha256": "1468ef6645c806ac834a6ab3d523fe3bf6e3246d42913fd3384d03a67905958f",
+  "timeZone": "Europe/Rome",
+  "simulationWindow": {
+    "start": "2026-10-12T00:00:00+02:00",
+    "end": "2026-10-19T00:00:00+02:00"
+  },
+  "compiler": {
+    "compilerName": "smart-home-sim-plan-compiler",
+    "compilerVersion": "1.0.0",
+    "solverBackend": "or-tools-cp-sat",
+    "solverVersion": "9.15.6755",
+    "optimizationPolicyVersion": "priority-preference-1.0.0",
+    "timeResolution": "microsecond"
+  },
+  "objectiveValues": {
+    "optionalPriorityScore": 2800,
+    "optionalActivityCount": 70,
+    "durationDeviationMicroseconds": 4710000000,
+    "temporalDeviationMicroseconds": 8610000000,
+    "scheduledStartSumMicroseconds": 50676420000000
+  },
+  "days": [
+    {
+      "date": "2026-10-12",
+      "activities": [
+        {
+          "sourceActivityId": "d1_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-12T06:25:00+02:00",
+          "scheduledEnd": "2026-10-12T06:30:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-12T06:30:00+02:00",
+          "scheduledEnd": "2026-10-12T06:50:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            },
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T06:50:00+02:00",
+          "scheduledEnd": "2026-10-12T07:02:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a04",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_breakfast_with_radio_news",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T07:02:00+02:00",
+          "scheduledEnd": "2026-10-12T07:18:00+02:00",
+          "durationMicroseconds": 960000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a03"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a05",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T07:18:00+02:00",
+          "scheduledEnd": "2026-10-12T07:20:00+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a04"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "wash_breakfast_dishes",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T07:20:00+02:00",
+          "scheduledEnd": "2026-10-12T07:27:00+02:00",
+          "durationMicroseconds": 420000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a05"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "dress_for_work",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-12T07:27:00+02:00",
+          "scheduledEnd": "2026-10-12T07:39:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a05"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "collect_belongings_and_leave_home",
+          "locationIds": [
+            "entrance"
+          ],
+          "scheduledStart": "2026-10-12T07:39:00+02:00",
+          "scheduledEnd": "2026-10-12T07:44:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a07"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-12T07:44:00+02:00",
+          "scheduledEnd": "2026-10-12T08:15:00+02:00",
+          "durationMicroseconds": 1860000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a08"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-12T08:15:00+02:00",
+          "scheduledEnd": "2026-10-12T15:00:00+02:00",
+          "durationMicroseconds": 24300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "work_weekdays__2026-10-12",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_to_supermarket",
+          "locationIds": [
+            "supermarket"
+          ],
+          "scheduledStart": "2026-10-12T15:00:00+02:00",
+          "scheduledEnd": "2026-10-12T15:15:00+02:00",
+          "durationMicroseconds": 900000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a10"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "buy_groceries",
+          "locationIds": [
+            "supermarket"
+          ],
+          "scheduledStart": "2026-10-12T15:15:00+02:00",
+          "scheduledEnd": "2026-10-12T15:37:00+02:00",
+          "durationMicroseconds": 1320000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a11"
+          ],
+          "preconditions": [
+            {
+              "fact": "pending_task_buy_groceries",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [
+            {
+              "fact": "dinner_ingredients_available",
+              "operation": "set",
+              "value": true
+            },
+            {
+              "fact": "resident.pendingTasks",
+              "operation": "remove",
+              "value": "buy_groceries"
+            }
+          ],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-12T15:37:00+02:00",
+          "scheduledEnd": "2026-10-12T15:55:00+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a12"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "put_groceries_away",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T15:55:00+02:00",
+          "scheduledEnd": "2026-10-12T16:05:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a13"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "change_clothes",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-12T16:05:00+02:00",
+          "scheduledEnd": "2026-10-12T16:13:00+02:00",
+          "durationMicroseconds": 480000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a14"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_coffee_and_drink_on_balcony",
+          "locationIds": [
+            "kitchen_and_balcony"
+          ],
+          "scheduledStart": "2026-10-12T16:27:30+02:00",
+          "scheduledEnd": "2026-10-12T16:47:30+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a15"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "start_laundry",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-12T16:47:30+02:00",
+          "scheduledEnd": "2026-10-12T16:55:30+02:00",
+          "durationMicroseconds": 480000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "washing_machine_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a15"
+          ],
+          "preconditions": [
+            {
+              "fact": "pending_task_wash_work_shirts",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [
+            {
+              "fact": "washing_cycle_complete",
+              "operation": "set",
+              "value": true
+            },
+            {
+              "fact": "resident.pendingTasks",
+              "operation": "remove",
+              "value": "wash_work_shirts"
+            }
+          ],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a18",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-12T16:55:30+02:00",
+          "scheduledEnd": "2026-10-12T17:45:30+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a17"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a19",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "hang_laundry",
+          "locationIds": [
+            "balcony"
+          ],
+          "scheduledStart": "2026-10-12T17:47:30+02:00",
+          "scheduledEnd": "2026-10-12T17:59:30+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a17"
+          ],
+          "preconditions": [
+            {
+              "fact": "washing_cycle_complete",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [
+            {
+              "fact": "clean_work_shirts_available",
+              "operation": "set",
+              "value": true
+            }
+          ],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_walk",
+          "locationIds": [
+            "outside"
+          ],
+          "scheduledStart": "2026-10-12T18:22:30+02:00",
+          "scheduledEnd": "2026-10-12T19:04:30+02:00",
+          "durationMicroseconds": 2520000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "weather_is_dry",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "post_walk_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-12T19:07:30+02:00",
+          "scheduledEnd": "2026-10-12T19:19:30+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a20"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "cook_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T19:27:30+02:00",
+          "scheduledEnd": "2026-10-12T20:02:30+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a14"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a23",
+          "sequenceIndex": 22,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T20:02:30+02:00",
+          "scheduledEnd": "2026-10-12T20:27:30+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a22"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a24",
+          "sequenceIndex": 23,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-12T20:27:30+02:00",
+          "scheduledEnd": "2026-10-12T20:39:30+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a23"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a25",
+          "sequenceIndex": 24,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-12T20:40:00+02:00",
+          "scheduledEnd": "2026-10-12T22:20:00+02:00",
+          "durationMicroseconds": 6000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a26",
+          "sequenceIndex": 25,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_next_workday_clothes_and_bag",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-12T22:20:00+02:00",
+          "scheduledEnd": "2026-10-12T22:32:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a27",
+          "sequenceIndex": 26,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-12T22:32:00+02:00",
+          "scheduledEnd": "2026-10-12T22:42:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a26"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a28",
+          "sequenceIndex": 27,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-12T22:42:00+02:00",
+          "scheduledEnd": "2026-10-12T23:12:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d1_a27"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d1_a29",
+          "sequenceIndex": 28,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-12T23:17:30+02:00",
+          "scheduledEnd": "2026-10-13T06:25:00+02:00",
+          "durationMicroseconds": 25650000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d1_a27"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        }
+      ],
+      "contingencies": [],
+      "omittedActivities": []
+    },
+    {
+      "date": "2026-10-13",
+      "activities": [
+        {
+          "sourceActivityId": "d2_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-13T06:25:00+02:00",
+          "scheduledEnd": "2026-10-13T06:30:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-13T06:30:00+02:00",
+          "scheduledEnd": "2026-10-13T06:50:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            },
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d2_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T06:50:00+02:00",
+          "scheduledEnd": "2026-10-13T07:00:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d2_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a04",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_breakfast_with_radio_news",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T07:00:00+02:00",
+          "scheduledEnd": "2026-10-13T07:16:00+02:00",
+          "durationMicroseconds": 960000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a03"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a05",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T07:16:00+02:00",
+          "scheduledEnd": "2026-10-13T07:18:00+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a04"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "wash_breakfast_dishes",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T07:18:00+02:00",
+          "scheduledEnd": "2026-10-13T07:25:00+02:00",
+          "durationMicroseconds": 420000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d2_a05"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "dress_for_work",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-13T07:25:00+02:00",
+          "scheduledEnd": "2026-10-13T07:37:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a05"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "collect_belongings_and_leave_home",
+          "locationIds": [
+            "entrance"
+          ],
+          "scheduledStart": "2026-10-13T07:39:00+02:00",
+          "scheduledEnd": "2026-10-13T07:44:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a07"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-13T07:44:00+02:00",
+          "scheduledEnd": "2026-10-13T08:15:00+02:00",
+          "durationMicroseconds": 1860000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a08"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-13T08:15:00+02:00",
+          "scheduledEnd": "2026-10-13T15:00:00+02:00",
+          "durationMicroseconds": 24300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "work_weekdays__2026-10-13",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-13T15:00:00+02:00",
+          "scheduledEnd": "2026-10-13T15:30:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a10"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "change_clothes",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-13T15:30:00+02:00",
+          "scheduledEnd": "2026-10-13T15:38:00+02:00",
+          "durationMicroseconds": 480000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a11"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_afternoon_snack",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T15:40:00+02:00",
+          "scheduledEnd": "2026-10-13T15:52:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a12"
+          ],
+          "preconditions": [
+            {
+              "fact": "snack_food_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "call_mother",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-13T16:15:00+02:00",
+          "scheduledEnd": "2026-10-13T16:35:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-13T16:37:30+02:00",
+          "scheduledEnd": "2026-10-13T17:42:30+02:00",
+          "durationMicroseconds": 3900000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a14"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_walk",
+          "locationIds": [
+            "outside"
+          ],
+          "scheduledStart": "2026-10-13T18:15:00+02:00",
+          "scheduledEnd": "2026-10-13T19:00:00+02:00",
+          "durationMicroseconds": 2700000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "weather_is_dry",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "post_walk_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-13T19:05:00+02:00",
+          "scheduledEnd": "2026-10-13T19:17:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d2_a16"
+          ],
+          "preconditions": [
+            {
+              "fact": "d2_a16_executed",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a18",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "reheat_leftover_dinner_and_prepare_salad",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T19:25:00+02:00",
+          "scheduledEnd": "2026-10-13T19:43:00+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "leftover_dinner_portion_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a19",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T19:45:00+02:00",
+          "scheduledEnd": "2026-10-13T20:10:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a18"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-13T20:10:00+02:00",
+          "scheduledEnd": "2026-10-13T20:20:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d2_a19"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_football_highlights",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-13T20:25:00+02:00",
+          "scheduledEnd": "2026-10-13T21:35:00+02:00",
+          "durationMicroseconds": 4200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "read",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-13T21:40:00+02:00",
+          "scheduledEnd": "2026-10-13T22:25:00+02:00",
+          "durationMicroseconds": 2700000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a21"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a23",
+          "sequenceIndex": 22,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-13T22:30:00+02:00",
+          "scheduledEnd": "2026-10-13T22:40:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a24",
+          "sequenceIndex": 23,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-13T22:42:00+02:00",
+          "scheduledEnd": "2026-10-13T23:12:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d2_a23"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d2_a25",
+          "sequenceIndex": 24,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-13T23:12:00+02:00",
+          "scheduledEnd": "2026-10-14T06:27:00+02:00",
+          "durationMicroseconds": 26100000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d2_a23"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        }
+      ],
+      "contingencies": [
+        {
+          "contingencyId": "fallback__2026-10-13__d2_a16__activity_replaced",
+          "kind": "fallback",
+          "activation": {
+            "mode": "fallback",
+            "condition": null,
+            "fallbackForActivityId": "d2_a16",
+            "fallbackTrigger": "activity_replaced"
+          },
+          "replacesActivityId": "d2_a16",
+          "activities": [
+            {
+              "sourceActivityId": "d2_alt03",
+              "sequenceIndex": 0,
+              "actorId": "resident_mario_rossi",
+              "intent": "wash_face_and_change_shirt",
+              "locationIds": [
+                "bathroom"
+              ],
+              "scheduledStart": "2026-10-13T18:15:00+02:00",
+              "scheduledEnd": "2026-10-13T18:22:00+02:00",
+              "durationMicroseconds": 420000000,
+              "mandatory": false,
+              "priority": 40,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [],
+              "selectedDependencyIds": [],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "fallback",
+                "condition": null,
+                "fallbackForActivityId": "d2_a16",
+                "fallbackTrigger": "activity_replaced"
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            }
+          ],
+          "rescheduledActivities": [],
+          "omittedActivities": [
+            {
+              "sourceActivityId": "d2_a17",
+              "reason": "contingency_main_activity_omitted"
+            }
+          ],
+          "objectiveValues": {
+            "optionalPriorityScore": 400,
+            "optionalActivityCount": 10,
+            "durationDeviationMicroseconds": 450000000,
+            "temporalDeviationMicroseconds": 1050000000,
+            "scheduledStartSumMicroseconds": 3295710000000
+          }
+        },
+        {
+          "contingencyId": "fallback__2026-10-13__d2_a16__precondition_failed",
+          "kind": "fallback",
+          "activation": {
+            "mode": "fallback",
+            "condition": null,
+            "fallbackForActivityId": "d2_a16",
+            "fallbackTrigger": "precondition_failed"
+          },
+          "replacesActivityId": "d2_a16",
+          "activities": [
+            {
+              "sourceActivityId": "d2_alt01",
+              "sequenceIndex": 0,
+              "actorId": "resident_mario_rossi",
+              "intent": "indoor_light_exercise",
+              "locationIds": [
+                "living_room"
+              ],
+              "scheduledStart": "2026-10-13T18:15:00+02:00",
+              "scheduledEnd": "2026-10-13T18:40:00+02:00",
+              "durationMicroseconds": 1500000000,
+              "mandatory": false,
+              "priority": 40,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [],
+              "selectedDependencyIds": [],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "fallback",
+                "condition": null,
+                "fallbackForActivityId": "d2_a16",
+                "fallbackTrigger": "precondition_failed"
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            },
+            {
+              "sourceActivityId": "d2_alt02",
+              "sequenceIndex": 1,
+              "actorId": "resident_mario_rossi",
+              "intent": "tidy_living_room_and_hallway",
+              "locationIds": [
+                "living_room_and_hallway"
+              ],
+              "scheduledStart": "2026-10-13T18:40:00+02:00",
+              "scheduledEnd": "2026-10-13T18:57:00+02:00",
+              "durationMicroseconds": 1020000000,
+              "mandatory": false,
+              "priority": 40,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [],
+              "selectedDependencyIds": [
+                "d2_alt01"
+              ],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "fallback",
+                "condition": null,
+                "fallbackForActivityId": "d2_a16",
+                "fallbackTrigger": "precondition_failed"
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            }
+          ],
+          "rescheduledActivities": [],
+          "omittedActivities": [
+            {
+              "sourceActivityId": "d2_a17",
+              "reason": "contingency_main_activity_omitted"
+            }
+          ],
+          "objectiveValues": {
+            "optionalPriorityScore": 440,
+            "optionalActivityCount": 11,
+            "durationDeviationMicroseconds": 450000000,
+            "temporalDeviationMicroseconds": 1050000000,
+            "scheduledStartSumMicroseconds": 3449310000000
+          }
+        },
+        {
+          "contingencyId": "fallback__2026-10-13__d2_a18__precondition_failed",
+          "kind": "fallback",
+          "activation": {
+            "mode": "fallback",
+            "condition": null,
+            "fallbackForActivityId": "d2_a18",
+            "fallbackTrigger": "precondition_failed"
+          },
+          "replacesActivityId": "d2_a18",
+          "activities": [
+            {
+              "sourceActivityId": "d2_alt04",
+              "sequenceIndex": 0,
+              "actorId": "resident_mario_rossi",
+              "intent": "prepare_quick_pasta_and_salad",
+              "locationIds": [
+                "kitchen"
+              ],
+              "scheduledStart": "2026-10-13T19:25:00+02:00",
+              "scheduledEnd": "2026-10-13T19:53:00+02:00",
+              "durationMicroseconds": 1680000000,
+              "mandatory": true,
+              "priority": 80,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [],
+              "selectedDependencyIds": [],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "fallback",
+                "condition": null,
+                "fallbackForActivityId": "d2_a18",
+                "fallbackTrigger": "precondition_failed"
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            }
+          ],
+          "rescheduledActivities": [
+            {
+              "sourceActivityId": "d2_a19",
+              "sequenceIndex": 0,
+              "actorId": "resident_mario_rossi",
+              "intent": "eat_dinner",
+              "locationIds": [
+                "kitchen"
+              ],
+              "scheduledStart": "2026-10-13T19:53:00+02:00",
+              "scheduledEnd": "2026-10-13T20:18:00+02:00",
+              "durationMicroseconds": 1500000000,
+              "mandatory": true,
+              "priority": 80,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [],
+              "selectedDependencyIds": [
+                "d2_alt04"
+              ],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "always",
+                "condition": null,
+                "fallbackForActivityId": null,
+                "fallbackTrigger": null
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            },
+            {
+              "sourceActivityId": "d2_a20",
+              "sequenceIndex": 1,
+              "actorId": "resident_mario_rossi",
+              "intent": "clean_kitchen",
+              "locationIds": [
+                "kitchen"
+              ],
+              "scheduledStart": "2026-10-13T20:18:00+02:00",
+              "scheduledEnd": "2026-10-13T20:28:00+02:00",
+              "durationMicroseconds": 600000000,
+              "mandatory": false,
+              "priority": 40,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [
+                {
+                  "resourceId": "kitchen_sink_01",
+                  "units": 1
+                }
+              ],
+              "selectedDependencyIds": [
+                "d2_a19"
+              ],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "always",
+                "condition": null,
+                "fallbackForActivityId": null,
+                "fallbackTrigger": null
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            },
+            {
+              "sourceActivityId": "d2_a21",
+              "sequenceIndex": 2,
+              "actorId": "resident_mario_rossi",
+              "intent": "watch_football_highlights",
+              "locationIds": [
+                "living_room"
+              ],
+              "scheduledStart": "2026-10-13T20:28:00+02:00",
+              "scheduledEnd": "2026-10-13T21:38:00+02:00",
+              "durationMicroseconds": 4200000000,
+              "mandatory": false,
+              "priority": 40,
+              "canOverlapForActor": false,
+              "participantIds": [],
+              "requiredResources": [
+                {
+                  "resourceId": "television_01",
+                  "units": 1
+                }
+              ],
+              "selectedDependencyIds": [],
+              "preconditions": [],
+              "effects": [],
+              "activation": {
+                "mode": "always",
+                "condition": null,
+                "fallbackForActivityId": null,
+                "fallbackTrigger": null
+              },
+              "commitmentId": null,
+              "truncatedAtSimulationEnd": false
+            }
+          ],
+          "omittedActivities": [],
+          "objectiveValues": {
+            "optionalPriorityScore": 440,
+            "optionalActivityCount": 11,
+            "durationDeviationMicroseconds": 450000000,
+            "temporalDeviationMicroseconds": 2190000000,
+            "scheduledStartSumMicroseconds": 3451950000000
+          }
+        }
+      ],
+      "omittedActivities": []
+    },
+    {
+      "date": "2026-10-14",
+      "activities": [
+        {
+          "sourceActivityId": "d3_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-14T06:27:00+02:00",
+          "scheduledEnd": "2026-10-14T06:32:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-14T06:32:00+02:00",
+          "scheduledEnd": "2026-10-14T06:52:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            },
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d3_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-14T06:52:00+02:00",
+          "scheduledEnd": "2026-10-14T07:19:00+02:00",
+          "durationMicroseconds": 1620000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d3_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a05",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "complete_pending_dishwashing",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-14T07:19:00+02:00",
+          "scheduledEnd": "2026-10-14T07:27:00+02:00",
+          "durationMicroseconds": 480000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "pending_dirty_breakfast_dishes",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a04",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-14T07:27:00+02:00",
+          "scheduledEnd": "2026-10-14T07:29:00+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a03"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "dress_for_work",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-14T07:29:00+02:00",
+          "scheduledEnd": "2026-10-14T07:40:00+02:00",
+          "durationMicroseconds": 660000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a04"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "leave_home",
+          "locationIds": [
+            "entrance"
+          ],
+          "scheduledStart": "2026-10-14T07:40:00+02:00",
+          "scheduledEnd": "2026-10-14T07:45:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a06"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-14T07:45:00+02:00",
+          "scheduledEnd": "2026-10-14T08:10:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a07"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-14T08:15:00+02:00",
+          "scheduledEnd": "2026-10-14T15:00:00+02:00",
+          "durationMicroseconds": 24300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a08"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "work_weekdays__2026-10-14",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_to_pharmacy",
+          "locationIds": [
+            "pharmacy"
+          ],
+          "scheduledStart": "2026-10-14T15:00:00+02:00",
+          "scheduledEnd": "2026-10-14T15:12:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "collect_medication_refill",
+          "locationIds": [
+            "pharmacy"
+          ],
+          "scheduledStart": "2026-10-14T15:12:00+02:00",
+          "scheduledEnd": "2026-10-14T15:22:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a10"
+          ],
+          "preconditions": [
+            {
+              "fact": "refill_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-14T15:22:00+02:00",
+          "scheduledEnd": "2026-10-14T15:49:00+02:00",
+          "durationMicroseconds": 1620000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "change_clothes_and_have_snack",
+          "locationIds": [
+            "bedroom_and_kitchen"
+          ],
+          "scheduledStart": "2026-10-14T16:00:00+02:00",
+          "scheduledEnd": "2026-10-14T16:20:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a12"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-14T16:25:00+02:00",
+          "scheduledEnd": "2026-10-14T17:15:00+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "call_sister_lucia",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-14T17:30:00+02:00",
+          "scheduledEnd": "2026-10-14T17:55:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_walk",
+          "locationIds": [
+            "outside"
+          ],
+          "scheduledStart": "2026-10-14T18:20:00+02:00",
+          "scheduledEnd": "2026-10-14T19:00:00+02:00",
+          "durationMicroseconds": 2400000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "weather_is_dry",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "cook_chicken_and_vegetables",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-14T19:22:30+02:00",
+          "scheduledEnd": "2026-10-14T20:00:30+02:00",
+          "durationMicroseconds": 2280000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "dinner_ingredients_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a18",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-14T20:00:30+02:00",
+          "scheduledEnd": "2026-10-14T20:25:30+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a17"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a19",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-14T20:25:30+02:00",
+          "scheduledEnd": "2026-10-14T20:37:30+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d3_a18"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_documentary",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-14T20:40:00+02:00",
+          "scheduledEnd": "2026-10-14T22:00:00+02:00",
+          "durationMicroseconds": 4800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_next_workday",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-14T22:05:00+02:00",
+          "scheduledEnd": "2026-10-14T22:17:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-14T22:25:00+02:00",
+          "scheduledEnd": "2026-10-14T22:35:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a23",
+          "sequenceIndex": 22,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-14T22:40:00+02:00",
+          "scheduledEnd": "2026-10-14T23:10:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d3_a22"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d3_a24",
+          "sequenceIndex": 23,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-14T23:17:30+02:00",
+          "scheduledEnd": "2026-10-15T06:25:00+02:00",
+          "durationMicroseconds": 25650000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d3_a22"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        }
+      ],
+      "contingencies": [],
+      "omittedActivities": []
+    },
+    {
+      "date": "2026-10-15",
+      "activities": [
+        {
+          "sourceActivityId": "d4_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-15T06:25:00+02:00",
+          "scheduledEnd": "2026-10-15T06:30:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-15T06:30:00+02:00",
+          "scheduledEnd": "2026-10-15T06:50:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            },
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d4_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-15T06:50:00+02:00",
+          "scheduledEnd": "2026-10-15T07:17:00+02:00",
+          "durationMicroseconds": 1620000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d4_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a04",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-15T07:17:00+02:00",
+          "scheduledEnd": "2026-10-15T07:19:00+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a03"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a05",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "wash_breakfast_dishes",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-15T07:19:00+02:00",
+          "scheduledEnd": "2026-10-15T07:26:00+02:00",
+          "durationMicroseconds": 420000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "dress_for_work",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-15T07:27:00+02:00",
+          "scheduledEnd": "2026-10-15T07:38:00+02:00",
+          "durationMicroseconds": 660000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a04"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "leave_home",
+          "locationIds": [
+            "entrance"
+          ],
+          "scheduledStart": "2026-10-15T07:40:00+02:00",
+          "scheduledEnd": "2026-10-15T07:45:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a06"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-15T07:45:00+02:00",
+          "scheduledEnd": "2026-10-15T08:10:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a07"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-15T08:15:00+02:00",
+          "scheduledEnd": "2026-10-15T15:00:00+02:00",
+          "durationMicroseconds": 24300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a08"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "work_weekdays__2026-10-15",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-15T15:00:00+02:00",
+          "scheduledEnd": "2026-10-15T15:30:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "change_clothes_and_have_coffee",
+          "locationIds": [
+            "bedroom_and_kitchen"
+          ],
+          "scheduledStart": "2026-10-15T15:42:30+02:00",
+          "scheduledEnd": "2026-10-15T16:02:30+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a10"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_recycling_out",
+          "locationIds": [
+            "outside"
+          ],
+          "scheduledStart": "2026-10-15T16:20:00+02:00",
+          "scheduledEnd": "2026-10-15T16:32:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "recycling_bin_near_full",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "iron_work_shirts",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-15T16:45:00+02:00",
+          "scheduledEnd": "2026-10-15T17:20:00+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "clean_work_shirts_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-15T17:20:00+02:00",
+          "scheduledEnd": "2026-10-15T18:10:00+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a13"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "short_evening_walk",
+          "locationIds": [
+            "outside"
+          ],
+          "scheduledStart": "2026-10-15T18:25:00+02:00",
+          "scheduledEnd": "2026-10-15T19:00:00+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "weather_is_dry",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_rice_and_vegetables",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-15T19:22:30+02:00",
+          "scheduledEnd": "2026-10-15T19:54:30+02:00",
+          "durationMicroseconds": 1920000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "dinner_ingredients_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-15T19:54:30+02:00",
+          "scheduledEnd": "2026-10-15T20:19:30+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a16"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a18",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-15T20:19:30+02:00",
+          "scheduledEnd": "2026-10-15T20:31:30+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d4_a17"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a19",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-15T20:35:00+02:00",
+          "scheduledEnd": "2026-10-15T22:05:00+02:00",
+          "durationMicroseconds": 5400000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_friday_clothes_and_bag",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-15T22:05:00+02:00",
+          "scheduledEnd": "2026-10-15T22:17:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-15T22:25:00+02:00",
+          "scheduledEnd": "2026-10-15T22:35:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-15T22:40:00+02:00",
+          "scheduledEnd": "2026-10-15T23:10:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d4_a21"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d4_a23",
+          "sequenceIndex": 22,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-15T23:17:30+02:00",
+          "scheduledEnd": "2026-10-16T06:25:00+02:00",
+          "durationMicroseconds": 25650000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d4_a21"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        }
+      ],
+      "contingencies": [],
+      "omittedActivities": []
+    },
+    {
+      "date": "2026-10-16",
+      "activities": [
+        {
+          "sourceActivityId": "d5_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-16T06:25:00+02:00",
+          "scheduledEnd": "2026-10-16T06:30:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-16T06:30:00+02:00",
+          "scheduledEnd": "2026-10-16T06:50:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            },
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d5_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-16T06:50:00+02:00",
+          "scheduledEnd": "2026-10-16T07:17:00+02:00",
+          "durationMicroseconds": 1620000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d5_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a04",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-16T07:17:00+02:00",
+          "scheduledEnd": "2026-10-16T07:19:00+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a03"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a05",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "wash_breakfast_dishes",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-16T07:19:00+02:00",
+          "scheduledEnd": "2026-10-16T07:26:00+02:00",
+          "durationMicroseconds": 420000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "dress_for_work",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-16T07:27:00+02:00",
+          "scheduledEnd": "2026-10-16T07:38:00+02:00",
+          "durationMicroseconds": 660000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a04"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "leave_home",
+          "locationIds": [
+            "entrance"
+          ],
+          "scheduledStart": "2026-10-16T07:40:00+02:00",
+          "scheduledEnd": "2026-10-16T07:45:00+02:00",
+          "durationMicroseconds": 300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a06"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-16T07:45:00+02:00",
+          "scheduledEnd": "2026-10-16T08:10:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a07"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "work_shift",
+          "locationIds": [
+            "workplace"
+          ],
+          "scheduledStart": "2026-10-16T08:15:00+02:00",
+          "scheduledEnd": "2026-10-16T15:00:00+02:00",
+          "durationMicroseconds": 24300000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a08"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "work_weekdays__2026-10-16",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "commute_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-16T15:00:00+02:00",
+          "scheduledEnd": "2026-10-16T15:30:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "change_clothes_and_eat_snack",
+          "locationIds": [
+            "bedroom_and_kitchen"
+          ],
+          "scheduledStart": "2026-10-16T15:45:00+02:00",
+          "scheduledEnd": "2026-10-16T16:05:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a10"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-16T16:12:30+02:00",
+          "scheduledEnd": "2026-10-16T17:07:30+02:00",
+          "durationMicroseconds": 3300000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "shower_and_get_ready_to_go_out",
+          "locationIds": [
+            "bathroom_and_bedroom"
+          ],
+          "scheduledStart": "2026-10-16T17:27:30+02:00",
+          "scheduledEnd": "2026-10-16T18:02:30+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_to_neighborhood_bar",
+          "locationIds": [
+            "neighborhood_bar"
+          ],
+          "scheduledStart": "2026-10-16T18:07:30+02:00",
+          "scheduledEnd": "2026-10-16T18:25:30+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a13"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "aperitivo_with_paolo",
+          "locationIds": [
+            "neighborhood_bar"
+          ],
+          "scheduledStart": "2026-10-16T18:30:00+02:00",
+          "scheduledEnd": "2026-10-16T20:30:00+02:00",
+          "durationMicroseconds": 7200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [
+            "friend_paolo"
+          ],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a14"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "friday_aperitivo__2026-10-16",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-16T20:30:00+02:00",
+          "scheduledEnd": "2026-10-16T20:48:00+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a15"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_light_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-16T21:05:00+02:00",
+          "scheduledEnd": "2026-10-16T21:20:00+02:00",
+          "durationMicroseconds": 900000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d5_a16"
+          ],
+          "preconditions": [
+            {
+              "fact": "resident_still_hungry",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [
+            {
+              "fact": "light_dinner_prepared",
+              "operation": "set",
+              "value": true
+            }
+          ],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a19",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_late_news",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-16T21:35:00+02:00",
+          "scheduledEnd": "2026-10-16T22:20:00+02:00",
+          "durationMicroseconds": 2700000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a18",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_light_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-16T22:20:00+02:00",
+          "scheduledEnd": "2026-10-16T22:38:00+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a17"
+          ],
+          "preconditions": [
+            {
+              "fact": "light_dinner_prepared",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-16T22:45:00+02:00",
+          "scheduledEnd": "2026-10-16T22:55:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-16T22:55:00+02:00",
+          "scheduledEnd": "2026-10-16T23:15:00+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d5_a20"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d5_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-16T23:25:00+02:00",
+          "scheduledEnd": "2026-10-17T07:52:30+02:00",
+          "durationMicroseconds": 30450000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d5_a20"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        }
+      ],
+      "contingencies": [],
+      "omittedActivities": []
+    },
+    {
+      "date": "2026-10-17",
+      "activities": [
+        {
+          "sourceActivityId": "d6_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up_without_alarm",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-17T07:52:30+02:00",
+          "scheduledEnd": "2026-10-17T08:00:30+02:00",
+          "durationMicroseconds": 480000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-17T08:00:30+02:00",
+          "scheduledEnd": "2026-10-17T08:23:30+02:00",
+          "durationMicroseconds": 1380000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            },
+            {
+              "resourceId": "shower_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d6_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_weekend_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-17T08:23:30+02:00",
+          "scheduledEnd": "2026-10-17T08:41:30+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d6_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a04",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_breakfast_and_read_news",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-17T08:41:30+02:00",
+          "scheduledEnd": "2026-10-17T09:16:30+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a03"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a05",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-17T09:16:30+02:00",
+          "scheduledEnd": "2026-10-17T09:18:30+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a04"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_bathroom",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-17T09:32:30+02:00",
+          "scheduledEnd": "2026-10-17T10:02:30+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "vacuum_and_dust_apartment",
+          "locationIds": [
+            "bedroom_hallway_living_room"
+          ],
+          "scheduledStart": "2026-10-17T10:02:30+02:00",
+          "scheduledEnd": "2026-10-17T10:52:30+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a06"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "go_to_neighborhood_market",
+          "locationIds": [
+            "market"
+          ],
+          "scheduledStart": "2026-10-17T11:02:30+02:00",
+          "scheduledEnd": "2026-10-17T11:20:30+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "heavy_rain_has_stopped",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "buy_fresh_food_and_household_supplies",
+          "locationIds": [
+            "market"
+          ],
+          "scheduledStart": "2026-10-17T11:20:30+02:00",
+          "scheduledEnd": "2026-10-17T11:55:30+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a08"
+          ],
+          "preconditions": [],
+          "effects": [
+            {
+              "fact": "meal_prep_ingredients_available",
+              "operation": "set",
+              "value": true
+            },
+            {
+              "fact": "dinner_ingredients_available",
+              "operation": "set",
+              "value": true
+            }
+          ],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "return_home_and_store_purchases",
+          "locationIds": [
+            "home_and_kitchen"
+          ],
+          "scheduledStart": "2026-10-17T11:55:30+02:00",
+          "scheduledEnd": "2026-10-17T12:25:30+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a09"
+          ],
+          "preconditions": [
+            {
+              "fact": "resident_away_from_home_with_purchases",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_simple_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-17T12:45:00+02:00",
+          "scheduledEnd": "2026-10-17T13:10:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-17T13:10:00+02:00",
+          "scheduledEnd": "2026-10-17T13:40:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a11"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-17T13:40:00+02:00",
+          "scheduledEnd": "2026-10-17T13:52:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d6_a12"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "rest_and_read",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-17T13:52:00+02:00",
+          "scheduledEnd": "2026-10-17T14:42:00+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a13"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_to_visit_mother",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-17T14:45:00+02:00",
+          "scheduledEnd": "2026-10-17T15:03:00+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_to_mothers_home",
+          "locationIds": [
+            "mothers_home"
+          ],
+          "scheduledStart": "2026-10-17T15:07:30+02:00",
+          "scheduledEnd": "2026-10-17T15:27:30+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a15"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "visit_mother_and_have_dinner",
+          "locationIds": [
+            "mothers_home"
+          ],
+          "scheduledStart": "2026-10-17T15:30:00+02:00",
+          "scheduledEnd": "2026-10-17T19:00:00+02:00",
+          "durationMicroseconds": 12600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [
+            "mother"
+          ],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a16"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": "saturday_visit_mother__2026-10-17",
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a18",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "travel_home",
+          "locationIds": [
+            "home"
+          ],
+          "scheduledStart": "2026-10-17T19:00:00+02:00",
+          "scheduledEnd": "2026-10-17T19:28:00+02:00",
+          "durationMicroseconds": 1680000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a17"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a19",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_evening_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-17T19:57:30+02:00",
+          "scheduledEnd": "2026-10-17T21:37:30+02:00",
+          "durationMicroseconds": 6000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-17T22:35:00+02:00",
+          "scheduledEnd": "2026-10-17T22:45:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-17T22:45:00+02:00",
+          "scheduledEnd": "2026-10-17T23:15:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d6_a20"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d6_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-17T23:22:30+02:00",
+          "scheduledEnd": "2026-10-18T08:02:30+02:00",
+          "durationMicroseconds": 31200000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d6_a20"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        }
+      ],
+      "contingencies": [],
+      "omittedActivities": []
+    },
+    {
+      "date": "2026-10-18",
+      "activities": [
+        {
+          "sourceActivityId": "d7_a01",
+          "sequenceIndex": 0,
+          "actorId": "resident_mario_rossi",
+          "intent": "wake_up_without_alarm",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-18T08:02:30+02:00",
+          "scheduledEnd": "2026-10-18T08:10:30+02:00",
+          "durationMicroseconds": 480000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a02",
+          "sequenceIndex": 1,
+          "actorId": "resident_mario_rossi",
+          "intent": "morning_toilet_and_wash",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-18T08:10:30+02:00",
+          "scheduledEnd": "2026-10-18T08:28:30+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "toilet_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d7_a01"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a03",
+          "sequenceIndex": 2,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_weekend_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T08:28:30+02:00",
+          "scheduledEnd": "2026-10-18T08:46:30+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kettle_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d7_a02"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a04",
+          "sequenceIndex": 3,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_breakfast_and_listen_to_radio",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T08:46:30+02:00",
+          "scheduledEnd": "2026-10-18T09:21:30+02:00",
+          "durationMicroseconds": 2100000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a03"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a05",
+          "sequenceIndex": 4,
+          "actorId": "resident_mario_rossi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T09:21:30+02:00",
+          "scheduledEnd": "2026-10-18T09:23:30+02:00",
+          "durationMicroseconds": 120000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a04"
+          ],
+          "preconditions": [
+            {
+              "fact": "medication_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a06",
+          "sequenceIndex": 5,
+          "actorId": "resident_mario_rossi",
+          "intent": "start_bed_linen_laundry",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-18T09:30:00+02:00",
+          "scheduledEnd": "2026-10-18T09:40:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "washing_machine_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [
+            {
+              "fact": "washing_cycle_complete",
+              "operation": "set",
+              "value": true
+            }
+          ],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a07",
+          "sequenceIndex": 6,
+          "actorId": "resident_mario_rossi",
+          "intent": "long_sunday_walk",
+          "locationIds": [
+            "outside"
+          ],
+          "scheduledStart": "2026-10-18T09:52:30+02:00",
+          "scheduledEnd": "2026-10-18T11:12:30+02:00",
+          "durationMicroseconds": 4800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a06"
+          ],
+          "preconditions": [
+            {
+              "fact": "weather_is_dry",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a08",
+          "sequenceIndex": 7,
+          "actorId": "resident_mario_rossi",
+          "intent": "hang_bed_linen",
+          "locationIds": [
+            "balcony"
+          ],
+          "scheduledStart": "2026-10-18T11:20:00+02:00",
+          "scheduledEnd": "2026-10-18T11:38:00+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a06"
+          ],
+          "preconditions": [
+            {
+              "fact": "washing_cycle_complete",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a09",
+          "sequenceIndex": 8,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_sunday_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T12:17:30+02:00",
+          "scheduledEnd": "2026-10-18T13:07:30+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a10",
+          "sequenceIndex": 9,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T13:07:30+02:00",
+          "scheduledEnd": "2026-10-18T13:47:30+02:00",
+          "durationMicroseconds": 2400000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a09"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a11",
+          "sequenceIndex": 10,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T13:47:30+02:00",
+          "scheduledEnd": "2026-10-18T14:02:30+02:00",
+          "durationMicroseconds": 900000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d7_a10"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a12",
+          "sequenceIndex": 11,
+          "actorId": "resident_mario_rossi",
+          "intent": "rest_or_nap",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-18T14:15:00+02:00",
+          "scheduledEnd": "2026-10-18T15:05:00+02:00",
+          "durationMicroseconds": 3000000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a13",
+          "sequenceIndex": 12,
+          "actorId": "resident_mario_rossi",
+          "intent": "weekly_meal_preparation",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T15:32:30+02:00",
+          "scheduledEnd": "2026-10-18T16:47:30+02:00",
+          "durationMicroseconds": 4500000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "stove_01",
+              "units": 1
+            },
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [
+            {
+              "fact": "meal_prep_ingredients_available",
+              "operator": "truthy",
+              "value": null
+            }
+          ],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a14",
+          "sequenceIndex": 13,
+          "actorId": "resident_mario_rossi",
+          "intent": "portion_and_store_prepared_food",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T16:47:30+02:00",
+          "scheduledEnd": "2026-10-18T17:09:30+02:00",
+          "durationMicroseconds": 1320000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d7_a13"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a15",
+          "sequenceIndex": 14,
+          "actorId": "resident_mario_rossi",
+          "intent": "call_friend_paolo",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-18T17:27:30+02:00",
+          "scheduledEnd": "2026-10-18T17:52:30+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a16",
+          "sequenceIndex": 15,
+          "actorId": "resident_mario_rossi",
+          "intent": "check_calendar_and_household_supplies",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-18T17:52:30+02:00",
+          "scheduledEnd": "2026-10-18T18:12:30+02:00",
+          "durationMicroseconds": 1200000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a15"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a17",
+          "sequenceIndex": 16,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_light_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T19:25:00+02:00",
+          "scheduledEnd": "2026-10-18T19:47:00+02:00",
+          "durationMicroseconds": 1320000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "fridge_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a18",
+          "sequenceIndex": 17,
+          "actorId": "resident_mario_rossi",
+          "intent": "eat_dinner",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T19:47:00+02:00",
+          "scheduledEnd": "2026-10-18T20:12:00+02:00",
+          "durationMicroseconds": 1500000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a17"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a19",
+          "sequenceIndex": 18,
+          "actorId": "resident_mario_rossi",
+          "intent": "clean_kitchen",
+          "locationIds": [
+            "kitchen"
+          ],
+          "scheduledStart": "2026-10-18T20:12:00+02:00",
+          "scheduledEnd": "2026-10-18T20:24:00+02:00",
+          "durationMicroseconds": 720000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "kitchen_sink_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d7_a18"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a20",
+          "sequenceIndex": 19,
+          "actorId": "resident_mario_rossi",
+          "intent": "watch_sunday_program",
+          "locationIds": [
+            "living_room"
+          ],
+          "scheduledStart": "2026-10-18T20:32:30+02:00",
+          "scheduledEnd": "2026-10-18T21:57:30+02:00",
+          "durationMicroseconds": 5100000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "television_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a21",
+          "sequenceIndex": 20,
+          "actorId": "resident_mario_rossi",
+          "intent": "prepare_monday_clothes_bag_and_documents",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-18T22:02:30+02:00",
+          "scheduledEnd": "2026-10-18T22:20:30+02:00",
+          "durationMicroseconds": 1080000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a22",
+          "sequenceIndex": 21,
+          "actorId": "resident_mario_rossi",
+          "intent": "evening_hygiene",
+          "locationIds": [
+            "bathroom"
+          ],
+          "scheduledStart": "2026-10-18T22:30:00+02:00",
+          "scheduledEnd": "2026-10-18T22:40:00+02:00",
+          "durationMicroseconds": 600000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a21"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a23",
+          "sequenceIndex": 22,
+          "actorId": "resident_mario_rossi",
+          "intent": "read_in_bed",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-18T22:40:00+02:00",
+          "scheduledEnd": "2026-10-18T23:10:00+02:00",
+          "durationMicroseconds": 1800000000,
+          "mandatory": false,
+          "priority": 40,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [],
+          "selectedDependencyIds": [
+            "d7_a22"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": false
+        },
+        {
+          "sourceActivityId": "d7_a24",
+          "sequenceIndex": 23,
+          "actorId": "resident_mario_rossi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "scheduledStart": "2026-10-18T23:12:30+02:00",
+          "scheduledEnd": "2026-10-19T06:25:00+02:00",
+          "durationMicroseconds": 25950000000,
+          "mandatory": true,
+          "priority": 80,
+          "canOverlapForActor": false,
+          "participantIds": [],
+          "requiredResources": [
+            {
+              "resourceId": "bed_01",
+              "units": 1
+            }
+          ],
+          "selectedDependencyIds": [
+            "d7_a22"
+          ],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "truncatedAtSimulationEnd": true
+        }
+      ],
+      "contingencies": [],
+      "omittedActivities": []
+    }
+  ]
+}

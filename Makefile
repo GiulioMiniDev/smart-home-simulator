@@ -1,4 +1,4 @@
-.PHONY: sync validate validate-behavior validate-home compile bundle benchmark-environment schema behavior-artifacts environment-artifacts environment-visualization authoring-artifacts test lint check
+.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay benchmark-environment benchmark-simulation schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts authoring-artifacts test lint check
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
@@ -6,11 +6,20 @@ sync:
 validate:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim validate examples/valid/mario_week.json
 
+validate-runtime-1.1:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim validate examples/valid/mario_week.runtime-1.1.0.json
+
 compile:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim compile examples/valid/mario_week.json --output examples/compiled/mario_week.plan.json --report-output examples/compiled/mario_week.compilation-report.json
 
+compile-runtime-1.1: runtime-1.1-artifacts
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim compile examples/valid/mario_week.runtime-1.1.0.json --output examples/compiled/mario_week.runtime-1.1.0.plan.json --report-output examples/compiled/mario_week.runtime-1.1.0.compilation-report.json
+
 validate-behavior:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim validate-behavior examples/behavior/mario_rossi_week_2026_10_12.behavior.json examples/valid/mario_week.json
+
+validate-behavior-1.1:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim validate-behavior examples/behavior/mario_rossi_week_2026_10_12.behavior-1.1.0.json examples/valid/mario_week.runtime-1.1.0.json
 
 validate-home:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim validate-home examples/environment/mario_monteverde.home.json
@@ -18,12 +27,30 @@ validate-home:
 bundle:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim build-simulation-bundle examples/valid/mario_week.json examples/compiled/mario_week.plan.json examples/behavior/mario_rossi_week_2026_10_12.behavior.json examples/environment/mario_monteverde.home.json --output examples/bundles/mario_week.simulation-bundle.json --report-output examples/bundles/mario_week.environment-report.json
 
+bundle-1.1: behavior-1.1-artifacts compile-runtime-1.1
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim build-simulation-bundle examples/valid/mario_week.runtime-1.1.0.json examples/compiled/mario_week.runtime-1.1.0.plan.json examples/behavior/mario_rossi_week_2026_10_12.behavior-1.1.0.json examples/environment/mario_monteverde.home.json --output examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json --report-output examples/bundles/mario_week.environment-report-behavior-1.1.0.json
+
+simulate:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim simulate examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json --output examples/execution/mario_week.execution-trace.json --report-output examples/execution/mario_week.simulation-report.json
+
+replay:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim replay examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json examples/execution/mario_week.execution-trace.json --output examples/execution/mario_week.replay-report.json
+
 benchmark-environment:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_environment.py
+
+benchmark-simulation:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_simulation.py
 
 behavior-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_behavior_artifacts.py
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_invalid_behavior_examples.py
+
+runtime-1.1-artifacts:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/migrate_runtime_scenario_1_1.py
+
+behavior-1.1-artifacts: runtime-1.1-artifacts
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/migrate_behavior_1_1.py
 
 authoring-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_authoring_artifacts.py
@@ -34,6 +61,9 @@ environment-artifacts:
 
 environment-visualization:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_environment_visualization.py
+
+simulation-artifacts: bundle-1.1
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_simulation_artifacts.py
 
 schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --output schemas/scenario-1.0.0.schema.json
@@ -51,6 +81,9 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract home-model --output schemas/home-model-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract environment-validation-report --output schemas/environment-validation-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-bundle --output schemas/simulation-bundle-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract execution-trace --output schemas/execution-trace-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-report --output schemas/simulation-report-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract replay-report --output schemas/replay-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/write_schema_checksums.py
 
 test:
@@ -60,4 +93,4 @@ lint:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff check .
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff format --check .
 
-check: behavior-artifacts environment-artifacts schema authoring-artifacts test lint validate compile validate-behavior validate-home bundle benchmark-environment
+check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay benchmark-environment benchmark-simulation

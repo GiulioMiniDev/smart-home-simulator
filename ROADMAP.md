@@ -21,7 +21,7 @@ relativi controlli di compatibilità.
 | 2 | Compilatore del piano | scenario valido | canonical daily plan | **Completata e congelata — 1.0.0** |
 | 3 | Authoring comportamentale e modelli di processo ADL | profilo, abitudini, calendario e vocabolario delle azioni | scenario + pacchetto personale di process model validati | **Completata e congelata — 1.0.0** |
 | 4 | Ambiente domestico eseguibile e binding | process model + definizione della casa | home model validato + simulation bundle completamente risolto | **Completata e congelata — 1.0.0** |
-| 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | Non iniziata |
+| 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | **Completata e congelata — 1.0.0** |
 | 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | Non iniziata |
 | 7 | Applicazione UI, workspace, export e replay | artefatti M1–M6 completi | applicazione moderna end-to-end + dataset JSONL/CSV/XES + replay deterministico | Non iniziata |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
@@ -317,6 +317,15 @@ semantica e causale effettivamente simulata.
 - schemi, checksum, esempi, CLI, golden trace, test, lint, benchmark end-to-end e copertura
   minima obbligatoria del 95% sono completi;
 - il target prestazionale dichiarato per una settimana completa è misurato e rispettato.
+
+La regola di avanzamento della Milestone 5 è soddisfatta dai contratti congelati in
+ADR-011 e dalla correzione semantica upstream versionata in ADR-010. La settimana golden
+produce 172 esiti di attività, 769 azioni tipizzate, 202 movimenti e 1.139 transizioni di
+stato senza fallimenti. Tutti i 27 action type sono esercitati, ogni risorsa viene
+rilasciata, il residente termina in uno stato spaziale coerente e il replay riproduce lo
+stesso digest semantico. Il bundle M4 legacy viene intenzionalmente rifiutato dal motore
+stretto anziché essere reinterpretato. L'audit terminale è in
+`docs/audits/milestone-5-closure.md`.
 
 ## Milestone 6 — Sensori e separazione oracle/observable
 

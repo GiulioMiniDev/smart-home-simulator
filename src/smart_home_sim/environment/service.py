@@ -864,12 +864,14 @@ def build_bundle_files(
             )
         )
 
-    action_catalog = ActionCatalog.model_validate_json(default_action_catalog_path().read_text())
+    action_catalog = ActionCatalog.model_validate_json(
+        default_action_catalog_path(package.catalogs.action_catalog.version).read_text()
+    )
     variable_catalog = VariableCatalog.model_validate_json(
         default_variable_catalog_path().read_text()
     )
     # Loading this catalog proves that every package reference still resolves to all M3 inputs.
-    default_activity_catalog_path().read_bytes()
+    default_activity_catalog_path(package.catalogs.activity_catalog.version).read_bytes()
     action_bindings, binding_issues = _build_action_bindings(
         home, scenario, package, action_catalog, variable_catalog
     )
@@ -909,8 +911,11 @@ def build_bundle_files(
             sha256=canonical_sha256(home),
         ),
     ]
+    behavior_marker = (
+        "" if package.package_version == "1.0.0" else f"__behavior_{package.package_version}"
+    )
     bundle = SimulationBundle(
-        bundle_id=f"{scenario.scenario_id}__{home.home_id}__1.0.0",
+        bundle_id=f"{scenario.scenario_id}__{home.home_id}{behavior_marker}__1.0.0",
         seed=scenario.seed,
         scenario=scenario,
         canonical_plan=plan,

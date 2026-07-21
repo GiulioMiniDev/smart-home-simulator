@@ -7,6 +7,10 @@ from typing import Any
 ROOT = Path(__file__).parents[1]
 CATALOG_DIR = ROOT / "src/smart_home_sim/catalogs"
 BEHAVIOR_EXAMPLE_DIR = ROOT / "examples/behavior"
+BASE_SCENARIO_PATHS = (
+    ROOT / "examples/valid/mario_week.json",
+    ROOT / "examples/valid/minimal.json",
+)
 
 CATEGORY_DESCRIPTIONS = {
     "communication": "Communicate or maintain a social relationship.",
@@ -321,10 +325,10 @@ def relevant_variables(category: str, components: list[str]) -> list[str]:
 
 
 def load_scenarios() -> list[dict[str, Any]]:
-    return [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted((ROOT / "examples/valid").glob("*.json"))
-    ]
+    # M3's frozen catalogs and packages derive only from its accepted base corpus.
+    # Later milestone scenarios are explicit migrations and must not silently expand
+    # or duplicate this generator's output set.
+    return [json.loads(path.read_text(encoding="utf-8")) for path in BASE_SCENARIO_PATHS]
 
 
 def activity_catalog(scenarios: list[dict[str, Any]]) -> dict[str, Any]:
