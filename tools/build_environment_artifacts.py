@@ -100,7 +100,7 @@ def build_home() -> HomeModel:
     regions = [
         HomeRegion(
             region_id=region_id,
-            kind=RegionKind.room,
+            kind=RegionKind.outdoor if region_id == "balcony" else RegionKind.room,
             boundary=rectangle(*origins[region_id], *dimensions[region_id]),
         )
         for region_id in home_region_ids
@@ -263,6 +263,7 @@ def build_home() -> HomeModel:
             entity_type="bathroom_fixture_group",
             region_id="bathroom",
             interaction_point_id="ip_bathroom_anchor",
+            initial_state={"active": False},
             capabilities=[
                 capability("interaction_point", bathroom_roles, ["move_to_capability"]),
                 capability("personal_care_support", [], ["personal_care"]),
@@ -298,6 +299,7 @@ def build_home() -> HomeModel:
             entity_type="kitchen_fixture_group",
             region_id="kitchen",
             interaction_point_id="ip_kitchen_anchor",
+            initial_state={"open": False, "active": False},
             capabilities=[
                 capability("interaction_point", kitchen_roles, ["move_to_capability"]),
                 capability("openable", ["food_storage", "household_storage"], ["open", "close"]),
@@ -321,6 +323,7 @@ def build_home() -> HomeModel:
             entity_type="media_and_social_hub",
             region_id="living_room",
             interaction_point_id="ip_living_room_anchor",
+            initial_state={"active": False},
             capabilities=[
                 capability("interaction_point", living_roles, ["move_to_capability"]),
                 capability(

@@ -74,6 +74,12 @@ def test_golden_home_and_bundle_are_fully_resolved_and_deterministic() -> None:
     assert first.report.summary.action_binding_count == 766
     assert first.report.summary.route_check_count == 441
     assert len(first.bundle.digests) == 4
+    visualization = (ROOT / "examples/visualizations/mario_monteverde.m4-benchmark.html").read_text(
+        encoding="utf-8"
+    )
+    assert first.report.home_sha256 is not None
+    assert first.report.home_sha256[:16] in visualization
+    assert first.report.home_sha256[-8:] in visualization
     assert {item.action_type for item in first.bundle.action_bindings} == {
         "activate",
         "change_posture",
@@ -189,6 +195,63 @@ def test_navigation_rejects_unknown_region_and_blocked_endpoint() -> None:
         plan_path(**kwargs)
 
 
+@pytest.mark.parametrize(
+    ("mutate", "start_region", "start", "end_region", "end"),
+    [
+        (
+            lambda payload: payload["regions"][2].update({"traversable": False}),
+            "bedroom",
+            Point2D(x=5.2, y=9),
+            "living_room",
+            Point2D(x=13, y=10),
+        ),
+        (
+            lambda payload: payload["connections"][0].update({"widthMeters": 0.4}),
+            "bathroom",
+            Point2D(x=5.2, y=3),
+            "hallway",
+            Point2D(x=9, y=6.5),
+        ),
+        (
+            lambda payload: payload["connections"][0].update(
+                {"allowedMobilityProfiles": ["wheelchair"]}
+            ),
+            "bathroom",
+            Point2D(x=5.2, y=3),
+            "hallway",
+            Point2D(x=9, y=6.5),
+        ),
+        (
+            lambda payload: payload["connections"][0].update({"bidirectional": False}),
+            "hallway",
+            Point2D(x=9, y=6.5),
+            "bathroom",
+            Point2D(x=5.2, y=3),
+        ),
+    ],
+)
+def test_navigation_enforces_traversability_clearance_access_and_direction(
+    mutate: Any,
+    start_region: str,
+    start: Point2D,
+    end_region: str,
+    end: Point2D,
+) -> None:
+    payload = load(HOME)
+    mutate(payload)
+    with pytest.raises(ValueError, match="no route"):
+        plan_path(
+            parsed_home(payload),
+            start_region_id=start_region,
+            start=start,
+            end_region_id=end_region,
+            end=end,
+            walking_speed_meters_per_second=1.0,
+            body_radius_meters=0.25,
+            mobility_profile="unimpaired",
+        )
+
+
 def test_home_contract_model_validators() -> None:
     with pytest.raises(ValidationError, match="distinct"):
         Polygon2D(vertices=[Point2D(x=0, y=0), Point2D(x=0, y=0), Point2D(x=1, y=1)])
@@ -204,11 +267,66 @@ def test_home_contract_model_validators() -> None:
     with pytest.raises(ValidationError, match="different"):
         HomeConnection(**common)
     common["region_b_id"] = "b"
+    with pytest.raises(ValidationError, match="transport traversal"):
+        HomeConnection(**common)
     with pytest.raises(ValidationError, match="distanceMeters"):
         HomeConnection(**common, traversal_mode=TraversalMode.transport)
     common["kind"] = ConnectionKind.doorway
     with pytest.raises(ValidationError, match="doorways"):
         HomeConnection(**common, traversal_mode=TraversalMode.transport, distance_meters=2)
+    common["kind"] = ConnectionKind.passage
+    with pytest.raises(ValidationError, match="passages"):
+        HomeConnection(**common, traversal_mode=TraversalMode.transport, distance_meters=2)
+    with pytest.raises(ValidationError, match="derive distance"):
+        HomeConnection(**common, distance_meters=2)
+
+    payload = load(HOME)
+    payload["entities"][1]["initialState"].pop("active")
+    with pytest.raises(ValidationError, match="initialState.active"):
+        parsed_home(payload)
+    payload = load(HOME)
+    payload["entities"][3]["initialState"].pop("open")
+    with pytest.raises(ValidationError, match="initialState.open"):
+        parsed_home(payload)
+
+    duplicate_cases = [
+        ("connections", 0, "allowedMobilityProfiles", ["profile", "profile"]),
+        ("locationBindings", 0, "regionIds", ["bedroom", "bedroom"]),
+    ]
+    for collection, index, field, value in duplicate_cases:
+        payload = load(HOME)
+        payload[collection][index][field] = value
+        with pytest.raises(ValidationError, match="duplicates"):
+            parsed_home(payload)
+    payload = load(HOME)
+    payload["entities"][0]["capabilities"][0]["roles"].append("bag_storage")
+    with pytest.raises(ValidationError, match="duplicates"):
+        parsed_home(payload)
+    payload = load(HOME)
+    payload["entities"][0]["capabilities"][0]["supportedOperations"] = []
+    with pytest.raises(ValidationError, match="at least 1"):
+        parsed_home(payload)
+    payload = load(HOME)
+    payload["entities"][0]["access"]["allowedResidentIds"] = ["resident", "resident"]
+    with pytest.raises(ValidationError, match="duplicates"):
+        parsed_home(payload)
+
+
+def test_home_validation_rejects_overlapping_obstacles_and_nonlocal_doors() -> None:
+    payload = load(HOME)
+    duplicate_obstacle = copy.deepcopy(payload["obstacles"][0])
+    duplicate_obstacle["obstacleId"] = "overlapping_bedroom_obstacle"
+    payload["obstacles"].append(duplicate_obstacle)
+    payload["connections"][0]["portalA"] = {"x": 5.0, "y": 3.8}
+    payload["connections"][1]["widthMeters"] = 0.4
+    payload["interactionPoints"][0]["approachRadiusMeters"] = 4.0
+
+    report = validate_home_model(parsed_home(payload))
+
+    assert {"CONNECTION_INVALID", "INTERACTION_POINT_INVALID", "OBSTACLE_INVALID"} <= issue_codes(
+        report
+    )
+    assert any("overlap" in issue.message for issue in report.issues)
 
 
 def test_geometric_and_referential_validation_reports_all_issue_families() -> None:
@@ -286,6 +404,12 @@ def test_bundle_preflight_and_compatibility_failures(tmp_path: Path) -> None:
     wrong_home = write_json(tmp_path / "wrong-home.json", home_payload)
     result = build_bundle_files(SCENARIO, PLAN, PACKAGE, wrong_home)
     assert "HOME_REFERENCE_MISMATCH" in issue_codes(result.report)
+
+    home_payload = load(HOME)
+    home_payload["entities"][0]["access"]["allowedResidentIds"] = ["unknown_resident"]
+    inaccessible_home = write_json(tmp_path / "unknown-access-resident.json", home_payload)
+    result = build_bundle_files(SCENARIO, PLAN, PACKAGE, inaccessible_home)
+    assert "ENTITY_INVALID" in issue_codes(result.report)
 
 
 def test_bundle_reports_missing_scenario_and_action_bindings(tmp_path: Path) -> None:

@@ -85,8 +85,14 @@ le rotte prima di risolvere le capacità. In caso di errore non pubblica alcun b
 Il golden environment M4 può essere ispezionato anche nel
 [benchmark visuale di Casa Monteverde](examples/visualizations/mario_monteverde.m4-benchmark.html).
 È un artefatto di accettazione interattivo, non la UI applicativa della Milestone 7:
-mostra la planimetria reale, porte, ingombri, entità, anchor e le 49 rotte interne
-calcolate dal path planner.
+mostra la planimetria reale, le sei porte locali, i quattro ingombri metrici, le nove
+risorse fisiche con simboli dedicati, le sei entità logiche domestiche, gli anchor e le 49
+rotte interne calcolate dal path planner. Viene rigenerato da home, scenario, bundle e
+report con `make environment-visualization`; la generazione fallisce se un elemento è
+stale, inventato, omesso o privo di rappresentazione.
+
+La chiusura terminale della milestone, requisito per iniziare la M5, è documentata
+nell'[audit M4](docs/audits/milestone-4-closure.md).
 
 Il flusso di authoring consigliato usa un solo file:
 `prompts/generate-simulation-inputs-1.2.0.md`. Il ricercatore sostituisce il marcatore

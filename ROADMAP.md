@@ -252,7 +252,7 @@ capacità concrete prima che inizi l'esecuzione.
 - tempi e geometrie di movimento rispettano profilo, unità e invarianti spaziali;
 - bundle non coerenti falliscono con report completo e senza artefatti parziali;
 - schema, checksum, esempi, CLI, golden environment, test, lint, benchmark e copertura
-  minima obbligatoria del 95% sono completi.
+minima obbligatoria del 95% sono completi.
 
 La regola di avanzamento della Milestone 4 è soddisfatta dai contratti congelati in
 ADR-009. La casa di Mario contiene 14 regioni, 13 connessioni, 14 punti di interazione,
@@ -260,8 +260,14 @@ ADR-009. La casa di Mario contiene 14 regioni, 13 connessioni, 14 punti di inter
 azione e verifica tutte le 441 coppie ordinate fra i 21 binding di luogo. I tre contratti
 pubblici, il report, i digest, la CLI, il benchmark e gli artefatti golden sono versionati
 `1.0.0`; lo stesso input produce lo stesso bundle. Un benchmark visuale interattivo
-ispeziona la planimetria e le 49 rotte fra i sette ambienti domestici senza introdurre
-dipendenze runtime o anticipare la UI applicativa della Milestone 7.
+generato dagli stessi artefatti ispeziona la planimetria, le sei porte, i quattro ingombri,
+le nove risorse fisiche, le sei entità domestiche e le 49 rotte fra i sette ambienti. Il
+catalogo SVG è chiuso sul vocabolario effettivamente presente: l'assenza di un simbolo, un
+ID fantasma o un digest stale fanno fallire il gate. Questo non introduce dipendenze
+runtime né anticipa la UI applicativa della Milestone 7.
+La matrice di evidenza terminale è congelata in
+`docs/audits/milestone-4-closure.md`; la Milestone 5 non può demandare correzioni o
+interpretazioni dell'ambiente al runtime.
 
 ## Milestone 5 — Motore di simulazione completo
 

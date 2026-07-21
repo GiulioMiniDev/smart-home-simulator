@@ -161,7 +161,7 @@
     },
     {
       "regionId": "balcony",
-      "kind": "room",
+      "kind": "outdoor",
       "boundary": {
         "vertices": [
           {
@@ -1552,7 +1552,9 @@
           ]
         }
       ],
-      "initialState": {},
+      "initialState": {
+        "active": false
+      },
       "access": {
         "allowedResidentIds": [],
         "allowedMobilityProfiles": []
@@ -2292,7 +2294,10 @@
           ]
         }
       ],
-      "initialState": {},
+      "initialState": {
+        "open": false,
+        "active": false
+      },
       "access": {
         "allowedResidentIds": [],
         "allowedMobilityProfiles": []
@@ -2681,7 +2686,9 @@
           ]
         }
       ],
-      "initialState": {},
+      "initialState": {
+        "active": false
+      },
       "access": {
         "allowedResidentIds": [],
         "allowedMobilityProfiles": []

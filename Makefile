@@ -1,4 +1,4 @@
-.PHONY: sync validate validate-behavior validate-home compile bundle benchmark-environment schema behavior-artifacts environment-artifacts authoring-artifacts test lint check
+.PHONY: sync validate validate-behavior validate-home compile bundle benchmark-environment schema behavior-artifacts environment-artifacts environment-visualization authoring-artifacts test lint check
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
@@ -30,6 +30,10 @@ authoring-artifacts:
 
 environment-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_environment_artifacts.py
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_environment_visualization.py
+
+environment-visualization:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_environment_visualization.py
 
 schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --output schemas/scenario-1.0.0.schema.json

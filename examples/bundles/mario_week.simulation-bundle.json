@@ -30128,7 +30128,7 @@
       },
       {
         "regionId": "balcony",
-        "kind": "room",
+        "kind": "outdoor",
         "boundary": {
           "vertices": [
             {
@@ -31519,7 +31519,9 @@
             ]
           }
         ],
-        "initialState": {},
+        "initialState": {
+          "active": false
+        },
         "access": {
           "allowedResidentIds": [],
           "allowedMobilityProfiles": []
@@ -32259,7 +32261,10 @@
             ]
           }
         ],
-        "initialState": {},
+        "initialState": {
+          "open": false,
+          "active": false
+        },
         "access": {
           "allowedResidentIds": [],
           "allowedMobilityProfiles": []
@@ -32648,7 +32653,9 @@
             ]
           }
         ],
-        "initialState": {},
+        "initialState": {
+          "active": false
+        },
         "access": {
           "allowedResidentIds": [],
           "allowedMobilityProfiles": []
@@ -33498,7 +33505,7 @@
     {
       "artifactId": "home_mario_monteverde",
       "version": "mario-apartment-0.1-example",
-      "sha256": "bca0d99b17c1f8cc97fa537993a8b9c0b1159363058a77c24477d935a8713176"
+      "sha256": "2e8b3257fe1c760c3b820443ff62d1824395ec40ce09e1fb5c65f616d3239ca6"
     }
   ],
   "residentKinematics": [

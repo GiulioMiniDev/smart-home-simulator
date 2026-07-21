@@ -32,6 +32,7 @@ packages = ["src/smart_home_sim"]
 
 [tool.pytest.ini_options]
 addopts = "-q --cov=src/smart_home_sim --cov-report=term-missing --cov-fail-under=95"
+pythonpath = [".", "src"]
 testpaths = ["tests"]
 
 [tool.ruff]

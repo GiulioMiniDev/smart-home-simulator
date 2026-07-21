@@ -29,6 +29,7 @@ from smart_home_sim.domain.behavior import (
 from smart_home_sim.domain.environment import (
     ArtifactDigest,
     BundleBuildResult,
+    ConnectionKind,
     EnvironmentValidationIssue,
     EnvironmentValidationReport,
     HomeEntity,
@@ -206,14 +207,31 @@ def validate_home_model(home: HomeModel) -> EnvironmentValidationReport:
                 )
             )
 
+    for region_id, obstacles in obstacle_polygons.items():
+        for index, left in enumerate(obstacles):
+            for right in obstacles[index + 1 :]:
+                if left.intersection(right).area > 1e-9:
+                    issues.append(
+                        environment_issue(
+                            "OBSTACLE_INVALID",
+                            "geometry",
+                            "$.obstacles",
+                            f"Obstacles overlap in region '{region_id}'.",
+                        )
+                    )
+
     interaction_points = {item.interaction_point_id: item for item in home.interaction_points}
     for index, interaction in enumerate(home.interaction_points):
         point = Point(interaction.position.x, interaction.position.y)
         region_polygon = polygons.get(interaction.region_id)
         blocked = any(
-            obstacle.covers(point) for obstacle in obstacle_polygons.get(interaction.region_id, [])
+            obstacle.buffer(interaction.approach_radius_meters, join_style="mitre").covers(point)
+            for obstacle in obstacle_polygons.get(interaction.region_id, [])
         )
-        if region_polygon is None or not region_polygon.covers(point) or blocked:
+        has_clearance = region_polygon is not None and region_polygon.buffer(
+            -interaction.approach_radius_meters, join_style="mitre"
+        ).covers(point)
+        if not has_clearance or blocked:
             issues.append(
                 environment_issue(
                     "INTERACTION_POINT_INVALID",
@@ -230,7 +248,26 @@ def validate_home_model(home: HomeModel) -> EnvironmentValidationReport:
         right = polygons.get(connection.region_b_id)
         portal_a = Point(connection.portal_a.x, connection.portal_a.y)
         portal_b = Point(connection.portal_b.x, connection.portal_b.y)
-        if left is None or right is None or not left.covers(portal_a) or not right.covers(portal_b):
+        local_connection_invalid = (
+            connection.kind in {ConnectionKind.doorway, ConnectionKind.passage}
+            and left is not None
+            and right is not None
+            and (
+                left.distance(right) > 1e-9
+                or portal_a.distance(portal_b) > connection.width_meters + 1e-9
+            )
+        )
+        insufficient_clearance = (
+            connection.width_meters + 1e-9 < home.kinematic_defaults.body_radius_meters * 2
+        )
+        if (
+            left is None
+            or right is None
+            or not left.covers(portal_a)
+            or not right.covers(portal_b)
+            or local_connection_invalid
+            or insufficient_clearance
+        ):
             issues.append(
                 environment_issue(
                     "CONNECTION_INVALID",
@@ -240,7 +277,11 @@ def validate_home_model(home: HomeModel) -> EnvironmentValidationReport:
                 )
             )
             continue
-        graph.add_edge(connection.region_a_id, connection.region_b_id)
+        if (
+            regions[connection.region_a_id].traversable
+            and regions[connection.region_b_id].traversable
+        ):
+            graph.add_edge(connection.region_a_id, connection.region_b_id)
     if graph.number_of_nodes() and not nx.is_connected(graph):
         components = [sorted(component) for component in nx.connected_components(graph)]
         issues.append(
@@ -370,6 +411,19 @@ def _scenario_compatibility(
             )
     resources = {item.scenario_resource_id: item for item in home.resource_bindings}
     entities = {item.entity_id: item for item in home.entities}
+    resident_ids = {item.resident_id for item in scenario.residents}
+    for entity in home.entities:
+        unknown_residents = set(entity.access.allowed_resident_ids) - resident_ids
+        if unknown_residents:
+            issues.append(
+                environment_issue(
+                    "ENTITY_INVALID",
+                    "compatibility",
+                    "$.entities",
+                    f"Entity '{entity.entity_id}' grants access to unknown residents: "
+                    f"{sorted(unknown_residents)}.",
+                )
+            )
     for resource in scenario.resources:
         binding = resources.get(resource.resource_id)
         if binding is None:
@@ -471,9 +525,7 @@ def _entity_candidates(
             continue
         for provided in entity.capabilities:
             role_matches = role_value is None or role_value in provided.roles
-            operation_matches = (
-                not provided.supported_operations or action_type in provided.supported_operations
-            )
+            operation_matches = action_type in provided.supported_operations
             if provided.capability == capability and role_matches and operation_matches:
                 candidates.append((entity, provided))
     return sorted(
@@ -666,31 +718,54 @@ def _validate_routes(
     interactions = {item.interaction_point_id: item for item in home.interaction_points}
     bindings = sorted(home.location_bindings, key=lambda item: item.scenario_location_id)
     route_checks = 0
+    # Composite scenario locations often share the same concrete anchor. Validate every
+    # ordered binding pair for the public count/report, but solve identical metric routes
+    # only once per resident. The cache stores the failure text as well as successful
+    # outcomes so duplicate aliases preserve the exact validation semantics.
+    route_outcomes: dict[tuple[object, ...], str | None] = {}
     for resident in kinematics:
         for source in bindings:
             for target in bindings:
                 route_checks += 1
                 start = interactions[source.anchor_interaction_point_id]
                 end = interactions[target.anchor_interaction_point_id]
-                try:
-                    plan_path(
-                        home,
-                        start_region_id=start.region_id,
-                        start=start.position,
-                        end_region_id=end.region_id,
-                        end=end.position,
-                        walking_speed_meters_per_second=(resident.walking_speed_meters_per_second),
-                        body_radius_meters=resident.body_radius_meters,
-                        mobility_profile=resident.mobility_profile,
-                    )
-                except ValueError as error:
+                route_key = (
+                    resident.resident_id,
+                    resident.mobility_profile,
+                    resident.walking_speed_meters_per_second,
+                    resident.body_radius_meters,
+                    start.region_id,
+                    start.position.x,
+                    start.position.y,
+                    end.region_id,
+                    end.position.x,
+                    end.position.y,
+                )
+                if route_key not in route_outcomes:
+                    try:
+                        plan_path(
+                            home,
+                            start_region_id=start.region_id,
+                            start=start.position,
+                            end_region_id=end.region_id,
+                            end=end.position,
+                            walking_speed_meters_per_second=(
+                                resident.walking_speed_meters_per_second
+                            ),
+                            body_radius_meters=resident.body_radius_meters,
+                            mobility_profile=resident.mobility_profile,
+                        )
+                        route_outcomes[route_key] = None
+                    except ValueError as error:
+                        route_outcomes[route_key] = str(error)
+                if error_message := route_outcomes[route_key]:
                     issues.append(
                         environment_issue(
                             "PATH_UNREACHABLE",
                             "topology",
                             "$.locationBindings",
                             f"Route {source.scenario_location_id} -> "
-                            f"{target.scenario_location_id} is not executable: {error}",
+                            f"{target.scenario_location_id} is not executable: {error_message}",
                             details={"residentId": resident.resident_id},
                         )
                     )

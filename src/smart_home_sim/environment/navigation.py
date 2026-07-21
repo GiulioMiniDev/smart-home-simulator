@@ -82,13 +82,20 @@ def _visibility_path(
     return path, sum(hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(path, path[1:], strict=False))
 
 
-def _connection_graph(home: HomeModel, mobility_profile: str) -> nx.DiGraph:
+def _connection_graph(
+    home: HomeModel, mobility_profile: str, body_radius_meters: float
+) -> nx.DiGraph:
     graph = nx.DiGraph()
-    graph.add_nodes_from(sorted(region.region_id for region in home.regions if region.traversable))
+    traversable = {region.region_id for region in home.regions if region.traversable}
+    graph.add_nodes_from(sorted(traversable))
     for connection in sorted(home.connections, key=lambda item: item.connection_id):
+        if connection.region_a_id not in traversable or connection.region_b_id not in traversable:
+            continue
         if connection.allowed_mobility_profiles and (
             mobility_profile not in connection.allowed_mobility_profiles
         ):
+            continue
+        if connection.width_meters + 1e-9 < body_radius_meters * 2:
             continue
         weight = connection.distance_meters or hypot(
             connection.portal_b.x - connection.portal_a.x,
@@ -138,7 +145,7 @@ def plan_path(
     """Return a deterministic, collision-free route and timestampable travel duration."""
     if walking_speed_meters_per_second <= 0 or body_radius_meters <= 0:
         raise ValueError("kinematic values must be positive")
-    graph = _connection_graph(home, mobility_profile)
+    graph = _connection_graph(home, mobility_profile, body_radius_meters)
     try:
         regions = nx.shortest_path(
             graph,

@@ -17,14 +17,20 @@ Freeze the Milestone 4 contracts and behavior at `1.0.0`:
 - metric polygonal home regions, obstacles, interaction points and explicit connections;
 - concrete entities, state, access constraints, operation-aware capabilities and scenario
   location/resource mappings;
+- mandatory boolean initial state for openable and switchable entities, plus validated
+  resident allow-lists;
 - Shapely visibility-graph paths within regions and NetworkX shortest paths between them;
+- enforced region traversability, connection direction, mobility allow-lists and physical
+  opening clearance during routing;
 - resident kinematics resolved from the scenario profile and home defaults;
 - deterministic action binding by capability, literal role, spatial affinity and stable
   identifier tie-break;
 - a self-contained simulation bundle with four embedded upstream artifacts, semantic
   digests, seed, kinematics and resolved actions;
 - three Draft 2020-12 schemas, checksum files, CLI gates, golden home, golden weekly bundle,
-  benchmark and stable environment issue-code registry.
+  benchmark and stable environment issue-code registry;
+- a deterministic, dependency-free visual acceptance generator whose closed plan-symbol
+  catalog exactly covers the nine bound scenario resources and four routing obstacles.
 
 The urban transport duration default is 8 m/s. Pedestrian collision clearance equals the
 resident body radius. A later contract version is required to change either policy.
@@ -38,3 +44,5 @@ resident body radius. A later contract version is required to change either poli
   links; sensor geometry remains deferred to Milestone 6.
 - The frozen M1-M3 schemas and source examples are not modified.
 - Interactive rendering and rigid-body physics remain outside the authoritative engine.
+- Resource positions in the acceptance viewer are non-authoritative display metadata; the
+  generator makes that boundary visible and fails on stale or incomplete model coverage.

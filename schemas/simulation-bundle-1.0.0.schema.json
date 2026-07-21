@@ -976,6 +976,7 @@
         },
         "roles": {
           "items": {
+            "minLength": 1,
             "type": "string"
           },
           "title": "Roles",
@@ -983,14 +984,17 @@
         },
         "supportedOperations": {
           "items": {
+            "minLength": 1,
             "type": "string"
           },
+          "minItems": 1,
           "title": "Supportedoperations",
           "type": "array"
         }
       },
       "required": [
-        "capability"
+        "capability",
+        "supportedOperations"
       ],
       "title": "EntityCapability",
       "type": "object"

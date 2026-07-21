@@ -3,8 +3,8 @@
   "valid": true,
   "homeId": "home_mario_monteverde",
   "homeVersion": "mario-apartment-0.1-example",
-  "homeSha256": "bca0d99b17c1f8cc97fa537993a8b9c0b1159363058a77c24477d935a8713176",
-  "bundleSha256": "3d935e7fcd8b92fa148dd4f47eadc478fe50ebe6dbaa8345de4fcc15ca68a67f",
+  "homeSha256": "2e8b3257fe1c760c3b820443ff62d1824395ec40ce09e1fb5c65f616d3239ca6",
+  "bundleSha256": "f51008c8a85152b4c9fd8f0cb3938ac392c089b01f5b03e1e1de406a13766fbc",
   "issues": [],
   "summary": {
     "regionCount": 14,

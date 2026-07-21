@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field, JsonValue, model_validator
 
@@ -78,8 +78,20 @@ class HomeConnection(ContractModel):
             raise ValueError("a connection must join two different regions")
         if self.traversal_mode is TraversalMode.transport and self.distance_meters is None:
             raise ValueError("transport connections require distanceMeters")
-        if self.kind is ConnectionKind.doorway and self.traversal_mode is not TraversalMode.walking:
-            raise ValueError("doorways use walking traversal")
+        if self.traversal_mode is TraversalMode.walking and self.distance_meters is not None:
+            raise ValueError("walking connections derive distance from their portals")
+        if (
+            self.kind in {ConnectionKind.doorway, ConnectionKind.passage}
+            and self.traversal_mode is not TraversalMode.walking
+        ):
+            raise ValueError("doorways and passages use walking traversal")
+        if (
+            self.kind is ConnectionKind.transit
+            and self.traversal_mode is not TraversalMode.transport
+        ):
+            raise ValueError("transit connections use transport traversal")
+        if len(self.allowed_mobility_profiles) != len(set(self.allowed_mobility_profiles)):
+            raise ValueError("allowedMobilityProfiles must not contain duplicates")
         return self
 
 
@@ -98,13 +110,29 @@ class InteractionPoint(ContractModel):
 
 class EntityCapability(ContractModel):
     capability: str = Field(min_length=1)
-    roles: list[str] = Field(default_factory=list)
-    supported_operations: list[str] = Field(default_factory=list)
+    roles: list[Annotated[str, Field(min_length=1)]] = Field(default_factory=list)
+    supported_operations: list[Annotated[str, Field(min_length=1)]] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def check_unique_values(self) -> EntityCapability:
+        if len(self.roles) != len(set(self.roles)):
+            raise ValueError("capability roles must not contain duplicates")
+        if len(self.supported_operations) != len(set(self.supported_operations)):
+            raise ValueError("supportedOperations must not contain duplicates")
+        return self
 
 
 class AccessConstraint(ContractModel):
     allowed_resident_ids: list[str] = Field(default_factory=list)
     allowed_mobility_profiles: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_unique_values(self) -> AccessConstraint:
+        if len(self.allowed_resident_ids) != len(set(self.allowed_resident_ids)):
+            raise ValueError("allowedResidentIds must not contain duplicates")
+        if len(self.allowed_mobility_profiles) != len(set(self.allowed_mobility_profiles)):
+            raise ValueError("allowedMobilityProfiles must not contain duplicates")
+        return self
 
 
 class HomeEntity(ContractModel):
@@ -116,11 +144,26 @@ class HomeEntity(ContractModel):
     initial_state: dict[str, JsonValue] = Field(default_factory=dict)
     access: AccessConstraint = Field(default_factory=AccessConstraint)
 
+    @model_validator(mode="after")
+    def check_capability_state(self) -> HomeEntity:
+        capabilities = {item.capability for item in self.capabilities}
+        if "openable" in capabilities and not isinstance(self.initial_state.get("open"), bool):
+            raise ValueError("openable entities require boolean initialState.open")
+        if "switchable" in capabilities and not isinstance(self.initial_state.get("active"), bool):
+            raise ValueError("switchable entities require boolean initialState.active")
+        return self
+
 
 class LocationBinding(ContractModel):
     scenario_location_id: str = Field(min_length=1)
     region_ids: list[str] = Field(min_length=1)
     anchor_interaction_point_id: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def check_unique_regions(self) -> LocationBinding:
+        if len(self.region_ids) != len(set(self.region_ids)):
+            raise ValueError("location binding regionIds must not contain duplicates")
+        return self
 
 
 class ResourceBinding(ContractModel):
