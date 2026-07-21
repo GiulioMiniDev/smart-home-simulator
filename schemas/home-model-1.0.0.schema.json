@@ -1,0 +1,541 @@
+{
+  "$defs": {
+    "AccessConstraint": {
+      "additionalProperties": false,
+      "properties": {
+        "allowedResidentIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowedresidentids",
+          "type": "array"
+        },
+        "allowedMobilityProfiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowedmobilityprofiles",
+          "type": "array"
+        }
+      },
+      "title": "AccessConstraint",
+      "type": "object"
+    },
+    "ConnectionKind": {
+      "enum": [
+        "doorway",
+        "passage",
+        "transit"
+      ],
+      "title": "ConnectionKind",
+      "type": "string"
+    },
+    "CoordinateSystem": {
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "const": "meter",
+          "default": "meter",
+          "title": "Unit",
+          "type": "string"
+        },
+        "axisConvention": {
+          "const": "x_east_y_north",
+          "default": "x_east_y_north",
+          "title": "Axisconvention",
+          "type": "string"
+        },
+        "originLabel": {
+          "default": "home_local_origin",
+          "minLength": 1,
+          "title": "Originlabel",
+          "type": "string"
+        }
+      },
+      "title": "CoordinateSystem",
+      "type": "object"
+    },
+    "EntityCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "minLength": 1,
+          "title": "Capability",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "supportedOperations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supportedoperations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "capability"
+      ],
+      "title": "EntityCapability",
+      "type": "object"
+    },
+    "HomeConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "connectionId": {
+          "minLength": 1,
+          "title": "Connectionid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ConnectionKind"
+        },
+        "regionAId": {
+          "minLength": 1,
+          "title": "Regionaid",
+          "type": "string"
+        },
+        "regionBId": {
+          "minLength": 1,
+          "title": "Regionbid",
+          "type": "string"
+        },
+        "portalA": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "portalB": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "widthMeters": {
+          "exclusiveMinimum": 0,
+          "title": "Widthmeters",
+          "type": "number"
+        },
+        "traversalMode": {
+          "$ref": "#/$defs/TraversalMode",
+          "default": "walking"
+        },
+        "distanceMeters": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distancemeters"
+        },
+        "bidirectional": {
+          "default": true,
+          "title": "Bidirectional",
+          "type": "boolean"
+        },
+        "allowedMobilityProfiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowedmobilityprofiles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "connectionId",
+        "kind",
+        "regionAId",
+        "regionBId",
+        "portalA",
+        "portalB",
+        "widthMeters"
+      ],
+      "title": "HomeConnection",
+      "type": "object"
+    },
+    "HomeEntity": {
+      "additionalProperties": false,
+      "properties": {
+        "entityId": {
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "entityType": {
+          "minLength": 1,
+          "title": "Entitytype",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "interactionPointId": {
+          "minLength": 1,
+          "title": "Interactionpointid",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/EntityCapability"
+          },
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "initialState": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Initialstate",
+          "type": "object"
+        },
+        "access": {
+          "$ref": "#/$defs/AccessConstraint"
+        }
+      },
+      "required": [
+        "entityId",
+        "entityType",
+        "regionId",
+        "interactionPointId",
+        "capabilities"
+      ],
+      "title": "HomeEntity",
+      "type": "object"
+    },
+    "HomeObstacle": {
+      "additionalProperties": false,
+      "properties": {
+        "obstacleId": {
+          "minLength": 1,
+          "title": "Obstacleid",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Polygon2D"
+        }
+      },
+      "required": [
+        "obstacleId",
+        "regionId",
+        "boundary"
+      ],
+      "title": "HomeObstacle",
+      "type": "object"
+    },
+    "HomeRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RegionKind"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Polygon2D"
+        },
+        "traversable": {
+          "default": true,
+          "title": "Traversable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "regionId",
+        "kind",
+        "boundary"
+      ],
+      "title": "HomeRegion",
+      "type": "object"
+    },
+    "InteractionPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "interactionPointId": {
+          "minLength": 1,
+          "title": "Interactionpointid",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "approachRadiusMeters": {
+          "default": 0.35,
+          "exclusiveMinimum": 0,
+          "title": "Approachradiusmeters",
+          "type": "number"
+        }
+      },
+      "required": [
+        "interactionPointId",
+        "regionId",
+        "position"
+      ],
+      "title": "InteractionPoint",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "KinematicDefaults": {
+      "additionalProperties": false,
+      "properties": {
+        "bodyRadiusMeters": {
+          "default": 0.25,
+          "exclusiveMinimum": 0,
+          "title": "Bodyradiusmeters",
+          "type": "number"
+        },
+        "minimumWalkingSpeedMetersPerSecond": {
+          "default": 0.2,
+          "exclusiveMinimum": 0,
+          "title": "Minimumwalkingspeedmeterspersecond",
+          "type": "number"
+        },
+        "defaultWalkingSpeedMetersPerSecond": {
+          "default": 1.2,
+          "exclusiveMinimum": 0,
+          "title": "Defaultwalkingspeedmeterspersecond",
+          "type": "number"
+        },
+        "postureTransitionSeconds": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "standing",
+              "walking",
+              "sitting",
+              "lying"
+            ]
+          },
+          "title": "Posturetransitionseconds",
+          "type": "object"
+        }
+      },
+      "title": "KinematicDefaults",
+      "type": "object"
+    },
+    "LocationBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "scenarioLocationId": {
+          "minLength": 1,
+          "title": "Scenariolocationid",
+          "type": "string"
+        },
+        "regionIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Regionids",
+          "type": "array"
+        },
+        "anchorInteractionPointId": {
+          "minLength": 1,
+          "title": "Anchorinteractionpointid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenarioLocationId",
+        "regionIds",
+        "anchorInteractionPointId"
+      ],
+      "title": "LocationBinding",
+      "type": "object"
+    },
+    "Point2D": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point2D",
+      "type": "object"
+    },
+    "Polygon2D": {
+      "additionalProperties": false,
+      "properties": {
+        "vertices": {
+          "items": {
+            "$ref": "#/$defs/Point2D"
+          },
+          "minItems": 3,
+          "title": "Vertices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "vertices"
+      ],
+      "title": "Polygon2D",
+      "type": "object"
+    },
+    "RegionKind": {
+      "enum": [
+        "room",
+        "outdoor",
+        "external",
+        "transit"
+      ],
+      "title": "RegionKind",
+      "type": "string"
+    },
+    "ResourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "scenarioResourceId": {
+          "minLength": 1,
+          "title": "Scenarioresourceid",
+          "type": "string"
+        },
+        "entityId": {
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenarioResourceId",
+        "entityId"
+      ],
+      "title": "ResourceBinding",
+      "type": "object"
+    },
+    "TraversalMode": {
+      "enum": [
+        "walking",
+        "transport"
+      ],
+      "title": "TraversalMode",
+      "type": "string"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:home-model:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "home_model",
+      "default": "home_model",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "homeId": {
+      "minLength": 1,
+      "title": "Homeid",
+      "type": "string"
+    },
+    "homeVersion": {
+      "minLength": 1,
+      "title": "Homeversion",
+      "type": "string"
+    },
+    "coordinateSystem": {
+      "$ref": "#/$defs/CoordinateSystem"
+    },
+    "regions": {
+      "items": {
+        "$ref": "#/$defs/HomeRegion"
+      },
+      "minItems": 1,
+      "title": "Regions",
+      "type": "array"
+    },
+    "connections": {
+      "items": {
+        "$ref": "#/$defs/HomeConnection"
+      },
+      "title": "Connections",
+      "type": "array"
+    },
+    "obstacles": {
+      "items": {
+        "$ref": "#/$defs/HomeObstacle"
+      },
+      "title": "Obstacles",
+      "type": "array"
+    },
+    "interactionPoints": {
+      "items": {
+        "$ref": "#/$defs/InteractionPoint"
+      },
+      "minItems": 1,
+      "title": "Interactionpoints",
+      "type": "array"
+    },
+    "entities": {
+      "items": {
+        "$ref": "#/$defs/HomeEntity"
+      },
+      "minItems": 1,
+      "title": "Entities",
+      "type": "array"
+    },
+    "locationBindings": {
+      "items": {
+        "$ref": "#/$defs/LocationBinding"
+      },
+      "minItems": 1,
+      "title": "Locationbindings",
+      "type": "array"
+    },
+    "resourceBindings": {
+      "items": {
+        "$ref": "#/$defs/ResourceBinding"
+      },
+      "title": "Resourcebindings",
+      "type": "array"
+    },
+    "kinematicDefaults": {
+      "$ref": "#/$defs/KinematicDefaults"
+    }
+  },
+  "required": [
+    "homeId",
+    "homeVersion",
+    "regions",
+    "interactionPoints",
+    "entities",
+    "locationBindings"
+  ],
+  "title": "Smart Home Executable Home Model 1.0.0",
+  "type": "object"
+}

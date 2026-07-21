@@ -1,0 +1,3514 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "home_model",
+  "homeId": "home_mario_monteverde",
+  "homeVersion": "mario-apartment-0.1-example",
+  "coordinateSystem": {
+    "unit": "meter",
+    "axisConvention": "x_east_y_north",
+    "originLabel": "home_local_origin"
+  },
+  "regions": [
+    {
+      "regionId": "bedroom",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.0,
+            "y": 6.0
+          },
+          {
+            "x": 7.0,
+            "y": 6.0
+          },
+          {
+            "x": 7.0,
+            "y": 12.0
+          },
+          {
+            "x": 0.0,
+            "y": 12.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "bathroom",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 7.0,
+            "y": 0.0
+          },
+          {
+            "x": 7.0,
+            "y": 6.0
+          },
+          {
+            "x": 0.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "hallway",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 7.0,
+            "y": 3.0
+          },
+          {
+            "x": 11.0,
+            "y": 3.0
+          },
+          {
+            "x": 11.0,
+            "y": 10.0
+          },
+          {
+            "x": 7.0,
+            "y": 10.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "entrance",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 7.0,
+            "y": 0.0
+          },
+          {
+            "x": 11.0,
+            "y": 0.0
+          },
+          {
+            "x": 11.0,
+            "y": 3.0
+          },
+          {
+            "x": 7.0,
+            "y": 3.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "kitchen",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 11.0,
+            "y": 0.0
+          },
+          {
+            "x": 18.0,
+            "y": 0.0
+          },
+          {
+            "x": 18.0,
+            "y": 6.0
+          },
+          {
+            "x": 11.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "living_room",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 11.0,
+            "y": 6.0
+          },
+          {
+            "x": 20.0,
+            "y": 6.0
+          },
+          {
+            "x": 20.0,
+            "y": 12.0
+          },
+          {
+            "x": 11.0,
+            "y": 12.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "balcony",
+      "kind": "room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 20.0,
+            "y": 7.0
+          },
+          {
+            "x": 23.0,
+            "y": 7.0
+          },
+          {
+            "x": 23.0,
+            "y": 12.0
+          },
+          {
+            "x": 20.0,
+            "y": 12.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "market",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.0,
+            "y": 18.0
+          },
+          {
+            "x": 6.0,
+            "y": 18.0
+          },
+          {
+            "x": 6.0,
+            "y": 24.0
+          },
+          {
+            "x": 0.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "mothers_home",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 8.0,
+            "y": 18.0
+          },
+          {
+            "x": 14.0,
+            "y": 18.0
+          },
+          {
+            "x": 14.0,
+            "y": 24.0
+          },
+          {
+            "x": 8.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "neighborhood_bar",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 16.0,
+            "y": 18.0
+          },
+          {
+            "x": 22.0,
+            "y": 18.0
+          },
+          {
+            "x": 22.0,
+            "y": 24.0
+          },
+          {
+            "x": 16.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "outside",
+      "kind": "outdoor",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 24.0,
+            "y": 18.0
+          },
+          {
+            "x": 30.0,
+            "y": 18.0
+          },
+          {
+            "x": 30.0,
+            "y": 24.0
+          },
+          {
+            "x": 24.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "pharmacy",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 32.0,
+            "y": 18.0
+          },
+          {
+            "x": 38.0,
+            "y": 18.0
+          },
+          {
+            "x": 38.0,
+            "y": 24.0
+          },
+          {
+            "x": 32.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "supermarket",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 40.0,
+            "y": 18.0
+          },
+          {
+            "x": 46.0,
+            "y": 18.0
+          },
+          {
+            "x": 46.0,
+            "y": 24.0
+          },
+          {
+            "x": 40.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    },
+    {
+      "regionId": "workplace",
+      "kind": "external",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 48.0,
+            "y": 18.0
+          },
+          {
+            "x": 54.0,
+            "y": 18.0
+          },
+          {
+            "x": 54.0,
+            "y": 24.0
+          },
+          {
+            "x": 48.0,
+            "y": 24.0
+          }
+        ]
+      },
+      "traversable": true
+    }
+  ],
+  "connections": [
+    {
+      "connectionId": "door_1_bathroom_hallway",
+      "kind": "doorway",
+      "regionAId": "bathroom",
+      "regionBId": "hallway",
+      "portalA": {
+        "x": 6.6,
+        "y": 3.8
+      },
+      "portalB": {
+        "x": 7.4,
+        "y": 3.8
+      },
+      "widthMeters": 0.9,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_2_bedroom_hallway",
+      "kind": "doorway",
+      "regionAId": "bedroom",
+      "regionBId": "hallway",
+      "portalA": {
+        "x": 6.6,
+        "y": 8.5
+      },
+      "portalB": {
+        "x": 7.4,
+        "y": 8.5
+      },
+      "widthMeters": 0.9,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_3_entrance_hallway",
+      "kind": "doorway",
+      "regionAId": "entrance",
+      "regionBId": "hallway",
+      "portalA": {
+        "x": 9.0,
+        "y": 2.6
+      },
+      "portalB": {
+        "x": 9.0,
+        "y": 3.4
+      },
+      "widthMeters": 0.9,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_4_kitchen_hallway",
+      "kind": "doorway",
+      "regionAId": "kitchen",
+      "regionBId": "hallway",
+      "portalA": {
+        "x": 11.4,
+        "y": 4.0
+      },
+      "portalB": {
+        "x": 10.6,
+        "y": 4.0
+      },
+      "widthMeters": 0.9,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_5_living_room_hallway",
+      "kind": "doorway",
+      "regionAId": "living_room",
+      "regionBId": "hallway",
+      "portalA": {
+        "x": 11.4,
+        "y": 8.2
+      },
+      "portalB": {
+        "x": 10.6,
+        "y": 8.2
+      },
+      "widthMeters": 0.9,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "door_6_living_room_balcony",
+      "kind": "doorway",
+      "regionAId": "living_room",
+      "regionBId": "balcony",
+      "portalA": {
+        "x": 19.6,
+        "y": 9.5
+      },
+      "portalB": {
+        "x": 20.4,
+        "y": 9.5
+      },
+      "widthMeters": 0.9,
+      "traversalMode": "walking",
+      "distanceMeters": null,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_1_entrance_market",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "market",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 3.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 500.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_2_entrance_mothers_home",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "mothers_home",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 11.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 850.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_3_entrance_neighborhood_bar",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "neighborhood_bar",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 19.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 1200.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_4_entrance_outside",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "outside",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 27.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 1550.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_5_entrance_pharmacy",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "pharmacy",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 35.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 1900.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_6_entrance_supermarket",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "supermarket",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 43.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 2250.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    },
+    {
+      "connectionId": "transit_7_entrance_workplace",
+      "kind": "transit",
+      "regionAId": "entrance",
+      "regionBId": "workplace",
+      "portalA": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "portalB": {
+        "x": 51.0,
+        "y": 21.0
+      },
+      "widthMeters": 1.0,
+      "traversalMode": "transport",
+      "distanceMeters": 2600.0,
+      "bidirectional": true,
+      "allowedMobilityProfiles": []
+    }
+  ],
+  "obstacles": [
+    {
+      "obstacleId": "bedroom_bed",
+      "regionId": "bedroom",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.8,
+            "y": 8.0
+          },
+          {
+            "x": 4.0,
+            "y": 8.0
+          },
+          {
+            "x": 4.0,
+            "y": 11.0
+          },
+          {
+            "x": 0.8,
+            "y": 11.0
+          }
+        ]
+      }
+    },
+    {
+      "obstacleId": "bathroom_cabinet",
+      "regionId": "bathroom",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 0.5,
+            "y": 0.5
+          },
+          {
+            "x": 1.7,
+            "y": 0.5
+          },
+          {
+            "x": 1.7,
+            "y": 1.5
+          },
+          {
+            "x": 0.5,
+            "y": 1.5
+          }
+        ]
+      }
+    },
+    {
+      "obstacleId": "kitchen_island",
+      "regionId": "kitchen",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 14.5,
+            "y": 2.0
+          },
+          {
+            "x": 16.5,
+            "y": 2.0
+          },
+          {
+            "x": 16.5,
+            "y": 4.0
+          },
+          {
+            "x": 14.5,
+            "y": 4.0
+          }
+        ]
+      }
+    },
+    {
+      "obstacleId": "living_room_table",
+      "regionId": "living_room",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 16.0,
+            "y": 8.0
+          },
+          {
+            "x": 17.5,
+            "y": 8.0
+          },
+          {
+            "x": 17.5,
+            "y": 9.5
+          },
+          {
+            "x": 16.0,
+            "y": 9.5
+          }
+        ]
+      }
+    }
+  ],
+  "interactionPoints": [
+    {
+      "interactionPointId": "ip_bedroom_anchor",
+      "regionId": "bedroom",
+      "position": {
+        "x": 5.2,
+        "y": 9.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_bathroom_anchor",
+      "regionId": "bathroom",
+      "position": {
+        "x": 5.2,
+        "y": 3.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_hallway_anchor",
+      "regionId": "hallway",
+      "position": {
+        "x": 9.0,
+        "y": 6.5
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_entrance_anchor",
+      "regionId": "entrance",
+      "position": {
+        "x": 9.0,
+        "y": 1.2
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_kitchen_anchor",
+      "regionId": "kitchen",
+      "position": {
+        "x": 12.5,
+        "y": 1.5
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_living_room_anchor",
+      "regionId": "living_room",
+      "position": {
+        "x": 13.0,
+        "y": 10.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_balcony_anchor",
+      "regionId": "balcony",
+      "position": {
+        "x": 21.5,
+        "y": 9.5
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_market_anchor",
+      "regionId": "market",
+      "position": {
+        "x": 3.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_mothers_home_anchor",
+      "regionId": "mothers_home",
+      "position": {
+        "x": 11.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_neighborhood_bar_anchor",
+      "regionId": "neighborhood_bar",
+      "position": {
+        "x": 19.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_outside_anchor",
+      "regionId": "outside",
+      "position": {
+        "x": 27.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_pharmacy_anchor",
+      "regionId": "pharmacy",
+      "position": {
+        "x": 35.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_supermarket_anchor",
+      "regionId": "supermarket",
+      "position": {
+        "x": 43.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    },
+    {
+      "interactionPointId": "ip_workplace_anchor",
+      "regionId": "workplace",
+      "position": {
+        "x": 51.0,
+        "y": 21.0
+      },
+      "approachRadiusMeters": 0.35
+    }
+  ],
+  "entities": [
+    {
+      "entityId": "bedroom_storage",
+      "entityType": "storage_and_clothing",
+      "regionId": "bedroom",
+      "interactionPointId": "ip_bedroom_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "bag_storage",
+            "clothing_storage",
+            "document_storage",
+            "ironing_area",
+            "laundry_storage",
+            "personal_belongings"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "wearable",
+          "roles": [
+            "clothing",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "dress"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "inspectable",
+          "roles": [
+            "calendar",
+            "household_supplies"
+          ],
+          "supportedOperations": [
+            "inspect"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "cleanable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "storage_support",
+          "roles": [
+            "documents",
+            "prepared_food_portions",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "organize"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "bathroom_fixture",
+      "entityType": "bathroom_fixture_group",
+      "regionId": "bathroom",
+      "interactionPointId": "ip_bathroom_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "cleaning_target",
+            "personal_care_fixture",
+            "shower",
+            "sink",
+            "toilet",
+            "washing_machine"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "personal_care_support",
+          "roles": [],
+          "supportedOperations": [
+            "personal_care"
+          ]
+        },
+        {
+          "capability": "laundry_support",
+          "roles": [],
+          "supportedOperations": [
+            "laundry_step"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "shower_water"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "inspectable",
+          "roles": [
+            "calendar",
+            "household_supplies"
+          ],
+          "supportedOperations": [
+            "inspect"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "cleanable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "storage_support",
+          "roles": [
+            "documents",
+            "prepared_food_portions",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "organize"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "entrance_access",
+      "entityType": "entrance_and_storage",
+      "regionId": "entrance",
+      "interactionPointId": "ip_entrance_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "home_entrance",
+            "home_exit",
+            "purchases",
+            "recycling_bin",
+            "recycling_storage"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "home_egress",
+          "roles": [],
+          "supportedOperations": [
+            "leave_home"
+          ]
+        },
+        {
+          "capability": "home_ingress",
+          "roles": [],
+          "supportedOperations": [
+            "enter_home"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "inspectable",
+          "roles": [
+            "calendar",
+            "household_supplies"
+          ],
+          "supportedOperations": [
+            "inspect"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "cleanable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "storage_support",
+          "roles": [
+            "documents",
+            "prepared_food_portions",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "organize"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "kitchen_workstation",
+      "entityType": "kitchen_fixture_group",
+      "regionId": "kitchen",
+      "interactionPointId": "ip_kitchen_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "consumption_area",
+            "drink_preparation_area",
+            "food_preparation_area",
+            "food_storage",
+            "household_storage",
+            "medication_storage",
+            "reheating_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "openable",
+          "roles": [
+            "food_storage",
+            "household_storage"
+          ],
+          "supportedOperations": [
+            "open",
+            "close"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "cooking_appliance",
+            "drink_appliance",
+            "reheating_appliance",
+            "sink_faucet"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "food_preparation",
+          "roles": [],
+          "supportedOperations": [
+            "prepare_food"
+          ]
+        },
+        {
+          "capability": "medication_support",
+          "roles": [],
+          "supportedOperations": [
+            "manage_medication"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "inspectable",
+          "roles": [
+            "calendar",
+            "household_supplies"
+          ],
+          "supportedOperations": [
+            "inspect"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "cleanable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "storage_support",
+          "roles": [
+            "documents",
+            "prepared_food_portions",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "organize"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "living_room_media",
+      "entityType": "media_and_social_hub",
+      "regionId": "living_room",
+      "interactionPointId": "ip_living_room_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "calendar",
+            "communication_area",
+            "document_storage",
+            "dusting_area",
+            "exercise_area",
+            "social_area",
+            "television",
+            "tidying_area",
+            "vacuum_cleaner"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "switchable",
+          "roles": [
+            "television",
+            "vacuum_cleaner"
+          ],
+          "supportedOperations": [
+            "activate",
+            "deactivate"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "phone",
+            "in_person"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        },
+        {
+          "capability": "storable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes"
+          ],
+          "supportedOperations": [
+            "put_item"
+          ]
+        },
+        {
+          "capability": "inspectable",
+          "roles": [
+            "calendar",
+            "household_supplies"
+          ],
+          "supportedOperations": [
+            "inspect"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "cleanable",
+          "roles": [
+            "cleaning_tool",
+            "clothing",
+            "dishware",
+            "documents",
+            "drink",
+            "drink_ingredients",
+            "dusting_tool",
+            "floor",
+            "household_supplies",
+            "ingredients",
+            "leftover_food",
+            "medication",
+            "personal_belongings",
+            "prepared_food_portions",
+            "prepared_meal",
+            "prepared_salad",
+            "purchases",
+            "recycling",
+            "recycling_bin",
+            "salad_ingredients",
+            "snack",
+            "surfaces",
+            "used_clothing",
+            "vacuum_cleaner",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "storage_support",
+          "roles": [
+            "documents",
+            "prepared_food_portions",
+            "work_bag",
+            "work_clothes",
+            "aperitivo_with_paolo",
+            "buy_fresh_food_and_household_supplies",
+            "buy_groceries",
+            "call_friend_paolo",
+            "call_mother",
+            "call_sister_lucia",
+            "change_clothes",
+            "change_clothes_and_eat_snack",
+            "change_clothes_and_have_coffee",
+            "change_clothes_and_have_snack",
+            "check_calendar_and_household_supplies",
+            "clean_bathroom",
+            "clean_kitchen",
+            "collect_belongings_and_leave_home",
+            "collect_medication_refill",
+            "commute_home",
+            "commute_to_work",
+            "complete_pending_dishwashing",
+            "cook_chicken_and_vegetables",
+            "cook_dinner",
+            "dress_for_work",
+            "eat_afternoon_snack",
+            "eat_breakfast_and_listen_to_radio",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+            "eat_dinner",
+            "eat_light_dinner",
+            "eat_lunch",
+            "evening_hygiene",
+            "evening_walk",
+            "go_to_neighborhood_market",
+            "hang_bed_linen",
+            "hang_laundry",
+            "indoor_light_exercise",
+            "iron_work_shirts",
+            "leave_home",
+            "long_sunday_walk",
+            "morning_toilet_and_shower",
+            "morning_toilet_and_wash",
+            "portion_and_store_prepared_food",
+            "post_walk_shower",
+            "prepare_and_eat_breakfast",
+            "prepare_breakfast",
+            "prepare_coffee_and_drink_on_balcony",
+            "prepare_friday_clothes_and_bag",
+            "prepare_light_dinner",
+            "prepare_monday_clothes_bag_and_documents",
+            "prepare_next_workday",
+            "prepare_next_workday_clothes_and_bag",
+            "prepare_quick_pasta_and_salad",
+            "prepare_rice_and_vegetables",
+            "prepare_simple_lunch",
+            "prepare_sunday_lunch",
+            "prepare_to_visit_mother",
+            "prepare_weekend_breakfast",
+            "put_groceries_away",
+            "read",
+            "read_and_rest",
+            "read_in_bed",
+            "reheat_leftover_dinner_and_prepare_salad",
+            "rest",
+            "rest_and_read",
+            "rest_or_nap",
+            "return_home_and_store_purchases",
+            "short_evening_walk",
+            "shower_and_get_ready_to_go_out",
+            "sleep",
+            "start_bed_linen_laundry",
+            "start_laundry",
+            "take_morning_medication",
+            "take_recycling_out",
+            "tidy_living_room_and_hallway",
+            "travel_home",
+            "travel_to_mothers_home",
+            "travel_to_neighborhood_bar",
+            "travel_to_pharmacy",
+            "travel_to_supermarket",
+            "vacuum_and_dust_apartment",
+            "visit_mother_and_have_dinner",
+            "wake_up",
+            "wake_up_without_alarm",
+            "wash_breakfast_dishes",
+            "wash_face_and_change_shirt",
+            "watch_documentary",
+            "watch_evening_television",
+            "watch_football_highlights",
+            "watch_late_news",
+            "watch_sunday_program",
+            "watch_television",
+            "weekly_meal_preparation",
+            "work_shift"
+          ],
+          "supportedOperations": [
+            "organize"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "balcony_utility",
+      "entityType": "drying_and_exercise_area",
+      "regionId": "balcony",
+      "interactionPointId": "ip_balcony_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "drying_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "laundry_support",
+          "roles": [],
+          "supportedOperations": [
+            "laundry_step"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "market_service",
+      "entityType": "external_service",
+      "regionId": "market",
+      "interactionPointId": "ip_market_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "retail_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "mothers_home_service",
+      "entityType": "external_service",
+      "regionId": "mothers_home",
+      "interactionPointId": "ip_mothers_home_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "social_area",
+            "consumption_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "neighborhood_bar_service",
+      "entityType": "external_service",
+      "regionId": "neighborhood_bar",
+      "interactionPointId": "ip_neighborhood_bar_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "social_area",
+            "consumption_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "outside_service",
+      "entityType": "external_service",
+      "regionId": "outside",
+      "interactionPointId": "ip_outside_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "walking_area",
+            "exercise_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "pharmacy_service",
+      "entityType": "external_service",
+      "regionId": "pharmacy",
+      "interactionPointId": "ip_pharmacy_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "pharmacy_counter",
+            "retail_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "supermarket_service",
+      "entityType": "external_service",
+      "regionId": "supermarket",
+      "interactionPointId": "ip_supermarket_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "retail_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "workplace_service",
+      "entityType": "external_service",
+      "regionId": "workplace",
+      "interactionPointId": "ip_workplace_anchor",
+      "capabilities": [
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "communication_area"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "retail_service",
+          "roles": [],
+          "supportedOperations": [
+            "shop"
+          ]
+        },
+        {
+          "capability": "communication",
+          "roles": [
+            "in_person",
+            "phone"
+          ],
+          "supportedOperations": [
+            "communicate"
+          ]
+        },
+        {
+          "capability": "work_support",
+          "roles": [],
+          "supportedOperations": [
+            "perform_work"
+          ]
+        },
+        {
+          "capability": "exercise_support",
+          "roles": [],
+          "supportedOperations": [
+            "exercise"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [],
+          "supportedOperations": [
+            "leisure"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "drink",
+            "prepared_meal",
+            "snack"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "graspable",
+          "roles": [
+            "medication",
+            "purchases"
+          ],
+          "supportedOperations": [
+            "take_item"
+          ]
+        }
+      ],
+      "initialState": {},
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    }
+  ],
+  "locationBindings": [
+    {
+      "scenarioLocationId": "bedroom",
+      "regionIds": [
+        "bedroom"
+      ],
+      "anchorInteractionPointId": "ip_bedroom_anchor"
+    },
+    {
+      "scenarioLocationId": "bathroom",
+      "regionIds": [
+        "bathroom"
+      ],
+      "anchorInteractionPointId": "ip_bathroom_anchor"
+    },
+    {
+      "scenarioLocationId": "hallway",
+      "regionIds": [
+        "hallway"
+      ],
+      "anchorInteractionPointId": "ip_hallway_anchor"
+    },
+    {
+      "scenarioLocationId": "entrance",
+      "regionIds": [
+        "entrance"
+      ],
+      "anchorInteractionPointId": "ip_entrance_anchor"
+    },
+    {
+      "scenarioLocationId": "kitchen",
+      "regionIds": [
+        "kitchen"
+      ],
+      "anchorInteractionPointId": "ip_kitchen_anchor"
+    },
+    {
+      "scenarioLocationId": "living_room",
+      "regionIds": [
+        "living_room"
+      ],
+      "anchorInteractionPointId": "ip_living_room_anchor"
+    },
+    {
+      "scenarioLocationId": "balcony",
+      "regionIds": [
+        "balcony"
+      ],
+      "anchorInteractionPointId": "ip_balcony_anchor"
+    },
+    {
+      "scenarioLocationId": "market",
+      "regionIds": [
+        "market"
+      ],
+      "anchorInteractionPointId": "ip_market_anchor"
+    },
+    {
+      "scenarioLocationId": "mothers_home",
+      "regionIds": [
+        "mothers_home"
+      ],
+      "anchorInteractionPointId": "ip_mothers_home_anchor"
+    },
+    {
+      "scenarioLocationId": "neighborhood_bar",
+      "regionIds": [
+        "neighborhood_bar"
+      ],
+      "anchorInteractionPointId": "ip_neighborhood_bar_anchor"
+    },
+    {
+      "scenarioLocationId": "outside",
+      "regionIds": [
+        "outside"
+      ],
+      "anchorInteractionPointId": "ip_outside_anchor"
+    },
+    {
+      "scenarioLocationId": "pharmacy",
+      "regionIds": [
+        "pharmacy"
+      ],
+      "anchorInteractionPointId": "ip_pharmacy_anchor"
+    },
+    {
+      "scenarioLocationId": "supermarket",
+      "regionIds": [
+        "supermarket"
+      ],
+      "anchorInteractionPointId": "ip_supermarket_anchor"
+    },
+    {
+      "scenarioLocationId": "workplace",
+      "regionIds": [
+        "workplace"
+      ],
+      "anchorInteractionPointId": "ip_workplace_anchor"
+    },
+    {
+      "scenarioLocationId": "home",
+      "regionIds": [
+        "entrance",
+        "hallway",
+        "bedroom",
+        "bathroom",
+        "kitchen",
+        "living_room",
+        "balcony"
+      ],
+      "anchorInteractionPointId": "ip_entrance_anchor"
+    },
+    {
+      "scenarioLocationId": "bathroom_and_bedroom",
+      "regionIds": [
+        "bathroom",
+        "bedroom"
+      ],
+      "anchorInteractionPointId": "ip_bathroom_anchor"
+    },
+    {
+      "scenarioLocationId": "bedroom_and_kitchen",
+      "regionIds": [
+        "bedroom",
+        "kitchen"
+      ],
+      "anchorInteractionPointId": "ip_bedroom_anchor"
+    },
+    {
+      "scenarioLocationId": "bedroom_hallway_living_room",
+      "regionIds": [
+        "hallway",
+        "bedroom",
+        "living_room"
+      ],
+      "anchorInteractionPointId": "ip_hallway_anchor"
+    },
+    {
+      "scenarioLocationId": "home_and_kitchen",
+      "regionIds": [
+        "entrance",
+        "hallway",
+        "bedroom",
+        "bathroom",
+        "kitchen",
+        "living_room",
+        "balcony"
+      ],
+      "anchorInteractionPointId": "ip_entrance_anchor"
+    },
+    {
+      "scenarioLocationId": "kitchen_and_balcony",
+      "regionIds": [
+        "kitchen",
+        "balcony"
+      ],
+      "anchorInteractionPointId": "ip_kitchen_anchor"
+    },
+    {
+      "scenarioLocationId": "living_room_and_hallway",
+      "regionIds": [
+        "living_room",
+        "hallway"
+      ],
+      "anchorInteractionPointId": "ip_living_room_anchor"
+    }
+  ],
+  "resourceBindings": [
+    {
+      "scenarioResourceId": "bed_01",
+      "entityId": "bedroom_storage"
+    },
+    {
+      "scenarioResourceId": "shower_01",
+      "entityId": "bathroom_fixture"
+    },
+    {
+      "scenarioResourceId": "toilet_01",
+      "entityId": "bathroom_fixture"
+    },
+    {
+      "scenarioResourceId": "washing_machine_01",
+      "entityId": "bathroom_fixture"
+    },
+    {
+      "scenarioResourceId": "kitchen_sink_01",
+      "entityId": "kitchen_workstation"
+    },
+    {
+      "scenarioResourceId": "fridge_01",
+      "entityId": "kitchen_workstation"
+    },
+    {
+      "scenarioResourceId": "kettle_01",
+      "entityId": "kitchen_workstation"
+    },
+    {
+      "scenarioResourceId": "stove_01",
+      "entityId": "kitchen_workstation"
+    },
+    {
+      "scenarioResourceId": "television_01",
+      "entityId": "living_room_media"
+    }
+  ],
+  "kinematicDefaults": {
+    "bodyRadiusMeters": 0.25,
+    "minimumWalkingSpeedMetersPerSecond": 0.2,
+    "defaultWalkingSpeedMetersPerSecond": 1.2,
+    "postureTransitionSeconds": {
+      "standing": 1.5,
+      "walking": 0.5,
+      "sitting": 2.0,
+      "lying": 3.0
+    }
+  }
+}

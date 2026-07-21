@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from smart_home_sim.domain.authoring import AuthoringIngestionReport
 from smart_home_sim.domain.behavior_report import BehaviorValidationReport
+from smart_home_sim.domain.environment import EnvironmentValidationReport
 from smart_home_sim.domain.report import ValidationReport
 
 
@@ -49,4 +50,22 @@ def format_authoring_text_report(report: AuthoringIngestionReport) -> str:
     lines.append(
         f"Summary: {report.summary.error_count} error(s), {report.summary.warning_count} warning(s)"
     )
+    return "\n".join(lines)
+
+
+def format_environment_text_report(report: EnvironmentValidationReport) -> str:
+    status = "VALID" if report.valid else "INVALID"
+    identity = report.home_id or "unknown home"
+    summary = report.summary
+    lines = [
+        f"{status}: {identity}",
+        f"Regions: {summary.region_count}; connections: {summary.connection_count}; "
+        f"entities: {summary.entity_count}; action bindings: {summary.action_binding_count}; "
+        f"route checks: {summary.route_check_count}",
+        f"Errors: {summary.error_count}; warnings: {summary.warning_count}",
+    ]
+    for item in report.issues:
+        lines.append(
+            f"[{item.severity.upper()}] {item.code} ({item.stage}) {item.path}: {item.message}"
+        )
     return "\n".join(lines)

@@ -1,0 +1,2984 @@
+{
+  "$defs": {
+    "AccessConstraint": {
+      "additionalProperties": false,
+      "properties": {
+        "allowedResidentIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowedresidentids",
+          "type": "array"
+        },
+        "allowedMobilityProfiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowedmobilityprofiles",
+          "type": "array"
+        }
+      },
+      "title": "AccessConstraint",
+      "type": "object"
+    },
+    "ActivationMode": {
+      "enum": [
+        "always",
+        "conditional",
+        "fallback"
+      ],
+      "title": "ActivationMode",
+      "type": "string"
+    },
+    "ActivationRule": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/ActivationMode",
+          "default": "always"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Condition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fallbackForActivityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallbackforactivityid"
+        },
+        "fallbackTrigger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FallbackTrigger"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ActivationRule",
+      "type": "object"
+    },
+    "Activity": {
+      "additionalProperties": false,
+      "properties": {
+        "activityId": {
+          "minLength": 1,
+          "title": "Activityid",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "locationIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Locationids",
+          "type": "array"
+        },
+        "startWindow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DateTimeWindow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "endWindow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DateTimeWindow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DurationRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mandatory": {
+          "default": true,
+          "title": "Mandatory",
+          "type": "boolean"
+        },
+        "priority": {
+          "default": 50,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "canOverlapForActor": {
+          "default": false,
+          "title": "Canoverlapforactor",
+          "type": "boolean"
+        },
+        "allowBoundaryTruncation": {
+          "default": false,
+          "title": "Allowboundarytruncation",
+          "type": "boolean"
+        },
+        "dependencyGroups": {
+          "items": {
+            "$ref": "#/$defs/DependencyGroup"
+          },
+          "title": "Dependencygroups",
+          "type": "array"
+        },
+        "participantIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Participantids",
+          "type": "array"
+        },
+        "requiredResources": {
+          "items": {
+            "$ref": "#/$defs/ResourceRequirement"
+          },
+          "title": "Requiredresources",
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/StateEffect"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "activation": {
+          "$ref": "#/$defs/ActivationRule"
+        },
+        "commitmentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commitmentid"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "array"
+        },
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "activityId",
+        "actorId",
+        "intent",
+        "locationIds"
+      ],
+      "title": "Activity",
+      "type": "object"
+    },
+    "ArtifactDigest": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactId": {
+          "minLength": 1,
+          "title": "Artifactid",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactId",
+        "version",
+        "sha256"
+      ],
+      "title": "ArtifactDigest",
+      "type": "object"
+    },
+    "AuthorType": {
+      "enum": [
+        "human",
+        "external_llm",
+        "rule_generator",
+        "import"
+      ],
+      "title": "AuthorType",
+      "type": "string"
+    },
+    "BehaviorCatalogReferences": {
+      "additionalProperties": false,
+      "properties": {
+        "activityCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        },
+        "variableCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        },
+        "actionCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        }
+      },
+      "required": [
+        "activityCatalog",
+        "variableCatalog",
+        "actionCatalog"
+      ],
+      "title": "BehaviorCatalogReferences",
+      "type": "object"
+    },
+    "CanonicalActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceActivityId": {
+          "minLength": 1,
+          "title": "Sourceactivityid",
+          "type": "string"
+        },
+        "sequenceIndex": {
+          "minimum": 0,
+          "title": "Sequenceindex",
+          "type": "integer"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "locationIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Locationids",
+          "type": "array"
+        },
+        "scheduledStart": {
+          "format": "date-time",
+          "title": "Scheduledstart",
+          "type": "string"
+        },
+        "scheduledEnd": {
+          "format": "date-time",
+          "title": "Scheduledend",
+          "type": "string"
+        },
+        "durationMicroseconds": {
+          "exclusiveMinimum": 0,
+          "title": "Durationmicroseconds",
+          "type": "integer"
+        },
+        "mandatory": {
+          "title": "Mandatory",
+          "type": "boolean"
+        },
+        "priority": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "canOverlapForActor": {
+          "title": "Canoverlapforactor",
+          "type": "boolean"
+        },
+        "participantIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Participantids",
+          "type": "array"
+        },
+        "requiredResources": {
+          "items": {
+            "$ref": "#/$defs/ResourceRequirement"
+          },
+          "title": "Requiredresources",
+          "type": "array"
+        },
+        "selectedDependencyIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Selecteddependencyids",
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/StateEffect"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "activation": {
+          "$ref": "#/$defs/ActivationRule"
+        },
+        "commitmentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commitmentid"
+        },
+        "truncatedAtSimulationEnd": {
+          "default": false,
+          "title": "Truncatedatsimulationend",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sourceActivityId",
+        "sequenceIndex",
+        "actorId",
+        "intent",
+        "locationIds",
+        "scheduledStart",
+        "scheduledEnd",
+        "durationMicroseconds",
+        "mandatory",
+        "priority",
+        "canOverlapForActor",
+        "activation"
+      ],
+      "title": "CanonicalActivity",
+      "type": "object"
+    },
+    "CanonicalDay": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/CanonicalActivity"
+          },
+          "title": "Activities",
+          "type": "array"
+        },
+        "contingencies": {
+          "items": {
+            "$ref": "#/$defs/ContingencyPlan"
+          },
+          "title": "Contingencies",
+          "type": "array"
+        },
+        "omittedActivities": {
+          "items": {
+            "$ref": "#/$defs/OmittedActivity"
+          },
+          "title": "Omittedactivities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "CanonicalDay",
+      "type": "object"
+    },
+    "CanonicalPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "planVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Planversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "canonical_plan",
+          "default": "canonical_plan",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "sourceScenarioVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Sourcescenarioversion",
+          "type": "string"
+        },
+        "sourceScenarioId": {
+          "minLength": 1,
+          "title": "Sourcescenarioid",
+          "type": "string"
+        },
+        "sourceScenarioSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sourcescenariosha256",
+          "type": "string"
+        },
+        "timeZone": {
+          "title": "Timezone",
+          "type": "string"
+        },
+        "simulationWindow": {
+          "$ref": "#/$defs/SimulationWindow"
+        },
+        "compiler": {
+          "$ref": "#/$defs/CompilerMetadata"
+        },
+        "objectiveValues": {
+          "$ref": "#/$defs/ObjectiveValues"
+        },
+        "days": {
+          "items": {
+            "$ref": "#/$defs/CanonicalDay"
+          },
+          "minItems": 1,
+          "title": "Days",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sourceScenarioId",
+        "sourceScenarioSha256",
+        "timeZone",
+        "simulationWindow",
+        "objectiveValues",
+        "days"
+      ],
+      "title": "Smart Home Canonical Plan 1.0.0",
+      "type": "object"
+    },
+    "CatalogReference": {
+      "additionalProperties": false,
+      "properties": {
+        "catalogId": {
+          "minLength": 1,
+          "title": "Catalogid",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "catalogId",
+        "version"
+      ],
+      "title": "CatalogReference",
+      "type": "object"
+    },
+    "Commitment": {
+      "additionalProperties": false,
+      "properties": {
+        "commitmentId": {
+          "minLength": 1,
+          "title": "Commitmentid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "participantIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Participantids",
+          "type": "array"
+        },
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "mandatory": {
+          "default": true,
+          "title": "Mandatory",
+          "type": "boolean"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "commitmentId",
+        "intent",
+        "participantIds",
+        "locationId",
+        "start",
+        "end"
+      ],
+      "title": "Commitment",
+      "type": "object"
+    },
+    "CompilerMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "compilerName": {
+          "const": "smart-home-sim-plan-compiler",
+          "default": "smart-home-sim-plan-compiler",
+          "title": "Compilername",
+          "type": "string"
+        },
+        "compilerVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Compilerversion",
+          "type": "string"
+        },
+        "solverBackend": {
+          "const": "or-tools-cp-sat",
+          "default": "or-tools-cp-sat",
+          "title": "Solverbackend",
+          "type": "string"
+        },
+        "solverVersion": {
+          "const": "9.15.6755",
+          "default": "9.15.6755",
+          "title": "Solverversion",
+          "type": "string"
+        },
+        "optimizationPolicyVersion": {
+          "const": "priority-preference-1.0.0",
+          "default": "priority-preference-1.0.0",
+          "title": "Optimizationpolicyversion",
+          "type": "string"
+        },
+        "timeResolution": {
+          "const": "microsecond",
+          "default": "microsecond",
+          "title": "Timeresolution",
+          "type": "string"
+        }
+      },
+      "title": "CompilerMetadata",
+      "type": "object"
+    },
+    "Condition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/ConditionOperator",
+          "default": "truthy"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "fact"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "ConditionOperator": {
+      "enum": [
+        "truthy",
+        "falsy",
+        "exists",
+        "not_exists",
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "in",
+        "not_in"
+      ],
+      "title": "ConditionOperator",
+      "type": "string"
+    },
+    "ConnectionKind": {
+      "enum": [
+        "doorway",
+        "passage",
+        "transit"
+      ],
+      "title": "ConnectionKind",
+      "type": "string"
+    },
+    "ContingencyPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "contingencyId": {
+          "minLength": 1,
+          "title": "Contingencyid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "fallback",
+            "conditional"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "activation": {
+          "$ref": "#/$defs/ActivationRule"
+        },
+        "replacesActivityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replacesactivityid"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/CanonicalActivity"
+          },
+          "title": "Activities",
+          "type": "array"
+        },
+        "rescheduledActivities": {
+          "items": {
+            "$ref": "#/$defs/CanonicalActivity"
+          },
+          "title": "Rescheduledactivities",
+          "type": "array"
+        },
+        "omittedActivities": {
+          "items": {
+            "$ref": "#/$defs/OmittedActivity"
+          },
+          "title": "Omittedactivities",
+          "type": "array"
+        },
+        "objectiveValues": {
+          "$ref": "#/$defs/ObjectiveValues"
+        }
+      },
+      "required": [
+        "contingencyId",
+        "kind",
+        "activation",
+        "objectiveValues"
+      ],
+      "title": "ContingencyPlan",
+      "type": "object"
+    },
+    "CoordinateSystem": {
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "const": "meter",
+          "default": "meter",
+          "title": "Unit",
+          "type": "string"
+        },
+        "axisConvention": {
+          "const": "x_east_y_north",
+          "default": "x_east_y_north",
+          "title": "Axisconvention",
+          "type": "string"
+        },
+        "originLabel": {
+          "default": "home_local_origin",
+          "minLength": 1,
+          "title": "Originlabel",
+          "type": "string"
+        }
+      },
+      "title": "CoordinateSystem",
+      "type": "object"
+    },
+    "DateTimeWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "earliest": {
+          "format": "date-time",
+          "title": "Earliest",
+          "type": "string"
+        },
+        "preferred": {
+          "format": "date-time",
+          "title": "Preferred",
+          "type": "string"
+        },
+        "latest": {
+          "format": "date-time",
+          "title": "Latest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "earliest",
+        "preferred",
+        "latest"
+      ],
+      "title": "DateTimeWindow",
+      "type": "object"
+    },
+    "DayContext": {
+      "additionalProperties": false,
+      "properties": {
+        "dayType": {
+          "minLength": 1,
+          "title": "Daytype",
+          "type": "string"
+        },
+        "narrativeIntent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Narrativeintent"
+        },
+        "facts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Facts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "dayType"
+      ],
+      "title": "DayContext",
+      "type": "object"
+    },
+    "DayPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/DayContext"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/Activity"
+          },
+          "title": "Activities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "date",
+        "context"
+      ],
+      "title": "DayPlan",
+      "type": "object"
+    },
+    "DependencyGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/DependencyMode",
+          "default": "all"
+        },
+        "activityIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Activityids",
+          "type": "array"
+        },
+        "minimumLagMinutes": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimumlagminutes",
+          "type": "number"
+        },
+        "maximumLagMinutes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximumlagminutes"
+        }
+      },
+      "required": [
+        "activityIds"
+      ],
+      "title": "DependencyGroup",
+      "type": "object"
+    },
+    "DependencyMode": {
+      "enum": [
+        "all",
+        "any"
+      ],
+      "title": "DependencyMode",
+      "type": "string"
+    },
+    "DurationRange": {
+      "additionalProperties": false,
+      "properties": {
+        "minimumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Minimumminutes",
+          "type": "number"
+        },
+        "preferredMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Preferredminutes",
+          "type": "number"
+        },
+        "maximumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Maximumminutes",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minimumMinutes",
+        "preferredMinutes",
+        "maximumMinutes"
+      ],
+      "title": "DurationRange",
+      "type": "object"
+    },
+    "EffectOperation": {
+      "enum": [
+        "set",
+        "increment",
+        "decrement",
+        "append",
+        "remove"
+      ],
+      "title": "EffectOperation",
+      "type": "string"
+    },
+    "EntityCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "minLength": 1,
+          "title": "Capability",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "supportedOperations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supportedoperations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "capability"
+      ],
+      "title": "EntityCapability",
+      "type": "object"
+    },
+    "ExternalPerson": {
+      "additionalProperties": false,
+      "properties": {
+        "externalPersonId": {
+          "minLength": 1,
+          "title": "Externalpersonid",
+          "type": "string"
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Displayname"
+        },
+        "relationshipToResidents": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Relationshiptoresidents",
+          "type": "object"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "externalPersonId"
+      ],
+      "title": "ExternalPerson",
+      "type": "object"
+    },
+    "FallbackTrigger": {
+      "enum": [
+        "precondition_failed",
+        "activity_cancelled",
+        "activity_replaced"
+      ],
+      "title": "FallbackTrigger",
+      "type": "string"
+    },
+    "HomeConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "connectionId": {
+          "minLength": 1,
+          "title": "Connectionid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ConnectionKind"
+        },
+        "regionAId": {
+          "minLength": 1,
+          "title": "Regionaid",
+          "type": "string"
+        },
+        "regionBId": {
+          "minLength": 1,
+          "title": "Regionbid",
+          "type": "string"
+        },
+        "portalA": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "portalB": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "widthMeters": {
+          "exclusiveMinimum": 0,
+          "title": "Widthmeters",
+          "type": "number"
+        },
+        "traversalMode": {
+          "$ref": "#/$defs/TraversalMode",
+          "default": "walking"
+        },
+        "distanceMeters": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distancemeters"
+        },
+        "bidirectional": {
+          "default": true,
+          "title": "Bidirectional",
+          "type": "boolean"
+        },
+        "allowedMobilityProfiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowedmobilityprofiles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "connectionId",
+        "kind",
+        "regionAId",
+        "regionBId",
+        "portalA",
+        "portalB",
+        "widthMeters"
+      ],
+      "title": "HomeConnection",
+      "type": "object"
+    },
+    "HomeEntity": {
+      "additionalProperties": false,
+      "properties": {
+        "entityId": {
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "entityType": {
+          "minLength": 1,
+          "title": "Entitytype",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "interactionPointId": {
+          "minLength": 1,
+          "title": "Interactionpointid",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/EntityCapability"
+          },
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "initialState": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Initialstate",
+          "type": "object"
+        },
+        "access": {
+          "$ref": "#/$defs/AccessConstraint"
+        }
+      },
+      "required": [
+        "entityId",
+        "entityType",
+        "regionId",
+        "interactionPointId",
+        "capabilities"
+      ],
+      "title": "HomeEntity",
+      "type": "object"
+    },
+    "HomeModel": {
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Schemaversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "home_model",
+          "default": "home_model",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "homeId": {
+          "minLength": 1,
+          "title": "Homeid",
+          "type": "string"
+        },
+        "homeVersion": {
+          "minLength": 1,
+          "title": "Homeversion",
+          "type": "string"
+        },
+        "coordinateSystem": {
+          "$ref": "#/$defs/CoordinateSystem"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/HomeRegion"
+          },
+          "minItems": 1,
+          "title": "Regions",
+          "type": "array"
+        },
+        "connections": {
+          "items": {
+            "$ref": "#/$defs/HomeConnection"
+          },
+          "title": "Connections",
+          "type": "array"
+        },
+        "obstacles": {
+          "items": {
+            "$ref": "#/$defs/HomeObstacle"
+          },
+          "title": "Obstacles",
+          "type": "array"
+        },
+        "interactionPoints": {
+          "items": {
+            "$ref": "#/$defs/InteractionPoint"
+          },
+          "minItems": 1,
+          "title": "Interactionpoints",
+          "type": "array"
+        },
+        "entities": {
+          "items": {
+            "$ref": "#/$defs/HomeEntity"
+          },
+          "minItems": 1,
+          "title": "Entities",
+          "type": "array"
+        },
+        "locationBindings": {
+          "items": {
+            "$ref": "#/$defs/LocationBinding"
+          },
+          "minItems": 1,
+          "title": "Locationbindings",
+          "type": "array"
+        },
+        "resourceBindings": {
+          "items": {
+            "$ref": "#/$defs/ResourceBinding"
+          },
+          "title": "Resourcebindings",
+          "type": "array"
+        },
+        "kinematicDefaults": {
+          "$ref": "#/$defs/KinematicDefaults"
+        }
+      },
+      "required": [
+        "homeId",
+        "homeVersion",
+        "regions",
+        "interactionPoints",
+        "entities",
+        "locationBindings"
+      ],
+      "title": "Smart Home Executable Home Model 1.0.0",
+      "type": "object"
+    },
+    "HomeObstacle": {
+      "additionalProperties": false,
+      "properties": {
+        "obstacleId": {
+          "minLength": 1,
+          "title": "Obstacleid",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Polygon2D"
+        }
+      },
+      "required": [
+        "obstacleId",
+        "regionId",
+        "boundary"
+      ],
+      "title": "HomeObstacle",
+      "type": "object"
+    },
+    "HomeRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RegionKind"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Polygon2D"
+        },
+        "traversable": {
+          "default": true,
+          "title": "Traversable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "regionId",
+        "kind",
+        "boundary"
+      ],
+      "title": "HomeRegion",
+      "type": "object"
+    },
+    "InitialState": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "residents": {
+          "items": {
+            "$ref": "#/$defs/ResidentInitialState"
+          },
+          "minItems": 1,
+          "title": "Residents",
+          "type": "array"
+        },
+        "environmentFacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Environmentfacts",
+          "type": "object"
+        },
+        "resourceFacts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "title": "Resourcefacts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "at",
+        "residents"
+      ],
+      "title": "InitialState",
+      "type": "object"
+    },
+    "InteractionPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "interactionPointId": {
+          "minLength": 1,
+          "title": "Interactionpointid",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "approachRadiusMeters": {
+          "default": 0.35,
+          "exclusiveMinimum": 0,
+          "title": "Approachradiusmeters",
+          "type": "number"
+        }
+      },
+      "required": [
+        "interactionPointId",
+        "regionId",
+        "position"
+      ],
+      "title": "InteractionPoint",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "KinematicDefaults": {
+      "additionalProperties": false,
+      "properties": {
+        "bodyRadiusMeters": {
+          "default": 0.25,
+          "exclusiveMinimum": 0,
+          "title": "Bodyradiusmeters",
+          "type": "number"
+        },
+        "minimumWalkingSpeedMetersPerSecond": {
+          "default": 0.2,
+          "exclusiveMinimum": 0,
+          "title": "Minimumwalkingspeedmeterspersecond",
+          "type": "number"
+        },
+        "defaultWalkingSpeedMetersPerSecond": {
+          "default": 1.2,
+          "exclusiveMinimum": 0,
+          "title": "Defaultwalkingspeedmeterspersecond",
+          "type": "number"
+        },
+        "postureTransitionSeconds": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "standing",
+              "walking",
+              "sitting",
+              "lying"
+            ]
+          },
+          "title": "Posturetransitionseconds",
+          "type": "object"
+        }
+      },
+      "title": "KinematicDefaults",
+      "type": "object"
+    },
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/LocationKind"
+        },
+        "memberLocationIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Memberlocationids",
+          "type": "array"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "locationId",
+        "kind"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "LocationBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "scenarioLocationId": {
+          "minLength": 1,
+          "title": "Scenariolocationid",
+          "type": "string"
+        },
+        "regionIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Regionids",
+          "type": "array"
+        },
+        "anchorInteractionPointId": {
+          "minLength": 1,
+          "title": "Anchorinteractionpointid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenarioLocationId",
+        "regionIds",
+        "anchorInteractionPointId"
+      ],
+      "title": "LocationBinding",
+      "type": "object"
+    },
+    "LocationKind": {
+      "enum": [
+        "room",
+        "external",
+        "transit",
+        "composite"
+      ],
+      "title": "LocationKind",
+      "type": "string"
+    },
+    "MaterializationPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "authoritativeStateSource": {
+          "default": "scenario_initial_then_previous_execution",
+          "enum": [
+            "scenario_initial_then_previous_execution",
+            "scenario_initial_only"
+          ],
+          "title": "Authoritativestatesource",
+          "type": "string"
+        },
+        "revalidateBeforeEachDay": {
+          "default": true,
+          "title": "Revalidatebeforeeachday",
+          "type": "boolean"
+        },
+        "requireEveryDate": {
+          "default": true,
+          "title": "Requireeverydate",
+          "type": "boolean"
+        },
+        "allowLocalRepair": {
+          "default": true,
+          "title": "Allowlocalrepair",
+          "type": "boolean"
+        },
+        "repairOrder": {
+          "items": {
+            "$ref": "#/$defs/RepairStep"
+          },
+          "title": "Repairorder",
+          "type": "array"
+        }
+      },
+      "title": "MaterializationPolicy",
+      "type": "object"
+    },
+    "ModelReferences": {
+      "additionalProperties": false,
+      "properties": {
+        "activityCatalog": {
+          "$ref": "#/$defs/VersionedReference"
+        },
+        "homeModel": {
+          "$ref": "#/$defs/VersionedReference"
+        },
+        "sensorModel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "activityCatalog",
+        "homeModel"
+      ],
+      "title": "ModelReferences",
+      "type": "object"
+    },
+    "ObjectiveValues": {
+      "additionalProperties": false,
+      "properties": {
+        "optionalPriorityScore": {
+          "minimum": 0,
+          "title": "Optionalpriorityscore",
+          "type": "integer"
+        },
+        "optionalActivityCount": {
+          "minimum": 0,
+          "title": "Optionalactivitycount",
+          "type": "integer"
+        },
+        "durationDeviationMicroseconds": {
+          "minimum": 0,
+          "title": "Durationdeviationmicroseconds",
+          "type": "integer"
+        },
+        "temporalDeviationMicroseconds": {
+          "minimum": 0,
+          "title": "Temporaldeviationmicroseconds",
+          "type": "integer"
+        },
+        "scheduledStartSumMicroseconds": {
+          "minimum": 0,
+          "title": "Scheduledstartsummicroseconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "optionalPriorityScore",
+        "optionalActivityCount",
+        "durationDeviationMicroseconds",
+        "temporalDeviationMicroseconds",
+        "scheduledStartSumMicroseconds"
+      ],
+      "title": "ObjectiveValues",
+      "type": "object"
+    },
+    "OmittedActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceActivityId": {
+          "minLength": 1,
+          "title": "Sourceactivityid",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "optional_not_selected",
+            "contingency_target_not_scheduled",
+            "contingency_optional_not_selected",
+            "contingency_main_activity_omitted"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceActivityId",
+        "reason"
+      ],
+      "title": "OmittedActivity",
+      "type": "object"
+    },
+    "PersonalProcessPackage": {
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Schemaversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "personal_process_package",
+          "default": "personal_process_package",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "packageId": {
+          "minLength": 1,
+          "title": "Packageid",
+          "type": "string"
+        },
+        "packageVersion": {
+          "minLength": 1,
+          "title": "Packageversion",
+          "type": "string"
+        },
+        "sourceScenarioId": {
+          "minLength": 1,
+          "title": "Sourcescenarioid",
+          "type": "string"
+        },
+        "sourceScenarioVersion": {
+          "minLength": 1,
+          "title": "Sourcescenarioversion",
+          "type": "string"
+        },
+        "language": {
+          "minLength": 2,
+          "title": "Language",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "catalogs": {
+          "$ref": "#/$defs/BehaviorCatalogReferences"
+        },
+        "processModels": {
+          "items": {
+            "$ref": "#/$defs/ProcessModel"
+          },
+          "minItems": 1,
+          "title": "Processmodels",
+          "type": "array"
+        },
+        "bindings": {
+          "items": {
+            "$ref": "#/$defs/ProcessBinding"
+          },
+          "minItems": 1,
+          "title": "Bindings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "packageId",
+        "packageVersion",
+        "sourceScenarioId",
+        "sourceScenarioVersion",
+        "language",
+        "provenance",
+        "catalogs",
+        "processModels",
+        "bindings"
+      ],
+      "title": "Smart Home Personal Process Package 1.0.0",
+      "type": "object"
+    },
+    "Point2D": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point2D",
+      "type": "object"
+    },
+    "Polygon2D": {
+      "additionalProperties": false,
+      "properties": {
+        "vertices": {
+          "items": {
+            "$ref": "#/$defs/Point2D"
+          },
+          "minItems": 3,
+          "title": "Vertices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "vertices"
+      ],
+      "title": "Polygon2D",
+      "type": "object"
+    },
+    "ProcessBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "bindingId": {
+          "minLength": 1,
+          "title": "Bindingid",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "applicability": {
+          "items": {
+            "$ref": "#/$defs/VariableCondition"
+          },
+          "title": "Applicability",
+          "type": "array"
+        },
+        "fallback": {
+          "default": false,
+          "title": "Fallback",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bindingId",
+        "residentId",
+        "intent",
+        "processModelId"
+      ],
+      "title": "ProcessBinding",
+      "type": "object"
+    },
+    "ProcessEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceNodeId": {
+          "minLength": 1,
+          "title": "Sourcenodeid",
+          "type": "string"
+        },
+        "targetNodeId": {
+          "minLength": 1,
+          "title": "Targetnodeid",
+          "type": "string"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VariableCondition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "isDefault": {
+          "default": false,
+          "title": "Isdefault",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sourceNodeId",
+        "targetNodeId"
+      ],
+      "title": "ProcessEdge",
+      "type": "object"
+    },
+    "ProcessModel": {
+      "additionalProperties": false,
+      "properties": {
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "processModelVersion": {
+          "minLength": 1,
+          "title": "Processmodelversion",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "implementedComponents": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Implementedcomponents",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ProcessNode"
+          },
+          "minItems": 2,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/ProcessEdge"
+          },
+          "minItems": 1,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "processModelId",
+        "processModelVersion",
+        "residentId",
+        "title",
+        "description",
+        "implementedComponents",
+        "nodes",
+        "edges"
+      ],
+      "title": "ProcessModel",
+      "type": "object"
+    },
+    "ProcessNode": {
+      "additionalProperties": false,
+      "properties": {
+        "nodeId": {
+          "minLength": 1,
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ProcessNodeKind"
+        },
+        "actionType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actiontype"
+        },
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ValueExpression"
+          },
+          "title": "Arguments",
+          "type": "object"
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DurationRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "durationWeight": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationweight"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/VariableCondition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/StateEffect"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "maxIterations": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxiterations"
+        }
+      },
+      "required": [
+        "nodeId",
+        "kind"
+      ],
+      "title": "ProcessNode",
+      "type": "object"
+    },
+    "ProcessNodeKind": {
+      "enum": [
+        "start",
+        "end",
+        "action",
+        "choice",
+        "parallel_split",
+        "parallel_join",
+        "loop"
+      ],
+      "title": "ProcessNodeKind",
+      "type": "string"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "$ref": "#/$defs/AuthorType"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "generatorVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorversion"
+        },
+        "modelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        },
+        "generatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatedat"
+        },
+        "humanReviewed": {
+          "default": false,
+          "title": "Humanreviewed",
+          "type": "boolean"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RegionKind": {
+      "enum": [
+        "room",
+        "outdoor",
+        "external",
+        "transit"
+      ],
+      "title": "RegionKind",
+      "type": "string"
+    },
+    "RepairStep": {
+      "enum": [
+        "shift_within_window",
+        "shorten_within_range",
+        "apply_declared_fallback",
+        "drop_optional_activity",
+        "reject_day_plan"
+      ],
+      "title": "RepairStep",
+      "type": "string"
+    },
+    "RequestedOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "observableSensorLog": {
+          "default": true,
+          "title": "Observablesensorlog",
+          "type": "boolean"
+        },
+        "oracleGroundTruth": {
+          "default": true,
+          "title": "Oraclegroundtruth",
+          "type": "boolean"
+        },
+        "executedActivityTrace": {
+          "default": true,
+          "title": "Executedactivitytrace",
+          "type": "boolean"
+        },
+        "planExecutionDiff": {
+          "default": true,
+          "title": "Planexecutiondiff",
+          "type": "boolean"
+        },
+        "finalDailyDiaries": {
+          "default": true,
+          "title": "Finaldailydiaries",
+          "type": "boolean"
+        },
+        "finalScenarioState": {
+          "default": true,
+          "title": "Finalscenariostate",
+          "type": "boolean"
+        },
+        "formats": {
+          "items": {
+            "enum": [
+              "jsonl",
+              "csv",
+              "xes"
+            ],
+            "type": "string"
+          },
+          "title": "Formats",
+          "type": "array"
+        }
+      },
+      "title": "RequestedOutputs",
+      "type": "object"
+    },
+    "Resident": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Displayname"
+        },
+        "profile": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Profile",
+          "type": "object"
+        }
+      },
+      "required": [
+        "residentId"
+      ],
+      "title": "Resident",
+      "type": "object"
+    },
+    "ResidentInitialState": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "facts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Facts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "residentId",
+        "locationId"
+      ],
+      "title": "ResidentInitialState",
+      "type": "object"
+    },
+    "ResolvedActionBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceActivityId": {
+          "minLength": 1,
+          "title": "Sourceactivityid",
+          "type": "string"
+        },
+        "actorId": {
+          "minLength": 1,
+          "title": "Actorid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "nodeId": {
+          "minLength": 1,
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "actionType": {
+          "minLength": 1,
+          "title": "Actiontype",
+          "type": "string"
+        },
+        "resolvedArguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Resolvedarguments",
+          "type": "object"
+        },
+        "capabilityBindings": {
+          "items": {
+            "$ref": "#/$defs/ResolvedCapabilityBinding"
+          },
+          "title": "Capabilitybindings",
+          "type": "array"
+        },
+        "destinationRegionIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Destinationregionids",
+          "type": "array"
+        },
+        "destinationInteractionPointId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Destinationinteractionpointid"
+        }
+      },
+      "required": [
+        "sourceActivityId",
+        "actorId",
+        "intent",
+        "processModelId",
+        "nodeId",
+        "actionType"
+      ],
+      "title": "ResolvedActionBinding",
+      "type": "object"
+    },
+    "ResolvedCapabilityBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "capability": {
+          "minLength": 1,
+          "title": "Capability",
+          "type": "string"
+        },
+        "providerType": {
+          "enum": [
+            "entity",
+            "location",
+            "resident"
+          ],
+          "title": "Providertype",
+          "type": "string"
+        },
+        "providerId": {
+          "minLength": 1,
+          "title": "Providerid",
+          "type": "string"
+        },
+        "interactionPointId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interactionpointid"
+        }
+      },
+      "required": [
+        "role",
+        "capability",
+        "providerType",
+        "providerId"
+      ],
+      "title": "ResolvedCapabilityBinding",
+      "type": "object"
+    },
+    "ResolvedKinematics": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "mobilityProfile": {
+          "minLength": 1,
+          "title": "Mobilityprofile",
+          "type": "string"
+        },
+        "walkingSpeedMetersPerSecond": {
+          "exclusiveMinimum": 0,
+          "title": "Walkingspeedmeterspersecond",
+          "type": "number"
+        },
+        "bodyRadiusMeters": {
+          "exclusiveMinimum": 0,
+          "title": "Bodyradiusmeters",
+          "type": "number"
+        },
+        "postureTransitionSeconds": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Posturetransitionseconds",
+          "type": "object"
+        }
+      },
+      "required": [
+        "residentId",
+        "mobilityProfile",
+        "walkingSpeedMetersPerSecond",
+        "bodyRadiusMeters",
+        "postureTransitionSeconds"
+      ],
+      "title": "ResolvedKinematics",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": {
+          "minLength": 1,
+          "title": "Resourceid",
+          "type": "string"
+        },
+        "resourceType": {
+          "minLength": 1,
+          "title": "Resourcetype",
+          "type": "string"
+        },
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "capacity": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Capacity",
+          "type": "integer"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "resourceId",
+        "resourceType",
+        "locationId"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "ResourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "scenarioResourceId": {
+          "minLength": 1,
+          "title": "Scenarioresourceid",
+          "type": "string"
+        },
+        "entityId": {
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenarioResourceId",
+        "entityId"
+      ],
+      "title": "ResourceBinding",
+      "type": "object"
+    },
+    "ResourceRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": {
+          "minLength": 1,
+          "title": "Resourceid",
+          "type": "string"
+        },
+        "units": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Units",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resourceId"
+      ],
+      "title": "ResourceRequirement",
+      "type": "object"
+    },
+    "RuntimeEventCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "minLength": 1,
+          "title": "Eventid",
+          "type": "string"
+        },
+        "eligibleWindow": {
+          "$ref": "#/$defs/DateTimeWindow"
+        },
+        "occurrenceProbability": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Occurrenceprobability",
+          "type": "number"
+        },
+        "triggerActivityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Triggeractivityid"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/RuntimeEventEffect"
+          },
+          "minItems": 1,
+          "title": "Effects",
+          "type": "array"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "eventId",
+        "eligibleWindow",
+        "occurrenceProbability",
+        "effects"
+      ],
+      "title": "RuntimeEventCandidate",
+      "type": "object"
+    },
+    "RuntimeEventEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/RuntimeEventOperation"
+        },
+        "targetId": {
+          "title": "Targetid",
+          "type": "string"
+        },
+        "minimumAmount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimumamount"
+        },
+        "maximumAmount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximumamount"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "operation",
+        "targetId"
+      ],
+      "title": "RuntimeEventEffect",
+      "type": "object"
+    },
+    "RuntimeEventOperation": {
+      "enum": [
+        "delay_activity_start",
+        "extend_activity_duration",
+        "interrupt_actor",
+        "invalidate_fact",
+        "set_fact"
+      ],
+      "title": "RuntimeEventOperation",
+      "type": "string"
+    },
+    "Scenario": {
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0",
+          "title": "Schemaversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "life_scenario",
+          "default": "life_scenario",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "scenarioId": {
+          "minLength": 1,
+          "title": "Scenarioid",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "language": {
+          "default": "en",
+          "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+          "title": "Language",
+          "type": "string"
+        },
+        "timeZone": {
+          "title": "Timezone",
+          "type": "string"
+        },
+        "simulationWindow": {
+          "$ref": "#/$defs/SimulationWindow"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "modelReferences": {
+          "$ref": "#/$defs/ModelReferences"
+        },
+        "materializationPolicy": {
+          "$ref": "#/$defs/MaterializationPolicy"
+        },
+        "residents": {
+          "items": {
+            "$ref": "#/$defs/Resident"
+          },
+          "minItems": 1,
+          "title": "Residents",
+          "type": "array"
+        },
+        "externalPeople": {
+          "items": {
+            "$ref": "#/$defs/ExternalPerson"
+          },
+          "title": "Externalpeople",
+          "type": "array"
+        },
+        "locations": {
+          "items": {
+            "$ref": "#/$defs/Location"
+          },
+          "minItems": 1,
+          "title": "Locations",
+          "type": "array"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/Resource"
+          },
+          "title": "Resources",
+          "type": "array"
+        },
+        "initialState": {
+          "$ref": "#/$defs/InitialState"
+        },
+        "commitments": {
+          "items": {
+            "$ref": "#/$defs/Commitment"
+          },
+          "title": "Commitments",
+          "type": "array"
+        },
+        "days": {
+          "items": {
+            "$ref": "#/$defs/DayPlan"
+          },
+          "minItems": 1,
+          "title": "Days",
+          "type": "array"
+        },
+        "runtimeEventCandidates": {
+          "items": {
+            "$ref": "#/$defs/RuntimeEventCandidate"
+          },
+          "title": "Runtimeeventcandidates",
+          "type": "array"
+        },
+        "declaredConstraints": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Declaredconstraints",
+          "type": "array"
+        },
+        "requestedOutputs": {
+          "$ref": "#/$defs/RequestedOutputs"
+        },
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "scenarioId",
+        "timeZone",
+        "simulationWindow",
+        "seed",
+        "provenance",
+        "modelReferences",
+        "residents",
+        "locations",
+        "initialState",
+        "days"
+      ],
+      "title": "Smart Home Life Scenario 1.0.0",
+      "type": "object"
+    },
+    "SimulationWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "SimulationWindow",
+      "type": "object"
+    },
+    "StateEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/EffectOperation"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "fact",
+        "operation",
+        "value"
+      ],
+      "title": "StateEffect",
+      "type": "object"
+    },
+    "TraversalMode": {
+      "enum": [
+        "walking",
+        "transport"
+      ],
+      "title": "TraversalMode",
+      "type": "string"
+    },
+    "ValueExpression": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/ValueSource"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "variableId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Variableid"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Index"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ValueExpression",
+      "type": "object"
+    },
+    "ValueSource": {
+      "enum": [
+        "literal",
+        "variable",
+        "activity_location",
+        "activity_resource",
+        "activity_intent",
+        "actor"
+      ],
+      "title": "ValueSource",
+      "type": "string"
+    },
+    "VariableCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "variableId": {
+          "minLength": 1,
+          "title": "Variableid",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/ConditionOperator",
+          "default": "truthy"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "variableId"
+      ],
+      "title": "VariableCondition",
+      "type": "object"
+    },
+    "VersionedReference": {
+      "additionalProperties": false,
+      "properties": {
+        "referenceId": {
+          "minLength": 1,
+          "title": "Referenceid",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "referenceId",
+        "version"
+      ],
+      "title": "VersionedReference",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:simulation-bundle:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "simulation_bundle",
+      "default": "simulation_bundle",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "bundleId": {
+      "minLength": 1,
+      "title": "Bundleid",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "scenario": {
+      "$ref": "#/$defs/Scenario"
+    },
+    "canonicalPlan": {
+      "$ref": "#/$defs/CanonicalPlan"
+    },
+    "behaviorPackage": {
+      "$ref": "#/$defs/PersonalProcessPackage"
+    },
+    "homeModel": {
+      "$ref": "#/$defs/HomeModel"
+    },
+    "digests": {
+      "items": {
+        "$ref": "#/$defs/ArtifactDigest"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Digests",
+      "type": "array"
+    },
+    "residentKinematics": {
+      "items": {
+        "$ref": "#/$defs/ResolvedKinematics"
+      },
+      "minItems": 1,
+      "title": "Residentkinematics",
+      "type": "array"
+    },
+    "actionBindings": {
+      "items": {
+        "$ref": "#/$defs/ResolvedActionBinding"
+      },
+      "minItems": 1,
+      "title": "Actionbindings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "bundleId",
+    "seed",
+    "scenario",
+    "canonicalPlan",
+    "behaviorPackage",
+    "homeModel",
+    "digests",
+    "residentKinematics",
+    "actionBindings"
+  ],
+  "title": "Smart Home Fully Resolved Simulation Bundle 1.0.0",
+  "type": "object"
+}

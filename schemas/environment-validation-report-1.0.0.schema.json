@@ -1,0 +1,222 @@
+{
+  "$defs": {
+    "EnvironmentValidationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTION_BINDING_UNRESOLVED",
+            "ARTIFACT_DIGEST_MISMATCH",
+            "BEHAVIOR_INVALID",
+            "CONNECTION_INVALID",
+            "DUPLICATE_IDENTIFIER",
+            "ENTITY_INVALID",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "GEOMETRY_INVALID",
+            "HOME_REFERENCE_MISMATCH",
+            "INPUT_PLAN_INVALID",
+            "INPUT_SCENARIO_INVALID",
+            "INTERACTION_POINT_INVALID",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "LOCATION_BINDING_INVALID",
+            "OBSTACLE_INVALID",
+            "PATH_UNREACHABLE",
+            "PLAN_SCENARIO_MISMATCH",
+            "RESOURCE_BINDING_INVALID",
+            "STRUCTURE_INVALID",
+            "TOPOLOGY_DISCONNECTED",
+            "UNSUPPORTED_SCHEMA_VERSION"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "structure",
+            "geometry",
+            "topology",
+            "compatibility",
+            "binding"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "EnvironmentValidationIssue",
+      "type": "object"
+    },
+    "EnvironmentValidationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "regionCount": {
+          "minimum": 0,
+          "title": "Regioncount",
+          "type": "integer"
+        },
+        "connectionCount": {
+          "minimum": 0,
+          "title": "Connectioncount",
+          "type": "integer"
+        },
+        "entityCount": {
+          "minimum": 0,
+          "title": "Entitycount",
+          "type": "integer"
+        },
+        "interactionPointCount": {
+          "minimum": 0,
+          "title": "Interactionpointcount",
+          "type": "integer"
+        },
+        "actionBindingCount": {
+          "minimum": 0,
+          "title": "Actionbindingcount",
+          "type": "integer"
+        },
+        "routeCheckCount": {
+          "minimum": 0,
+          "title": "Routecheckcount",
+          "type": "integer"
+        },
+        "errorCount": {
+          "minimum": 0,
+          "title": "Errorcount",
+          "type": "integer"
+        },
+        "warningCount": {
+          "minimum": 0,
+          "title": "Warningcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "regionCount",
+        "connectionCount",
+        "entityCount",
+        "interactionPointCount",
+        "actionBindingCount",
+        "routeCheckCount",
+        "errorCount",
+        "warningCount"
+      ],
+      "title": "EnvironmentValidationSummary",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:smart-home-simulator:schema:environment-validation-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "validatorVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Validatorversion",
+      "type": "string"
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    },
+    "homeId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homeid"
+    },
+    "homeVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homeversion"
+    },
+    "homeSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homesha256"
+    },
+    "bundleSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bundlesha256"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/EnvironmentValidationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/EnvironmentValidationSummary"
+    }
+  },
+  "required": [
+    "valid",
+    "summary"
+  ],
+  "title": "Smart Home Environment Validation Report 1.0.0",
+  "type": "object"
+}

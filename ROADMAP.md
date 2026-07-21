@@ -20,10 +20,10 @@ relativi controlli di compatibilità.
 | 1 | Motore di validazione | scenario JSON | validation report | **Completata e congelata — 1.0.0** |
 | 2 | Compilatore del piano | scenario valido | canonical daily plan | **Completata e congelata — 1.0.0** |
 | 3 | Authoring comportamentale e modelli di processo ADL | profilo, abitudini, calendario e vocabolario delle azioni | scenario + pacchetto personale di process model validati | **Completata e congelata — 1.0.0** |
-| 4 | Ambiente domestico eseguibile e binding | process model + definizione della casa | home model validato + simulation bundle completamente risolto | Non iniziata |
+| 4 | Ambiente domestico eseguibile e binding | process model + definizione della casa | home model validato + simulation bundle completamente risolto | **Completata e congelata — 1.0.0** |
 | 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | Non iniziata |
 | 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | Non iniziata |
-| 7 | Export e replay | artefatti interni completi | dataset JSONL/CSV/XES + replay deterministico | Non iniziata |
+| 7 | Applicazione UI, workspace, export e replay | artefatti M1–M6 completi | applicazione moderna end-to-end + dataset JSONL/CSV/XES + replay deterministico | Non iniziata |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
@@ -254,6 +254,15 @@ capacità concrete prima che inizi l'esecuzione.
 - schema, checksum, esempi, CLI, golden environment, test, lint, benchmark e copertura
   minima obbligatoria del 95% sono completi.
 
+La regola di avanzamento della Milestone 4 è soddisfatta dai contratti congelati in
+ADR-009. La casa di Mario contiene 14 regioni, 13 connessioni, 14 punti di interazione,
+13 entità concrete e quattro ostacoli metrici. Il bundle settimanale risolve 766 istanze di
+azione e verifica tutte le 441 coppie ordinate fra i 21 binding di luogo. I tre contratti
+pubblici, il report, i digest, la CLI, il benchmark e gli artefatti golden sono versionati
+`1.0.0`; lo stesso input produce lo stesso bundle. Un benchmark visuale interattivo
+ispeziona la planimetria e le 49 rotte fra i sette ambienti domestici senza introdurre
+dipendenze runtime o anticipare la UI applicativa della Milestone 7.
+
 ## Milestone 5 — Motore di simulazione completo
 
 ### Responsabilità
@@ -339,31 +348,93 @@ trasferire nel dataset informazioni oracle non misurabili dai dispositivi.
 - schema, checksum, esempi, golden log, test, lint, benchmark e copertura minima
   obbligatoria del 95% sono completi.
 
-## Milestone 7 — Export e replay
+## Milestone 7 — Applicazione UI, workspace, export e replay
 
 ### Responsabilità
 
-Produrre dataset distribuibili e rendere ogni esecuzione ispezionabile e riproducibile
-senza dipendere dallo stato in memoria del simulatore.
+Consegnare un'applicazione moderna con cui il ricercatore possa usare senza CLI tutte le
+funzioni disponibili fino alla Milestone 7: creare e organizzare ambienti e residenti,
+importare, validare e configurare gli input, avviare e seguire simulazioni, ispezionare i
+risultati, effettuare replay ed esportare dataset riproducibili. La UI è un client dei
+medesimi contratti e servizi applicativi usati dalla CLI e non introduce semantica
+alternativa né aggira alcun gate.
 
 ### Contenuto
 
+- shell applicativa desktop-first, moderna, accessibile e adattabile alle comuni
+  risoluzioni, con navigazione coerente, tema chiaro/scuro e stati vuoti, di caricamento e
+  di errore completi;
+- workspace persistente con dashboard dei recenti, ricerca e filtri, organizzato per
+  ambiente domestico; ogni casa raggruppa residenti, scenari, modelli comportamentali,
+  configurazioni sensoriali, bundle ed esecuzioni, inclusi ambienti multi-residente;
+- flussi guidati di creazione, importazione e modifica con validazione progressiva, errori
+  collegati ai campi o agli elementi grafici e pubblicazione atomica soltanto dopo gli
+  stessi gate autorevoli delle milestone precedenti;
+- configuratore grafico 2D dell'ambiente per stanze e aree esterne, geometrie, porte,
+  passaggi, ostacoli, punti di interazione, oggetti, risorse, capacità, stato iniziale e
+  vincoli di accesso, con anteprima di connettività e percorsi;
+- configuratore visuale dei sensori con catalogo dei tipi supportati, posizionamento sulla
+  planimetria, orientamento e copertura, parametri temporali, rumore, dropout, guasti e
+  verifica immediata della validità del sensor model;
+- centro simulazioni con coda locale, avvio, annullamento sicuro, dettaglio delle fasi,
+  progresso reale, conteggi, tempi trascorsi, log strutturati ed esiti
+  `queued/running/completed/failed/cancelled`;
+- viste per simulazioni in corso e recenti, raggruppate per ambiente, con confronto fra
+  configurazione, seed, residenti, stato, warning e artefatti prodotti;
 - writer streaming per JSONL, CSV e XES;
 - esportazioni separate per log osservabile, oracle, tracce, piano/esecuzione e stato
   finale;
 - manifest con schemi, versioni, digest, seed e relazioni fra file;
 - replay deterministico dell'esecuzione da artefatti persistiti;
-- debugger temporale che mostra piano, attività, azioni, stato, posizione, sensori e cause;
-- controlli di integrità e compatibilità in importazione ed esportazione.
+- debugger visuale sincronizzato fra timeline, planimetria, residenti, attività, azioni,
+  traiettorie, stato, risorse e sensori, con separazione esplicita fra vista osservabile e
+  dati oracle;
+- import ed export dall'interfaccia con controlli di integrità, compatibilità, anteprima
+  del manifest e messaggi di errore completi, senza artefatti parziali;
+- guida minimale integrata: primo avvio, percorso rapido fino alla prima simulazione,
+  spiegazioni contestuali dei concetti e collegamenti alla documentazione tecnica;
+- service layer applicativo versionato e indipendente dalla tecnologia UI, gestione
+  robusta dei processi in background e persistenza transazionale del workspace;
+- test unitari, di componente, integrazione ed end-to-end, regressione visuale,
+  accessibilità da tastiera e benchmark delle viste e dei workspace di accettazione.
+
+La scelta fra applicazione web locale, desktop shell o altra tecnologia frontend viene
+presa con un ADR all'inizio della milestone. Il contratto del service layer, il formato
+del workspace e la separazione tra UI e motore devono restare indipendenti dal framework.
+
+### Fuori perimetro
+
+- rendering 3D o motore fisico usato come fonte autorevole della simulazione;
+- collaborazione cloud multiutente, account remoti e sincronizzazione fra installazioni;
+- app mobile nativa;
+- editor generico che permetta di bypassare schemi, cataloghi o validatori;
+- comandi UI per feature non ancora implementate, in particolare esecuzione annuale e
+  calibrazione, che vengono aggiunti dalle rispettive milestone successive.
 
 ### Definition of done
 
+- l'intero flusso M1–M7, dalla creazione o importazione degli input al replay e all'export,
+  è completabile dalla UI senza ricorrere alla CLI o modificare manualmente JSON;
+- la casa golden può essere ricostruita o importata nel configuratore, validata e salvata
+  senza perdita semantica; porte, ostacoli, capacità e percorsi errati sono evidenziati
+  direttamente sulla planimetria;
+- tutti i tipi di sensore M6 possono essere posizionati e configurati visualmente e la UI
+  distingue sempre campi osservabili e oracle;
+- una simulazione può essere avviata, monitorata e annullata; avanzamento e stato mostrati
+  derivano da eventi reali del backend e sopravvivono al riavvio dell'interfaccia;
+- dashboard e viste recenti raggruppano correttamente bundle ed esecuzioni per casa e
+  supportano almeno un ambiente con più residenti;
+- errori di validazione, incompatibilità e fallimenti runtime sono comprensibili,
+  localizzabili e non lasciano workspace o output presentati come validi;
 - tutti i formati dichiarati effettuano round-trip senza perdita dei campi di competenza;
 - file grandi vengono prodotti in streaming senza trattenere l'intero dataset in memoria;
 - il replay ricostruisce lo stesso digest semantico dell'esecuzione originale;
 - nessun export osservabile incorpora accidentalmente oracle data;
-- schemi, checksum, esempi, golden export, test, lint, benchmark e copertura minima
-  obbligatoria del 95% sono completi.
+- i principali flussi sono utilizzabili con tastiera, hanno focus e contrasto verificati e
+  non dipendono esclusivamente dal colore per comunicare stato o validità;
+- refresh, chiusura o crash della UI non corrompono configurazioni, simulazioni o export;
+- service layer, formato workspace, schemi, checksum, guida, esempi, golden export, test,
+  lint, benchmark e copertura minima obbligatoria del 95% sono completi.
 
 ## Milestone 8 — Esecuzione longitudinale
 
@@ -381,7 +452,9 @@ il runtime non richiede né invoca un LLM.
 - gestione esplicita dei confini temporali e delle attività che li attraversano;
 - stream casuali stabili fra settimane e indipendenti fra repliche;
 - esecuzioni annuali e repliche Monte Carlo isolate e riproducibili;
-- output streaming e checkpoint recuperabili senza alterare la semantica.
+- output streaming e checkpoint recuperabili senza alterare la semantica;
+- integrazione nella UI M7 per configurare rolling horizon e repliche, monitorare lavori
+  lunghi, mostrare checkpoint e riprendere esecuzioni interrotte.
 
 ### Definition of done
 
@@ -390,6 +463,8 @@ il runtime non richiede né invoca un LLM.
   continua;
 - repliche e stream casuali non si contaminano fra loro;
 - il target prestazionale annuale è misurato e rispettato sul caso di accettazione;
+- i flussi longitudinali sono gestibili end-to-end dalla UI senza perdere la possibilità
+  di eseguirli headless;
 - contratti, esempi, golden handoff, test, lint, benchmark e copertura minima obbligatoria
   del 95% sono completi.
 
@@ -410,11 +485,14 @@ per costruzione e quali risultano plausibili rispetto ai dati reali di riferimen
 - valutazione di rumore, copertura, casi rari, anomalie e concorrenza;
 - verifica dell'utilizzabilità degli export da parte di strumenti esterni di activity
   recognition e process mining;
-- esperimenti riproducibili, risultati versionati e rapporto finale con limiti espliciti.
+- esperimenti riproducibili, risultati versionati e rapporto finale con limiti espliciti;
+- viste UI per configurare protocolli, seguire esperimenti e consultare metriche e confronti
+  senza trasformare la UI nella fonte autorevole dei risultati.
 
 ### Definition of done
 
 - ogni risultato dichiarato è riproducibile da configurazioni e script versionati;
 - dati di calibrazione e valutazione restano separati;
+- configurazione ed esplorazione dei risultati sono disponibili sia via UI sia headless;
 - il rapporto distingue correttezza per costruzione, plausibilità empirica e limiti;
 - dataset, configurazioni, metriche, risultati e provenance sono completi e verificati.

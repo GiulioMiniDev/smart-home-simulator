@@ -23,12 +23,19 @@ from smart_home_sim.domain.behavior import (
 )
 from smart_home_sim.domain.behavior_report import BehaviorValidationReport
 from smart_home_sim.domain.compilation import CompilationReport
+from smart_home_sim.domain.environment import (
+    EnvironmentValidationReport,
+    HomeModel,
+    SimulationBundle,
+)
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
+from smart_home_sim.environment import build_bundle_files, validate_home_file
 from smart_home_sim.formatting import (
     format_authoring_text_report,
     format_behavior_text_report,
+    format_environment_text_report,
     format_text_report,
 )
 from smart_home_sim.validation.service import validate_file
@@ -52,6 +59,9 @@ class SchemaContract(StrEnum):
     simulation_authoring_bundle = "simulation-authoring-bundle"
     authoring_ingestion_report = "authoring-ingestion-report"
     authoring_repair_request = "authoring-repair-request"
+    home_model = "home-model"
+    environment_validation_report = "environment-validation-report"
+    simulation_bundle = "simulation-bundle"
 
 
 app = typer.Typer(
@@ -146,6 +156,68 @@ def validate_behavior(
         typer.echo(f"Behavior validation report written to: {output.resolve()}")
     if not report.valid:
         raise typer.Exit(code=1)
+
+
+@app.command("validate-home")
+def validate_home(
+    home_path: Path,
+    output_format: Annotated[OutputFormat, typer.Option("--format")] = OutputFormat.text,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Validate executable topology, geometry, objects, and capabilities of one home."""
+    report = validate_home_file(home_path)
+    content = (
+        report.model_dump_json(by_alias=True, indent=2)
+        if output_format is OutputFormat.json
+        else format_environment_text_report(report)
+    )
+    if output is None:
+        typer.echo(content)
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(content + "\n", encoding="utf-8")
+        typer.echo(f"Environment validation report written to: {output.resolve()}")
+    if not report.valid:
+        raise typer.Exit(code=1)
+
+
+@app.command("build-simulation-bundle")
+def build_simulation_bundle(
+    scenario_path: Path,
+    plan_path: Path,
+    package_path: Path,
+    home_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    report_output: Annotated[Path | None, typer.Option("--report-output")] = None,
+) -> None:
+    """Bind all accepted M1-M4 artifacts into one fully resolved simulation bundle."""
+    input_paths = {path.resolve() for path in (scenario_path, plan_path, package_path, home_path)}
+    if output.resolve() in input_paths:
+        raise typer.BadParameter(
+            "Bundle output must not overwrite an input.", param_hint="--output"
+        )
+    if report_output is not None and (
+        report_output.resolve() in input_paths or report_output.resolve() == output.resolve()
+    ):
+        raise typer.BadParameter(
+            "Report output must differ from all inputs and the bundle output.",
+            param_hint="--report-output",
+        )
+    result = build_bundle_files(scenario_path, plan_path, package_path, home_path)
+    if report_output is not None:
+        report_output.parent.mkdir(parents=True, exist_ok=True)
+        report_output.write_text(
+            result.report.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+        )
+    if result.bundle is None:
+        if report_output is None:
+            typer.echo(format_environment_text_report(result.report))
+        raise typer.Exit(code=1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        result.bundle.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+    )
+    typer.echo(f"Simulation bundle written to: {output.resolve()}")
 
 
 @app.command("ingest-authoring-output")
@@ -253,6 +325,9 @@ def schema(
         SchemaContract.simulation_authoring_bundle: SimulationAuthoringBundle,
         SchemaContract.authoring_ingestion_report: AuthoringIngestionReport,
         SchemaContract.authoring_repair_request: AuthoringRepairRequest,
+        SchemaContract.home_model: HomeModel,
+        SchemaContract.environment_validation_report: EnvironmentValidationReport,
+        SchemaContract.simulation_bundle: SimulationBundle,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

@@ -4,16 +4,16 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1, 2 e 3 sono completate e congelate alla versione contrattuale 1.0.0**. Il sistema valida lo scenario flessibile, lo compila in un piano canonico deterministico e valida i modelli di processo ADL personali che descrivono come ogni residente svolge le proprie attività. Il prossimo sviluppo previsto è la Milestone 4, l'ambiente domestico eseguibile e il binding completo delle azioni.
+Le **Milestone 1, 2, 3 e 4 sono completate e congelate alla versione contrattuale 1.0.0**. Il sistema valida lo scenario flessibile, lo compila in un piano canonico deterministico, valida i modelli di processo ADL personali e lega ogni loro azione a una casa metrica eseguibile. Il prossimo sviluppo previsto è la Milestone 5, il motore di simulazione completo.
 
 Sono intenzionalmente assenti:
 
 - motore di simulazione;
 - SimPy;
-- ambiente e planimetria 2D;
 - microesecuzione;
 - sensori;
 - exporter dei dataset;
+- applicazione UI completa, prevista nella Milestone 7 dopo simulazione e sensori;
 - chiamate integrate a provider LLM.
 
 Queste feature verranno sviluppate separatamente solo dopo il completamento dei rispettivi criteri di ingresso descritti in [ROADMAP.md](ROADMAP.md).
@@ -24,7 +24,10 @@ Queste feature verranno sviluppate separatamente solo dopo il completamento dei 
 make sync
 make validate
 make validate-behavior
+make validate-home
 make compile
+make bundle
+make benchmark-environment
 make schema
 make behavior-artifacts
 make authoring-artifacts
@@ -61,6 +64,29 @@ UV_NO_EDITABLE=1 uv run smart-home-sim validate-behavior \
 Il comando usa i cataloghi `1.0.0` distribuiti con il pacchetto. I prompt in `prompts/`
 permettono a un ricercatore di produrre scenario e process model tramite un LLM esterno;
 il runtime non invoca alcun provider.
+
+Per validare la casa eseguibile e costruire atomicamente il bundle completo:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim validate-home \
+  examples/environment/mario_monteverde.home.json
+UV_NO_EDITABLE=1 uv run smart-home-sim build-simulation-bundle \
+  examples/valid/mario_week.json \
+  examples/compiled/mario_week.plan.json \
+  examples/behavior/mario_rossi_week_2026_10_12.behavior.json \
+  examples/environment/mario_monteverde.home.json \
+  --output examples/bundles/mario_week.simulation-bundle.json \
+  --report-output examples/bundles/mario_week.environment-report.json
+```
+
+Il binder controlla geometria, ostacoli, topologia, accesso, risorse, cinematica e tutte
+le rotte prima di risolvere le capacità. In caso di errore non pubblica alcun bundle.
+
+Il golden environment M4 può essere ispezionato anche nel
+[benchmark visuale di Casa Monteverde](examples/visualizations/mario_monteverde.m4-benchmark.html).
+È un artefatto di accettazione interattivo, non la UI applicativa della Milestone 7:
+mostra la planimetria reale, porte, ingombri, entità, anchor e le 49 rotte interne
+calcolate dal path planner.
 
 Il flusso di authoring consigliato usa un solo file:
 `prompts/generate-simulation-inputs-1.2.0.md`. Il ricercatore sostituisce il marcatore
@@ -130,6 +156,9 @@ Gli artefatti pubblici congelati sono:
 - `schemas/authoring-ingestion-report-1.0.0.schema.json`;
 - `schemas/authoring-ingestion-report-1.1.0.schema.json`;
 - `schemas/authoring-repair-request-1.0.0.schema.json`;
+- `schemas/home-model-1.0.0.schema.json`;
+- `schemas/environment-validation-report-1.0.0.schema.json`;
+- `schemas/simulation-bundle-1.0.0.schema.json`;
 - i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
@@ -150,6 +179,7 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Compilatore del piano](docs/spec/05-plan-compiler.md)
 - [Authoring comportamentale e process model ADL](docs/spec/06-behavioral-authoring.md)
 - [Authoring end-to-end tramite LLM esterno](docs/spec/07-end-to-end-llm-authoring.md)
+- [Ambiente domestico eseguibile e binding](docs/spec/08-executable-home-and-binding.md)
 - [Blueprint del futuro motore di simulazione](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
@@ -159,3 +189,4 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Authoring con gate del compilatore 1.1.0](docs/decisions/ADR-006-compilation-gated-authoring-1.1.0.md)
 - [Prompt con riferimenti compatibili 1.2.0](docs/decisions/ADR-007-reference-compatible-authoring-prompt-1.2.0.md)
 - [Ciclo esterno di riparazione dell'authoring 1.0.0](docs/decisions/ADR-008-external-authoring-repair-loop-1.0.0.md)
+- [Freeze dell'ambiente eseguibile 1.0.0](docs/decisions/ADR-009-freeze-executable-environment-1.0.0.md)

@@ -1,12 +1,14 @@
 [project]
 name = "smart-home-simulator"
 version = "1.0.0"
-description = "Validated scenarios, personal ADL process models, and deterministic plans for a smart-home simulator"
+description = "Validated scenarios, ADL process models, deterministic plans, and executable smart-home environments"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+  "networkx==3.6.1",
   "ortools==9.15.6755",
   "pydantic>=2.13,<3",
+  "shapely==2.1.2",
   "typer>=0.27,<1",
 ]
 

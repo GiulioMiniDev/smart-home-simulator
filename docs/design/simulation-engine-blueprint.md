@@ -336,12 +336,16 @@ parallelize a single authoritative SimPy event queue unless measurements prove i
    authoritative spatial, semantic and causal trace; no abstract-only engine is accepted;
 4. **Milestone 6 — sensors:** project the complete trace into observable logs and a
    separate oracle mapping;
-5. **Milestone 7 — export and replay:** persist JSONL/CSV/XES artifacts and provide
-   deterministic replay and debugging;
+5. **Milestone 7 — application UI, workspace, export and replay:** provide the complete
+   modern interface for all M1–M7 workflows, graphical home and sensor configuration,
+   background-run monitoring, JSONL/CSV/XES persistence, deterministic visual replay and
+   debugging through the same authoritative application services used headlessly;
 6. **Milestone 8 — longitudinal execution:** preserve state across horizons and run annual
-   and Monte Carlo simulations without requiring a runtime LLM;
+   and Monte Carlo simulations without requiring a runtime LLM, extending the M7 UI with
+   long-running job and checkpoint workflows;
 7. **Milestone 9 — calibration and experimental evaluation:** compare synthetic and real
-   data through a versioned, reproducible protocol.
+   data through a versioned, reproducible protocol and expose its configuration and results
+   in the UI without making presentation state authoritative.
 
 ## Alternatives considered
 

@@ -23,6 +23,12 @@ from smart_home_sim.domain.behavior_report import (
     BehaviorValidationReport,
 )
 from smart_home_sim.domain.compilation import COMPILATION_ISSUE_CODES, CompilationReport
+from smart_home_sim.domain.environment import (
+    ENVIRONMENT_ISSUE_CODES,
+    EnvironmentValidationReport,
+    HomeModel,
+    SimulationBundle,
+)
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
@@ -48,6 +54,11 @@ AUTHORING_SCHEMAS = {
 HISTORICAL_AUTHORING_REPORT_SCHEMA = (
     PROJECT_ROOT / "schemas/authoring-ingestion-report-1.0.0.schema.json"
 )
+ENVIRONMENT_SCHEMAS = {
+    "home-model-1.0.0.schema.json": HomeModel,
+    "environment-validation-report-1.0.0.schema.json": EnvironmentValidationReport,
+    "simulation-bundle-1.0.0.schema.json": SimulationBundle,
+}
 
 
 def load_schema() -> dict[str, object]:
@@ -80,6 +91,7 @@ def test_frozen_schema_checksums_match() -> None:
         COMPILATION_SCHEMA_PATH,
         *(PROJECT_ROOT / "schemas" / name for name in BEHAVIOR_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in AUTHORING_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
@@ -191,3 +203,32 @@ def test_authoring_schemas_match_models_and_example_bundle() -> None:
     )
     Draft202012Validator.check_schema(historical_report_schema)
     assert historical_report_schema["properties"]["ingestorVersion"]["const"] == "1.0.0"
+
+
+def test_environment_schemas_match_models_and_golden_artifacts() -> None:
+    for filename, model in ENVIRONMENT_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / filename).read_text())
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+    report_schema = json.loads(
+        (PROJECT_ROOT / "schemas/environment-validation-report-1.0.0.schema.json").read_text()
+    )
+    assert (
+        set(report_schema["$defs"]["EnvironmentValidationIssue"]["properties"]["code"]["enum"])
+        == ENVIRONMENT_ISSUE_CODES
+    )
+    artifacts = [
+        ("home-model-1.0.0.schema.json", "examples/environment/mario_monteverde.home.json"),
+        (
+            "environment-validation-report-1.0.0.schema.json",
+            "examples/bundles/mario_week.environment-report.json",
+        ),
+        (
+            "simulation-bundle-1.0.0.schema.json",
+            "examples/bundles/mario_week.simulation-bundle.json",
+        ),
+    ]
+    for schema_name, artifact_name in artifacts:
+        schema = json.loads((PROJECT_ROOT / "schemas" / schema_name).read_text())
+        payload = json.loads((PROJECT_ROOT / artifact_name).read_text())
+        assert list(Draft202012Validator(schema).iter_errors(payload)) == []

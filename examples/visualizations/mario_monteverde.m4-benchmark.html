@@ -1,0 +1,1642 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>M4 · Casa Monteverde Benchmark</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:736px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="M4 · Casa Monteverde Benchmark" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;M4 · Casa Monteverde Benchmark&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(--background) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: light-dark(rgb(255 255 255), rgb(24 24 24));
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 12.5px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;m4-home-benchmark&quot; class=&quot;viz-root&quot;&gt;
+  &lt;style&gt;
+    #m4-home-benchmark {
+      --accent: var(--color-accent, #5f6cf7);
+      --ok: var(--color-success, #18a66a);
+      --warn: var(--color-warning, #c98118);
+      --fg: var(--color-text-primary, #1d2433);
+      --muted: var(--color-text-secondary, #687083);
+      --surface: var(--color-surface, #ffffff);
+      --surface-2: var(--color-surface-secondary, #f4f5f8);
+      --border: var(--color-border, #d8dce5);
+      --shadow: var(--shadow-card, 0 10px 30px rgba(22, 28, 45, .08));
+      color: var(--fg);
+      font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #m4-home-benchmark * { box-sizing: border-box; }
+    #m4-home-benchmark .viz-topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    #m4-home-benchmark .viz-kicker {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    #m4-home-benchmark h2 {
+      font-size: clamp(19px, 3vw, 25px);
+      line-height: 1.12;
+      letter-spacing: -.025em;
+      margin: 0;
+    }
+    #m4-home-benchmark .viz-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin: 6px 0 0;
+    }
+    #m4-home-benchmark .viz-status {
+      align-items: center;
+      background: color-mix(in srgb, var(--ok) 11%, transparent);
+      border: 1px solid color-mix(in srgb, var(--ok) 40%, var(--border));
+      border-radius: 999px;
+      color: var(--ok);
+      display: inline-flex;
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 800;
+      gap: 7px;
+      padding: 7px 10px;
+      white-space: nowrap;
+    }
+    #m4-home-benchmark .viz-status::before {
+      background: currentColor;
+      border-radius: 50%;
+      content: &quot;&quot;;
+      height: 7px;
+      width: 7px;
+    }
+    #m4-home-benchmark .viz-stats {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 10px;
+    }
+    #m4-home-benchmark .viz-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-width: 0;
+      padding: 9px 11px;
+    }
+    #m4-home-benchmark .viz-stat strong {
+      display: block;
+      font-size: 17px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+    }
+    #m4-home-benchmark .viz-stat span {
+      color: var(--muted);
+      display: block;
+      font-size: 10px;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #m4-home-benchmark .viz-workbench {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    #m4-home-benchmark .viz-toolbar {
+      align-items: end;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      padding: 9px 11px;
+    }
+    #m4-home-benchmark .viz-field {
+      display: grid;
+      gap: 3px;
+      min-width: 120px;
+    }
+    #m4-home-benchmark label,
+    #m4-home-benchmark legend {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+    #m4-home-benchmark select {
+      appearance: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--fg);
+      font: inherit;
+      font-size: 12px;
+      min-height: 30px;
+      padding: 4px 24px 4px 8px;
+    }
+    #m4-home-benchmark fieldset {
+      border: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px 9px;
+      margin: 0 0 1px auto;
+      min-width: 0;
+      padding: 0;
+    }
+    #m4-home-benchmark fieldset label {
+      align-items: center;
+      color: var(--fg);
+      cursor: pointer;
+      display: inline-flex;
+      font-size: 10px;
+      font-weight: 600;
+      gap: 4px;
+      letter-spacing: 0;
+      min-height: 30px;
+      text-transform: none;
+    }
+    #m4-home-benchmark input { accent-color: var(--accent); }
+    #m4-home-benchmark .viz-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 218px;
+      min-width: 0;
+    }
+    #m4-home-benchmark .viz-canvas {
+      background-color: var(--surface-2);
+      background-image:
+        linear-gradient(color-mix(in srgb, var(--border) 35%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--border) 35%, transparent) 1px, transparent 1px);
+      background-size: 24px 24px;
+      min-width: 0;
+      padding: 16px;
+      position: relative;
+    }
+    #m4-home-benchmark svg {
+      display: block;
+      filter: drop-shadow(0 8px 11px color-mix(in srgb, var(--fg) 11%, transparent));
+      height: auto;
+      margin: auto;
+      max-height: 470px;
+      max-width: 100%;
+      overflow: visible;
+      width: 100%;
+    }
+    #m4-home-benchmark .room-shape {
+      fill: var(--surface);
+      stroke: var(--fg);
+      stroke-width: .13;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .room-bedroom .room-shape { fill: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+    #m4-home-benchmark .room-bathroom .room-shape { fill: color-mix(in srgb, #48a8c5 10%, var(--surface)); }
+    #m4-home-benchmark .room-kitchen .room-shape { fill: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+    #m4-home-benchmark .room-living_room .room-shape { fill: color-mix(in srgb, var(--ok) 7%, var(--surface)); }
+    #m4-home-benchmark .room-balcony .room-shape {
+      fill: color-mix(in srgb, var(--ok) 12%, var(--surface));
+      stroke-dasharray: .32 .18;
+    }
+    #m4-home-benchmark .room { cursor: pointer; outline: none; }
+    #m4-home-benchmark .room:hover .room-shape,
+    #m4-home-benchmark .room:focus-visible .room-shape,
+    #m4-home-benchmark .room.is-selected .room-shape {
+      stroke: var(--accent);
+      stroke-width: .26;
+    }
+    #m4-home-benchmark .room-label {
+      fill: var(--fg);
+      font-size: .44px;
+      font-weight: 760;
+      letter-spacing: .015em;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    #m4-home-benchmark .room-size {
+      fill: var(--muted);
+      font-size: .31px;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    #m4-home-benchmark .door-line {
+      stroke: var(--accent);
+      stroke-linecap: round;
+      stroke-width: .23;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .obstacle {
+      fill: color-mix(in srgb, var(--fg) 10%, var(--surface));
+      stroke: color-mix(in srgb, var(--fg) 50%, var(--border));
+      stroke-width: .06;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .furniture-line {
+      fill: none;
+      stroke: color-mix(in srgb, var(--fg) 34%, transparent);
+      stroke-width: .05;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .entity-dot {
+      fill: var(--fg);
+      stroke: var(--surface);
+      stroke-width: .09;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .entity-text {
+      fill: var(--surface);
+      font-size: .28px;
+      font-weight: 850;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    #m4-home-benchmark .interaction-dot {
+      fill: var(--surface);
+      stroke: var(--accent);
+      stroke-width: .12;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .route-shadow {
+      fill: none;
+      stroke: var(--surface);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: .42;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .route-line {
+      fill: none;
+      stroke: var(--accent);
+      stroke-dasharray: .22 .15;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: .19;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .route-node {
+      fill: var(--surface);
+      stroke: var(--accent);
+      stroke-width: .12;
+      vector-effect: non-scaling-stroke;
+    }
+    #m4-home-benchmark .viz-scale {
+      align-items: center;
+      bottom: 22px;
+      color: var(--muted);
+      display: flex;
+      font-size: 9px;
+      gap: 6px;
+      position: absolute;
+      right: 25px;
+    }
+    #m4-home-benchmark .viz-scale::before {
+      border-bottom: 2px solid var(--fg);
+      border-left: 2px solid var(--fg);
+      border-right: 2px solid var(--fg);
+      content: &quot;&quot;;
+      height: 5px;
+      width: 54px;
+    }
+    #m4-home-benchmark .viz-inspector {
+      border-left: 1px solid var(--border);
+      min-width: 0;
+      padding: 15px;
+    }
+    #m4-home-benchmark .viz-inspector h3 {
+      font-size: 12px;
+      letter-spacing: .02em;
+      margin: 0 0 10px;
+    }
+    #m4-home-benchmark .viz-route-title {
+      font-size: 15px;
+      font-weight: 780;
+      line-height: 1.2;
+      margin: 0 0 4px;
+    }
+    #m4-home-benchmark .viz-route-meta {
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.45;
+      margin: 0;
+    }
+    #m4-home-benchmark .viz-divider {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 14px 0;
+    }
+    #m4-home-benchmark .viz-selection {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      min-height: 48px;
+    }
+    #m4-home-benchmark .viz-selection strong { color: var(--fg); }
+    #m4-home-benchmark .viz-evidence {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+    }
+    #m4-home-benchmark .viz-evidence div {
+      align-items: baseline;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    #m4-home-benchmark .viz-evidence dt { color: var(--muted); font-size: 10px; }
+    #m4-home-benchmark .viz-evidence dd {
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      margin: 0;
+      text-align: right;
+    }
+    #m4-home-benchmark .viz-hash {
+      color: var(--muted);
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 9px;
+      line-height: 1.4;
+      margin: 13px 0 0;
+      overflow-wrap: anywhere;
+    }
+    #m4-home-benchmark .is-hidden { display: none; }
+    @media (max-width: 680px) {
+      #m4-home-benchmark .viz-main { grid-template-columns: 1fr; }
+      #m4-home-benchmark .viz-inspector { border-left: 0; border-top: 1px solid var(--border); }
+      #m4-home-benchmark fieldset { margin-left: 0; width: 100%; }
+    }
+    @media (max-width: 480px) {
+      #m4-home-benchmark .viz-topline { display: block; }
+      #m4-home-benchmark .viz-status { margin-top: 10px; }
+      #m4-home-benchmark .viz-stats { grid-template-columns: repeat(2, 1fr); }
+      #m4-home-benchmark .viz-field { flex: 1 1 125px; min-width: 0; }
+      #m4-home-benchmark .viz-canvas { padding: 10px 5px 20px; }
+      #m4-home-benchmark .viz-scale { bottom: 8px; right: 12px; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      #m4-home-benchmark .route-line { animation: m4-route-flow 7s linear infinite; }
+      #m4-home-benchmark .room-shape { transition: fill .16s ease, stroke .16s ease; }
+      @keyframes m4-route-flow { to { stroke-dashoffset: -3.7; } }
+    }
+  &lt;/style&gt;
+
+  &lt;div class=&quot;viz-topline&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;viz-kicker&quot;&gt;Milestone 4 · acceptance benchmark&lt;/div&gt;
+      &lt;h2&gt;Casa Monteverde&lt;/h2&gt;
+      &lt;p class=&quot;viz-subtitle&quot;&gt;Il modello reale M4, reso come editor spaziale: geometria, binding e routing sono ispezionabili.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;viz-status&quot;&gt;CONTRACT VALID&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;viz-stats&quot; aria-label=&quot;Metriche del modello&quot;&gt;
+    &lt;div class=&quot;viz-stat&quot;&gt;&lt;strong&gt;7 + 7&lt;/strong&gt;&lt;span&gt;ambienti interni + esterni&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;viz-stat&quot;&gt;&lt;strong&gt;13&lt;/strong&gt;&lt;span&gt;entità funzionali&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;viz-stat&quot;&gt;&lt;strong&gt;766&lt;/strong&gt;&lt;span&gt;action binding verificati&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;viz-stat&quot;&gt;&lt;strong&gt;441&lt;/strong&gt;&lt;span&gt;route check superati&lt;/span&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;section class=&quot;viz-workbench&quot; aria-label=&quot;Visualizzatore del modello domestico&quot;&gt;
+    &lt;div class=&quot;viz-toolbar&quot;&gt;
+      &lt;div class=&quot;viz-field&quot;&gt;
+        &lt;label for=&quot;m4-from&quot;&gt;Partenza&lt;/label&gt;
+        &lt;select id=&quot;m4-from&quot;&gt;
+          &lt;option value=&quot;bedroom&quot; selected&gt;Camera&lt;/option&gt;&lt;option value=&quot;bathroom&quot;&gt;Bagno&lt;/option&gt;
+          &lt;option value=&quot;hallway&quot;&gt;Corridoio&lt;/option&gt;&lt;option value=&quot;entrance&quot;&gt;Ingresso&lt;/option&gt;
+          &lt;option value=&quot;kitchen&quot;&gt;Cucina&lt;/option&gt;&lt;option value=&quot;living_room&quot;&gt;Soggiorno&lt;/option&gt;
+          &lt;option value=&quot;balcony&quot;&gt;Balcone&lt;/option&gt;
+        &lt;/select&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;viz-field&quot;&gt;
+        &lt;label for=&quot;m4-to&quot;&gt;Destinazione&lt;/label&gt;
+        &lt;select id=&quot;m4-to&quot;&gt;
+          &lt;option value=&quot;bedroom&quot;&gt;Camera&lt;/option&gt;&lt;option value=&quot;bathroom&quot;&gt;Bagno&lt;/option&gt;
+          &lt;option value=&quot;hallway&quot;&gt;Corridoio&lt;/option&gt;&lt;option value=&quot;entrance&quot;&gt;Ingresso&lt;/option&gt;
+          &lt;option value=&quot;kitchen&quot;&gt;Cucina&lt;/option&gt;&lt;option value=&quot;living_room&quot;&gt;Soggiorno&lt;/option&gt;
+          &lt;option value=&quot;balcony&quot; selected&gt;Balcone&lt;/option&gt;
+        &lt;/select&gt;
+      &lt;/div&gt;
+      &lt;fieldset&gt;
+        &lt;legend class=&quot;is-hidden&quot;&gt;Livelli visibili&lt;/legend&gt;
+        &lt;label&gt;&lt;input type=&quot;checkbox&quot; data-layer-toggle=&quot;obstacles&quot; checked&gt; Ingombri&lt;/label&gt;
+        &lt;label&gt;&lt;input type=&quot;checkbox&quot; data-layer-toggle=&quot;entities&quot; checked&gt; Entità&lt;/label&gt;
+        &lt;label&gt;&lt;input type=&quot;checkbox&quot; data-layer-toggle=&quot;points&quot;&gt; Anchor&lt;/label&gt;
+        &lt;label&gt;&lt;input type=&quot;checkbox&quot; data-layer-toggle=&quot;route&quot; checked&gt; Percorso&lt;/label&gt;
+      &lt;/fieldset&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;viz-main&quot;&gt;
+      &lt;div class=&quot;viz-canvas&quot;&gt;
+        &lt;svg viewBox=&quot;-0.7 -0.7 24.4 13.4&quot; role=&quot;img&quot; aria-labelledby=&quot;m4-map-title m4-map-desc&quot;&gt;
+          &lt;title id=&quot;m4-map-title&quot;&gt;Planimetria interattiva di Casa Monteverde&lt;/title&gt;
+          &lt;desc id=&quot;m4-map-desc&quot;&gt;Sette ambienti con porte, ostacoli, entità, punti di interazione e percorso selezionabile.&lt;/desc&gt;
+          &lt;g id=&quot;m4-rooms&quot;&gt;
+            &lt;g class=&quot;room room-bedroom&quot; data-room=&quot;bedroom&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Camera, 42 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;0&quot; y=&quot;0&quot; width=&quot;7&quot; height=&quot;6&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;3.5&quot; y=&quot;4.9&quot;&gt;CAMERA&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;3.5&quot; y=&quot;5.35&quot;&gt;42 m²&lt;/text&gt;
+            &lt;/g&gt;
+            &lt;g class=&quot;room room-bathroom&quot; data-room=&quot;bathroom&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Bagno, 42 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;0&quot; y=&quot;6&quot; width=&quot;7&quot; height=&quot;6&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;3.5&quot; y=&quot;10.9&quot;&gt;BAGNO&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;3.5&quot; y=&quot;11.35&quot;&gt;42 m²&lt;/text&gt;
+            &lt;/g&gt;
+            &lt;g class=&quot;room room-hallway&quot; data-room=&quot;hallway&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Corridoio, 28 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;7&quot; y=&quot;2&quot; width=&quot;4&quot; height=&quot;7&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;9&quot; y=&quot;6.15&quot;&gt;CORRIDOIO&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;9&quot; y=&quot;6.6&quot;&gt;28 m²&lt;/text&gt;
+            &lt;/g&gt;
+            &lt;g class=&quot;room room-entrance&quot; data-room=&quot;entrance&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Ingresso, 12 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;7&quot; y=&quot;9&quot; width=&quot;4&quot; height=&quot;3&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;9&quot; y=&quot;10.35&quot;&gt;INGRESSO&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;9&quot; y=&quot;10.8&quot;&gt;12 m²&lt;/text&gt;
+            &lt;/g&gt;
+            &lt;g class=&quot;room room-kitchen&quot; data-room=&quot;kitchen&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Cucina, 42 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;11&quot; y=&quot;6&quot; width=&quot;7&quot; height=&quot;6&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;14.5&quot; y=&quot;10.9&quot;&gt;CUCINA&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;14.5&quot; y=&quot;11.35&quot;&gt;42 m²&lt;/text&gt;
+            &lt;/g&gt;
+            &lt;g class=&quot;room room-living_room&quot; data-room=&quot;living_room&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Soggiorno, 54 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;11&quot; y=&quot;0&quot; width=&quot;9&quot; height=&quot;6&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;15.5&quot; y=&quot;4.9&quot;&gt;SOGGIORNO&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;15.5&quot; y=&quot;5.35&quot;&gt;54 m²&lt;/text&gt;
+            &lt;/g&gt;
+            &lt;g class=&quot;room room-balcony&quot; data-room=&quot;balcony&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Balcone, 15 metri quadrati&quot;&gt;
+              &lt;rect class=&quot;room-shape&quot; x=&quot;20&quot; y=&quot;0&quot; width=&quot;3&quot; height=&quot;5&quot; rx=&quot;.08&quot;/&gt;&lt;text class=&quot;room-label&quot; x=&quot;21.5&quot; y=&quot;4.05&quot;&gt;BALCONE&lt;/text&gt;&lt;text class=&quot;room-size&quot; x=&quot;21.5&quot; y=&quot;4.48&quot;&gt;15 m²&lt;/text&gt;
+            &lt;/g&gt;
+          &lt;/g&gt;
+
+          &lt;g id=&quot;m4-obstacles&quot; aria-label=&quot;Ostacoli&quot;&gt;
+            &lt;g&gt;&lt;rect class=&quot;obstacle&quot; x=&quot;.8&quot; y=&quot;1&quot; width=&quot;3.2&quot; height=&quot;3&quot; rx=&quot;.12&quot;/&gt;&lt;rect class=&quot;furniture-line&quot; x=&quot;.98&quot; y=&quot;1.18&quot; width=&quot;1.15&quot; height=&quot;.72&quot; rx=&quot;.08&quot;/&gt;&lt;rect class=&quot;furniture-line&quot; x=&quot;2.28&quot; y=&quot;1.18&quot; width=&quot;1.54&quot; height=&quot;.72&quot; rx=&quot;.08&quot;/&gt;&lt;/g&gt;
+            &lt;g&gt;&lt;rect class=&quot;obstacle&quot; x=&quot;.5&quot; y=&quot;10.5&quot; width=&quot;1.2&quot; height=&quot;1&quot; rx=&quot;.08&quot;/&gt;&lt;line class=&quot;furniture-line&quot; x1=&quot;1.1&quot; y1=&quot;10.5&quot; x2=&quot;1.1&quot; y2=&quot;11.5&quot;/&gt;&lt;/g&gt;
+            &lt;g&gt;&lt;rect class=&quot;obstacle&quot; x=&quot;14.5&quot; y=&quot;8&quot; width=&quot;2&quot; height=&quot;2&quot; rx=&quot;.1&quot;/&gt;&lt;circle class=&quot;furniture-line&quot; cx=&quot;15.5&quot; cy=&quot;9&quot; r=&quot;.25&quot;/&gt;&lt;/g&gt;
+            &lt;g&gt;&lt;rect class=&quot;obstacle&quot; x=&quot;16&quot; y=&quot;2.5&quot; width=&quot;1.5&quot; height=&quot;1.5&quot; rx=&quot;.14&quot;/&gt;&lt;line class=&quot;furniture-line&quot; x1=&quot;16.25&quot; y1=&quot;2.75&quot; x2=&quot;17.25&quot; y2=&quot;3.75&quot;/&gt;&lt;line class=&quot;furniture-line&quot; x1=&quot;17.25&quot; y1=&quot;2.75&quot; x2=&quot;16.25&quot; y2=&quot;3.75&quot;/&gt;&lt;/g&gt;
+          &lt;/g&gt;
+
+          &lt;g id=&quot;m4-doors&quot; aria-label=&quot;Porte&quot;&gt;
+            &lt;line class=&quot;door-line&quot; x1=&quot;6.6&quot; y1=&quot;8.2&quot; x2=&quot;7.4&quot; y2=&quot;8.2&quot;/&gt;&lt;line class=&quot;door-line&quot; x1=&quot;6.6&quot; y1=&quot;3.5&quot; x2=&quot;7.4&quot; y2=&quot;3.5&quot;/&gt;
+            &lt;line class=&quot;door-line&quot; x1=&quot;9&quot; y1=&quot;9.4&quot; x2=&quot;9&quot; y2=&quot;8.6&quot;/&gt;&lt;line class=&quot;door-line&quot; x1=&quot;11.4&quot; y1=&quot;8&quot; x2=&quot;10.6&quot; y2=&quot;8&quot;/&gt;
+            &lt;line class=&quot;door-line&quot; x1=&quot;11.4&quot; y1=&quot;3.8&quot; x2=&quot;10.6&quot; y2=&quot;3.8&quot;/&gt;&lt;line class=&quot;door-line&quot; x1=&quot;19.6&quot; y1=&quot;2.5&quot; x2=&quot;20.4&quot; y2=&quot;2.5&quot;/&gt;
+          &lt;/g&gt;
+
+          &lt;g id=&quot;m4-route&quot; aria-label=&quot;Percorso calcolato&quot;&gt;
+            &lt;polyline id=&quot;m4-route-shadow&quot; class=&quot;route-shadow&quot; points=&quot;&quot;/&gt;&lt;polyline id=&quot;m4-route-line&quot; class=&quot;route-line&quot; points=&quot;&quot;/&gt;
+            &lt;circle id=&quot;m4-route-start&quot; class=&quot;route-node&quot; r=&quot;.2&quot;/&gt;&lt;circle id=&quot;m4-route-end&quot; class=&quot;route-node&quot; r=&quot;.2&quot;/&gt;
+          &lt;/g&gt;
+
+          &lt;g id=&quot;m4-points&quot; class=&quot;is-hidden&quot; aria-label=&quot;Punti di interazione&quot;&gt;
+            &lt;circle class=&quot;interaction-dot&quot; cx=&quot;5.2&quot; cy=&quot;3&quot; r=&quot;.18&quot;/&gt;&lt;circle class=&quot;interaction-dot&quot; cx=&quot;5.2&quot; cy=&quot;9&quot; r=&quot;.18&quot;/&gt;
+            &lt;circle class=&quot;interaction-dot&quot; cx=&quot;9&quot; cy=&quot;5.5&quot; r=&quot;.18&quot;/&gt;&lt;circle class=&quot;interaction-dot&quot; cx=&quot;9&quot; cy=&quot;10.8&quot; r=&quot;.18&quot;/&gt;
+            &lt;circle class=&quot;interaction-dot&quot; cx=&quot;12.5&quot; cy=&quot;10.5&quot; r=&quot;.18&quot;/&gt;&lt;circle class=&quot;interaction-dot&quot; cx=&quot;13&quot; cy=&quot;2&quot; r=&quot;.18&quot;/&gt;
+            &lt;circle class=&quot;interaction-dot&quot; cx=&quot;21.5&quot; cy=&quot;2.5&quot; r=&quot;.18&quot;/&gt;
+          &lt;/g&gt;
+
+          &lt;g id=&quot;m4-entities&quot; aria-label=&quot;Entità funzionali&quot;&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;bedroom_storage&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;5.2&quot; cy=&quot;3&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;5.2&quot; y=&quot;3.1&quot;&gt;ST&lt;/text&gt;&lt;/g&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;bathroom_fixture&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;5.2&quot; cy=&quot;9&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;5.2&quot; y=&quot;9.1&quot;&gt;FX&lt;/text&gt;&lt;/g&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;hallway_storage&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;9&quot; cy=&quot;5.5&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;9&quot; y=&quot;5.6&quot;&gt;HS&lt;/text&gt;&lt;/g&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;entrance_hub&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;9&quot; cy=&quot;10.8&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;9&quot; y=&quot;10.9&quot;&gt;EN&lt;/text&gt;&lt;/g&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;kitchen_workstation&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;12.5&quot; cy=&quot;10.5&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;12.5&quot; y=&quot;10.6&quot;&gt;KW&lt;/text&gt;&lt;/g&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;living_room_media&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;13&quot; cy=&quot;2&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;13&quot; y=&quot;2.1&quot;&gt;TV&lt;/text&gt;&lt;/g&gt;
+            &lt;g class=&quot;viz-entity&quot; data-entity=&quot;balcony_utility&quot;&gt;&lt;circle class=&quot;entity-dot&quot; cx=&quot;21.5&quot; cy=&quot;2.5&quot; r=&quot;.34&quot;/&gt;&lt;text class=&quot;entity-text&quot; x=&quot;21.5&quot; y=&quot;2.6&quot;&gt;UT&lt;/text&gt;&lt;/g&gt;
+          &lt;/g&gt;
+        &lt;/svg&gt;
+        &lt;div class=&quot;viz-scale&quot;&gt;5 m&lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;aside class=&quot;viz-inspector&quot; aria-label=&quot;Inspector del benchmark&quot;&gt;
+        &lt;h3&gt;Percorso attivo&lt;/h3&gt;
+        &lt;p id=&quot;m4-route-title&quot; class=&quot;viz-route-title&quot;&gt;Camera → Balcone&lt;/p&gt;
+        &lt;p id=&quot;m4-route-meta&quot; class=&quot;viz-route-meta&quot;&gt;16,69 m · 13,35 s · 10 waypoint&lt;/p&gt;
+        &lt;hr class=&quot;viz-divider&quot;&gt;
+        &lt;h3&gt;Selezione&lt;/h3&gt;
+        &lt;div id=&quot;m4-selection&quot; class=&quot;viz-selection&quot; aria-live=&quot;polite&quot;&gt;&lt;strong&gt;Camera&lt;/strong&gt;&lt;br&gt;room · 42 m² · 1 entità · 1 ostacolo&lt;/div&gt;
+        &lt;hr class=&quot;viz-divider&quot;&gt;
+        &lt;h3&gt;Evidenza M4&lt;/h3&gt;
+        &lt;dl class=&quot;viz-evidence&quot;&gt;
+          &lt;div&gt;&lt;dt&gt;Validazione&lt;/dt&gt;&lt;dd&gt;0 errori / 0 warning&lt;/dd&gt;&lt;/div&gt;
+          &lt;div&gt;&lt;dt&gt;Topologia&lt;/dt&gt;&lt;dd&gt;13 connessioni&lt;/dd&gt;&lt;/div&gt;
+          &lt;div&gt;&lt;dt&gt;Geometria&lt;/dt&gt;&lt;dd&gt;4 ostacoli&lt;/dd&gt;&lt;/div&gt;
+          &lt;div&gt;&lt;dt&gt;Schema&lt;/dt&gt;&lt;dd&gt;validator 1.0.0&lt;/dd&gt;&lt;/div&gt;
+        &lt;/dl&gt;
+        &lt;p class=&quot;viz-hash&quot;&gt;home SHA-256&lt;br&gt;bca0d99b17c1f8cc…a8713176&lt;/p&gt;
+      &lt;/aside&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;script&gt;
+    (() =&gt; {
+      const root = document.getElementById(&#x27;m4-home-benchmark&#x27;);
+      if (!root) return;
+      const labels = {bedroom:&#x27;Camera&#x27;,bathroom:&#x27;Bagno&#x27;,hallway:&#x27;Corridoio&#x27;,entrance:&#x27;Ingresso&#x27;,kitchen:&#x27;Cucina&#x27;,living_room:&#x27;Soggiorno&#x27;,balcony:&#x27;Balcone&#x27;};
+      const roomInfo = {
+        bedroom:[&#x27;room&#x27;,&#x27;42 m²&#x27;,&#x27;1 entità&#x27;,&#x27;1 ostacolo&#x27;], bathroom:[&#x27;room&#x27;,&#x27;42 m²&#x27;,&#x27;1 entità&#x27;,&#x27;1 ostacolo&#x27;],
+        hallway:[&#x27;room&#x27;,&#x27;28 m²&#x27;,&#x27;1 entità&#x27;,&#x27;0 ostacoli&#x27;], entrance:[&#x27;room&#x27;,&#x27;12 m²&#x27;,&#x27;1 entità&#x27;,&#x27;0 ostacoli&#x27;],
+        kitchen:[&#x27;room&#x27;,&#x27;42 m²&#x27;,&#x27;1 entità&#x27;,&#x27;1 ostacolo&#x27;], living_room:[&#x27;room&#x27;,&#x27;54 m²&#x27;,&#x27;1 entità&#x27;,&#x27;1 ostacolo&#x27;],
+        balcony:[&#x27;outdoor&#x27;,&#x27;15 m²&#x27;,&#x27;1 entità&#x27;,&#x27;0 ostacoli&#x27;]
+      };
+      const entityInfo = {
+        bedroom_storage:&#x27;Storage camera · bag, clothing, document, laundry&#x27;, bathroom_fixture:&#x27;Fixture bagno · shower, sink, toilet, washing machine&#x27;,
+        hallway_storage:&#x27;Storage corridoio · household e personal items&#x27;, entrance_hub:&#x27;Hub ingresso · ingress, egress, purchases, recycling&#x27;,
+        kitchen_workstation:&#x27;Kitchen workstation · 16 ruoli operativi&#x27;, living_room_media:&#x27;Media &amp; social hub · TV, work, leisure, exercise&#x27;,
+        balcony_utility:&#x27;Utility balcone · drying, laundry, exercise&#x27;
+      };
+      const routes = {
+        &#x27;bedroom:bedroom&#x27;:[[[5.2,9]],0,0],&#x27;bedroom:bathroom&#x27;:[[[5.2,9],[6.6,8.5],[7.4,8.5],[7.4,3.8],[6.6,3.8],[5.2,3]],9.4,7.52],&#x27;bedroom:hallway&#x27;:[[[5.2,9],[6.6,8.5],[7.4,8.5],[9,6.5]],4.85,3.88],&#x27;bedroom:entrance&#x27;:[[[5.2,9],[6.6,8.5],[7.4,8.5],[9,3.4],[9,2.6],[9,1.2]],9.83,7.87],&#x27;bedroom:kitchen&#x27;:[[[5.2,9],[6.6,8.5],[7.4,8.5],[10.6,4],[11.4,4],[12.5,1.5]],11.34,9.07],&#x27;bedroom:living_room&#x27;:[[[5.2,9],[6.6,8.5],[7.4,8.5],[10.6,8.2],[11.4,8.2],[13,10]],8.71,6.97],&#x27;bedroom:balcony&#x27;:[[[5.2,9],[6.6,8.5],[7.4,8.5],[10.6,8.2],[11.4,8.2],[15.75,9.75],[17.75,9.75],[19.6,9.5],[20.4,9.5],[21.5,9.5]],16.69,13.35],
+        &#x27;bathroom:bedroom&#x27;:[[[5.2,3],[6.6,3.8],[7.4,3.8],[7.4,8.5],[6.6,8.5],[5.2,9]],9.4,7.52],&#x27;bathroom:bathroom&#x27;:[[[5.2,3]],0,0],&#x27;bathroom:hallway&#x27;:[[[5.2,3],[6.6,3.8],[7.4,3.8],[9,6.5]],5.55,4.44],&#x27;bathroom:entrance&#x27;:[[[5.2,3],[6.6,3.8],[7.4,3.8],[9,3.4],[9,2.6],[9,1.2]],6.26,5.01],&#x27;bathroom:kitchen&#x27;:[[[5.2,3],[6.6,3.8],[7.4,3.8],[10.6,4],[11.4,4],[12.5,1.5]],9.15,7.32],&#x27;bathroom:living_room&#x27;:[[[5.2,3],[6.6,3.8],[7.4,3.8],[10.6,8.2],[11.4,8.2],[13,10]],11.06,8.85],&#x27;bathroom:balcony&#x27;:[[[5.2,3],[6.6,3.8],[7.4,3.8],[10.6,8.2],[11.4,8.2],[15.75,9.75],[17.75,9.75],[19.6,9.5],[20.4,9.5],[21.5,9.5]],19.04,15.23],
+        &#x27;hallway:bedroom&#x27;:[[[9,6.5],[7.4,8.5],[6.6,8.5],[5.2,9]],4.85,3.88],&#x27;hallway:bathroom&#x27;:[[[9,6.5],[7.4,3.8],[6.6,3.8],[5.2,3]],5.55,4.44],&#x27;hallway:hallway&#x27;:[[[9,6.5]],0,0],&#x27;hallway:entrance&#x27;:[[[9,6.5],[9,3.4],[9,2.6],[9,1.2]],5.3,4.24],&#x27;hallway:kitchen&#x27;:[[[9,6.5],[10.6,4],[11.4,4],[12.5,1.5]],6.5,5.2],&#x27;hallway:living_room&#x27;:[[[9,6.5],[10.6,8.2],[11.4,8.2],[13,10]],5.54,4.43],&#x27;hallway:balcony&#x27;:[[[9,6.5],[10.6,8.2],[11.4,8.2],[15.75,9.75],[17.75,9.75],[19.6,9.5],[20.4,9.5],[21.5,9.5]],13.52,10.82],
+        &#x27;entrance:bedroom&#x27;:[[[9,1.2],[9,2.6],[9,3.4],[7.4,8.5],[6.6,8.5],[5.2,9]],9.83,7.87],&#x27;entrance:bathroom&#x27;:[[[9,1.2],[9,2.6],[9,3.4],[7.4,3.8],[6.6,3.8],[5.2,3]],6.26,5.01],&#x27;entrance:hallway&#x27;:[[[9,1.2],[9,2.6],[9,3.4],[9,6.5]],5.3,4.24],&#x27;entrance:entrance&#x27;:[[[9,1.2]],0,0],&#x27;entrance:kitchen&#x27;:[[[9,1.2],[9,2.6],[9,3.4],[10.6,4],[11.4,4],[12.5,1.5]],7.44,5.95],&#x27;entrance:living_room&#x27;:[[[9,1.2],[9,2.6],[9,3.4],[10.6,8.2],[11.4,8.2],[13,10]],10.47,8.37],&#x27;entrance:balcony&#x27;:[[[9,1.2],[9,2.6],[9,3.4],[10.6,8.2],[11.4,8.2],[15.75,9.75],[17.75,9.75],[19.6,9.5],[20.4,9.5],[21.5,9.5]],18.44,14.76],
+        &#x27;kitchen:bedroom&#x27;:[[[12.5,1.5],[11.4,4],[10.6,4],[7.4,8.5],[6.6,8.5],[5.2,9]],11.34,9.07],&#x27;kitchen:bathroom&#x27;:[[[12.5,1.5],[11.4,4],[10.6,4],[7.4,3.8],[6.6,3.8],[5.2,3]],9.15,7.32],&#x27;kitchen:hallway&#x27;:[[[12.5,1.5],[11.4,4],[10.6,4],[9,6.5]],6.5,5.2],&#x27;kitchen:entrance&#x27;:[[[12.5,1.5],[11.4,4],[10.6,4],[9,3.4],[9,2.6],[9,1.2]],7.44,5.95],&#x27;kitchen:kitchen&#x27;:[[[12.5,1.5]],0,0],&#x27;kitchen:living_room&#x27;:[[[12.5,1.5],[11.4,4],[10.6,4],[10.6,8.2],[11.4,8.2],[13,10]],10.94,8.75],&#x27;kitchen:balcony&#x27;:[[[12.5,1.5],[11.4,4],[10.6,4],[10.6,8.2],[11.4,8.2],[15.75,9.75],[17.75,9.75],[19.6,9.5],[20.4,9.5],[21.5,9.5]],18.92,15.13],
+        &#x27;living_room:bedroom&#x27;:[[[13,10],[11.4,8.2],[10.6,8.2],[7.4,8.5],[6.6,8.5],[5.2,9]],8.71,6.97],&#x27;living_room:bathroom&#x27;:[[[13,10],[11.4,8.2],[10.6,8.2],[7.4,3.8],[6.6,3.8],[5.2,3]],11.06,8.85],&#x27;living_room:hallway&#x27;:[[[13,10],[11.4,8.2],[10.6,8.2],[9,6.5]],5.54,4.43],&#x27;living_room:entrance&#x27;:[[[13,10],[11.4,8.2],[10.6,8.2],[9,3.4],[9,2.6],[9,1.2]],10.47,8.37],&#x27;living_room:kitchen&#x27;:[[[13,10],[11.4,8.2],[10.6,8.2],[10.6,4],[11.4,4],[12.5,1.5]],10.94,8.75],&#x27;living_room:living_room&#x27;:[[[13,10]],0,0],&#x27;living_room:balcony&#x27;:[[[13,10],[17.75,9.75],[19.6,9.5],[20.4,9.5],[21.5,9.5]],8.52,6.82],
+        &#x27;balcony:bedroom&#x27;:[[[21.5,9.5],[20.4,9.5],[19.6,9.5],[17.75,9.75],[15.75,9.75],[11.4,8.2],[10.6,8.2],[7.4,8.5],[6.6,8.5],[5.2,9]],16.69,13.35],&#x27;balcony:bathroom&#x27;:[[[21.5,9.5],[20.4,9.5],[19.6,9.5],[17.75,9.75],[15.75,9.75],[11.4,8.2],[10.6,8.2],[7.4,3.8],[6.6,3.8],[5.2,3]],19.04,15.23],&#x27;balcony:hallway&#x27;:[[[21.5,9.5],[20.4,9.5],[19.6,9.5],[17.75,9.75],[15.75,9.75],[11.4,8.2],[10.6,8.2],[9,6.5]],13.52,10.82],&#x27;balcony:entrance&#x27;:[[[21.5,9.5],[20.4,9.5],[19.6,9.5],[17.75,9.75],[15.75,9.75],[11.4,8.2],[10.6,8.2],[9,3.4],[9,2.6],[9,1.2]],18.44,14.76],&#x27;balcony:kitchen&#x27;:[[[21.5,9.5],[20.4,9.5],[19.6,9.5],[17.75,9.75],[15.75,9.75],[11.4,8.2],[10.6,8.2],[10.6,4],[11.4,4],[12.5,1.5]],18.92,15.13],&#x27;balcony:living_room&#x27;:[[[21.5,9.5],[20.4,9.5],[19.6,9.5],[17.75,9.75],[13,10]],8.52,6.82],&#x27;balcony:balcony&#x27;:[[[21.5,9.5]],0,0]
+      };
+      const from = root.querySelector(&#x27;#m4-from&#x27;);
+      const to = root.querySelector(&#x27;#m4-to&#x27;);
+      const routeLine = root.querySelector(&#x27;#m4-route-line&#x27;);
+      const routeShadow = root.querySelector(&#x27;#m4-route-shadow&#x27;);
+      const routeStart = root.querySelector(&#x27;#m4-route-start&#x27;);
+      const routeEnd = root.querySelector(&#x27;#m4-route-end&#x27;);
+      const routeTitle = root.querySelector(&#x27;#m4-route-title&#x27;);
+      const routeMeta = root.querySelector(&#x27;#m4-route-meta&#x27;);
+      const selection = root.querySelector(&#x27;#m4-selection&#x27;);
+      const fmt = n =&gt; n.toLocaleString(&#x27;it-IT&#x27;, {minimumFractionDigits: n === 0 ? 0 : 2, maximumFractionDigits: 2});
+      function updateRoute() {
+        const data = routes[`${from.value}:${to.value}`];
+        const pts = data[0].map(([x,y]) =&gt; `${x},${12-y}`).join(&#x27; &#x27;);
+        routeLine.setAttribute(&#x27;points&#x27;, pts); routeShadow.setAttribute(&#x27;points&#x27;, pts);
+        const first = data[0][0], last = data[0][data[0].length - 1];
+        routeStart.setAttribute(&#x27;cx&#x27;, first[0]); routeStart.setAttribute(&#x27;cy&#x27;, 12-first[1]);
+        routeEnd.setAttribute(&#x27;cx&#x27;, last[0]); routeEnd.setAttribute(&#x27;cy&#x27;, 12-last[1]);
+        routeTitle.textContent = `${labels[from.value]} → ${labels[to.value]}`;
+        routeMeta.textContent = `${fmt(data[1])} m · ${fmt(data[2])} s · ${data[0].length} waypoint`;
+      }
+      from.addEventListener(&#x27;change&#x27;, updateRoute); to.addEventListener(&#x27;change&#x27;, updateRoute);
+      root.querySelectorAll(&#x27;[data-layer-toggle]&#x27;).forEach(input =&gt; input.addEventListener(&#x27;change&#x27;, () =&gt; {
+        root.querySelector(`#m4-${input.dataset.layerToggle}`).classList.toggle(&#x27;is-hidden&#x27;, !input.checked);
+      }));
+      function selectRoom(node) {
+        root.querySelectorAll(&#x27;.room&#x27;).forEach(room =&gt; room.classList.remove(&#x27;is-selected&#x27;));
+        node.classList.add(&#x27;is-selected&#x27;);
+        const id = node.dataset.room;
+        selection.innerHTML = `&lt;strong&gt;${labels[id]}&lt;/strong&gt;&lt;br&gt;${roomInfo[id].join(&#x27; · &#x27;)}`;
+      }
+      root.querySelectorAll(&#x27;.room&#x27;).forEach(node =&gt; {
+        node.addEventListener(&#x27;click&#x27;, () =&gt; selectRoom(node));
+        node.addEventListener(&#x27;keydown&#x27;, event =&gt; { if (event.key === &#x27;Enter&#x27; || event.key === &#x27; &#x27;) { event.preventDefault(); selectRoom(node); } });
+      });
+      root.querySelectorAll(&#x27;.viz-entity&#x27;).forEach(node =&gt; {
+        node.style.cursor = &#x27;pointer&#x27;;
+        node.setAttribute(&#x27;tabindex&#x27;, &#x27;0&#x27;); node.setAttribute(&#x27;role&#x27;, &#x27;button&#x27;);
+        const selectEntity = () =&gt; { selection.innerHTML = `&lt;strong&gt;${node.dataset.entity}&lt;/strong&gt;&lt;br&gt;${entityInfo[node.dataset.entity]}`; };
+        node.addEventListener(&#x27;click&#x27;, selectEntity);
+        node.addEventListener(&#x27;keydown&#x27;, event =&gt; { if (event.key === &#x27;Enter&#x27; || event.key === &#x27; &#x27;) { event.preventDefault(); selectEntity(); } });
+      });
+      updateRoute();
+    })();
+  &lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
