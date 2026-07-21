@@ -1842,21 +1842,26 @@ def _input_issue(code: str, message: str, path: str = "$") -> SimulationResult:
     )
 
 
-def simulate_file(path: Path) -> SimulationResult:
+def load_simulation_bundle_file(
+    path: Path,
+) -> tuple[SimulationBundle | None, list[SimulationIssue]]:
+    def issue(code: str, message: str, issue_path: str = "$") -> list[SimulationIssue]:
+        return [SimulationIssue(code=code, stage="input", path=issue_path, message=message)]
+
     try:
         encoded = path.read_bytes()
     except FileNotFoundError:
-        return _input_issue("FILE_NOT_FOUND", f"Simulation bundle not found: {path}")
+        return None, issue("FILE_NOT_FOUND", f"Simulation bundle not found: {path}")
     except OSError as error:
-        return _input_issue("FILE_READ_ERROR", f"Cannot read simulation bundle: {error}")
+        return None, issue("FILE_READ_ERROR", f"Cannot read simulation bundle: {error}")
     if len(encoded) > MAX_SCENARIO_BYTES * 20:
-        return _input_issue("FILE_TOO_LARGE", "Simulation bundle exceeds the input size limit.")
+        return None, issue("FILE_TOO_LARGE", "Simulation bundle exceeds the input size limit.")
     try:
         raw = encoded.decode("utf-8")
     except UnicodeDecodeError:
-        return _input_issue("FILE_ENCODING_ERROR", "Simulation bundle must be UTF-8.")
+        return None, issue("FILE_ENCODING_ERROR", "Simulation bundle must be UTF-8.")
     if _exceeds_json_nesting_limit(raw):
-        return _input_issue("JSON_NESTING_TOO_DEEP", "Simulation bundle is nested too deeply.")
+        return None, issue("JSON_NESTING_TOO_DEEP", "Simulation bundle is nested too deeply.")
     try:
         payload = json.loads(
             raw,
@@ -1864,11 +1869,11 @@ def simulate_file(path: Path) -> SimulationResult:
             parse_constant=_reject_non_finite_constant,
         )
     except (DuplicateJsonKeyError, InvalidJsonConstantError, json.JSONDecodeError) as error:
-        return _input_issue("JSON_SYNTAX", f"Invalid simulation bundle JSON: {error}")
+        return None, issue("JSON_SYNTAX", f"Invalid simulation bundle JSON: {error}")
     if not isinstance(payload, dict):
-        return _input_issue("STRUCTURE_INVALID", "Simulation bundle must be a JSON object.")
+        return None, issue("STRUCTURE_INVALID", "Simulation bundle must be a JSON object.")
     if payload.get("schemaVersion") != SUPPORTED_BUNDLE_VERSION:
-        return _input_issue(
+        return None, issue(
             "UNSUPPORTED_SCHEMA_VERSION",
             f"Expected simulation bundle schemaVersion '{SUPPORTED_BUNDLE_VERSION}'.",
             "$.schemaVersion",
@@ -1878,7 +1883,7 @@ def simulate_file(path: Path) -> SimulationResult:
             json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         )
     except ValidationError as error:
-        issues = [
+        return None, [
             SimulationIssue(
                 code="BUNDLE_INVALID",
                 stage="input",
@@ -1887,6 +1892,15 @@ def simulate_file(path: Path) -> SimulationResult:
             )
             for item in error.errors(include_url=False, include_context=False, include_input=False)
         ]
+    return bundle, []
+
+
+def simulate_file(path: Path) -> SimulationResult:
+    bundle, issues = load_simulation_bundle_file(path)
+    if bundle is None:
+        if len(issues) == 1:
+            item = issues[0]
+            return _input_issue(item.code, item.message, item.path)
         return SimulationResult(
             report=SimulationReport(success=False, issues=issues, summary=_summary(None, issues, 0))
         )

@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "SimulationBatchRun": {
+      "additionalProperties": false,
+      "properties": {
+        "runId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Runid",
+          "type": "string"
+        },
+        "bundlePath": {
+          "minLength": 1,
+          "title": "Bundlepath",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "runId",
+        "bundlePath"
+      ],
+      "title": "SimulationBatchRun",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:simulation-batch-manifest:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "simulation_batch_manifest",
+      "default": "simulation_batch_manifest",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "experimentId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Experimentid",
+      "type": "string"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/SimulationBatchRun"
+      },
+      "maxItems": 100000,
+      "minItems": 1,
+      "title": "Runs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "experimentId",
+    "runs"
+  ],
+  "title": "Smart Home Simulation Batch Manifest 1.0.0",
+  "type": "object"
+}

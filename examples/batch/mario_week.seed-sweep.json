@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "simulation_batch_manifest",
+  "experimentId": "mario_week_seed_sweep",
+  "runs": [
+    {
+      "runId": "seed_101",
+      "bundlePath": "../bundles/mario_week.simulation-bundle-behavior-1.1.0.json",
+      "seed": 101
+    },
+    {
+      "runId": "seed_202",
+      "bundlePath": "../bundles/mario_week.simulation-bundle-behavior-1.1.0.json",
+      "seed": 202
+    },
+    {
+      "runId": "seed_303",
+      "bundlePath": "../bundles/mario_week.simulation-bundle-behavior-1.1.0.json",
+      "seed": 303
+    },
+    {
+      "runId": "seed_404",
+      "bundlePath": "../bundles/mario_week.simulation-bundle-behavior-1.1.0.json",
+      "seed": 404
+    }
+  ]
+}

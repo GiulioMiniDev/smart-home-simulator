@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -15,6 +16,7 @@ from smart_home_sim.domain.authoring import (
     AuthoringRepairRequest,
     SimulationAuthoringBundle,
 )
+from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchReport
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
     ActivityCatalog,
@@ -39,7 +41,13 @@ from smart_home_sim.formatting import (
     format_environment_text_report,
     format_text_report,
 )
-from smart_home_sim.simulation import replay_files, simulate_file
+from smart_home_sim.simulation import (
+    BatchLockedError,
+    BatchManifestError,
+    replay_files,
+    run_batch_file,
+    simulate_file,
+)
 from smart_home_sim.validation.service import validate_file
 
 
@@ -67,6 +75,8 @@ class SchemaContract(StrEnum):
     execution_trace = "execution-trace"
     simulation_report = "simulation-report"
     replay_report = "replay-report"
+    simulation_batch_manifest = "simulation-batch-manifest"
+    simulation_batch_report = "simulation-batch-report"
 
 
 app = typer.Typer(
@@ -286,6 +296,43 @@ def replay(
         raise typer.Exit(code=1)
 
 
+@app.command("simulate-batch")
+def simulate_batch(
+    manifest_path: Path,
+    output_directory: Annotated[Path, typer.Option("--output-dir", "-o")],
+    workers: Annotated[int, typer.Option("--workers", "-j", min=1)] = max(
+        1, min(4, (os.cpu_count() or 2) - 1)
+    ),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Execute independent simulation runs in an isolated process pool."""
+    try:
+        report = run_batch_file(
+            manifest_path,
+            output_directory=output_directory,
+            workers=workers,
+            resume=resume,
+        )
+    except BatchManifestError as error:
+        typer.echo(
+            json.dumps(
+                {
+                    "success": False,
+                    "issues": [item.model_dump(by_alias=True) for item in error.issues],
+                },
+                indent=2,
+            ),
+            err=True,
+        )
+        raise typer.Exit(code=2) from error
+    except BatchLockedError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Batch report written to: {(output_directory / 'batch-report.json').resolve()}")
+    if not report.success:
+        raise typer.Exit(code=1)
+
+
 @app.command("ingest-authoring-output")
 def ingest_authoring_output(
     bundle_path: Path,
@@ -397,6 +444,8 @@ def schema(
         SchemaContract.execution_trace: ExecutionTrace,
         SchemaContract.simulation_report: SimulationReport,
         SchemaContract.replay_report: ReplayReport,
+        SchemaContract.simulation_batch_manifest: SimulationBatchManifest,
+        SchemaContract.simulation_batch_report: SimulationBatchReport,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

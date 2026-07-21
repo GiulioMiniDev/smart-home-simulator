@@ -1,0 +1,339 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "SimulationBatchIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTION_EXECUTION_FAILED",
+            "BATCH_MANIFEST_INVALID",
+            "BATCH_WORKER_FAILED",
+            "BUNDLE_INVALID",
+            "DAY_REPAIR_FAILED",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "OUTPUT_CONFLICT",
+            "OUTPUT_WRITE_ERROR",
+            "PRECONDITION_FAILED",
+            "PROCESS_EXECUTION_FAILED",
+            "RESOURCE_DEADLOCK",
+            "RESUME_INVALID",
+            "SIMULATION_FAILED",
+            "STRUCTURE_INVALID",
+            "TRACE_INVARIANT_FAILED",
+            "UNSUPPORTED_SCHEMA_VERSION"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "preflight",
+            "execution",
+            "invariant",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "SimulationBatchIssue",
+      "type": "object"
+    },
+    "SimulationBatchRunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "runId": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Runid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "reused",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "inputBundlePath": {
+          "minLength": 1,
+          "title": "Inputbundlepath",
+          "type": "string"
+        },
+        "inputBundleSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inputbundlesha256"
+        },
+        "effectiveBundleSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effectivebundlesha256"
+        },
+        "effectiveSeed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effectiveseed"
+        },
+        "effectiveBundlePath": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effectivebundlepath"
+        },
+        "tracePath": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tracepath"
+        },
+        "simulationReportPath": {
+          "minLength": 1,
+          "title": "Simulationreportpath",
+          "type": "string"
+        },
+        "semanticDigest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semanticdigest"
+        },
+        "traceSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tracesha256"
+        },
+        "elapsedSeconds": {
+          "minimum": 0,
+          "title": "Elapsedseconds",
+          "type": "number"
+        },
+        "workerPid": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workerpid"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/SimulationBatchIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "runId",
+        "status",
+        "inputBundlePath",
+        "simulationReportPath",
+        "elapsedSeconds"
+      ],
+      "title": "SimulationBatchRunResult",
+      "type": "object"
+    },
+    "SimulationBatchSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "requestedRunCount": {
+          "minimum": 1,
+          "title": "Requestedruncount",
+          "type": "integer"
+        },
+        "completedRunCount": {
+          "minimum": 0,
+          "title": "Completedruncount",
+          "type": "integer"
+        },
+        "reusedRunCount": {
+          "minimum": 0,
+          "title": "Reusedruncount",
+          "type": "integer"
+        },
+        "failedRunCount": {
+          "minimum": 0,
+          "title": "Failedruncount",
+          "type": "integer"
+        },
+        "workerCount": {
+          "minimum": 1,
+          "title": "Workercount",
+          "type": "integer"
+        },
+        "elapsedSeconds": {
+          "minimum": 0,
+          "title": "Elapsedseconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "requestedRunCount",
+        "completedRunCount",
+        "reusedRunCount",
+        "failedRunCount",
+        "workerCount",
+        "elapsedSeconds"
+      ],
+      "title": "SimulationBatchSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:simulation-batch-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Reportversion",
+      "type": "string"
+    },
+    "success": {
+      "title": "Success",
+      "type": "boolean"
+    },
+    "experimentId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Experimentid",
+      "type": "string"
+    },
+    "manifestSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifestsha256",
+      "type": "string"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "title": "Startedat",
+      "type": "string"
+    },
+    "endedAt": {
+      "format": "date-time",
+      "title": "Endedat",
+      "type": "string"
+    },
+    "outputDirectory": {
+      "minLength": 1,
+      "title": "Outputdirectory",
+      "type": "string"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/SimulationBatchRunResult"
+      },
+      "minItems": 1,
+      "title": "Runs",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/SimulationBatchSummary"
+    }
+  },
+  "required": [
+    "success",
+    "experimentId",
+    "manifestSha256",
+    "startedAt",
+    "endedAt",
+    "outputDirectory",
+    "runs",
+    "summary"
+  ],
+  "title": "Smart Home Simulation Batch Report 1.0.0",
+  "type": "object"
+}

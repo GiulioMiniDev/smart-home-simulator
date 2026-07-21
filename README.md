@@ -4,11 +4,16 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1–5 sono completate e congelate alla versione contrattuale 1.0.0**. Il
+Le **Milestone 1–5 e l'estensione M5.1 sono completate e congelate alla versione
+contrattuale 1.0.0**. Il
 sistema valida e compila lo scenario, lega i process model personali a una casa metrica e
 ne esegue integralmente attività, azioni, movimenti, risorse, eventi e stato tramite un
-clock discreto deterministico. Il prossimo sviluppo previsto è la Milestone 6, dedicata
-ai sensori e alla separazione fra oracle e osservabile.
+clock discreto deterministico. M5.1 orchestra run indipendenti in processi isolati con
+seed, snapshot, resume e failure isolation. Il prossimo sviluppo previsto è la Milestone
+6, dedicata ai sensori e alla separazione fra oracle e osservabile.
+
+Il runtime richiede Python 3.12 e supporta Windows, macOS e Linux. La CI impone su tutti e
+tre i sistemi suite completa, lint e benchmark multiprocesso.
 
 Sono intenzionalmente assenti:
 
@@ -32,6 +37,7 @@ make simulate
 make replay
 make benchmark-environment
 make benchmark-simulation
+make benchmark-batch-simulation
 make schema
 make behavior-artifacts
 make authoring-artifacts
@@ -74,6 +80,23 @@ Il trace golden contiene 172 esiti di attività, 769 azioni, 202 movimenti geome
 1.139 transizioni di stato. Tutti i 27 action type sono eseguiti; nessun handler è un
 no-op di compatibilità. La correzione semantica upstream `1.1.0` è parallela e lascia
 immutati gli artefatti M1–M4 originali.
+
+Per eseguire più simulazioni indipendenti in parallelo:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim simulate-batch \
+  examples/batch/mario_week.seed-sweep.json \
+  --output-dir runs/mario-week-seed-sweep \
+  --workers 4
+```
+
+Ogni run materializza nella propria directory il bundle con il seed effettivo, la trace e
+il simulation report. `batch-report.json` mantiene l'ordine del manifest e aggrega esiti,
+tempi e provenance. `--resume` è attivo per default e riusa soltanto artefatti i cui hash
+e digest sono ancora coerenti; run fallite o mancanti vengono eseguite senza interrompere
+le altre. Due batch non possono scrivere contemporaneamente nella stessa directory. Il
+lock usa il backend nativo del sistema (`msvcrt` su Windows, `fcntl` su macOS/Linux),
+senza dipendenze esterne.
 
 Per validare un pacchetto personale di process model contro il relativo scenario:
 
@@ -190,6 +213,8 @@ Gli artefatti pubblici congelati sono:
 - `schemas/execution-trace-1.0.0.schema.json`;
 - `schemas/simulation-report-1.0.0.schema.json`;
 - `schemas/replay-report-1.0.0.schema.json`;
+- `schemas/simulation-batch-manifest-1.0.0.schema.json`;
+- `schemas/simulation-batch-report-1.0.0.schema.json`;
 - i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
@@ -212,6 +237,7 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Authoring end-to-end tramite LLM esterno](docs/spec/07-end-to-end-llm-authoring.md)
 - [Ambiente domestico eseguibile e binding](docs/spec/08-executable-home-and-binding.md)
 - [Motore di simulazione completo](docs/spec/09-simulation-engine.md)
+- [Orchestrazione dei batch paralleli](docs/spec/10-parallel-batch-orchestration.md)
 - [Blueprint architetturale del motore](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
@@ -224,4 +250,7 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Freeze dell'ambiente eseguibile 1.0.0](docs/decisions/ADR-009-freeze-executable-environment-1.0.0.md)
 - [Correzione semantica runtime 1.1.0](docs/decisions/ADR-010-strict-runtime-semantics-1.1.0.md)
 - [Freeze del motore di simulazione 1.0.0](docs/decisions/ADR-011-freeze-simulation-engine-1.0.0.md)
+- [Orchestrazione batch parallela 1.0.0](docs/decisions/ADR-012-parallel-batch-orchestration-1.0.0.md)
+- [Lock batch multipiattaforma](docs/decisions/ADR-013-cross-platform-batch-locking.md)
 - [Audit di chiusura M5](docs/audits/milestone-5-closure.md)
+- [Audit di chiusura M5.1](docs/audits/milestone-5.1-closure.md)

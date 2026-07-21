@@ -12,6 +12,7 @@ from smart_home_sim.domain.authoring import (
     AuthoringRepairRequest,
     SimulationAuthoringBundle,
 )
+from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchReport
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
     ActivityCatalog,
@@ -59,6 +60,10 @@ ENVIRONMENT_SCHEMAS = {
     "environment-validation-report-1.0.0.schema.json": EnvironmentValidationReport,
     "simulation-bundle-1.0.0.schema.json": SimulationBundle,
 }
+BATCH_SCHEMAS = {
+    "simulation-batch-manifest-1.0.0.schema.json": SimulationBatchManifest,
+    "simulation-batch-report-1.0.0.schema.json": SimulationBatchReport,
+}
 
 
 def load_schema() -> dict[str, object]:
@@ -92,6 +97,7 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in BEHAVIOR_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in AUTHORING_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
@@ -232,3 +238,15 @@ def test_environment_schemas_match_models_and_golden_artifacts() -> None:
         schema = json.loads((PROJECT_ROOT / "schemas" / schema_name).read_text())
         payload = json.loads((PROJECT_ROOT / artifact_name).read_text())
         assert list(Draft202012Validator(schema).iter_errors(payload)) == []
+
+
+def test_batch_schemas_match_models_and_manifest_example() -> None:
+    for filename, model in BATCH_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / filename).read_text())
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+    manifest_schema = json.loads(
+        (PROJECT_ROOT / "schemas/simulation-batch-manifest-1.0.0.schema.json").read_text()
+    )
+    manifest = json.loads((PROJECT_ROOT / "examples/batch/mario_week.seed-sweep.json").read_text())
+    assert list(Draft202012Validator(manifest_schema).iter_errors(manifest)) == []

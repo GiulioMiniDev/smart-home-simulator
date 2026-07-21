@@ -1,4 +1,4 @@
-.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay benchmark-environment benchmark-simulation schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts authoring-artifacts test lint check
+.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay benchmark-environment benchmark-simulation benchmark-batch-simulation schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts authoring-artifacts test lint check
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
@@ -42,6 +42,9 @@ benchmark-environment:
 benchmark-simulation:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_simulation.py
 
+benchmark-batch-simulation:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_batch_simulation.py
+
 behavior-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_behavior_artifacts.py
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_invalid_behavior_examples.py
@@ -84,6 +87,8 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract execution-trace --output schemas/execution-trace-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-report --output schemas/simulation-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract replay-report --output schemas/replay-report-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-batch-manifest --output schemas/simulation-batch-manifest-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-batch-report --output schemas/simulation-batch-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/write_schema_checksums.py
 
 test:
@@ -93,4 +98,4 @@ lint:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff check .
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff format --check .
 
-check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay benchmark-environment benchmark-simulation
+check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay benchmark-environment benchmark-simulation benchmark-batch-simulation

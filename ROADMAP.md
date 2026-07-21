@@ -22,6 +22,7 @@ relativi controlli di compatibilità.
 | 3 | Authoring comportamentale e modelli di processo ADL | profilo, abitudini, calendario e vocabolario delle azioni | scenario + pacchetto personale di process model validati | **Completata e congelata — 1.0.0** |
 | 4 | Ambiente domestico eseguibile e binding | process model + definizione della casa | home model validato + simulation bundle completamente risolto | **Completata e congelata — 1.0.0** |
 | 5 | Motore di simulazione completo | simulation bundle | execution trace spazio-temporale, semantica e causale | **Completata e congelata — 1.0.0** |
+| 5.1 | Orchestrazione parallela degli esperimenti | batch manifest + simulation bundle | run isolate replayabili + batch report | **Completata e congelata — 1.0.0** |
 | 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | Non iniziata |
 | 7 | Applicazione UI, workspace, export e replay | artefatti M1–M6 completi | applicazione moderna end-to-end + dataset JSONL/CSV/XES + replay deterministico | Non iniziata |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
@@ -326,6 +327,54 @@ rilasciata, il residente termina in uno stato spaziale coerente e il replay ripr
 stesso digest semantico. Il bundle M4 legacy viene intenzionalmente rifiutato dal motore
 stretto anziché essere reinterpretato. L'audit terminale è in
 `docs/audits/milestone-5-closure.md`.
+
+## Milestone 5.1 — Orchestrazione parallela degli esperimenti
+
+### Responsabilità
+
+Eseguire run indipendenti su processi separati senza introdurre stato condiviso nel motore
+M5 e senza rendere seed, bundle effettivi o fallimenti dipendenti dall'ordine dei worker.
+
+### Contenuto
+
+- manifest versionato con run ID, bundle di origine e seed opzionale;
+- pool `spawn` multiprocesso con un motore sincrono e un core per run;
+- snapshot del bundle effettivo per rendere ogni trace autonomamente replayabile;
+- directory e file distinti per run, scrittura atomica e lock dell'esperimento;
+- backend di lock nativi per Windows e POSIX, caricati senza import incompatibili;
+- failure isolation e report aggregato ordinato come il manifest;
+- resume soltanto dopo verifica di bundle, trace, report, hash e digest;
+- determinismo verificato fra uno e più worker;
+- benchmark sequenziale/parallelo senza requisiti fragili di speedup minimo.
+
+### Definition of done
+
+- bundle o seed diversi non condividono clock, stato, risorse o PRNG;
+- il completamento dei future in ordine diverso non cambia l'ordine né i digest del report;
+- una run invalida non arresta quelle valide;
+- ogni run completata può essere riprodotta dal proprio snapshot;
+- output concorrenti sulla stessa directory vengono rifiutati;
+- manifest, report, schemi, checksum, CLI, esempio, test, lint, coverage e benchmark sono
+  completi.
+- Python 3.12 passa la stessa quality gate su Windows, macOS e Linux.
+
+M5.1 non parallelizza internamente una singola simulazione e non modifica alcun contratto
+M5. L'emendamento operativo M5.1.1 rende il lock multipiattaforma senza cambiare i
+contratti batch `1.0.0`. L'audit terminale è in
+`docs/audits/milestone-5.1-closure.md`.
+
+### Instradamento dei limiti residui
+
+- M6 risolve sensori, rumore, dropout e separazione oracle/observable;
+- M7 espone batch, stato delle run, replay ed export nella UI;
+- M8 aggiunge orizzonti annuali, scenario multi-residente di accettazione e decide tramite
+  benchmark se attivare streaming, partizionamento e checkpoint;
+- M9 introduce distribuzioni ed eventi correlati soltanto sulla base dei dati usati per la
+  calibrazione.
+
+Fisica rigida, collisioni corporee realistiche, riplanificazione globale a ogni evento e
+parallelismo interno della stessa simulazione restano esclusioni deliberate finché la
+domanda di ricerca non ne dimostra la necessità.
 
 ## Milestone 6 — Sensori e separazione oracle/observable
 
