@@ -1,0 +1,107 @@
+{
+  "ingestorVersion": "1.1.0",
+  "valid": false,
+  "bundleVersion": "1.0.0",
+  "scenarioId": "sim_mario_rossi",
+  "packageId": "process_package_mario_rossi",
+  "canonicalPlanSha256": null,
+  "issues": [
+    {
+      "code": "BEHAVIOR_VALIDATION_SKIPPED",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage",
+      "message": "Behavior compatibility validation requires a valid nested scenario.",
+      "details": {}
+    },
+    {
+      "code": "COMPILATION_VALIDATION_SKIPPED",
+      "severity": "error",
+      "stage": "compilation",
+      "path": "$.scenario",
+      "message": "Compilation requires a valid nested scenario.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[0].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day1' preferred start does not match day '2026-07-27'.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[1].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day2' preferred start does not match day '2026-07-28'.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[2].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day3' preferred start does not match day '2026-07-29'.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[3].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day4' preferred start does not match day '2026-07-30'.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[4].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day5' preferred start does not match day '2026-07-31'.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[5].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day6' preferred start does not match day '2026-08-01'.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_WINDOW_OUTSIDE_SIMULATION",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[6].activities[6].duration",
+      "message": "Activity 'act_sleep_day7' can end outside the simulation window.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_WINDOW_OUTSIDE_SIMULATION",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[6].activities[6].startWindow",
+      "message": "Activity 'act_sleep_day7' has startWindow outside the simulation window.",
+      "details": {}
+    },
+    {
+      "code": "ACTIVITY_ASSIGNED_TO_WRONG_DAY",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[6].activities[6].startWindow.preferred",
+      "message": "Activity 'act_sleep_day7' preferred start does not match day '2026-08-02'.",
+      "details": {}
+    }
+  ],
+  "artifacts": [],
+  "summary": {
+    "scenarioErrorCount": 9,
+    "compilationErrorCount": 1,
+    "behaviorErrorCount": 1,
+    "outputErrorCount": 0,
+    "warningCount": 0,
+    "errorCount": 11
+  }
+}

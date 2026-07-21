@@ -1,0 +1,207 @@
+```json
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "simulation_authoring_bundle",
+  "scenario": {
+    "schemaVersion": "1.0.0",
+    "documentType": "life_scenario",
+    "scenarioId": "sim_mario_rossi",
+    "title": "Mario Rossi - Settimana 27 Luglio - 2 Agosto 2026",
+    "timeZone": "Europe/Rome",
+    "simulationWindow": { "start": "2026-07-27T00:00:00+02:00", "end": "2026-08-02T23:59:59+02:00" },
+    "seed": 1,
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.2.0",
+      "promptTemplateVersion": "generate-simulation-inputs-1.2.1-simplified",
+      "humanReviewed": false,
+      "modelName": "qwen2.5-coder-7b-instruct-q4_k_m",
+      "generatedAt": "2026-07-21T20:10:45+02:00"
+    },
+    "modelReferences": {
+      "activityCatalog": { "referenceId": "smart_home_activity_catalog", "version": "1.0.0" },
+      "homeModel": { "referenceId": "home_model_1", "version": "1.0.0" }
+    },
+    "residents": [
+      {
+        "residentId": "mario_rossi",
+        "displayName": "Mario Rossi",
+        "profile": {
+          "age": 72,
+          "gender": "male",
+          "occupation": "pensionato",
+          "chronotype": "morning"
+        }
+      }
+    ],
+    "locations": [
+      { "locationId": "bedroom", "kind": "room" },
+      { "locationId": "bathroom", "kind": "room" },
+      { "locationId": "kitchen", "kind": "room" },
+      { "locationId": "living_room", "kind": "room" },
+      { "locationId": "entrance", "kind": "external" }
+    ],
+    "resources": [
+      {
+        "resourceId": "refrigerator",
+        "resourceType": "appliance",
+        "locationId": "kitchen"
+      },
+      {
+        "resourceId": "television",
+        "resourceType": "entertainment",
+        "locationId": "living_room"
+      }
+    ],
+    "initialState": {
+      "at": "2026-07-27T00:00:00+02:00",
+      "residents": [
+        { "residentId": "mario_rossi", "locationId": "bedroom" }
+      ]
+    },
+    "days": [
+      {
+        "date": "2026-07-27",
+        "context": { "dayType": "weekday" },
+        "activities": [
+          {
+            "activityId": "act_wake_up_day1",
+            "actorId": "mario_rossi",
+            "intent": "wake_up_without_alarm",
+            "locationIds": ["bedroom"],
+            "startWindow": { "earliest": "2026-07-27T06:30:00+02:00", "preferred": "2026-07-27T07:15:00+02:00", "latest": "2026-07-27T08:00:00+02:00" },
+            "duration": { "minimumMinutes": 30, "preferredMinutes": 45, "maximumMinutes": 60 }
+          },
+          {
+            "activityId": "act_change_clothes_day1",
+            "actorId": "mario_rossi",
+            "intent": "change_clothes_and_eat_snack",
+            "locationIds": ["bedroom", "kitchen"],
+            "startWindow": { "earliest": "2026-07-27T08:15:00+02:00", "preferred": "2026-07-27T09:00:00+02:00", "latest": "2026-07-27T09:45:00+02:00" },
+            "duration": { "minimumMinutes": 30, "preferredMinutes": 45, "maximumMinutes": 60 }
+          },
+          {
+            "activityId": "act_eat_breakfast_day1",
+            "actorId": "mario_rossi",
+            "intent": "eat_breakfast_and_listen_to_radio",
+            "locationIds": ["kitchen"],
+            "startWindow": { "earliest": "2026-07-27T09:45:00+02:00", "preferred": "2026-07-27T10:30:00+02:00", "latest": "2026-07-27T11:15:00+02:00" },
+            "duration": { "minimumMinutes": 45, "preferredMinutes": 60, "maximumMinutes": 75 }
+          },
+          {
+            "activityId": "act_clean_kitchen_day1",
+            "actorId": "mario_rossi",
+            "intent": "clean_kitchen",
+            "locationIds": ["kitchen"],
+            "startWindow": { "earliest": "2026-07-27T11:30:00+02:00", "preferred": "2026-07-27T12:15:00+02:00", "latest": "2026-07-27T13:00:00+02:00" },
+            "duration": { "minimumMinutes": 45, "preferredMinutes": 60, "maximumMinutes": 75 }
+          },
+          {
+            "activityId": "act_eat_lunch_day1",
+            "actorId": "mario_rossi",
+            "intent": "eat_light_dinner",
+            "locationIds": ["kitchen"],
+            "startWindow": { "earliest": "2026-07-27T13:15:00+02:00", "preferred": "2026-07-27T14:00:00+02:00", "latest": "2026-07-27T14:45:00+02:00" },
+            "duration": { "minimumMinutes": 45, "preferredMinutes": 60, "maximumMinutes": 75 }
+          },
+          {
+            "activityId": "act_evening_hygiene_day1",
+            "actorId": "mario_rossi",
+            "intent": "evening_hygiene",
+            "locationIds": ["bathroom"],
+            "startWindow": { "earliest": "2026-07-27T15:00:00+02:00", "preferred": "2026-07-27T15:45:00+02:00", "latest": "2026-07-27T16:30:00+02:00" },
+            "duration": { "minimumMinutes": 45, "preferredMinutes": 60, "maximumMinutes": 75 }
+          },
+          {
+            "activityId": "act_sleep_day1",
+            "actorId": "mario_rossi",
+            "intent": "sleep",
+            "locationIds": ["bedroom"],
+            "startWindow": { "earliest": "2026-07-27T23:45:00+02:00", "preferred": "2026-07-28T00:30:00+02:00", "latest": "2026-07-28T01:15:00+02:00" },
+            "duration": { "minimumMinutes": 480, "preferredMinutes": 540, "maximumMinutes": 600 }
+          }
+        ]
+      },
+      {
+        "date": "2026-07-28",
+        "context": { "dayType": "weekday" },
+        // ... (continua per i giorni successivi)
+      }
+    ]
+  },
+  "personalProcessPackage": {
+    "schemaVersion": "1.0.0",
+    "packageId": "ppm_mario_rossi",
+    "packageVersion": "1.0.0",
+    "sourceScenarioId": "sim_mario_rossi",
+    "sourceScenarioVersion": "1.0.0",
+    "language": "it",
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.2.0",
+      "promptTemplateVersion": "generate-simulation-inputs-1.2.1-simplified",
+      "humanReviewed": false,
+      "modelName": "qwen2.5-coder-7b-instruct-q4_k_m",
+      "generatedAt": "2026-07-21T20:10:45+02:00"
+    },
+    "catalogs": {
+      "activityCatalog": { "catalogId": "smart_home_activity_catalog", "version": "1.0.0" },
+      "variableCatalog": { "catalogId": "smart_home_variable_catalog", "version": "1.0.0" },
+      "actionCatalog": { "catalogId": "smart_home_action_catalog", "version": "1.0.0" }
+    },
+    "processModels": [
+      {
+        "processModelId": "pm_mario_wake_up",
+        "processModelVersion": "1.0.0",
+        "residentId": "mario_rossi",
+        "title": "Wake up process for Mario",
+        "description": "Mario wakes up and gets out of bed",
+        "implementedComponents": ["wake_up"],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "move_to_bed",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": { "source": "activity_location", "index": 0 }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "act_change_posture",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": { "source": "literal", "value": "standing" }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          { "sourceNodeId": "start", "targetNodeId": "move_to_bed" },
+          { "sourceNodeId": "move_to_bed", "targetNodeId": "act_change_posture" },
+          { "sourceNodeId": "act_change_posture", "targetNodeId": "end" }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "bind_mario_wake_up",
+        "residentId": "mario_rossi",
+        "intent": "wake_up_without_alarm",
+        "processModelId": "pm_mario_wake_up"
+      }
+    ]
+  }
+}
+```

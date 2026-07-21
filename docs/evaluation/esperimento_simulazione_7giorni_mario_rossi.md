@@ -184,3 +184,32 @@ Il risultato non dimostra ancora robustezza statistica del prompt né realismo d
 Per sostenere queste affermazioni servono descrizioni sorgente conservate, metadata completi,
 più generazioni indipendenti e metriche qualitative su sonno, pasti, terapia, varietà e
 coerenza temporale.
+
+## 9. Follow-up controllato con il prompt 1.2.1
+
+Il 2026-07-21 è stata eseguita una nuova serie di tre generazioni con lo stesso modello
+locale dichiarato, `Qwen2.5-Coder-7B-Instruct Q4_K_M`, e il prompt
+`generate-simulation-inputs-1.2.1-simplified.md`. Poiché la descrizione originale di questa
+prova storica non era stata conservata, il follow-up usa un nuovo caso Mario controllato e
+salvato: non è presentato come replica esatta.
+
+Risultato del follow-up:
+
+| Controllo | Esito |
+|---|---:|
+| Generazioni indipendenti | 3 |
+| JSON grezzo valido | 0/3 |
+| Ingestion valida | 0/3 |
+| Simulazione completata | 0/3 |
+| Giorni con sequenze diverse nelle run parsabili | 1/7 |
+
+Il prompt nuovo corregge localmente sonno, farmaci e timestamp, ma Qwen 7B ignora ancora il
+divieto di Markdown, omette gran parte del caso, ripete giornate identiche e confonde intent,
+componenti e azioni primitive. Le run si fermano spontaneamente usando soltanto il 34–70%
+del contesto da 32K; il fallimento non è spiegato da un limite di output imposto dal server.
+
+La conclusione aggiornata è quindi che il bundle storico valido era un risultato funzionale
+isolato, non evidenza che il 7B sia sufficiente per output settimanali soddisfacenti. Nel
+workflow monolitico one-shot questa configurazione è **non consigliata**. Protocollo,
+artefatti, analisi e standard per i modelli successivi sono documentati in
+[`authoring-prompt-1.2.1-local-qwen2.5-7b.md`](authoring-prompt-1.2.1-local-qwen2.5-7b.md).

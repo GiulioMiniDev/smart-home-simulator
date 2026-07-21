@@ -1,0 +1,25 @@
+{
+  "experimentId": "2026-07-21-qwen2.5-coder-7b-prompt-1.2.1",
+  "acceptedRawResponses": 0,
+  "attemptedRuns": 3,
+  "firstPassAcceptanceRate": 0.0,
+  "diagnosticInnerJsonParseableRuns": [1, 3],
+  "diagnosticIngestionValidRuns": [],
+  "simulatedRuns": [],
+  "verdict": "insufficient_for_monolithic_seven_day_authoring",
+  "positiveChangesVersusHistoricalTrial": [
+    "realistic_sleep_duration",
+    "correct_supplied_generated_at",
+    "no_unsupported_medication"
+  ],
+  "criticalFailures": [
+    "markdown_wrapped_output_in_all_runs",
+    "comment_and_ellipsis_placeholders_in_run_2",
+    "zero_valid_ingestions",
+    "zero_simulatable_runs",
+    "identical_day_sequences_in_runs_1_and_3",
+    "required_weekly_events_omitted",
+    "intent_component_action_layer_confusion",
+    "temporal_and_day_assignment_errors"
+  ]
+}

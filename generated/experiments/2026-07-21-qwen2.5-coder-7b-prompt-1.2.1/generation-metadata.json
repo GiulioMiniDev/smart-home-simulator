@@ -1,0 +1,115 @@
+{
+  "experimentStartedAt": "2026-07-21T20:06:12+02:00",
+  "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
+  "model": "qwen2.5-coder-7b-instruct",
+  "modelRuntime": {
+    "publisher": "lmstudio-community",
+    "displayName": "Qwen2.5 Coder 7B Instruct",
+    "architecture": "qwen2",
+    "parameters": "7B",
+    "format": "gguf",
+    "quantization": "Q4_K_M",
+    "sizeBytes": 4683074048,
+    "loadedContextLength": 32768,
+    "maximumContextLength": 32768,
+    "evalBatchSize": 2048,
+    "physicalBatchSize": 512,
+    "parallel": 4,
+    "flashAttention": true,
+    "offloadKvCacheToGpu": true,
+    "engine": "LM Studio",
+    "engineVersion": null
+  },
+  "promptPath": "prompts/generate-simulation-inputs-1.2.1-simplified.md",
+  "promptSha256": "69efa26cd669295b0f43eaa6d0258e4d2794ba801fbdde8efe051855b2620197",
+  "casePath": "generated/experiments/2026-07-21-qwen2.5-coder-7b-prompt-1.2.1/case-description.md",
+  "caseSha256": "667b92a47d0ae6a2b2359ae9decef043d9592196cef720ab9ffefc1178e76a9b",
+  "parameters": {
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "top_k": 40,
+    "max_tokens": 24000,
+    "seeds": [
+      101,
+      202,
+      303
+    ]
+  },
+  "manualEdits": false,
+  "repairAttempts": 0,
+  "runs": [
+    {
+      "run": 1,
+      "seed": 101,
+      "generatedAtSupplied": "2026-07-21T20:06:12+02:00",
+      "jsonError": {
+        "message": "Expecting value",
+        "line": 1,
+        "column": 1,
+        "position": 0
+      },
+      "durationSeconds": 272.825,
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 8587,
+        "completion_tokens": 14428,
+        "total_tokens": 23015,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "contentCharacters": 42208,
+      "jsonParsed": false,
+      "httpSucceeded": true
+    },
+    {
+      "run": 2,
+      "seed": 202,
+      "generatedAtSupplied": "2026-07-21T20:10:45+02:00",
+      "jsonError": {
+        "message": "Expecting value",
+        "line": 1,
+        "column": 1,
+        "position": 0
+      },
+      "durationSeconds": 47.973,
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 8587,
+        "completion_tokens": 2698,
+        "total_tokens": 11285,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "contentCharacters": 7890,
+      "jsonParsed": false,
+      "httpSucceeded": true
+    },
+    {
+      "run": 3,
+      "seed": 303,
+      "generatedAtSupplied": "2026-07-21T20:11:33+02:00",
+      "jsonError": {
+        "message": "Expecting value",
+        "line": 1,
+        "column": 1,
+        "position": 0
+      },
+      "durationSeconds": 245.788,
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 8587,
+        "completion_tokens": 13105,
+        "total_tokens": 21692,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "contentCharacters": 38542,
+      "jsonParsed": false,
+      "httpSucceeded": true
+    }
+  ],
+  "experimentFinishedAt": "2026-07-21T20:15:38+02:00"
+}

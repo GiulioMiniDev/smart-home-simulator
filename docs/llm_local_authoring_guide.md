@@ -91,3 +91,25 @@ conformità formale, non realismo umano.
 Il prompt 1.2.1 introduce controlli espliciti per questi casi. Per dichiarare robusto il
 workflow servono più persone, più seed, descrizioni sorgente conservate e una matrice che
 riporti first-pass success, repair attempt, errori e valutazione di plausibilità.
+
+## Requisiti consigliati dopo la prova 1.2.1
+
+Tre nuove generazioni con Qwen 2.5 Coder 7B Q4_K_M e prompt 1.2.1 hanno ottenuto 0/3 JSON
+grezzi validi, 0/3 ingestion valide e 0/3 simulazioni. Il modello non è quindi consigliato
+per il bundle settimanale monolitico one-shot, anche se alcuni guardrail qualitativi sono
+migliorati.
+
+Per qualificare un modello alternativo:
+
+- usare almeno tre seed per lo smoke test e almeno dieci casi per una raccomandazione;
+- richiedere 100% JSON grezzo valido e almeno 90% first-pass end-to-end nella matrice finale;
+- non contare repair o modifiche manuali come successi first-pass;
+- usare quantizzazione `Q4_K_M` o migliore;
+- usare almeno 32K di contesto attivo, preferibilmente 64K per margine;
+- partire, come fascia candidata ancora da validare, da un moderno 14B–16B; valutare una
+  classe 30B–32B per l'uso non supervisionato.
+
+Il numero di parametri è un filtro di selezione, non un criterio di accettazione. Anche un
+modello più grande deve superare ingestion, simulazione e rubrica qualitativa. Se si resta su
+7B, occorre sperimentare un workflow a più fasi con artefatti più piccoli e validazione fra
+le fasi, non riusare la prova one-shot come evidenza di affidabilità.

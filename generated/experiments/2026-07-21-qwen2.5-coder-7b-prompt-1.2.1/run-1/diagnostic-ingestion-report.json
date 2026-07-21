@@ -1,0 +1,45 @@
+{
+  "ingestorVersion": "1.1.0",
+  "valid": false,
+  "bundleVersion": "1.0.0",
+  "scenarioId": "sim_mario_rossi",
+  "packageId": "pp_mario_rossi",
+  "canonicalPlanSha256": null,
+  "issues": [
+    {
+      "code": "BEHAVIOR_VALIDATION_SKIPPED",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage",
+      "message": "Behavior compatibility validation requires a valid nested scenario.",
+      "details": {}
+    },
+    {
+      "code": "COMPILATION_VALIDATION_SKIPPED",
+      "severity": "error",
+      "stage": "compilation",
+      "path": "$.scenario",
+      "message": "Compilation requires a valid nested scenario.",
+      "details": {}
+    },
+    {
+      "code": "STRUCTURE_INVALID",
+      "severity": "error",
+      "stage": "scenario",
+      "path": "$.scenario.days[3].activities[2].startWindow",
+      "message": "Value error, window must satisfy earliest <= preferred <= latest",
+      "details": {
+        "type": "value_error"
+      }
+    }
+  ],
+  "artifacts": [],
+  "summary": {
+    "scenarioErrorCount": 1,
+    "compilationErrorCount": 1,
+    "behaviorErrorCount": 1,
+    "outputErrorCount": 0,
+    "warningCount": 0,
+    "errorCount": 3
+  }
+}
