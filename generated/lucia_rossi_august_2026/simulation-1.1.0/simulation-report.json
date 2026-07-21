@@ -1,0 +1,22 @@
+{
+  "reportVersion": "1.0.0",
+  "success": true,
+  "sourceBundleId": "lucia_rossi_august_2026__runtime_1.1.0__home_mario_monteverde__behavior_1.1.0__1.0.0",
+  "sourceBundleSha256": "4ff20687fed3480f425db2c8f36b95299bffef038733e25be2df4878546a4d76",
+  "traceSha256": "0adc9cc4c09a4b82f96534bee2987015b86d33332a382863cb27564ddbe4043c",
+  "semanticDigest": "a9d8a532abffa726933e33d514e92691eb1bdb9850e30e24ace4d88e3232288b",
+  "issues": [],
+  "summary": {
+    "plannedActivityCount": 411,
+    "completedActivityCount": 411,
+    "deviatedActivityCount": 0,
+    "failedActivityCount": 0,
+    "droppedActivityCount": 0,
+    "actionExecutionCount": 1896,
+    "movementCount": 909,
+    "stateTransitionCount": 3773,
+    "runtimeEventCount": 0,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

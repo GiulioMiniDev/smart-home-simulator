@@ -1,0 +1,27 @@
+{
+  "ingestorVersion": "1.1.0",
+  "valid": true,
+  "bundleVersion": "1.0.0",
+  "scenarioId": "lucia_rossi_august_2026",
+  "packageId": "lucia_rossi_august_2026_processes",
+  "canonicalPlanSha256": "4ba2f74dd36a76d7c7353e39e97427271a2606f3bae8ee8e1baf346ea282b843",
+  "issues": [],
+  "artifacts": [
+    {
+      "filename": "scenario.json",
+      "sha256": "6fad6ff995bd5d027f6cf74d79a75e32184bbcb741c2b4d9af04dab051d27377"
+    },
+    {
+      "filename": "personal-process-package.json",
+      "sha256": "f7baf4d7eb51906cb3ee867283eeac6484ada6fee6605781cd03880611d818ec"
+    }
+  ],
+  "summary": {
+    "scenarioErrorCount": 0,
+    "compilationErrorCount": 0,
+    "behaviorErrorCount": 0,
+    "outputErrorCount": 0,
+    "warningCount": 0,
+    "errorCount": 0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "compilerVersion": "1.0.0",
+  "success": true,
+  "sourceScenarioVersion": "1.0.0",
+  "sourceScenarioId": "lucia_rossi_august_2026__runtime_1.1.0",
+  "canonicalPlanSha256": "bc94a9f65f8c2ef37776d653ca8868b09875a9cd0ce3afe7392cdafa698749ce",
+  "solverStatus": "OPTIMAL",
+  "objectiveValues": {
+    "optionalPriorityScore": 0,
+    "optionalActivityCount": 0,
+    "durationDeviationMicroseconds": 0,
+    "temporalDeviationMicroseconds": 0,
+    "scheduledStartSumMicroseconds": 556239300000000
+  },
+  "issues": [],
+  "summary": {
+    "scheduledActivityCount": 411,
+    "omittedActivityCount": 0,
+    "contingencyCount": 0,
+    "contingencyActivityCount": 0,
+    "rescheduledActivityCount": 0,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}
