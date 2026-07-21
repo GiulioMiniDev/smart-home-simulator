@@ -1,0 +1,794 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "simulation_authoring_bundle",
+  "scenario": {
+    "schemaVersion": "1.0.0",
+    "documentType": "life_scenario",
+    "scenarioId": "sim_marco_rossi",
+    "title": "Simulazione Marco Rossi",
+    "timeZone": "Europe/Rome",
+    "simulationWindow": {
+      "start": "2024-12-16T00:00:00+01:00",
+      "end": "2024-12-17T23:59:59+01:00"
+    },
+    "seed": 1,
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.2.0",
+      "promptTemplateVersion": "generate-simulation-inputs-1.2.0",
+      "humanReviewed": false,
+      "modelName": "qwen2.5-coder",
+      "generatedAt": "2023-10-01T12:00:00Z"
+    },
+    "modelReferences": {
+      "activityCatalog": {
+        "referenceId": "smart_home_activity_catalog",
+        "version": "1.0.0"
+      },
+      "homeModel": {
+        "referenceId": "default_home_model",
+        "version": "1.0.0"
+      }
+    },
+    "residents": [
+      {
+        "residentId": "marco_rossi",
+        "displayName": "Marco Rossi",
+        "profile": {
+          "age": 34,
+          "gender": "male",
+          "occupation": "ingegnere software",
+          "healthConditions": [
+            "cifosi dorsale",
+            "lombalgia"
+          ],
+          "chronotype": "matinali"
+        }
+      }
+    ],
+    "locations": [
+      {
+        "locationId": "bedroom",
+        "kind": "room"
+      },
+      {
+        "locationId": "kitchen",
+        "kind": "room"
+      },
+      {
+        "locationId": "bathroom",
+        "kind": "room"
+      }
+    ],
+    "resources": [],
+    "initialState": {
+      "at": "2024-12-16T00:00:00+01:00",
+      "residents": [
+        {
+          "residentId": "marco_rossi",
+          "locationId": "bedroom"
+        }
+      ]
+    },
+    "days": [
+      {
+        "date": "2024-12-16",
+        "context": {
+          "dayType": "weekday"
+        },
+        "activities": [
+          {
+            "activityId": "act_wake_up_without_alarm_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "wake_up_without_alarm",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T07:00:00+01:00",
+              "preferred": "2024-12-16T07:00:00+01:00",
+              "latest": "2024-12-16T07:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 5,
+              "preferredMinutes": 15,
+              "maximumMinutes": 25
+            },
+            "mandatory": true,
+            "priority": 90
+          },
+          {
+            "activityId": "act_morning_toilet_and_shower_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "morning_toilet_and_shower",
+            "locationIds": [
+              "bathroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T07:20:00+01:00",
+              "preferred": "2024-12-16T07:20:00+01:00",
+              "latest": "2024-12-16T07:20:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 15,
+              "preferredMinutes": 25,
+              "maximumMinutes": 35
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_change_clothes_and_have_snack_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "change_clothes_and_have_snack",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T07:50:00+01:00",
+              "preferred": "2024-12-16T07:50:00+01:00",
+              "latest": "2024-12-16T07:50:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 5,
+              "preferredMinutes": 15,
+              "maximumMinutes": 25
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_prepare_and_eat_breakfast_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "prepare_and_eat_breakfast",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T08:10:00+01:00",
+              "preferred": "2024-12-16T08:10:00+01:00",
+              "latest": "2024-12-16T08:10:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 20,
+              "preferredMinutes": 30,
+              "maximumMinutes": 40
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_work_shift_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "work_shift",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T09:00:00+01:00",
+              "preferred": "2024-12-16T09:00:00+01:00",
+              "latest": "2024-12-16T09:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 470,
+              "preferredMinutes": 480,
+              "maximumMinutes": 490
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_eat_dinner_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "eat_dinner",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T19:00:00+01:00",
+              "preferred": "2024-12-16T19:00:00+01:00",
+              "latest": "2024-12-16T19:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 35,
+              "preferredMinutes": 45,
+              "maximumMinutes": 55
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_watch_documentary_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "watch_documentary",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T20:00:00+01:00",
+              "preferred": "2024-12-16T20:00:00+01:00",
+              "latest": "2024-12-16T20:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 50,
+              "preferredMinutes": 60,
+              "maximumMinutes": 70
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_evening_hygiene_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "evening_hygiene",
+            "locationIds": [
+              "bathroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T21:15:00+01:00",
+              "preferred": "2024-12-16T21:15:00+01:00",
+              "latest": "2024-12-16T21:15:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 10,
+              "preferredMinutes": 20,
+              "maximumMinutes": 30
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_sleep_2024-12-16",
+            "actorId": "marco_rossi",
+            "intent": "sleep",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-16T22:00:00+01:00",
+              "preferred": "2024-12-16T22:00:00+01:00",
+              "latest": "2024-12-16T22:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 80,
+              "preferredMinutes": 90,
+              "maximumMinutes": 100
+            },
+            "mandatory": true,
+            "priority": 90
+          }
+        ]
+      },
+      {
+        "date": "2024-12-17",
+        "context": {
+          "dayType": "weekday"
+        },
+        "activities": [
+          {
+            "activityId": "act_wake_up_without_alarm_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "wake_up_without_alarm",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T07:00:00+01:00",
+              "preferred": "2024-12-17T07:00:00+01:00",
+              "latest": "2024-12-17T07:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 5,
+              "preferredMinutes": 15,
+              "maximumMinutes": 25
+            },
+            "mandatory": true,
+            "priority": 90
+          },
+          {
+            "activityId": "act_morning_toilet_and_shower_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "morning_toilet_and_shower",
+            "locationIds": [
+              "bathroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T07:20:00+01:00",
+              "preferred": "2024-12-17T07:20:00+01:00",
+              "latest": "2024-12-17T07:20:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 15,
+              "preferredMinutes": 25,
+              "maximumMinutes": 35
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_change_clothes_and_have_snack_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "change_clothes_and_have_snack",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T07:50:00+01:00",
+              "preferred": "2024-12-17T07:50:00+01:00",
+              "latest": "2024-12-17T07:50:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 5,
+              "preferredMinutes": 15,
+              "maximumMinutes": 25
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_prepare_and_eat_breakfast_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "prepare_and_eat_breakfast",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T08:10:00+01:00",
+              "preferred": "2024-12-17T08:10:00+01:00",
+              "latest": "2024-12-17T08:10:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 20,
+              "preferredMinutes": 30,
+              "maximumMinutes": 40
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_work_shift_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "work_shift",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T09:00:00+01:00",
+              "preferred": "2024-12-17T09:00:00+01:00",
+              "latest": "2024-12-17T09:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 470,
+              "preferredMinutes": 480,
+              "maximumMinutes": 490
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_eat_dinner_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "eat_dinner",
+            "locationIds": [
+              "kitchen"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T19:00:00+01:00",
+              "preferred": "2024-12-17T19:00:00+01:00",
+              "latest": "2024-12-17T19:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 35,
+              "preferredMinutes": 45,
+              "maximumMinutes": 55
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_read_in_bed_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "read_in_bed",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T20:00:00+01:00",
+              "preferred": "2024-12-17T20:00:00+01:00",
+              "latest": "2024-12-17T20:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 50,
+              "preferredMinutes": 60,
+              "maximumMinutes": 70
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_evening_hygiene_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "evening_hygiene",
+            "locationIds": [
+              "bathroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T21:15:00+01:00",
+              "preferred": "2024-12-17T21:15:00+01:00",
+              "latest": "2024-12-17T21:15:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 10,
+              "preferredMinutes": 20,
+              "maximumMinutes": 30
+            },
+            "mandatory": true,
+            "priority": 50
+          },
+          {
+            "activityId": "act_sleep_2024-12-17",
+            "actorId": "marco_rossi",
+            "intent": "sleep",
+            "locationIds": [
+              "bedroom"
+            ],
+            "startWindow": {
+              "earliest": "2024-12-17T22:00:00+01:00",
+              "preferred": "2024-12-17T22:00:00+01:00",
+              "latest": "2024-12-17T22:00:00+01:00"
+            },
+            "duration": {
+              "minimumMinutes": 80,
+              "preferredMinutes": 90,
+              "maximumMinutes": 100
+            },
+            "mandatory": true,
+            "priority": 90
+          }
+        ]
+      }
+    ]
+  },
+  "personalProcessPackage": {
+    "schemaVersion": "1.0.0",
+    "packageId": "marco_rossi_process_package",
+    "packageVersion": "1.0.0",
+    "sourceScenarioId": "sim_marco_rossi",
+    "sourceScenarioVersion": "1.0.0",
+    "language": "it",
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.2.0",
+      "promptTemplateVersion": "generate-simulation-inputs-1.2.0",
+      "humanReviewed": false,
+      "modelName": "qwen2.5-coder",
+      "generatedAt": "2023-10-01T12:00:00Z"
+    },
+    "catalogs": {
+      "activityCatalog": {
+        "catalogId": "smart_home_activity_catalog",
+        "version": "1.0.0"
+      },
+      "variableCatalog": {
+        "catalogId": "smart_home_variable_catalog",
+        "version": "1.0.0"
+      },
+      "actionCatalog": {
+        "catalogId": "smart_home_action_catalog",
+        "version": "1.0.0"
+      }
+    },
+    "processModels": [
+      {
+        "processModelId": "marco_rossi_wake_up",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Sveglia Marco Rossi",
+        "description": "Processo di sveglia per Marco Rossi",
+        "implementedComponents": [
+          "wake_up"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_wake_up",
+            "kind": "action",
+            "actionType": "wake_up",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_wake_up"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_morning_toilet_and_shower",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Igiene mattutina Marco Rossi",
+        "description": "Processo di igiene mattutina per Marco Rossi",
+        "implementedComponents": [
+          "morning_toilet_and_shower"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_morning_toilet_and_shower",
+            "kind": "action",
+            "actionType": "morning_toilet_and_shower",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_morning_toilet_and_shower"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_change_clothes_and_eat_snack",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Cambiamento vestiti e snack Marco Rossi",
+        "description": "Processo di cambiamento vestiti e snack per Marco Rossi",
+        "implementedComponents": [
+          "change_clothes_and_eat_snack"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_change_clothes_and_eat_snack",
+            "kind": "action",
+            "actionType": "change_clothes_and_eat_snack",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_change_clothes_and_eat_snack"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_prepare_and_eat_breakfast",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Preparazione e consumo del colazione Marco Rossi",
+        "description": "Processo di preparazione e consumo del colazione per Marco Rossi",
+        "implementedComponents": [
+          "prepare_and_eat_breakfast"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_prepare_and_eat_breakfast",
+            "kind": "action",
+            "actionType": "prepare_and_eat_breakfast",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_prepare_and_eat_breakfast"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_work_shift",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Turno di lavoro Marco Rossi",
+        "description": "Processo di turno di lavoro per Marco Rossi",
+        "implementedComponents": [
+          "work_shift"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_work_shift",
+            "kind": "action",
+            "actionType": "work_shift",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_work_shift"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_eat_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Cena Marco Rossi",
+        "description": "Processo di cena per Marco Rossi",
+        "implementedComponents": [
+          "eat_dinner"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_eat_dinner",
+            "kind": "action",
+            "actionType": "eat_dinner",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_eat_dinner"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_watch_documentary",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Assistenza a documentari Marco Rossi",
+        "description": "Processo di assistenza a documentari per Marco Rossi",
+        "implementedComponents": [
+          "watch_documentary"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_watch_documentary",
+            "kind": "action",
+            "actionType": "watch_documentary",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_watch_documentary"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_evening_hygiene",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Igiene serale Marco Rossi",
+        "description": "Processo di igiene serale per Marco Rossi",
+        "implementedComponents": [
+          "evening_hygiene"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_evening_hygiene",
+            "kind": "action",
+            "actionType": "evening_hygiene",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_evening_hygiene"
+          }
+        ]
+      },
+      {
+        "processModelId": "marco_rossi_sleep",
+        "processModelVersion": "1.0.0",
+        "residentId": "marco_rossi",
+        "title": "Sono in camera da letto Marco Rossi",
+        "description": "Processo di dormire per Marco Rossi",
+        "implementedComponents": [
+          "sleep"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "act_sleep",
+            "kind": "action",
+            "actionType": "sleep",
+            "durationWeight": 1
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "act_sleep"
+          }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "marco_rossi_wake_up_binding",
+        "residentId": "marco_rossi",
+        "intent": "wake_up_without_alarm",
+        "processModelId": "marco_rossi_wake_up"
+      },
+      {
+        "bindingId": "marco_rossi_morning_toilet_and_shower_binding",
+        "residentId": "marco_rossi",
+        "intent": "morning_toilet_and_shower",
+        "processModelId": "marco_rossi_morning_toilet_and_shower"
+      },
+      {
+        "bindingId": "marco_rossi_change_clothes_and_eat_snack_binding",
+        "residentId": "marco_rossi",
+        "intent": "change_clothes_and_have_snack",
+        "processModelId": "marco_rossi_change_clothes_and_eat_snack"
+      },
+      {
+        "bindingId": "marco_rossi_prepare_and_eat_breakfast_binding",
+        "residentId": "marco_rossi",
+        "intent": "prepare_and_eat_breakfast",
+        "processModelId": "marco_rossi_prepare_and_eat_breakfast"
+      },
+      {
+        "bindingId": "marco_rossi_work_shift_binding",
+        "residentId": "marco_rossi",
+        "intent": "work_shift",
+        "processModelId": "marco_rossi_work_shift"
+      },
+      {
+        "bindingId": "marco_rossi_eat_dinner_binding",
+        "residentId": "marco_rossi",
+        "intent": "eat_dinner",
+        "processModelId": "marco_rossi_eat_dinner"
+      },
+      {
+        "bindingId": "marco_rossi_watch_documentary_binding",
+        "residentId": "marco_rossi",
+        "intent": "watch_documentary",
+        "processModelId": "marco_rossi_watch_documentary"
+      },
+      {
+        "bindingId": "marco_rossi_evening_hygiene_binding",
+        "residentId": "marco_rossi",
+        "intent": "evening_hygiene",
+        "processModelId": "marco_rossi_evening_hygiene"
+      },
+      {
+        "bindingId": "marco_rossi_sleep_binding",
+        "residentId": "marco_rossi",
+        "intent": "sleep",
+        "processModelId": "marco_rossi_sleep"
+      }
+    ]
+  }
+}
