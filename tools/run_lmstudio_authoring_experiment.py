@@ -27,9 +27,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def write_json(path: Path, value: object) -> None:
-    path.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:
@@ -151,9 +149,9 @@ def main() -> int:
         runs.append(run_result)
         write_json(args.output_dir / "generation-metadata.json", metadata)
 
-    metadata["experimentFinishedAt"] = datetime.now(
-        ZoneInfo("Europe/Rome")
-    ).isoformat(timespec="seconds")
+    metadata["experimentFinishedAt"] = datetime.now(ZoneInfo("Europe/Rome")).isoformat(
+        timespec="seconds"
+    )
     write_json(args.output_dir / "generation-metadata.json", metadata)
     return 0
 
