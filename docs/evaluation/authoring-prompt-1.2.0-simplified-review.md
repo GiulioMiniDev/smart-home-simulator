@@ -1,9 +1,14 @@
 # Review del prompt semplificato 1.2.0 per LLM locali
 
+> **Nota storica:** questo documento descrive il primo trial rifiutato del commit `6dc5d1b`.
+> La successiva prova settimanale valida e i suoi limiti qualitativi sono documentati in
+> [`esperimento_simulazione_7giorni_mario_rossi.md`](esperimento_simulazione_7giorni_mario_rossi.md).
+
 - Data della review: 2026-07-21
 - Commit esaminato: `6dc5d1b` (`Simplified prompt + local llm model generation (qwen 7b)`)
 - Prompt esaminato: `prompts/generate-simulation-inputs-1.2.0-simplified.md`
-- Risposta esaminata: `generated/marco_2026_qwen9b.json`
+- Risposta esaminata:
+  `generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/failed-trials/marco-2024-invalid.authoring-bundle.json`
 - Modello dichiarato nella risposta: `qwen2.5-coder`
 - Stato complessivo: **non accettato; la simulazione non può ancora partire da questa risposta**
 
@@ -50,7 +55,7 @@ In particolare, non bisogna:
 - rendere opzionali i nodi finali o il movimento nei process model;
 - indebolire il controllo fra componenti semantici e sequenze di azioni;
 - disabilitare errori, trasformarli in warning o modificare i test per farli passare;
-- correggere manualmente `generated/marco_2026_qwen9b.json` e presentarlo come nuova
+- correggere manualmente il bundle Marco rifiutato in `failed-trials/` e presentarlo come nuova
   generazione del modello.
 
 L'output deve adattarsi al contratto congelato, non il contratto all'output del modello.
@@ -144,7 +149,8 @@ la simulazione è partita.
 
 ## Risultato effettivo della generazione Qwen
 
-L'esecuzione del gate ufficiale sul file `generated/marco_2026_qwen9b.json` ha prodotto:
+L'esecuzione del gate ufficiale sul bundle Marco rifiutato conservato in `failed-trials/` ha
+prodotto:
 
 | Controllo | Risultato |
 |---|---:|

@@ -1,0 +1,48 @@
+{
+  "experimentId": "2026-07-21-qwen2.5-coder-7b-q4km",
+  "experimentDate": "2026-07-21",
+  "sourceCommit": "5d4f497a0b59d3170a107ed8d21d395d6593c4d8",
+  "prompt": {
+    "path": "prompts/generate-simulation-inputs-1.2.0-simplified.md",
+    "version": "generate-simulation-inputs-1.2.0-simplified",
+    "sha256": "5a7d7900b1fe59651eb006f76b858faee65cf85db73a77ba6244af2803a13295"
+  },
+  "authoring": {
+    "engine": "LM Studio",
+    "engineVersion": null,
+    "model": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+    "modelFile": "qwen2.5-coder-7b-q4_k_m.gguf",
+    "quantization": "Q4_K_M",
+    "temperature": 0.2,
+    "topP": 0.9,
+    "topK": 40,
+    "contextLengthTokens": null,
+    "gpuLayerOffload": null,
+    "originalCaseDescriptionsRetained": false,
+    "firstPassAccepted": null,
+    "repairAttemptCount": null,
+    "manualEditsBeforeIngestion": null,
+    "notes": [
+      "The original report stated a context range of 8192-16384 tokens, not the exact value used.",
+      "Exact LM Studio version, GPU offload, first-pass status, repair count and manual-edit history were not retained."
+    ]
+  },
+  "originalExecution": {
+    "reportedPlatform": "Windows 11 Home 64-bit",
+    "windowsBuild": null,
+    "shell": "PowerShell 7",
+    "pythonVersion": "3.13.x",
+    "exactCommandsRetained": false,
+    "terminalLogsRetained": false
+  },
+  "macosVerification": {
+    "date": "2026-07-21",
+    "pythonVersion": "3.12.13",
+    "ingestionSucceeded": true,
+    "simulationSucceeded": true,
+    "canonicalArtifactsVerified": 17,
+    "structurallyEqualArtifacts": 17,
+    "workspaceManifestEqual": true
+  }
+}
+

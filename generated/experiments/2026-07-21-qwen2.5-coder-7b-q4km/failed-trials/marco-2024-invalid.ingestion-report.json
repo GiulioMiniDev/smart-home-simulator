@@ -1,0 +1,618 @@
+{
+  "ingestorVersion": "1.1.0",
+  "valid": false,
+  "bundleVersion": "1.0.0",
+  "scenarioId": "sim_marco_rossi",
+  "packageId": "marco_rossi_process_package",
+  "canonicalPlanSha256": "e6d6907ac1cb48ac1b49bc6e5eadcf9d95f5519f72fc3e2ced819c2dfc7db8d5",
+  "issues": [
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[0].processModelId",
+      "message": "The process graph omits an ordered action sequence required by its components.",
+      "details": {
+        "missingComponents": [
+          "wake_up"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[1].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "use_toilet",
+          "shower"
+        ],
+        "implemented": [
+          "morning_toilet_and_shower"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[2].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "change_clothes",
+          "consume_snack"
+        ],
+        "implemented": [
+          "change_clothes_and_eat_snack"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[3].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "prepare_food",
+          "consume_meal"
+        ],
+        "implemented": [
+          "prepare_and_eat_breakfast"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[4].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "work"
+        ],
+        "implemented": [
+          "work_shift"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[5].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "consume_meal"
+        ],
+        "implemented": [
+          "eat_dinner"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[6].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "watch_media"
+        ],
+        "implemented": [
+          "watch_documentary"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[7].processModelId",
+      "message": "The process model does not implement the intent's ordered components.",
+      "details": {
+        "expected": [
+          "personal_hygiene"
+        ],
+        "implemented": [
+          "evening_hygiene"
+        ]
+      }
+    },
+    {
+      "code": "PROCESS_COMPONENT_MISMATCH",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.bindings[8].processModelId",
+      "message": "The process graph omits an ordered action sequence required by its components.",
+      "details": {
+        "missingComponents": [
+          "sleep"
+        ]
+      }
+    },
+    {
+      "code": "MISSING_PROCESS_BINDING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.days[1].activities[6]",
+      "message": "No process model applies to 'read_in_bed' for 'marco_rossi'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[0].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[0].nodes",
+      "message": "Node 'act_wake_up' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[0].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[0].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[0].nodes[1]",
+      "message": "Node 'act_wake_up' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[0].nodes[1].actionType",
+      "message": "Unknown action type 'wake_up'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[1].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[1].nodes",
+      "message": "Node 'act_morning_toilet_and_shower' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[1].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[1].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[1].nodes[1]",
+      "message": "Node 'act_morning_toilet_and_shower' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[1].nodes[1].actionType",
+      "message": "Unknown action type 'morning_toilet_and_shower'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[2].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[2].nodes",
+      "message": "Node 'act_change_clothes_and_eat_snack' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[2].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[2].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[2].nodes[1]",
+      "message": "Node 'act_change_clothes_and_eat_snack' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[2].nodes[1].actionType",
+      "message": "Unknown action type 'change_clothes_and_eat_snack'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[3].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[3].nodes",
+      "message": "Node 'act_prepare_and_eat_breakfast' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[3].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[3].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[3].nodes[1]",
+      "message": "Node 'act_prepare_and_eat_breakfast' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[3].nodes[1].actionType",
+      "message": "Unknown action type 'prepare_and_eat_breakfast'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[4].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[4].nodes",
+      "message": "Node 'act_work_shift' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[4].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[4].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[4].nodes[1]",
+      "message": "Node 'act_work_shift' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[4].nodes[1].actionType",
+      "message": "Unknown action type 'work_shift'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[5].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[5].nodes",
+      "message": "Node 'act_eat_dinner' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[5].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[5].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[5].nodes[1]",
+      "message": "Node 'act_eat_dinner' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[5].nodes[1].actionType",
+      "message": "Unknown action type 'eat_dinner'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[6].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[6].nodes",
+      "message": "Node 'act_watch_documentary' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[6].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[6].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[6].nodes[1]",
+      "message": "Node 'act_watch_documentary' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[6].nodes[1].actionType",
+      "message": "Unknown action type 'watch_documentary'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[7].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[7].nodes",
+      "message": "Node 'act_evening_hygiene' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[7].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[7].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[7].nodes[1]",
+      "message": "Node 'act_evening_hygiene' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[7].nodes[1].actionType",
+      "message": "Unknown action type 'evening_hygiene'.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_END_INVALID",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[8].nodes",
+      "message": "A process model requires at least one end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[8].nodes",
+      "message": "Node 'act_sleep' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "GRAPH_NODE_DEAD",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[8].nodes",
+      "message": "Node 'start' is not on a path from start to an end node.",
+      "details": {}
+    },
+    {
+      "code": "PROCESS_MOVEMENT_MISSING",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[8].nodes",
+      "message": "A process model must expose movement at the project trace granularity.",
+      "details": {}
+    },
+    {
+      "code": "INVALID_GRAPH_DEGREE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[8].nodes[1]",
+      "message": "Node 'act_sleep' has invalid incoming/outgoing degree for kind 'action'.",
+      "details": {
+        "incoming": 1,
+        "outgoing": 0
+      }
+    },
+    {
+      "code": "UNKNOWN_ACTION_TYPE",
+      "severity": "error",
+      "stage": "behavior",
+      "path": "$.personalProcessPackage.processModels[8].nodes[1].actionType",
+      "message": "Unknown action type 'sleep'.",
+      "details": {}
+    }
+  ],
+  "artifacts": [],
+  "summary": {
+    "scenarioErrorCount": 0,
+    "compilationErrorCount": 0,
+    "behaviorErrorCount": 64,
+    "outputErrorCount": 0,
+    "warningCount": 0,
+    "errorCount": 64
+  }
+}

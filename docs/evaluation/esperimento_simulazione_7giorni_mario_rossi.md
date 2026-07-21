@@ -1,116 +1,186 @@
-# Report Esperimento: Simulazione Smart Home 7 Giorni (Mario Rossi) & Benchmark 2 Giorni (Marco Rossi)
+# Esperimento di authoring locale e simulazione end-to-end — Mario Rossi, 7 giorni
 
-**Data dell'Esperimento**: 21 Luglio 2026  
-**Autore / Pair Programming**: AI Assistant (Antigravity) & Utente  
-**Framework**: `smart_home_sim` (Smart Home Behavioral & Environmental Simulator)  
-**Versione Prompt**: `v1.2.0-simplified` ([prompts/generate-simulation-inputs-1.2.0-simplified.md](file:///c:/vscode/smart-home-simulator/prompts/generate-simulation-inputs-1.2.0-simplified.md))
+- Data dell'esperimento: 2026-07-21
+- Commit che ha introdotto gli output: `5d4f497a0b59d3170a107ed8d21d395d6593c4d8`
+- Prompt usato: [`generate-simulation-inputs-1.2.0-simplified.md`](../../prompts/generate-simulation-inputs-1.2.0-simplified.md)
+- SHA-256 del prompt: `5a7d7900b1fe59651eb006f76b858faee65cf85db73a77ba6244af2803a13295`
+- Modello dichiarato: `Qwen2.5-Coder-7B-Instruct`, GGUF `Q4_K_M`
+- Stato: **ingestion, materializzazione e simulazione completate con zero errori e warning**
 
----
+## 1. Obiettivo e corretta interpretazione
 
-## 1. Obiettivo dell'Esperimento
+L'esperimento verifica che un LLM locale da 7B parametri possa produrre un
+`SimulationAuthoringBundle` settimanale capace di attraversare l'intera pipeline
+deterministica senza modifiche al codice Python, agli schemi, ai cataloghi o ai validatori.
 
-Valutare la capacità del sistema di authoring e del motore di simulazione comportamentale di gestire scenari sintetici **ad alto carico (stress test su 7 giorni consecutivi)** per il residente **Mario Rossi** (72 anni, pensionato, Roma), confrontando le prestazioni ed i dati di telemetria prodotte con la simulazione di benchmark su **2 giorni** del residente **Marco Rossi**.
+È un **test funzionale end-to-end di authoring locale su sette giorni**, non uno stress test
+prestazionale: non furono registrati tempo di inferenza, memoria di picco o throughput e il
+caso contiene 98 attività, meno delle 173 attività del golden settimanale del progetto.
 
-Tutti i dati dell'esperimento sono stati generati rispettando rigidamente la specifica dei prompt semplificati ed eseguiti end-to-end senza alcuna modifica al codice Python del simulatore o ai cataloghi congelati.
+Il benchmark Marco di due giorni è mantenuto come confronto quantitativo. Non è una seconda
+prova completa di first-pass authoring, perché la sua risposta LLM grezza accettata e il suo
+ingestion report non furono conservati.
 
----
+## 2. Configurazione registrata e limiti di provenance
 
-## 2. Hardware, Piattaforma & Configurazione LM Studio
+La configurazione riportata dall'operatore è:
 
-### 2.1 Ambiente Host & Runtime
-* **Sistema Operativo**: Windows 11 Home (Build 64-bit)
-* **Shell & Execution**: PowerShell 7 / Python 3.13.x
-* **Simulatore**: `smart_home_sim` (CLI e pacchetto di simulazione ad eventi discreti)
+- piattaforma originale: Windows 11 Home 64-bit;
+- shell: PowerShell 7;
+- Python: `3.13.x` — patch version non registrata;
+- engine: LM Studio — versione non registrata;
+- modello: `Qwen/Qwen2.5-Coder-7B-Instruct-GGUF`;
+- file: `qwen2.5-coder-7b-q4_k_m.gguf`;
+- temperatura: `0.2`;
+- top-p: `0.9`;
+- top-k: `40`.
 
-### 2.2 Configurazione LM Studio (Inference Engine)
-* **Modello LLM di Authoring**: `Qwen/Qwen2.5-Coder-7B-Instruct-GGUF`
-* **Nome File Quantizzato**: `qwen2.5-coder-7b-q4_k_m.gguf`
-* **Quantizzazione**: `Q4_K_M` (4-bit medium quantization with 6-bit state tensors)
-* **Context Window**: 8.192 – 16.384 token
-* **Temperatura**: `0.2` (risposta deterministica orientata al codice JSON)
-* **Top-P / Top-K**: `0.9` / `40`
-* **CPU/GPU Acceleration**: Offload dei layer su GPU / CUDA / Metal API (dove disponibile)
+Non furono registrati il context length esatto, il numero di layer offloaded, i log completi
+di PowerShell, la descrizione originale dei casi, il numero di tentativi o repair e
+l'eventuale presenza di modifiche manuali prima dell'ingestion. Non è quindi corretto
+affermare che l'output fu certamente accettato al primo tentativo o non modificato a mano.
+Il campo `humanReviewed: false` del bundle descrive la provenance dichiarata dal documento,
+ma non sostituisce questi dati sperimentali mancanti.
 
----
+I dati disponibili e quelli non conservati sono registrati in
+[`generation-metadata.json`](../../generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/generation-metadata.json).
 
-## 3. Specifiche del Prompt Usato (`v1.2.0-simplified`)
+## 3. Ordine e localizzazione degli artefatti
 
-Il prompt utilizzato per l'authoring è disponibile al path [prompts/generate-simulation-inputs-1.2.0-simplified.md](file:///c:/vscode/smart-home-simulator/prompts/generate-simulation-inputs-1.2.0-simplified.md).
+La prova è isolata sotto
+[`generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/`](../../generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/README.md).
 
-### 3.1 Regole e Vincoli Rispettati
-1. **Separazione Azioni Primitive vs Intenti/Componenti**:
-   - `actionType` ammessi soltanto tra i 24 tipi primitivi del catalogo `smart_home_action_catalog` v1.0.0 (es. `move_to`, `take_item`, `put_item`, `leave_home`, `enter_home`, `change_posture`, `prepare_food`, `consume`, `leisure`, `exercise`).
-2. **Struttura dei Grafi di Processo (DAG)**:
-   - Nodo di `start` → Nodi di movimento (`move_to` / `travel_to`) → Nodi azione con `durationWeight: 1` → Nodo `end`.
-3. **Regola dei Precondizioni Item Role (`take_item` / `put_item`)**:
-   - `put_item` deve utilizzare lo stesso identico valore di `itemRole` invocato da `take_item` (es. `medication_storage` → `medication_storage` oppure `food_storage` → `food_storage`) per soddisfare il fatto `resident.carrying.{itemRole} == true`.
-4. **Ciclo Autocontenuto per Attività Esterne**:
-   - Ogni attività che comporta l'uscita dall'abitazione (`buy_groceries`, `walk`, `travel_to_pharmacy`, `travel_to_neighborhood_bar`) esegue la sequenza:  
-     `leave_home` (imposta `at_home = false`) → `travel_to` (destinazione) → Azione principale → `move_to_capability` (home_entrance) → `enter_home` (ripristina `at_home = true`).
-5. **Copertura 100% Process Binding**:
-   - Ogni intento generato nello scenario ha un binding univoco ad un `processModel` corrispondente.
+Per Mario la catena è completa e ordinata:
 
----
+```text
+mario-7d/authoring-bundle.json
+  -> mario-7d/ingestion-report.json
+  -> mario-7d/ingested/scenario.json
+  -> mario-7d/ingested/personal-process-package.json
+  -> mario-7d/simulation/
+```
 
-## 4. Risultati della Simulazione & Statistiche Comportamentali
+La directory finale contiene 17 artefatti elencati dal manifest più
+`workspace-manifest.json`, quindi 18 file fisici. Il vecchio output incompleto
+`generated/mario_week_temp/` non fa parte dell'esperimento.
 
-La simulazione è stata validata attraverso la pipeline a 6 Gate del simulatore:
-- **Gate 0-5 (Ingestion & Authoring Bundle Validation)**: PASSED (0 Errori, 0 Warning)
-- **Gate 6 (Synthetic Discrete Event Simulation)**: PASSED (0 Errori, 0 Warning)
+La directory [`marco-2d/`](../../generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/marco-2d/README.md)
+contiene gli input ingested e la simulazione, ma documenta esplicitamente la risposta grezza
+mancante. La prima risposta Marco rifiutata è conservata separatamente in
+[`failed-trials/`](../../generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/failed-trials/README.md)
+con il relativo report da 64 errori; non è la sorgente del benchmark valido.
 
-### 4.1 Tabella Comparativa (Mario 7 Giorni vs Marco 2 Giorni)
+## 4. Gate superati e verifica cross-platform
 
-| Metrica di Simulazione | **Mario Rossi (Stress Test 7g)** | **Marco Rossi (Benchmark 2g)** | **Variazione (%)** |
-| :--- | :--- | :--- | :--- |
-| **Finestra Temporale** | 30/10/2026 – 05/11/2026 (7g) | 30/10/2026 – 31/10/2026 (2g) | **+250%** |
-| **Tasso di Completamento** | **100.0% (98 / 98)** | **100.0% (15 / 15)** | **Stabile a 100%** |
-| **Attività Fallite / Dropped** | **0 / 0** | **0 / 0** | **0 Errori** |
-| **Azioni Eseguite (`actionExecutionCount`)** | **487** | **75** | **+549.3%** |
-| **Spostamenti Domestici (`movementCount`)** | **86** | **12** | **+616.7%** |
-| **Transizioni di Stato Ambientali** | **647** | **95** | **+581.1%** |
-| **Tasso di Errore / Warning Engine** | **0 / 0** | **0 / 0** | **100% Clean Run** |
+Il bundle Mario è stato ricontrollato con:
 
----
+```bash
+PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim ingest-authoring-output \
+  generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/mario-7d/authoring-bundle.json \
+  --output-dir <directory-temporanea>/ingested \
+  --format json \
+  --report-output <directory-temporanea>/ingestion-report.json
 
-## 5. Statistiche e Telemetria dei Log Sensoriali (`observable-sensor-log.json`)
+PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim run-synthetic \
+  <directory-temporanea>/ingested/scenario.json \
+  <directory-temporanea>/ingested/personal-process-package.json \
+  --output-dir <directory-temporanea>/simulation
+```
 
-Il modulo sensoriale del simulatore proietta le tracce di esecuzione in eventi e misurazioni di sensori fisici e ambientali.
+Risultati verificati:
 
-### 5.1 Confronto della Telemetria Sensoriale
+| Gate | Esito |
+|---|---:|
+| Sintassi ed envelope Pydantic | superato |
+| Validazione scenario | 0 errori, 0 warning |
+| Compilazione | `OPTIMAL`, 98 attività pianificate |
+| Validazione comportamentale | 0 errori, 0 warning |
+| Ingestion atomica | 2 artefatti pubblicati |
+| Materializzazione casa e binding | superata |
+| Simulazione | 98/98 attività completate |
+| Proiezione sensoriale | 11.340 osservazioni |
+| Manifest | 17/17 digest canonici coerenti |
 
-| Parametro Log Sensori | **Mario Rossi (7 Giorni)** | **Marco Rossi (2 Giorni)** | **Note Comparative** |
-| :--- | :--- | :--- | :--- |
-| **Totale Record Rilevati** | **11.340 record** | **2.082 record** | **+444,7%** volume dati prodotto |
-| **Media Letture / Giorno** | **1.620,0 record/giorno** | **1.041,0 record/giorno** | **+55,6%** densità giornaliera per Mario |
-| **Sensori Attivi Installati** | **12 sensori** | **9 sensori** | Layout casa Mario include il corridoio |
-| **Rilevamenti Movimento (PIR)** | **7.914** (69,8%) | **1.306** (62,7%) | 1.130 PIR/giorno per Mario vs 653/giorno per Marco |
-| **Campionamenti Temperatura** | **3.360** (29,6%) | **768** (36,9%) | Campionamento continuo su 5 ambienti per Mario |
-| **Eventi Contatto (Porte/Frigo/Armadi)**| **66** (0,6%) | **8** (0,4%) | 9,4 contatti/giorno per Mario vs 4,0 per Marco |
+Gli artefatti attribuiti all'esecuzione Windows sono stati rigenerati su macOS con Python
+3.12.13. Tutti i 17 artefatti sono risultati strutturalmente e canonicalmente identici e il
+manifest è identico. Questo fornisce una verifica concreta della deterministica
+cross-platform, pur restando assenti i log terminali originali di Windows.
 
-### 5.2 Ripartizione Top Sensori per la Simulazione di Mario Rossi
-1. 🍳 **`pir_kitchen`**: **4.962 rilevamenti** *(708,8 eventi/giorno)* – Cucina molto vissuta per pasti (colazione, pranzo, cena), lavaggio piatti e preparazione cibo.
-2. 🚿 **`pir_bathroom`**: **1.456 rilevamenti** *(208,0 eventi/giorno)* – Uso quotidiano di doccia e servizi igienici di prima mattina e sera.
-3. 📺 **`pir_living_room`**: **1.024 rilevamenti** *(146,3 eventi/giorno)* – Attività di lettura, relax pomeridiano, TV serale ed esercizio leggero.
-4. 🌡️ **`temperature_*`** (cucina, soggiorno, camera, bagno, corridoio): **672 letture ciascuno** *(96 letture/giorno per stanza)*.
-5. 🚪 **`pir_hallway`**: **388 rilevamenti** *(55,4 eventi/giorno)* – Passaggi interni tra gli ambienti e accesso al mobile medicinali.
-6. 🛏️ **`pir_bedroom`**: **84 rilevamenti** *(12,0 eventi/giorno)* – Transizioni di riposo notturno e risvegli.
+## 5. Risultati di simulazione
 
-### 5.3 Volume Giornaliero Rilevato (Mario Rossi)
-- **2026-10-30 (Venerdì)**: 1.662 record *(Spesa al supermercato + routine casa)*
-- **2026-10-31 (Sabato)**: 1.578 record *(Passeggiata breve + routine)*
-- **2026-11-01 (Domenica)**: 1.586 record *(Passeggiata domenicale estesa + routine)*
-- **2026-11-02 (Lunedì)**: 1.570 record *(Uscita farmacia + routine)*
-- **2026-11-03 (Martedì)**: 1.604 record *(Caffè/Aperitivo al bar di quartiere + routine)*
-- **2026-11-04 (Mercoledì)**: 1.662 record *(Scorte e spesa fresca + routine)*
-- **2026-11-05 (Giovedì)**: 1.678 record *(Ginnastica indoor + routine)*
+| Metrica | Mario, 7 giorni | Marco, 2 giorni | Variazione |
+|---|---:|---:|---:|
+| Attività completate | 98/98 | 15/15 | 100% entrambi |
+| Attività fallite / dropped | 0/0 | 0/0 | invariato |
+| Azioni eseguite | 487 | 75 | +549,3% |
+| Movimenti | 86 | 12 | +616,7% |
+| Transizioni di stato | 647 | 95 | +581,1% |
+| Errori / warning | 0/0 | 0/0 | invariato |
 
----
+Il catalogo autorevole contiene 27 action type. I 15 process model Mario ne usano 21. Il
+bundle contiene 20 binding perché alcuni flussi realmente identici sono riutilizzati da più
+intent, comportamento ammesso dal simulatore.
 
-## 6. Localizzazione degli Artefatti Generati
+## 6. Telemetria sensoriale
 
-Tutti i risultati della simulazione sono stati salvati ed archiviati nelle directory locali:
+| Metrica | Mario, 7 giorni | Marco, 2 giorni |
+|---|---:|---:|
+| Osservazioni totali | 11.340 | 2.082 |
+| Media osservazioni/giorno | 1.620 | 1.041 |
+| Sensori installati | 12 | 10 |
+| Sensori con almeno un'osservazione | 12 | 9 |
+| PIR | 7.914 | 1.306 |
+| Temperatura | 3.360 | 768 |
+| Contatto | 66 | 8 |
 
-* **Documento di Report**: [docs/evaluation/esperimento_simulazione_7giorni_mario_rossi.md](file:///c:/vscode/smart-home-simulator/docs/evaluation/esperimento_simulazione_7giorni_mario_rossi.md)
-* **Bundle Generato**: [generated/mario_week_2026_simplified.authoring-bundle.json](file:///c:/vscode/smart-home-simulator/generated/mario_week_2026_simplified.authoring-bundle.json)
-* **Ingested Package**: [generated/mario_week_simplified_ingested/](file:///c:/vscode/smart-home-simulator/generated/mario_week_simplified_ingested/)
-* **Risultati di Simulazione (17 file)**: [generated/mario_week_simplified_simulation/](file:///c:/vscode/smart-home-simulator/generated/mario_week_simplified_simulation/)
+Conteggi giornalieri Mario:
+
+| Data | Osservazioni |
+|---|---:|
+| 2026-10-30 | 1.662 |
+| 2026-10-31 | 1.578 |
+| 2026-11-01 | 1.586 |
+| 2026-11-02 | 1.570 |
+| 2026-11-03 | 1.604 |
+| 2026-11-04 | 1.662 |
+| 2026-11-05 | 1.678 |
+
+La maggiore densità non dimostra da sola maggiore realismo: deriva dalla casa generata, dal
+numero di sensori, dalla durata delle azioni e dalla policy di campionamento.
+
+## 7. Valutazione qualitativa e anomalie note
+
+La prova rappresenta un miglioramento netto rispetto al trial fallito: action type,
+componenti, grafi, movimento, argomenti e binding sono formalmente corretti. La validità
+formale non rende però il comportamento automaticamente realistico.
+
+Anomalie presenti nell'output, lasciato intenzionalmente invariato:
+
+1. Ogni attività `sleep` ha durata preferita di **30 minuti**, con intervallo 20-45 minuti.
+   È incompatibile con un normale sonno notturno.
+2. `short_evening_walk` è collocata alle 10:30 del mattino e usa `neighborhood_bar` come
+   location, nonostante l'intent descriva una passeggiata serale.
+3. `wash_breakfast_dishes` è pianificata alle 13:30, dopo il pranzo anziché dopo la
+   colazione.
+4. Mario assume una terapia ogni mattina, ma il profilo del residente non registra una
+   condizione o una terapia che motivi l'attività.
+5. Tutti i giorni contengono esattamente 14 attività e differiscono quasi soltanto per una
+   singola attività di metà mattina; la varietà settimanale è limitata.
+6. `generatedAt` è `2026-10-29T20:00:00+01:00`, futuro rispetto alla data reale
+   dell'esperimento. È coerente con la cronologia simulata, ma non è una provenance reale.
+
+Queste anomalie non richiedono modifiche al simulatore. Sono diventate guardrail espliciti
+nel nuovo prompt sperimentale
+[`generate-simulation-inputs-1.2.1-simplified.md`](../../prompts/generate-simulation-inputs-1.2.1-simplified.md),
+mentre il prompt 1.2.0 usato per questa prova resta immutato e verificabile tramite digest.
+
+## 8. Conclusione
+
+L'obiettivo tecnico è raggiunto: un bundle attribuito a Qwen 2.5 Coder 7B attraversa
+ingestion, compilazione, validazione comportamentale, generazione della casa, simulazione e
+sensori, producendo lo stesso workspace verificato su Windows e macOS.
+
+Il risultato non dimostra ancora robustezza statistica del prompt né realismo del dataset.
+Per sostenere queste affermazioni servono descrizioni sorgente conservate, metadata completi,
+più generazioni indipendenti e metriche qualitative su sonno, pasti, terapia, varietà e
+coerenza temporale.

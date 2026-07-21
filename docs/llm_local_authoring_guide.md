@@ -1,84 +1,93 @@
-# Guida e Report: Generazione Locale di Simulazioni Smart Home con LLM (8GB VRAM)
+# Guida all'authoring locale con LLM 7B–8B
 
-## 1. Panoramica del Progetto e Obiettivo
+## Scopo
 
-Il sistema **Smart Home Simulator** richiede in ingresso un documento JSON strutturato denominato `SimulationAuthoringBundle` (composto da uno `scenario` e da un `personalProcessPackage`). 
-Questo report documenta l'ottimizzazione dell'ingegneria del prompt, la configurazione hardware dell'ambiente locale e l'architettura automatizzata di generazione e validazione per consentire a modelli linguistici locali di piccole dimensioni (7B-8B parametri) di generare simulazioni **100% valide e compilabili**.
+Il simulatore accetta un `SimulationAuthoringBundle` composto da `scenario` e
+`personalProcessPackage`. Un modello locale può generare questo bundle, ma il risultato è
+accettato soltanto dopo i gate deterministici di ingestion e simulazione.
 
----
+Il runtime non integra LM Studio né altri provider: la chiamata al modello resta esterna al
+simulatore. Nel repository non sono presenti script automatici per invocare LM Studio,
+autoriparare risposte o generare un intero anno.
 
-## 2. Configurazione dell'Ambiente e Hardware
+## Prompt disponibili
 
-### Hardware Locale Utente
-- **GPU**: NVIDIA GeForce RTX 3060 Ti (8 GB VRAM GDDR6).
-- **RAM / CPU**: Standard consumer setup.
+- `prompts/generate-simulation-inputs-1.2.0.md`: prompt completo e autorevole;
+- `prompts/generate-simulation-inputs-1.2.0-simplified.md`: versione compatta usata nella
+  prova Qwen del 2026-07-21;
+- `prompts/generate-simulation-inputs-1.2.1-simplified.md`: revisione successiva che aggiunge
+  guardrail di plausibilità e provenance.
 
-### Configurazione di LM Studio
-- **Server Locale API**: Attivo su `http://127.0.0.1:1234` (OpenAI-compatible endpoint `/v1/chat/completions`).
-- **Modello Consigliato**: **Qwen 2.5 Coder 7B Instruct** (quantizzazione `Q5_K_M` o `Q8_0`) oppure **Llama 3.1 8B Instruct** (`Q5_K_M`).
-- **Impostazioni Parametri LM Studio**:
-  - **Context Length**: `16384` (16K context window). Occupazione VRAM stabilità a ~5.8 GB.
-  - **Temperature**: `0.7` per generazioni creative e variate; `0.2` per test di conformità rigidi.
-  - **Max Tokens**: `-1` (nessun troncamento artificiale dell'output).
+Il prompt completo misura 102.717 byte. Il prompt semplificato 1.2.0 usato nella prova ne
+misura 24.717: una riduzione del 75,9% per byte. Le riduzioni in token devono essere misurate
+con il tokenizer del modello effettivamente usato.
 
----
+## Configurazione sperimentale registrata
 
-## 3. Ottimizzazione del Prompt (Prompt Semplificato v1.2.0)
+La prova riuscita ha dichiarato:
 
-### Il Problema Originale
-Il prompt di sistema ufficiale (`prompts/generate-simulation-inputs-1.2.0.md`) aveva una dimensione di **102 KB (oltre 25.000 token)** poiché incorporava lo schema JSON Schema Draft-2020 grezzo ed i cataloghi completi di descrizioni. Su modelli da 7B-8B parametri, questo causava:
-1. Troncamento e saturazione della memoria di contesto.
-2. Oltre 50 errori di schema ad ogni generazione (campi obbligatori dimenticati, stringhe grezze al posto di `ValueExpression`, errata collocazione di `durationWeight`).
+- LM Studio;
+- Qwen 2.5 Coder 7B Instruct GGUF;
+- quantizzazione `Q4_K_M`;
+- temperatura `0.2`;
+- top-p `0.9`;
+- top-k `40`;
+- esecuzione originale riportata su Windows 11 con PowerShell 7 e Python `3.13.x`.
 
-### La Soluzione Applicata
-È stato creato lo script `tools/build_simplified_prompt.py` che compila il prompt ottimizzato **`prompts/generate-simulation-inputs-1.2.0-simplified.md`**:
-- **Riduzione Token**: Ridotto del **90%** (da 102 KB a **17 KB / ~4.000 token**).
-- **TypeScript Interfaces**: Sostituito lo schema JSON grezzo con definizioni TypeScript leggibili ed espressive.
-- **Clarificatione Regole Tassative**:
-  - **Attività dello Scenario (`scenario.days[].activities`)**: DEVONO includere `startWindow` (`earliest`, `preferred`, `latest`) e `duration` (`minimumMinutes`, `preferredMinutes`, `maximumMinutes`). Nessun `durationWeight`.
-  - **Nodi dei Process Models (`personalProcessPackage.processModels[].nodes`)**: Nodi di tipo `"action"` DEVONO includere `"durationWeight": 1`. Nessuna `duration` o `startWindow`.
-  - **Espressioni di Valore (`ValueExpression`)**: Tutti gli argomenti delle azioni DEVONO essere formattati come oggetti (es. `{"source": "literal", "value": "standing"}` oppure `{"source": "activity_location", "index": 0}`).
+Non furono conservati versione di LM Studio, patch version di Python, context length esatto,
+GPU offload, prompt del caso, terminal log, numero di tentativi o storia delle eventuali
+correzioni manuali. Questi valori non devono essere ricostruiti o presentati come misurati.
 
----
+## Procedura
 
-## 4. Esito delle Prove e Validazione del Simulatore
+1. Scegliere un prompt e sostituire `[PERSON_AND_CASE_DESCRIPTION]` con la descrizione del
+   caso.
+2. Salvare la descrizione, il prompt o il suo digest e tutti i parametri di inference.
+3. Inviare il prompt al modello esterno e salvare la risposta JSON senza modificarla.
+4. Eseguire l'ingestion:
 
-### Risultato Ottenuto
-In data 21 Luglio 2026, l'esecuzione del loop automatico di generazione tramite LM Studio con il nuovo prompt semplificato ha prodotto il file:
-📂 **`generated/marco_2026_qwen9b.json`**
+```bash
+PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim ingest-authoring-output \
+  risposta.authoring-bundle.json \
+  --output-dir generated/esperimento/ingested \
+  --format json \
+  --report-output generated/esperimento/ingestion-report.json
+```
 
-### Risultati dei Test Automatici
-- **Sintassi JSON**: **VALIDA [OK]**
-- **Validazione dello Schema di Dominio Pydantic (`SimulationAuthoringBundle`)**: **PASSED 100% [OK]**
+Il successo richiede exit code `0`, `valid: true`, zero errori e la pubblicazione dei due
+input canonici. Il solo parsing Pydantic non è sufficiente.
 
-Il file generato dal modello locale rispetta al 100% i contratti formali del simulatore ed è pronto per essere eseguito dal motore deterministico.
+5. Eseguire la pipeline completa:
 
----
+```bash
+PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim run-synthetic \
+  generated/esperimento/ingested/scenario.json \
+  generated/esperimento/ingested/personal-process-package.json \
+  --output-dir generated/esperimento/simulation
+```
 
-## 5. Tooling di Automazione Creato
+Il successo richiede un workspace con 17 artefatti verificati più
+`workspace-manifest.json`.
 
-Nel repository sono stati integrati i seguenti script Python in `tools/`:
+## Risultati documentati
 
-1. **`tools/build_simplified_prompt.py`**:
-   Script per rigenerare il prompt compatto ogni volta che vengono aggiornati i cataloghi di progetto.
-2. **`tools/auto_generate_and_repair.py`**:
-   Script per la generazione singola tramite LM Studio. Connette le API locali, esegue la validazione Pydantic in tempo reale e applica fino a 5 tentativi di autoriparazione guidata in caso di errori.
-3. **`tools/batch_generate_year.py`**:
-   Script per la generazione in batch di **1 intero anno di dati (52 settimane)**.
+La prima risposta compatta Marco, ambientata nel 2024, superava struttura e compilazione ma
+falliva il gate comportamentale con 64 errori. È conservata con il suo ingestion report in
+`generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/failed-trials/`.
 
----
+La prova Mario di sette giorni supera tutti i gate e completa 98 attività su 98. I 17
+artefatti prodotti su Windows sono stati rigenerati identici su macOS. Bundle, ingestion
+report, workspace, metadata e limiti qualitativi sono raccolti in
+`generated/experiments/2026-07-21-qwen2.5-coder-7b-q4km/` e analizzati in
+`docs/evaluation/esperimento_simulazione_7giorni_mario_rossi.md`.
 
-## 6. Strategia per la Generazione di 1 Anno di Dati (52 Settimane)
+## Limiti qualitativi osservati
 
-### Perché la Generazione Batch a Settimane
-Generare 365 giorni in un unico output richiede ~300.000 token, superando qualsiasi limite di generazione. La strategia migliore per sfruttare l'intelligenza dell'AI su tutto l'anno consiste nel generare **52 file settimanali sequenziali**.
+La prova valida contiene comunque sonno di 30 minuti, terapia non motivata dal profilo,
+un'attività serale al mattino, lavaggio delle stoviglie della colazione dopo pranzo,
+giornate molto ripetitive e un `generatedAt` futuro. Zero errori del simulatore significa
+conformità formale, non realismo umano.
 
-### Funzionamento di `tools/batch_generate_year.py`:
-1. **Iniezione Contestuale Stagionale**:
-   Per ciascuna delle 52 settimane, lo script inietta nel prompt l'esatto contesto stagionale (Inverno, Primavera, Estate, Autunno, Ferie d'Agosto, Festività Natalizie).
-2. **Temperatura Creativa (`temperature = 0.7`)**:
-   L'AI varia in modo plausibile e naturale le abitudini, le chiamate ed il tempo libero del residente da una settimana all'altra.
-3. **Salvataggio Ordinato**:
-   I file validati vengono salvati in `generated/year_batch/week_01_2026-01-05.json` ... `week_52_2026-12-28.json`.
-4. **Performance su RTX 3060 Ti**:
-   ~1 minuto per settimana -> **50-60 minuti per l'intero anno di simulazione**.
+Il prompt 1.2.1 introduce controlli espliciti per questi casi. Per dichiarare robusto il
+workflow servono più persone, più seed, descrizioni sorgente conservate e una matrice che
+riporti first-pass success, repair attempt, errori e valutazione di plausibilità.
