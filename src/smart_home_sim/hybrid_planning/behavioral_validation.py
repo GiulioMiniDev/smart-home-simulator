@@ -120,6 +120,22 @@ def validate_behavioral_profile(
                     f"routine is not represented by a compatible anchor: {requirement.intent}",
                 )
             )
+            continue
+        cadence_mismatch = (
+            anchor.cadence.period_days != 1
+            or anchor.cadence.minimum_occurrences < requirement.minimum_occurrences
+            or anchor.cadence.maximum_occurrences > requirement.maximum_occurrences
+            or set(anchor.applicable_day_types) != set(requirement.day_types)
+        )
+        if cadence_mismatch:
+            issues.append(
+                _issue(
+                    "PROFILE_ROUTINE_CADENCE_MISMATCH",
+                    "routine anchor must use a one-day cadence and exactly the supplied "
+                    f"day types and occurrence bounds: {requirement.intent}",
+                    anchor.habit_id,
+                )
+            )
     counts = Counter(item.kind for item in profile.habits)
     if (
         counts[HabitKind.anchor] < 3

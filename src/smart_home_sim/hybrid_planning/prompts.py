@@ -99,6 +99,10 @@ decorative claims. Every causal predecessor and successor must use an allowed in
 Use realistic cadence, cooldown, time bands, exceptions, causal chains and mining difficulty.
 Daily necessities must be anchor habits. Contextual and rare habits must not become daily noise.
 For every habit, executionProbability + exceptionProbability must be less than or equal to 1.
+Return exactly 8 habits in this order: entries 1-3 are the three supplied routine requirements
+as anchor habits, entries 4-5 are contextual, entries 6-7 are optional, and entry 8 is rare.
+Every routine anchor uses periodDays=1, the exact supplied dayTypes, and the supplied daily
+minimum/maximum occurrence bounds. Do not relabel extra habits as anchors.
 
 Authoritative profile input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""
@@ -136,6 +140,8 @@ def behavioral_profile_repair_prompt(
 
 Return a complete replacement document. Resolve every listed issue, preserve supplied immutable
 facts and preserve unrelated valid behavioral choices. Use only allowed identifiers.
+Return exactly 8 habits in this order: 3 routine anchors, 2 contextual, 2 optional, then 1 rare.
+Routine anchors must use periodDays=1 and exactly match supplied day types and daily bounds.
 
 Repair input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""

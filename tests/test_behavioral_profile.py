@@ -354,6 +354,26 @@ def test_profile_validator_reports_fact_chain_location_and_overload_errors() -> 
     }
 
 
+def test_profile_validator_rejects_routine_cadence_mismatch() -> None:
+    planning_case, catalog = _read_models(CASE)
+    profile = valid_profile()
+    medication = profile.habits[0].model_copy(
+        update={
+            "cadence": HabitCadence(
+                minimum_occurrences=1,
+                typical_occurrences=1,
+                maximum_occurrences=1,
+                period_days=7,
+            )
+        }
+    )
+    profile = profile.model_copy(update={"habits": [medication, *profile.habits[1:]]})
+
+    report = validate_behavioral_profile(planning_case, catalog, profile)
+
+    assert "PROFILE_ROUTINE_CADENCE_MISMATCH" in {item.code for item in report.issues}
+
+
 def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:
     invalid = valid_profile().model_copy(update={"resident_id": "someone_else"})
     valid = valid_profile()
