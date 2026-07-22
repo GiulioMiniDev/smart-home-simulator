@@ -118,6 +118,7 @@ class WeeklyDayBrief(ContractModel):
     day_type: str = Field(min_length=1)
     narrative_intent: str = Field(min_length=1)
     distinctive_goals: list[str] = Field(min_length=1, max_length=5)
+    goal_intents: list[str] = Field(default_factory=list, max_length=5)
 
 
 class WeeklyBrief(ContractModel):
@@ -160,6 +161,7 @@ class HybridPlanningConfig(ContractModel):
     timeout_seconds: int = Field(default=600, ge=1)
     max_structure_repairs: int = Field(default=2, ge=0, le=2)
     max_diversity_repairs: int = Field(default=2, ge=0, le=2)
+    max_habit_repairs: int = Field(default=2, ge=0, le=2)
 
 
 class DiversityMetrics(ContractModel):
