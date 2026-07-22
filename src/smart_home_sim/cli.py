@@ -12,6 +12,12 @@ import typer
 from smart_home_sim.authoring import ingest_authoring_file, prepare_authoring_repair_file
 from smart_home_sim.behavior import validate_behavior_files
 from smart_home_sim.compiler import compile_file
+from smart_home_sim.domain.application import (
+    ExportManifest,
+    JobRecord,
+    ReplayVerification,
+    WorkspaceManifest,
+)
 from smart_home_sim.domain.authoring import (
     AuthoringIngestionReport,
     AuthoringRepairRequest,
@@ -108,6 +114,10 @@ class SchemaContract(StrEnum):
     sensor_deployment_policy = "sensor-deployment-policy"
     sensor_deployment_report = "sensor-deployment-report"
     synthetic_workspace_manifest = "synthetic-workspace-manifest"
+    application_workspace_manifest = "application-workspace-manifest"
+    application_job = "application-job"
+    application_export_manifest = "application-export-manifest"
+    application_replay = "application-replay"
 
 
 app = typer.Typer(
@@ -656,6 +666,10 @@ def schema(
         SchemaContract.sensor_deployment_policy: SensorDeploymentPolicy,
         SchemaContract.sensor_deployment_report: SensorDeploymentReport,
         SchemaContract.synthetic_workspace_manifest: SyntheticWorkspaceManifest,
+        SchemaContract.application_workspace_manifest: WorkspaceManifest,
+        SchemaContract.application_job: JobRecord,
+        SchemaContract.application_export_manifest: ExportManifest,
+        SchemaContract.application_replay: ReplayVerification,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

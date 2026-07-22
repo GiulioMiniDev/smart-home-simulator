@@ -6,6 +6,12 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from smart_home_sim.domain.application import (
+    ExportManifest,
+    JobRecord,
+    ReplayVerification,
+    WorkspaceManifest,
+)
 from smart_home_sim.domain.authoring import (
     AUTHORING_ISSUE_CODES,
     AuthoringIngestionReport,
@@ -76,6 +82,12 @@ SENSOR_SCHEMAS = {
     "oracle-mapping-1.0.0.schema.json": OracleMapping,
     "sensor-projection-report-1.0.0.schema.json": SensorProjectionReport,
 }
+APPLICATION_SCHEMAS = {
+    "application-workspace-manifest-1.0.0.schema.json": WorkspaceManifest,
+    "application-job-1.0.0.schema.json": JobRecord,
+    "application-export-manifest-1.0.0.schema.json": ExportManifest,
+    "application-replay-1.0.0.schema.json": ReplayVerification,
+}
 
 
 def load_schema() -> dict[str, object]:
@@ -111,12 +123,20 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in SENSOR_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in APPLICATION_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]
         assert b"\r\n" not in schema_path.read_bytes()
         assert sha256(schema_path.read_bytes()).hexdigest() == expected
+
+
+def test_application_schemas_match_models_and_are_valid() -> None:
+    for name, model in APPLICATION_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / name).read_text(encoding="utf-8"))
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
 
 
 def test_golden_report_satisfies_its_distributed_schema() -> None:

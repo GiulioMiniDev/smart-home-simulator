@@ -4,24 +4,25 @@ Software di ricerca per generare dataset domestici sintetici mediante scenari st
 
 ## Stato attuale
 
-Le **Milestone 1–6.1 e l'estensione M5.1 sono completate e congelate alla versione
+Le **Milestone 1–7 e l'estensione M5.1 sono completate e congelate alla versione
 contrattuale 1.0.0**. Il
 sistema valida e compila lo scenario, lega i process model personali a una casa metrica e
 ne esegue integralmente attività, azioni, movimenti, risorse, eventi e stato tramite un
 clock discreto deterministico. M5.1 orchestra run indipendenti in processi isolati con
 seed, snapshot, resume e failure isolation. M6 proietta la traccia in osservazioni PIR,
 contatto e temperatura mantenendo le etichette causali in un oracle mapping separato.
-M6.1 genera deterministicamente casa e sensori dai due JSON M3 e pubblica una simulazione
-M4–M6 completa in un workspace transazionale. Il prossimo sviluppo previsto è la
-Milestone 7, dedicata a UI, workspace persistente, export e replay.
+M6.1 genera deterministicamente casa e sensori dai due JSON M3. M7 espone l'intero flusso
+in un'applicazione web locale: workspace SQLite persistente, editor 2D, worker durevoli,
+diario della ground truth, vista observable/oracle, replay verificato ed export streaming
+JSONL/CSV/XES.
 
 Il runtime richiede Python 3.12 e supporta Windows, macOS e Linux. La CI impone su tutti e
 tre i sistemi suite completa, lint e benchmark multiprocesso.
 
-Sono intenzionalmente assenti:
+Restano intenzionalmente assenti:
 
-- exporter dei dataset;
-- applicazione UI completa, prevista nella Milestone 7 dopo simulazione e sensori;
+- esecuzione longitudinale annuale e repliche Monte Carlo, assegnate a M8;
+- calibrazione empirica, assegnata a M9;
 - chiamate integrate a provider LLM.
 
 Queste feature verranno sviluppate separatamente solo dopo il completamento dei rispettivi criteri di ingresso descritti in [ROADMAP.md](ROADMAP.md).
@@ -44,6 +45,10 @@ make benchmark-simulation
 make benchmark-batch-simulation
 make benchmark-sensors
 make benchmark-materialization
+make benchmark-application
+make frontend-build
+make frontend-test
+make frontend-e2e
 make schema
 make behavior-artifacts
 make authoring-artifacts
@@ -69,6 +74,36 @@ make check
 
 `validate` non corregge né esegue lo scenario. `compile` risolve vincoli, attività
 opzionali e contingenze; `simulate` consuma esclusivamente un bundle M4 completo.
+
+## Applicazione locale M7
+
+Installare le dipendenze, costruire il frontend e avviare il servizio locale:
+
+```bash
+UV_NO_EDITABLE=1 uv sync --locked
+cd frontend && npm ci && npm run build && cd ..
+UV_NO_EDITABLE=1 uv run smart-home-sim-app --workspace workspace --name "Research lab"
+```
+
+Il launcher ascolta soltanto su loopback, apre il browser per default e crea o riapre il
+workspace indicato. `--no-browser` è disponibile per server di test. I metadati applicativi
+sono in `workspace/workspace.sqlite3`; trace, log, oracle ed export restano file immutabili
+con dimensione e SHA-256 catalogati. Non spostare singoli file a mano: usare **Archive
+workspace** nella pagina Exports per produrre uno snapshot portabile `.shw` verificabile.
+
+Il dettaglio di una run presenta tre viste distinte. **Diary** deriva direttamente dalla
+execution trace e mostra attività, azioni e identificativi di provenienza. **Observable**
+contiene soltanto campi esponibili dai dispositivi. **Oracle links** attraversa, su richiesta,
+il mapping separato verso la causa simulata. **Replay** ricontrolla il digest semantico M5
+prima di registrare la sessione. Le esportazioni mantengono la stessa separazione e includono
+un manifest con seed, versioni, conteggi, relazioni, dimensioni e digest.
+
+Se l'avvio trova un file mancante o corrotto, il workspace entra in modalità diagnostica:
+consultazione e archivio restano disponibili, mentre nuove pubblicazioni e job vengono
+bloccati. I job rimasti `running` dopo un arresto diventano `interrupted`; una cancellazione
+rimuove lo staging e non presenta output parziali come validi. Architettura e invarianti sono
+documentati in [ADR-016](docs/decisions/ADR-016-local-application-and-sqlite-workspace.md) e
+nella [specifica M7](docs/spec/12-application-workspace-export-replay.md).
 
 Per ottenere la prima simulazione dai due JSON pubblicati dall'ingestion, senza disegnare
 la casa o collocare manualmente i sensori:
@@ -186,7 +221,7 @@ le rotte prima di risolvere le capacità. In caso di errore non pubblica alcun b
 
 Il golden environment M4 può essere ispezionato anche nel
 [benchmark visuale di Casa Monteverde](examples/visualizations/mario_monteverde.m4-benchmark.html).
-È un artefatto di accettazione interattivo, non la UI applicativa della Milestone 7:
+È un artefatto di accettazione interattivo M4 distinto dalla UI applicativa M7:
 mostra la planimetria reale, le sei porte locali, i quattro ingombri metrici, le nove
 risorse fisiche con simboli dedicati, le sei entità logiche domestiche, gli anchor e le 49
 rotte interne calcolate dal path planner. Viene rigenerato da home, scenario, bundle e

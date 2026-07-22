@@ -1,0 +1,202 @@
+{
+  "$defs": {
+    "JobProgress": {
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "minLength": 1,
+          "title": "Phase",
+          "type": "string"
+        },
+        "percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Percent",
+          "type": "number"
+        },
+        "completedUnits": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Completedunits",
+          "type": "integer"
+        },
+        "totalUnits": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Totalunits"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "phase",
+        "percent",
+        "message"
+      ],
+      "title": "JobProgress",
+      "type": "object"
+    },
+    "JobStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+        "interrupted"
+      ],
+      "title": "JobStatus",
+      "type": "string"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:application-job:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "jobId": {
+      "minLength": 1,
+      "title": "Jobid",
+      "type": "string"
+    },
+    "homeId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homeid"
+    },
+    "kind": {
+      "enum": [
+        "materialization",
+        "simulation",
+        "export",
+        "integrity"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/JobStatus"
+    },
+    "progress": {
+      "$ref": "#/$defs/JobProgress"
+    },
+    "requestedAt": {
+      "format": "date-time",
+      "title": "Requestedat",
+      "type": "string"
+    },
+    "startedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Startedat"
+    },
+    "finishedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finishedat"
+    },
+    "processId": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Processid"
+    },
+    "resultReference": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resultreference"
+    },
+    "errorCode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Errorcode"
+    },
+    "errorMessage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Errormessage"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    }
+  },
+  "required": [
+    "jobId",
+    "kind",
+    "status",
+    "progress",
+    "requestedAt"
+  ],
+  "title": "Smart Home Application Job 1.0.0",
+  "type": "object"
+}

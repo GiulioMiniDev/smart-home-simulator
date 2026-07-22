@@ -1,4 +1,4 @@
-.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
+.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
@@ -60,6 +60,24 @@ benchmark-sensors:
 benchmark-materialization:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_materialization.py
 
+benchmark-application:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/benchmark_application_workspace.py
+
+frontend-install:
+	cd frontend && npm ci
+
+frontend-build:
+	cd frontend && npm run build
+
+frontend-lint:
+	cd frontend && npm run lint
+
+frontend-test:
+	cd frontend && npm test
+
+frontend-e2e:
+	cd frontend && npm run e2e
+
 behavior-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_behavior_artifacts.py
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_invalid_behavior_examples.py
@@ -120,6 +138,10 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-deployment-policy --output schemas/sensor-deployment-policy-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-deployment-report --output schemas/sensor-deployment-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract synthetic-workspace-manifest --output schemas/synthetic-workspace-manifest-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-workspace-manifest --output schemas/application-workspace-manifest-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-job --output schemas/application-job-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-export-manifest --output schemas/application-export-manifest-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-replay --output schemas/application-replay-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/write_schema_checksums.py
 
 test:
@@ -129,4 +151,4 @@ lint:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff check .
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff format --check .
 
-check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts sensor-artifacts materialization-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization
+check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts sensor-artifacts materialization-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-build frontend-lint frontend-test frontend-e2e

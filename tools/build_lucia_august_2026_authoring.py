@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ACTIVITY_CATALOG = ROOT / "src/smart_home_sim/catalogs/activity-catalog-1.0.0.json"
 CASE_TEMPLATE = ROOT / "prompts/cases/lucia-rossi-august-2026.md"
@@ -323,9 +322,18 @@ VACATION_EVENTS: dict[int, list[tuple[str, str, list[str], int]]] = {
         ("buy_groceries", "10:05", ["supermarket"], 45),
         ("return_home_and_store_purchases", "11:00", ["home"], 40),
     ],
-    13: [("indoor_light_exercise", "10:00", ["living_room"], 35), ("clean_bathroom", "11:00", ["bathroom"], 40)],
-    14: [("tidy_living_room_and_hallway", "10:00", ["living_room", "hallway"], 40), ("call_mother", "16:30", ["living_room"], 25)],
-    17: [("short_evening_walk", "10:00", ["outside"], 40), ("read_and_rest", "16:00", ["bedroom"], 55)],
+    13: [
+        ("indoor_light_exercise", "10:00", ["living_room"], 35),
+        ("clean_bathroom", "11:00", ["bathroom"], 40),
+    ],
+    14: [
+        ("tidy_living_room_and_hallway", "10:00", ["living_room", "hallway"], 40),
+        ("call_mother", "16:30", ["living_room"], 25),
+    ],
+    17: [
+        ("short_evening_walk", "10:00", ["outside"], 40),
+        ("read_and_rest", "16:00", ["bedroom"], 55),
+    ],
     18: [("start_laundry", "09:45", ["bathroom"], 20), ("hang_laundry", "11:30", ["balcony"], 30)],
     19: [
         ("travel_to_supermarket", "09:35", ["supermarket"], 25),
@@ -333,7 +341,10 @@ VACATION_EVENTS: dict[int, list[tuple[str, str, list[str], int]]] = {
         ("return_home_and_store_purchases", "11:00", ["home"], 40),
     ],
     20: [("clean_kitchen", "10:00", ["kitchen"], 45), ("read", "16:00", ["bedroom"], 50)],
-    21: [("take_recycling_out", "10:00", ["home", "outside"], 30), ("call_friend_paolo", "16:30", ["living_room"], 25)],
+    21: [
+        ("take_recycling_out", "10:00", ["home", "outside"], 30),
+        ("call_friend_paolo", "16:30", ["living_room"], 25),
+    ],
 }
 
 
@@ -391,7 +402,9 @@ def build_days() -> list[dict[str, Any]]:
     return days
 
 
-def action_arguments(action_type: str, component: str, intent: str, occurrence: int) -> dict[str, Any]:
+def action_arguments(
+    action_type: str, component: str, intent: str, occurrence: int
+) -> dict[str, Any]:
     if action_type in {"move_to", "travel_to"}:
         return {"destination": {"source": "activity_location", "index": 0}}
     if action_type in {"leave_home", "enter_home"}:
@@ -435,10 +448,22 @@ def action_arguments(action_type: str, component: str, intent: str, occurrence: 
     if action_type == "inspect":
         return {"targetRole": value("calendar" if component == "check_calendar" else "supplies")}
     if action_type == "consume":
-        kind = "drink" if component == "consume_drink" else "snack" if component == "consume_snack" else "meal"
+        kind = (
+            "drink"
+            if component == "consume_drink"
+            else "snack"
+            if component == "consume_snack"
+            else "meal"
+        )
         return {"itemRole": value(kind)}
     if action_type == "personal_care":
-        procedure = "toilet" if component == "use_toilet" else "shower" if component == "shower" else "hygiene"
+        procedure = (
+            "toilet"
+            if component == "use_toilet"
+            else "shower"
+            if component == "shower"
+            else "hygiene"
+        )
         return {"procedure": value(procedure)}
     if action_type == "clean":
         if component == "wash_dishes":
@@ -458,14 +483,22 @@ def action_arguments(action_type: str, component: str, intent: str, occurrence: 
         }[component]
         return {"operation": value(operation)}
     if action_type == "organize":
-        target = "documents" if component == "organize_documents" else "clothes" if component in {"organize_clothes", "portion_food"} else "bag"
+        target = (
+            "documents"
+            if component == "organize_documents"
+            else "clothes"
+            if component in {"organize_clothes", "portion_food"}
+            else "bag"
+        )
         return {"targetRole": value(target)}
     if action_type == "dress":
         return {"purpose": value("work_wear" if "work" in intent else "daily_clothing")}
     if action_type == "manage_medication":
         return {"operation": value("refill" if component == "collect_medication" else "take_dose")}
     if action_type == "wait":
-        purpose = "sleeping" if component == "sleep" else "napping" if component == "nap" else "resting"
+        purpose = (
+            "sleeping" if component == "sleep" else "napping" if component == "nap" else "resting"
+        )
         return {"purpose": value(purpose)}
     if action_type == "shop":
         return {"purpose": value("supplies" if "supplies" in intent else "groceries")}
@@ -476,7 +509,13 @@ def action_arguments(action_type: str, component: str, intent: str, occurrence: 
     if action_type == "exercise":
         return {"kind": value("walking" if component == "walk" else "light_stretching")}
     if action_type == "leisure":
-        kind = "watching_tv" if component == "watch_media" else "radio" if component == "listen_radio" else "reading"
+        kind = (
+            "watching_tv"
+            if component == "watch_media"
+            else "radio"
+            if component == "listen_radio"
+            else "reading"
+        )
         return {"kind": value(kind)}
     if action_type == "prepare_food":
         meal = "breakfast" if "breakfast" in intent else "lunch" if "lunch" in intent else "dinner"
@@ -512,15 +551,11 @@ def action_flow(
 
 def build_process_package(days: list[dict[str, Any]], provenance: dict[str, Any]) -> dict[str, Any]:
     catalog = json.loads(ACTIVITY_CATALOG.read_text(encoding="utf-8"))
-    intent_components = {
-        item["intent"]: item["components"] for item in catalog["activities"]
-    }
+    intent_components = {item["intent"]: item["components"] for item in catalog["activities"]}
     component_actions = {
         item["componentId"]: item["requiredActionTypes"] for item in catalog["components"]
     }
-    used_intents = sorted(
-        {item["intent"] for day in days for item in day["activities"]}
-    )
+    used_intents = sorted({item["intent"] for day in days for item in day["activities"]})
     missing = sorted(set(used_intents) - set(intent_components))
     if missing:
         raise ValueError(f"Unknown intents: {missing}")
@@ -629,14 +664,49 @@ def build_bundle(generated_at: str) -> dict[str, Any]:
     ]
     resources = [
         {"resourceId": "bed_01", "resourceType": "bed", "locationId": "bedroom", "capacity": 1},
-        {"resourceId": "shower_01", "resourceType": "shower", "locationId": "bathroom", "capacity": 1},
-        {"resourceId": "toilet_01", "resourceType": "toilet", "locationId": "bathroom", "capacity": 1},
-        {"resourceId": "washing_machine_01", "resourceType": "washing_machine", "locationId": "bathroom", "capacity": 1},
-        {"resourceId": "kitchen_sink_01", "resourceType": "sink", "locationId": "kitchen", "capacity": 1},
-        {"resourceId": "fridge_01", "resourceType": "refrigerator", "locationId": "kitchen", "capacity": 1},
-        {"resourceId": "kettle_01", "resourceType": "kettle", "locationId": "kitchen", "capacity": 1},
+        {
+            "resourceId": "shower_01",
+            "resourceType": "shower",
+            "locationId": "bathroom",
+            "capacity": 1,
+        },
+        {
+            "resourceId": "toilet_01",
+            "resourceType": "toilet",
+            "locationId": "bathroom",
+            "capacity": 1,
+        },
+        {
+            "resourceId": "washing_machine_01",
+            "resourceType": "washing_machine",
+            "locationId": "bathroom",
+            "capacity": 1,
+        },
+        {
+            "resourceId": "kitchen_sink_01",
+            "resourceType": "sink",
+            "locationId": "kitchen",
+            "capacity": 1,
+        },
+        {
+            "resourceId": "fridge_01",
+            "resourceType": "refrigerator",
+            "locationId": "kitchen",
+            "capacity": 1,
+        },
+        {
+            "resourceId": "kettle_01",
+            "resourceType": "kettle",
+            "locationId": "kitchen",
+            "capacity": 1,
+        },
         {"resourceId": "stove_01", "resourceType": "stove", "locationId": "kitchen", "capacity": 1},
-        {"resourceId": "television_01", "resourceType": "television", "locationId": "living_room", "capacity": 1},
+        {
+            "resourceId": "television_01",
+            "resourceType": "television",
+            "locationId": "living_room",
+            "capacity": 1,
+        },
     ]
     scenario = {
         "schemaVersion": "1.0.0",
@@ -708,9 +778,7 @@ def main() -> int:
         json.dumps(bundle, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    case = CASE_TEMPLATE.read_text(encoding="utf-8").replace(
-        "[GENERATION_TIMESTAMP]", generated_at
-    )
+    case = CASE_TEMPLATE.read_text(encoding="utf-8").replace("[GENERATION_TIMESTAMP]", generated_at)
     (output_dir / "case-description.md").write_text(case, encoding="utf-8")
     print(
         json.dumps(
@@ -718,9 +786,7 @@ def main() -> int:
                 "output": str(output_dir / "authoring-bundle.json"),
                 "generatedAt": generated_at,
                 "days": len(bundle["scenario"]["days"]),
-                "activities": sum(
-                    len(day["activities"]) for day in bundle["scenario"]["days"]
-                ),
+                "activities": sum(len(day["activities"]) for day in bundle["scenario"]["days"]),
                 "processModels": len(bundle["personalProcessPackage"]["processModels"]),
                 "bindings": len(bundle["personalProcessPackage"]["bindings"]),
             },

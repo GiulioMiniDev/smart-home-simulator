@@ -1,0 +1,133 @@
+{
+  "$defs": {
+    "ExportFormat": {
+      "enum": [
+        "jsonl",
+        "csv",
+        "xes"
+      ],
+      "title": "ExportFormat",
+      "type": "string"
+    },
+    "ExportManifestFile": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "relativePath": {
+          "minLength": 1,
+          "title": "Relativepath",
+          "type": "string"
+        },
+        "mediaType": {
+          "minLength": 1,
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "recordCount": {
+          "minimum": 0,
+          "title": "Recordcount",
+          "type": "integer"
+        },
+        "sizeBytes": {
+          "minimum": 0,
+          "title": "Sizebytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "format",
+        "relativePath",
+        "mediaType",
+        "recordCount",
+        "sizeBytes",
+        "sha256"
+      ],
+      "title": "ExportManifestFile",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:application-export-manifest:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "application_export_manifest",
+      "default": "application_export_manifest",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "exportId": {
+      "minLength": 1,
+      "title": "Exportid",
+      "type": "string"
+    },
+    "runId": {
+      "minLength": 1,
+      "title": "Runid",
+      "type": "string"
+    },
+    "sourceBundleSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcebundlesha256",
+      "type": "string"
+    },
+    "sourceTraceSemanticDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcetracesemanticdigest",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "title": "Createdat",
+      "type": "string"
+    },
+    "observableOracleSeparated": {
+      "const": true,
+      "default": true,
+      "title": "Observableoracleseparated",
+      "type": "boolean"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/ExportManifestFile"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    }
+  },
+  "required": [
+    "exportId",
+    "runId",
+    "sourceBundleSha256",
+    "sourceTraceSemanticDigest",
+    "seed",
+    "createdAt",
+    "files"
+  ],
+  "title": "Smart Home Application Export Manifest 1.0.0",
+  "type": "object"
+}

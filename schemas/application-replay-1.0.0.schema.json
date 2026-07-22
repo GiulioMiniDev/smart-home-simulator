@@ -1,0 +1,47 @@
+{
+  "$id": "urn:smart-home-simulator:schema:application-replay:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "runId": {
+      "minLength": 1,
+      "title": "Runid",
+      "type": "string"
+    },
+    "verifiedAt": {
+      "format": "date-time",
+      "title": "Verifiedat",
+      "type": "string"
+    },
+    "matches": {
+      "title": "Matches",
+      "type": "boolean"
+    },
+    "expectedSemanticDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Expectedsemanticdigest",
+      "type": "string"
+    },
+    "actualSemanticDigest": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actualsemanticdigest"
+    }
+  },
+  "required": [
+    "runId",
+    "verifiedAt",
+    "matches",
+    "expectedSemanticDigest"
+  ],
+  "title": "Smart Home Application Replay Verification 1.0.0",
+  "type": "object"
+}

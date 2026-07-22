@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT / "generated/lucia_rossi_august_2026/canonical-inputs"
 TARGET_DIR = ROOT / "generated/lucia_rossi_august_2026/runtime-inputs-1.1.0"
@@ -204,17 +203,12 @@ def migrate_package(source: dict[str, Any], source_sha256: str) -> dict[str, Any
                     else "prepared_meal"
                 )
                 node["arguments"]["outputRole"] = literal(output_role)
-            if (
-                node["actionType"] == "organize"
-                and "weekly_meal_preparation" in intents
-            ):
+            if node["actionType"] == "organize" and "weekly_meal_preparation" in intents:
                 node["arguments"]["targetRole"] = literal("prepared_food_portions")
             if node["actionType"] == "put_item" and "store_purchases" in components:
                 node["arguments"]["itemRole"] = literal("purchases")
         if "store_food" in components:
-            put_nodes = [
-                node for node in action_nodes(model) if node["actionType"] == "put_item"
-            ]
+            put_nodes = [node for node in action_nodes(model) if node["actionType"] == "put_item"]
             put_nodes[-1]["arguments"]["itemRole"] = literal("prepared_food_portions")
         model["processModelVersion"] = "1.1.0"
     return package

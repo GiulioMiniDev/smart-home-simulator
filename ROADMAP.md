@@ -25,7 +25,7 @@ relativi controlli di compatibilità.
 | 5.1 | Orchestrazione parallela degli esperimenti | batch manifest + simulation bundle | run isolate replayabili + batch report | **Completata e congelata — 1.0.0** |
 | 6 | Sensori e separazione oracle/observable | execution trace + sensor model | sensor log osservabile + oracle mapping | **Completata e congelata — 1.0.0** |
 | 6.1 | Materializzazione automatica scenario-first | scenario + process package M3 accettati + policy | casa, sensori e workspace M3–M6 transazionale | **Completata e congelata — 1.0.0** |
-| 7 | Applicazione UI, workspace, export e replay | workspace M6.1 + artefatti M1–M6 | applicazione end-to-end + dataset JSONL/CSV/XES + replay | Non iniziata |
+| 7 | Applicazione UI, workspace, export e replay | workspace M6.1 + artefatti M1–M6 | applicazione end-to-end + dataset JSONL/CSV/XES + replay | **Completata e congelata — 1.0.0** |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
@@ -505,6 +505,9 @@ binding di scenario, insieme alla fusione multi-residente, resta una decisione e
 per M7/M8 e non è necessaria per la semantica completa del flusso M6.1.
 
 ## Milestone 7 — Applicazione UI, workspace, export e replay
+
+**Stato: completata e congelata — 1.0.0.** La chiusura è registrata in
+`docs/audits/milestone-7-closure.md`; architettura e persistenza sono congelate da ADR-016.
 
 ### Responsabilità
 

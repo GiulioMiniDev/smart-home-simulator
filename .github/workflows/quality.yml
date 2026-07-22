@@ -52,3 +52,62 @@ jobs:
 
       - name: Run parallel batch acceptance benchmark
         run: uv run python tools/benchmark_batch_simulation.py
+
+  application:
+    name: M7 application / Node 20
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: src
+      UV_NO_EDITABLE: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+
+      - name: Synchronize Python dependencies
+        run: uv sync --locked
+
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Test frontend with coverage
+        working-directory: frontend
+        run: npm test
+
+      - name: Run real-backend end-to-end tests
+        working-directory: frontend
+        run: npm run e2e
+
+      - name: Benchmark 10k-artifact workspace
+        run: uv run python tools/benchmark_application_workspace.py

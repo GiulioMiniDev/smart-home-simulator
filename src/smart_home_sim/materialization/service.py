@@ -4,6 +4,7 @@ import json
 import shutil
 import tempfile
 from collections import defaultdict
+from collections.abc import Callable
 from math import ceil
 from pathlib import Path
 from typing import Any
@@ -695,6 +696,8 @@ def materialize_workspace(
     *,
     home_policy: HomeGenerationPolicy | None = None,
     sensor_policy: SensorDeploymentPolicy | None = None,
+    progress: Callable[[str, float, str, dict[str, int]], None] | None = None,
+    cancelled: Callable[[], bool] | None = None,
 ) -> SyntheticWorkspaceManifest:
     if output_directory.exists():
         raise FileExistsError(f"output directory already exists: {output_directory}")
@@ -706,7 +709,17 @@ def materialize_workspace(
     staging = Path(
         tempfile.mkdtemp(prefix=f".{output_directory.name}.", dir=output_directory.parent)
     )
+
+    def emit(
+        phase: str, percent: float, message: str, counters: dict[str, int] | None = None
+    ) -> None:
+        if cancelled is not None and cancelled():
+            raise InterruptedError("materialization cancelled")
+        if progress is not None:
+            progress(phase, percent, message, counters or {})
+
     try:
+        emit("input", 2, "Accepted source artifacts")
         shutil.copyfile(scenario_path, staging / "scenario.json")
         shutil.copyfile(package_path, staging / "personal-process-package.json")
         _json(staging / "home-generation-policy.json", home_policy)
@@ -717,12 +730,24 @@ def materialize_workspace(
         if compilation.plan is None:
             raise RuntimeError("scenario compilation failed")
         _json(staging / "canonical-plan.json", compilation.plan)
+        emit(
+            "compilation",
+            12,
+            "Compiled the canonical plan",
+            {"activities": compilation.report.summary.scheduled_activity_count},
+        )
 
         home_result = generate_home(scenario, package, home_policy)
         _json(staging / "home-generation-report.json", home_result.report)
         if home_result.home is None:
             raise RuntimeError("home generation failed")
         _json(staging / "home-model.json", home_result.home)
+        emit(
+            "home",
+            26,
+            "Generated and validated the executable home",
+            {"regions": home_result.report.summary.region_count},
+        )
 
         bundle_result = build_bundle_files(
             staging / "scenario.json",
@@ -735,20 +760,44 @@ def materialize_workspace(
             codes = ", ".join(item.code for item in bundle_result.report.issues[:5])
             raise RuntimeError(f"environment bundle gate failed: {codes}")
         _json(staging / "simulation-bundle.json", bundle_result.bundle)
+        emit(
+            "binding",
+            40,
+            "Resolved action and route bindings",
+            {"bindings": bundle_result.report.summary.action_binding_count},
+        )
 
         sensor_result = deploy_sensors(bundle_result.bundle, sensor_policy)
         _json(staging / "sensor-deployment-report.json", sensor_result.report)
         if sensor_result.sensor_model is None:
             raise RuntimeError("sensor deployment failed")
         _json(staging / "sensor-model.json", sensor_result.sensor_model)
+        emit(
+            "sensors",
+            50,
+            "Deployed and validated sensors",
+            {"sensors": sensor_result.report.summary.sensor_count},
+        )
 
+        emit("simulation", 52, "Started deterministic execution")
         simulation = simulate_bundle(bundle_result.bundle)
         _json(staging / "simulation-report.json", simulation.report)
         if simulation.trace is None:
             codes = ", ".join(item.code for item in simulation.report.issues[:5])
             raise RuntimeError(f"simulation failed: {codes}")
         _json(staging / "execution-trace.json", simulation.trace)
+        emit(
+            "simulation",
+            82,
+            "Completed deterministic execution",
+            {
+                "activities": simulation.report.summary.completed_activity_count,
+                "actions": simulation.report.summary.action_execution_count,
+                "movements": simulation.report.summary.movement_count,
+            },
+        )
 
+        emit("projection", 84, "Started observable sensor projection")
         projection = project_sensors(
             simulation.trace, bundle_result.bundle, sensor_result.sensor_model
         )
@@ -758,6 +807,12 @@ def materialize_workspace(
             raise RuntimeError(f"sensor projection failed: {codes}")
         _json(staging / "observable-sensor-log.json", projection.observable_log)
         _json(staging / "oracle-mapping.json", projection.oracle_mapping)
+        emit(
+            "projection",
+            96,
+            "Completed observable and oracle projections",
+            {"observations": projection.report.summary.observation_count},
+        )
 
         roles = {
             "scenario": "scenario.json",
@@ -793,7 +848,15 @@ def materialize_workspace(
             ],
         )
         _json(staging / "workspace-manifest.json", manifest)
+        emit("publication", 99, "Verified artifact manifest")
         staging.replace(output_directory)
+        if progress is not None:
+            progress(
+                "completed",
+                100,
+                "Published the complete synthetic workspace",
+                {"artifacts": len(manifest.artifacts)},
+            )
         return manifest
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)

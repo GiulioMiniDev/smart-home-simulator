@@ -1,0 +1,339 @@
+{
+  "$defs": {
+    "ArtifactDescriptor": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactId": {
+          "minLength": 1,
+          "title": "Artifactid",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schemaversion"
+        },
+        "mediaType": {
+          "minLength": 1,
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "relativePath": {
+          "minLength": 1,
+          "title": "Relativepath",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "minimum": 0,
+          "title": "Sizebytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "title": "Createdat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactId",
+        "role",
+        "mediaType",
+        "relativePath",
+        "sizeBytes",
+        "sha256",
+        "createdAt"
+      ],
+      "title": "ArtifactDescriptor",
+      "type": "object"
+    },
+    "HomeSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "homeId": {
+          "minLength": 1,
+          "title": "Homeid",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "residentCount": {
+          "minimum": 0,
+          "title": "Residentcount",
+          "type": "integer"
+        },
+        "runCount": {
+          "minimum": 0,
+          "title": "Runcount",
+          "type": "integer"
+        },
+        "issueCount": {
+          "minimum": 0,
+          "title": "Issuecount",
+          "type": "integer"
+        },
+        "currentHomeArtifactId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currenthomeartifactid"
+        },
+        "currentSensorArtifactId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currentsensorartifactid"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "title": "Createdat",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "title": "Updatedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "homeId",
+        "name",
+        "residentCount",
+        "runCount",
+        "issueCount",
+        "createdAt",
+        "updatedAt"
+      ],
+      "title": "HomeSummary",
+      "type": "object"
+    },
+    "ResidentSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "homeId": {
+          "minLength": 1,
+          "title": "Homeid",
+          "type": "string"
+        },
+        "sourceResidentId": {
+          "minLength": 1,
+          "title": "Sourceresidentid",
+          "type": "string"
+        },
+        "displayName": {
+          "minLength": 1,
+          "title": "Displayname",
+          "type": "string"
+        },
+        "scenarioArtifactId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenarioartifactid"
+        },
+        "behaviorArtifactId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Behaviorartifactid"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "title": "Createdat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "residentId",
+        "homeId",
+        "sourceResidentId",
+        "displayName",
+        "createdAt"
+      ],
+      "title": "ResidentSummary",
+      "type": "object"
+    },
+    "WorkspaceSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "workspaceId": {
+          "minLength": 1,
+          "title": "Workspaceid",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "formatVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Formatversion",
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "title": "Createdat",
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "title": "Updatedat",
+          "type": "string"
+        },
+        "diagnosticMode": {
+          "default": false,
+          "title": "Diagnosticmode",
+          "type": "boolean"
+        },
+        "homeCount": {
+          "minimum": 0,
+          "title": "Homecount",
+          "type": "integer"
+        },
+        "residentCount": {
+          "minimum": 0,
+          "title": "Residentcount",
+          "type": "integer"
+        },
+        "runCount": {
+          "minimum": 0,
+          "title": "Runcount",
+          "type": "integer"
+        },
+        "activeJobCount": {
+          "minimum": 0,
+          "title": "Activejobcount",
+          "type": "integer"
+        },
+        "artifactCount": {
+          "minimum": 0,
+          "title": "Artifactcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "name",
+        "createdAt",
+        "updatedAt",
+        "homeCount",
+        "residentCount",
+        "runCount",
+        "activeJobCount",
+        "artifactCount"
+      ],
+      "title": "WorkspaceSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:application-workspace-manifest:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "application_workspace_manifest",
+      "default": "application_workspace_manifest",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "workspace": {
+      "$ref": "#/$defs/WorkspaceSummary"
+    },
+    "exportedAt": {
+      "format": "date-time",
+      "title": "Exportedat",
+      "type": "string"
+    },
+    "homes": {
+      "items": {
+        "$ref": "#/$defs/HomeSummary"
+      },
+      "title": "Homes",
+      "type": "array"
+    },
+    "residents": {
+      "items": {
+        "$ref": "#/$defs/ResidentSummary"
+      },
+      "title": "Residents",
+      "type": "array"
+    },
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactDescriptor"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "workspace",
+    "exportedAt",
+    "homes",
+    "residents",
+    "artifacts"
+  ],
+  "title": "Smart Home Application Workspace Manifest 1.0.0",
+  "type": "object"
+}
