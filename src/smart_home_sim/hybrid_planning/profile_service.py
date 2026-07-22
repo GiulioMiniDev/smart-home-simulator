@@ -27,6 +27,7 @@ from smart_home_sim.hybrid_planning.prompts import (
     PROFILE_SYSTEM_PROMPT,
     behavioral_profile_prompt,
     behavioral_profile_repair_prompt,
+    behavioral_profile_structure_repair_prompt,
 )
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
@@ -128,14 +129,28 @@ def generate_behavioral_profile(
     schema = _profile_schema(planning_case, catalog)
     try:
         for attempt in range(1, config.max_structure_repairs + 2):
-            profile, exchange = active_client.complete_json(
-                schema_name="behavioral_profile",
-                output_model=BehavioralProfile,
-                system_prompt=PROFILE_SYSTEM_PROMPT,
-                user_prompt=prompt,
-                seed=planning_case.seed + attempt - 1,
-                schema_override=schema,
-            )
+            try:
+                profile, exchange = active_client.complete_json(
+                    schema_name="behavioral_profile",
+                    output_model=BehavioralProfile,
+                    system_prompt=PROFILE_SYSTEM_PROMPT,
+                    user_prompt=prompt,
+                    seed=planning_case.seed + attempt - 1,
+                    schema_override=schema,
+                )
+            except LMStudioError as error:
+                _write_text(
+                    output_dir / "attempts" / f"attempt-{attempt}" / "structure-error.txt",
+                    str(error) + "\n",
+                )
+                if attempt > config.max_structure_repairs:
+                    raise
+                prompt = behavioral_profile_structure_repair_prompt(
+                    planning_case,
+                    catalog,
+                    str(error),
+                )
+                continue
             _persist_exchange(output_dir / "attempts" / f"attempt-{attempt}", exchange, profile)
             validation = validate_behavioral_profile(planning_case, catalog, profile)
             _write_json(output_dir / f"validation-attempt-{attempt}.json", validation)

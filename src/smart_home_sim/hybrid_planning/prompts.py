@@ -98,9 +98,26 @@ decorative claims. Every causal predecessor and successor must use an allowed in
 
 Use realistic cadence, cooldown, time bands, exceptions, causal chains and mining difficulty.
 Daily necessities must be anchor habits. Contextual and rare habits must not become daily noise.
+For every habit, executionProbability + exceptionProbability must be less than or equal to 1.
 
 Authoritative profile input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""
+
+
+def behavioral_profile_structure_repair_prompt(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    error: str,
+) -> str:
+    return f"""{behavioral_profile_prompt(planning_case, catalog)}
+
+The previous response was rejected before semantic validation because it violated the structured
+profile contract. Return a complete replacement document, not a patch. Correct the reported
+error while preserving all authoritative input. In particular, independently verify every
+probability pair before responding.
+
+Structured validation error:
+{error}"""
 
 
 def behavioral_profile_repair_prompt(

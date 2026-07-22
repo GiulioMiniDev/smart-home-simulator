@@ -19,7 +19,7 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
     behavioral_profile_digest,
     validate_behavioral_profile,
 )
-from smart_home_sim.hybrid_planning.lmstudio import LMStudioExchange
+from smart_home_sim.hybrid_planning.lmstudio import LMStudioError, LMStudioExchange
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig, TimeBand
 from smart_home_sim.hybrid_planning.profile_service import generate_behavioral_profile
 from smart_home_sim.hybrid_planning.service import HybridPlanningError, _read_models
@@ -220,6 +220,31 @@ class FakeClient:
         )
 
 
+class StructurallyInvalidThenValidClient(FakeClient):
+    def __init__(self, output: BehavioralProfile) -> None:
+        super().__init__([output])
+        self.failed_once = False
+
+    def complete_json(self, **kwargs: Any) -> tuple[BehavioralProfile, LMStudioExchange]:
+        if not self.failed_once:
+            self.failed_once = True
+            self.prompts.append(kwargs["user_prompt"])
+            raise LMStudioError(
+                "LM Studio returned an invalid structured response: "
+                "executionProbability + exceptionProbability must not exceed 1"
+            )
+        return super().complete_json(**kwargs)
+
+
+class AlwaysStructurallyInvalidClient:
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
+    def complete_json(self, **kwargs: Any) -> tuple[BehavioralProfile, LMStudioExchange]:
+        self.prompts.append(kwargs["user_prompt"])
+        raise LMStudioError("invalid structured response: impossible probability pair")
+
+
 def test_cadence_rejects_inverted_bounds() -> None:
     with pytest.raises(ValidationError, match="typicalOccurrences"):
         HabitCadence(
@@ -345,6 +370,41 @@ def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:
     assert (result.output_dir / "intended-habits.json").is_file()
     assert (result.output_dir / "profile.sha256").read_text().strip() == result.profile_digest
     assert result.profile_digest == behavioral_profile_digest(valid)
+
+
+def test_profile_generation_repairs_structural_llm_error(tmp_path: Path) -> None:
+    client = StructurallyInvalidThenValidClient(valid_profile())
+
+    result = generate_behavioral_profile(
+        CASE,
+        tmp_path / "profile",
+        HybridPlanningConfig(model="fake"),
+        client=client,
+    )
+
+    assert result.validation.valid
+    assert len(client.prompts) == 2
+    assert "must not exceed 1" in client.prompts[1]
+    assert "complete replacement" in client.prompts[1]
+
+
+def test_profile_generation_fails_after_structural_repair_exhaustion(
+    tmp_path: Path,
+) -> None:
+    client = AlwaysStructurallyInvalidClient()
+    output = tmp_path / "profile"
+
+    with pytest.raises(HybridPlanningError, match="impossible probability pair"):
+        generate_behavioral_profile(
+            CASE,
+            output,
+            HybridPlanningConfig(model="fake"),
+            client=client,
+        )
+
+    assert len(client.prompts) == 3
+    assert json.loads((output / "run.json").read_text())["status"] == "failed"
+    assert (output / "attempts/attempt-3/structure-error.txt").is_file()
 
 
 def test_profile_generation_fails_after_repair_exhaustion(tmp_path: Path) -> None:
