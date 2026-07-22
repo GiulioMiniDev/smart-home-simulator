@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+set -eu
+
+PROJECT_DIRECTORY=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$PROJECT_DIRECTORY/tools/start_smart_home_simulator.py" "$@"
+fi
+
+echo "ERRORE: python3 non trovato. Installa Python 3 e riprova." >&2
+exit 1

@@ -1,4 +1,7 @@
-.PHONY: sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
+.PHONY: app sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
+
+app:
+	./start
 
 sync:
 	UV_NO_EDITABLE=1 uv sync
