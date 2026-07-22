@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 
 from smart_home_sim.domain.behavior import ActivityCatalog
+from smart_home_sim.hybrid_planning.behavioral_models import BehavioralProfile
+from smart_home_sim.hybrid_planning.behavioral_validation import ProfileIssue
 from smart_home_sim.hybrid_planning.models import (
     DailyProposal,
     PlanningCase,
@@ -17,6 +19,11 @@ meaningfully different. You choose intentions, ordering, rough time bands, optio
 rationale. Never emit exact timestamps, trajectories, sensor events, environment changes or
 claims about executed state. Use only the supplied intent and location identifiers. Return only
 the JSON object required by the response schema."""
+
+PROFILE_SYSTEM_PROMPT = """You create one synthetic behavioral identity for longitudinal
+smart-home research. Preserve all supplied facts exactly. Propose detailed but measurable habits
+using only supplied intent and location identifiers. Do not generate daily plans, timestamps,
+sensor events, trajectories or executed state. Return only the required JSON object."""
 
 
 def _catalog_payload(catalog: ActivityCatalog) -> list[dict[str, str]]:
@@ -50,6 +57,55 @@ def _case_payload(planning_case: PlanningCase) -> dict[str, object]:
         ],
         "contextNotes": planning_case.context_notes,
     }
+
+
+def behavioral_profile_prompt(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+) -> str:
+    payload = {
+        "case": _case_payload(planning_case),
+        "caseId": planning_case.case_id,
+        "allowedActivities": _catalog_payload(catalog),
+        "requiredPortfolio": {
+            "anchorMinimum": 3,
+            "contextualMinimum": 2,
+            "optionalMinimum": 2,
+            "rareMinimum": 1,
+        },
+    }
+    return f"""Create the frozen behavioral profile for this resident.
+
+Supplied facts are immutable. Generate synthetic traits and formal habits that make this one
+person longitudinally recognizable. Prefer a small number of strong, mineable habits over many
+decorative claims. Every causal predecessor and successor must use an allowed intent identifier.
+
+Use realistic cadence, cooldown, time bands, exceptions, causal chains and mining difficulty.
+Daily necessities must be anchor habits. Contextual and rare habits must not become daily noise.
+
+Authoritative profile input:
+{json.dumps(payload, ensure_ascii=False, indent=2)}"""
+
+
+def behavioral_profile_repair_prompt(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    rejected: BehavioralProfile,
+    issues: list[ProfileIssue],
+) -> str:
+    payload = {
+        "case": _case_payload(planning_case),
+        "allowedActivities": _catalog_payload(catalog),
+        "rejectedProfile": rejected.model_dump(mode="json", by_alias=True),
+        "validationIssues": [item.model_dump(mode="json", by_alias=True) for item in issues],
+    }
+    return f"""Repair the rejected behavioral profile.
+
+Return a complete replacement document. Resolve every listed issue, preserve supplied immutable
+facts and preserve unrelated valid behavioral choices. Use only allowed identifiers.
+
+Repair input:
+{json.dumps(payload, ensure_ascii=False, indent=2)}"""
 
 
 def weekly_prompt(planning_case: PlanningCase, _catalog: ActivityCatalog) -> str:
