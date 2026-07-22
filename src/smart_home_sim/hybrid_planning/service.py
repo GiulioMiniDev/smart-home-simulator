@@ -15,7 +15,24 @@ from smart_home_sim.behavior.service import default_activity_catalog_path
 from smart_home_sim.compiler import compile_scenario
 from smart_home_sim.domain.behavior import ActivityCatalog
 from smart_home_sim.domain.plan import CanonicalPlan
+from smart_home_sim.hybrid_planning.behavioral_models import (
+    BehavioralProfile,
+    HabitBudget,
+    HabitGateReport,
+    HabitLedger,
+)
+from smart_home_sim.hybrid_planning.behavioral_validation import (
+    behavioral_profile_digest,
+    validate_behavioral_profile,
+)
 from smart_home_sim.hybrid_planning.comparison import compare_scenarios
+from smart_home_sim.hybrid_planning.habit_gates import (
+    derive_habit_budget,
+    evaluate_habit_plan,
+    initial_habit_ledger,
+    planned_habit_trace,
+    update_habit_ledger,
+)
 from smart_home_sim.hybrid_planning.lmstudio import (
     LMStudioClient,
     LMStudioError,
@@ -42,6 +59,7 @@ from smart_home_sim.hybrid_planning.prompts import (
     SYSTEM_PROMPT,
     daily_prompt,
     diversity_repair_prompt,
+    habit_repair_prompt,
     structural_repair_prompt,
     weekly_prompt,
 )
@@ -73,6 +91,7 @@ class HybridPlanningResult:
     plan: CanonicalPlan
     diversity: DiversityMetrics
     comparison: dict[str, object] | None
+    habit_gate: HabitGateReport | None = None
 
 
 def _write_text(path: Path, value: str) -> None:
@@ -112,9 +131,29 @@ def _persist_exchange(directory: Path, exchange: LMStudioExchange, parsed: BaseM
     )
 
 
-def _validate_weekly_brief(planning_case: PlanningCase, brief: WeeklyBrief) -> None:
+def _validate_weekly_brief(
+    planning_case: PlanningCase,
+    brief: WeeklyBrief,
+    catalog: ActivityCatalog | None = None,
+    *,
+    require_goal_intents: bool = False,
+) -> None:
     if [item.date for item in brief.days] != planning_case.dates():
         raise HybridPlanningError("weekly brief does not cover the requested dates in order")
+    if require_goal_intents and any(not item.goal_intents for item in brief.days):
+        raise HybridPlanningError("profile-aware weekly brief requires goalIntents for every day")
+    if catalog is not None:
+        known_intents = {item.intent for item in catalog.activities}
+        unknown = sorted(
+            {
+                intent
+                for day in brief.days
+                for intent in day.goal_intents
+                if intent not in known_intents
+            }
+        )
+        if unknown:
+            raise HybridPlanningError(f"weekly brief contains unknown goal intents: {unknown}")
 
 
 def _validate_daily_proposal(
@@ -209,6 +248,30 @@ def _daily_schema(
     return schema
 
 
+def _weekly_schema(catalog: ActivityCatalog) -> dict[str, object]:
+    schema = deepcopy(WeeklyBrief.model_json_schema(by_alias=True))
+    definitions = schema["$defs"]
+    assert isinstance(definitions, dict)
+    day_definition = definitions["WeeklyDayBrief"]
+    assert isinstance(day_definition, dict)
+    properties = day_definition["properties"]
+    assert isinstance(properties, dict)
+    properties["goalIntents"] = {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 5,
+        "items": {
+            "type": "string",
+            "enum": [item.intent for item in catalog.activities],
+        },
+    }
+    required = day_definition["required"]
+    assert isinstance(required, list)
+    if "goalIntents" not in required:
+        required.append("goalIntents")
+    return schema
+
+
 def _updated_memory(memory: PlanningMemory, proposal: DailyProposal) -> PlanningMemory:
     frequencies = dict(memory.intent_frequency)
     last_seen = dict(memory.intent_last_seen)
@@ -260,11 +323,50 @@ def _read_models(case_path: Path) -> tuple[PlanningCase, ActivityCatalog]:
     return planning_case, catalog
 
 
+def _read_behavioral_context(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    profile_path: Path,
+    ledger_path: Path | None,
+) -> tuple[BehavioralProfile, str, HabitLedger, HabitBudget]:
+    try:
+        profile = BehavioralProfile.model_validate_json(profile_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValidationError) as error:
+        raise HybridPlanningError(f"cannot load behavioral profile: {error}") from error
+    validation = validate_behavioral_profile(planning_case, catalog, profile)
+    if not validation.valid:
+        codes = ", ".join(item.code for item in validation.issues)
+        raise HybridPlanningError(f"behavioral profile is invalid: {codes}")
+    digest = behavioral_profile_digest(profile)
+    if ledger_path is None:
+        ledger = initial_habit_ledger(digest, profile)
+    else:
+        try:
+            ledger = HabitLedger.model_validate_json(ledger_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, ValidationError) as error:
+            raise HybridPlanningError(f"cannot load habit ledger: {error}") from error
+    day_types = {
+        value: planning_case.calendar_day(value).day_type for value in planning_case.dates()
+    }
+    try:
+        budget = derive_habit_budget(
+            profile,
+            ledger,
+            planning_case.dates(),
+            day_types,
+        )
+    except ValueError as error:
+        raise HybridPlanningError(str(error)) from error
+    return profile, digest, ledger, budget
+
+
 def generate_hybrid_plan(
     case_path: Path,
     output_dir: Path,
     config: HybridPlanningConfig,
     *,
+    behavioral_profile_path: Path | None = None,
+    ledger_path: Path | None = None,
     baseline_path: Path | None = None,
     client: CompletionClient | None = None,
 ) -> HybridPlanningResult:
@@ -284,22 +386,60 @@ def generate_hybrid_plan(
     _write_json(output_dir / "run.json", run_manifest)
     _write_json(output_dir / "profile-snapshot.json", planning_case)
     active_client = client or LMStudioClient(config)
+    behavioral_profile: BehavioralProfile | None = None
+    profile_digest: str | None = None
+    ledger: HabitLedger | None = None
+    budget: HabitBudget | None = None
+    habit_gate: HabitGateReport | None = None
     try:
+        if ledger_path is not None and behavioral_profile_path is None:
+            raise HybridPlanningError("habit ledger requires a behavioral profile")
+        if behavioral_profile_path is not None:
+            behavioral_profile, profile_digest, ledger, budget = _read_behavioral_context(
+                planning_case,
+                catalog,
+                behavioral_profile_path,
+                ledger_path,
+            )
+            _write_json(output_dir / "behavioral-profile-snapshot.json", behavioral_profile)
+            _write_text(output_dir / "behavioral-profile.sha256", profile_digest + "\n")
+            _write_json(output_dir / "habit-ledger-input.json", ledger)
+            _write_json(output_dir / "habit-budget.json", budget)
+            run_manifest["behavioralProfileDigest"] = profile_digest
         brief, brief_exchange = active_client.complete_json(
             schema_name="weekly_brief",
             output_model=WeeklyBrief,
             system_prompt=SYSTEM_PROMPT,
-            user_prompt=weekly_prompt(planning_case, catalog),
+            user_prompt=weekly_prompt(
+                planning_case,
+                catalog,
+                behavioral_profile,
+                budget,
+            ),
             seed=planning_case.seed,
+            schema_override=_weekly_schema(catalog) if behavioral_profile is not None else None,
         )
         _persist_exchange(output_dir / "weekly-brief" / "attempt-1", brief_exchange, brief)
-        _validate_weekly_brief(planning_case, brief)
+        _validate_weekly_brief(
+            planning_case,
+            brief,
+            catalog,
+            require_goal_intents=behavioral_profile is not None,
+        )
 
         proposals: list[DailyProposal] = []
         memory = PlanningMemory()
         for index, day_brief in enumerate(brief.days):
             attempt = 1
-            prompt = daily_prompt(planning_case, catalog, brief, day_brief, memory)
+            prompt = daily_prompt(
+                planning_case,
+                catalog,
+                brief,
+                day_brief,
+                memory,
+                behavioral_profile,
+                budget,
+            )
             response_schema = _daily_schema(planning_case, catalog, day_brief.date)
             while True:
                 proposal, exchange = active_client.complete_json(
@@ -332,6 +472,8 @@ def generate_hybrid_plan(
                         brief,
                         proposal,
                         str(validation_error),
+                        behavioral_profile,
+                        budget,
                     )
                     attempt += 1
             proposals.append(proposal)
@@ -358,6 +500,8 @@ def generate_hybrid_plan(
                     target,
                     proposals,
                     diversity.reasons,
+                    behavioral_profile,
+                    budget,
                 ),
                 seed=planning_case.seed + 100 + repair_number,
                 schema_override=_daily_schema(planning_case, catalog, target.date),
@@ -379,6 +523,108 @@ def generate_hybrid_plan(
                 "generated week failed the diversity gate after explicit repairs: "
                 + "; ".join(diversity.reasons)
             )
+
+        if (
+            behavioral_profile is not None
+            and profile_digest is not None
+            and ledger is not None
+            and budget is not None
+        ):
+            habit_gate = evaluate_habit_plan(
+                behavioral_profile,
+                ledger,
+                budget,
+                brief,
+                proposals,
+            )
+            habit_repair_number = 0
+            while not habit_gate.valid and habit_repair_number < config.max_habit_repairs:
+                habit_repair_number += 1
+                dated_violation = next(
+                    (item for item in habit_gate.violations if item.date is not None),
+                    None,
+                )
+                if dated_violation is None or dated_violation.date is None:
+                    raise HybridPlanningError("habit gate violation has no repair date")
+                target_date = dated_violation.date
+                target_index = next(
+                    index for index, item in enumerate(proposals) if item.date == target_date
+                )
+                target = proposals[target_index]
+                target_violations = [
+                    item for item in habit_gate.violations if item.date == target_date
+                ]
+                replacement, exchange = active_client.complete_json(
+                    schema_name="habit_daily_repair",
+                    output_model=DailyProposal,
+                    system_prompt=SYSTEM_PROMPT,
+                    user_prompt=habit_repair_prompt(
+                        planning_case,
+                        catalog,
+                        behavioral_profile,
+                        budget,
+                        brief,
+                        target,
+                        proposals,
+                        target_violations,
+                    ),
+                    seed=planning_case.seed + 200 + habit_repair_number,
+                    schema_override=_daily_schema(planning_case, catalog, target_date),
+                )
+                _persist_exchange(
+                    output_dir
+                    / "days"
+                    / target_date.isoformat()
+                    / f"habit-repair-{habit_repair_number}",
+                    exchange,
+                    replacement,
+                )
+                _validate_daily_proposal(
+                    planning_case,
+                    catalog,
+                    target_date,
+                    replacement,
+                )
+                proposals[target_index] = replacement
+                habit_gate = evaluate_habit_plan(
+                    behavioral_profile,
+                    ledger,
+                    budget,
+                    brief,
+                    proposals,
+                )
+                _write_json(
+                    output_dir / f"habit-gate-attempt-{habit_repair_number}.json",
+                    habit_gate,
+                )
+            _write_json(output_dir / "habit-gate-report.json", habit_gate)
+            if not habit_gate.valid:
+                run_manifest["habitGatePassed"] = False
+                codes = ", ".join(item.code for item in habit_gate.violations)
+                raise HybridPlanningError(
+                    f"generated week failed the habit gate after explicit repairs: {codes}"
+                )
+            diversity = diversity_metrics(proposals)
+            _write_json(output_dir / "diversity-report.json", diversity)
+            if not diversity.passes_gate:
+                raise HybridPlanningError(
+                    "habit repair caused the diversity gate to fail: "
+                    + "; ".join(diversity.reasons)
+                )
+            trace = planned_habit_trace(
+                behavioral_profile,
+                profile_digest,
+                budget,
+                proposals,
+            )
+            updated_ledger = update_habit_ledger(
+                behavioral_profile,
+                profile_digest,
+                ledger,
+                proposals,
+            )
+            _write_json(output_dir / "planned-habit-trace.json", trace)
+            _write_json(output_dir / "habit-ledger.json", updated_ledger)
 
         final_memory = _rebuild_memory(proposals)
         _write_json(output_dir / "memory-checkpoint.json", final_memory)
@@ -417,11 +663,20 @@ def generate_hybrid_plan(
                 "status": "completed",
                 "completedAt": generated_at.isoformat(),
                 "diversityGatePassed": True,
+                "behavioralProfileDigest": profile_digest,
+                "habitGatePassed": habit_gate.valid if habit_gate is not None else None,
+                "plannedGroundTruthWritten": habit_gate is not None,
                 "comparisonPerformed": comparison is not None,
             }
         )
         _write_json(output_dir / "run.json", run_manifest)
-        return HybridPlanningResult(output_dir, compilation.plan, diversity, comparison)
+        return HybridPlanningResult(
+            output_dir,
+            compilation.plan,
+            diversity,
+            comparison,
+            habit_gate,
+        )
     except (HybridPlanningError, LMStudioError, ValueError) as error:
         run_manifest.update({"status": "failed", "error": str(error)})
         _write_json(output_dir / "run.json", run_manifest)

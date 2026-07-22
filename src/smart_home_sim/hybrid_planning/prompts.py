@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 
 from smart_home_sim.domain.behavior import ActivityCatalog
-from smart_home_sim.hybrid_planning.behavioral_models import BehavioralProfile
+from smart_home_sim.hybrid_planning.behavioral_models import (
+    BehavioralProfile,
+    HabitBudget,
+    HabitViolation,
+)
 from smart_home_sim.hybrid_planning.behavioral_validation import ProfileIssue
 from smart_home_sim.hybrid_planning.models import (
     DailyProposal,
@@ -59,6 +63,18 @@ def _case_payload(planning_case: PlanningCase) -> dict[str, object]:
     }
 
 
+def _behavioral_payload(
+    profile: BehavioralProfile | None,
+    budget: HabitBudget | None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {}
+    if profile is not None:
+        payload["behavioralProfile"] = profile.model_dump(mode="json", by_alias=True)
+    if budget is not None:
+        payload["habitBudget"] = budget.model_dump(mode="json", by_alias=True)
+    return payload
+
+
 def behavioral_profile_prompt(
     planning_case: PlanningCase,
     catalog: ActivityCatalog,
@@ -108,8 +124,16 @@ Repair input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""
 
 
-def weekly_prompt(planning_case: PlanningCase, _catalog: ActivityCatalog) -> str:
-    payload = {"case": _case_payload(planning_case)}
+def weekly_prompt(
+    planning_case: PlanningCase,
+    _catalog: ActivityCatalog,
+    profile: BehavioralProfile | None = None,
+    budget: HabitBudget | None = None,
+) -> str:
+    payload = {
+        "case": _case_payload(planning_case),
+        **_behavioral_payload(profile, budget),
+    }
     return f"""Design the narrative structure for this planning window.
 
 Make workdays and weekends structurally different. Preserve recurring necessities, but vary
@@ -130,6 +154,8 @@ def daily_prompt(
     weekly_brief: WeeklyBrief,
     day_brief: WeeklyDayBrief,
     memory: PlanningMemory,
+    profile: BehavioralProfile | None = None,
+    budget: HabitBudget | None = None,
 ) -> str:
     payload = {
         "case": _case_payload(planning_case),
@@ -144,6 +170,7 @@ def daily_prompt(
             "long": "about 2 hours",
             "extended": "about 8 hours",
         },
+        **_behavioral_payload(profile, budget),
     }
     return f"""Propose one day for {day_brief.date.isoformat()}.
 
@@ -166,6 +193,8 @@ def diversity_repair_prompt(
     proposal: DailyProposal,
     all_proposals: list[DailyProposal],
     reasons: list[str],
+    profile: BehavioralProfile | None = None,
+    budget: HabitBudget | None = None,
 ) -> str:
     other_days = [item for item in all_proposals if item.date != proposal.date]
     payload = {
@@ -175,6 +204,7 @@ def diversity_repair_prompt(
         "otherAcceptedDays": [item.model_dump(mode="json", by_alias=True) for item in other_days],
         "diversityFailures": reasons,
         "allowedActivities": _catalog_payload(catalog),
+        **_behavioral_payload(profile, budget),
     }
     return f"""Revise only the proposed day below because the week is too repetitive.
 
@@ -192,6 +222,8 @@ def structural_repair_prompt(
     weekly_brief: WeeklyBrief,
     proposal: DailyProposal,
     error: str,
+    profile: BehavioralProfile | None = None,
+    budget: HabitBudget | None = None,
 ) -> str:
     payload = {
         "case": _case_payload(planning_case),
@@ -199,6 +231,7 @@ def structural_repair_prompt(
         "rejectedProposal": proposal.model_dump(mode="json", by_alias=True),
         "validationError": error,
         "allowedActivities": _catalog_payload(catalog),
+        **_behavioral_payload(profile, budget),
     }
     return f"""Repair the rejected daily proposal below.
 
@@ -207,4 +240,35 @@ the date, narrative and every unrelated valid choice. Return the complete replac
 patch or explanation. Do not silently reinterpret the error.
 
 Repair input:
+{json.dumps(payload, ensure_ascii=False, indent=2)}"""
+
+
+def habit_repair_prompt(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    profile: BehavioralProfile,
+    budget: HabitBudget,
+    weekly_brief: WeeklyBrief,
+    proposal: DailyProposal,
+    all_proposals: list[DailyProposal],
+    violations: list[HabitViolation],
+) -> str:
+    other_days = [item for item in all_proposals if item.date != proposal.date]
+    payload = {
+        "case": _case_payload(planning_case),
+        "behavioralProfile": profile.model_dump(mode="json", by_alias=True),
+        "habitBudget": budget.model_dump(mode="json", by_alias=True),
+        "weeklyBrief": weekly_brief.model_dump(mode="json", by_alias=True),
+        "proposalToRevise": proposal.model_dump(mode="json", by_alias=True),
+        "otherAcceptedDays": [item.model_dump(mode="json", by_alias=True) for item in other_days],
+        "habitViolations": [item.model_dump(mode="json", by_alias=True) for item in violations],
+        "allowedActivities": _catalog_payload(catalog),
+    }
+    return f"""Repair only the rejected day so the complete week respects its behavioral truth.
+
+Return the complete replacement day. Make the smallest semantic correction that resolves every
+listed violation for this date. Preserve valid anchors, realized weekly goals and unrelated valid
+choices. Preserve causal order and use only allowed identifiers. Do not return a patch.
+
+Habit repair input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""

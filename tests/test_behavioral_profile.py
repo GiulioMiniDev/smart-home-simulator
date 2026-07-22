@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date
+import json
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ from smart_home_sim.hybrid_planning.behavioral_models import (
     BehavioralHabit,
     BehavioralProfile,
     HabitCadence,
+    HabitDrift,
     HabitKind,
 )
 from smart_home_sim.hybrid_planning.behavioral_validation import (
@@ -20,7 +22,7 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioExchange
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig, TimeBand
 from smart_home_sim.hybrid_planning.profile_service import generate_behavioral_profile
-from smart_home_sim.hybrid_planning.service import _read_models
+from smart_home_sim.hybrid_planning.service import HybridPlanningError, _read_models
 
 ROOT = Path(__file__).parents[1]
 CASE = ROOT / "examples/hybrid/tommaso_bianchi_week.planning-case.json"
@@ -250,6 +252,21 @@ def test_profile_rejects_duplicate_habit_ids_and_intents() -> None:
         )
 
 
+def test_habit_rejects_empty_drift_and_impossible_probabilities() -> None:
+    with pytest.raises(ValidationError, match="requires a cadence or time-band override"):
+        HabitDrift(effective_from=date(2026, 9, 1), rationale="A planned lifestyle change.")
+    valid_drift = HabitDrift(
+        effective_from=date(2026, 9, 1),
+        rationale="A later wake time during the autumn season.",
+        preferred_time_bands_override=[TimeBand.morning],
+    )
+    assert valid_drift.preferred_time_bands_override == [TimeBand.morning]
+    payload = habit().model_dump()
+    payload.update({"execution_probability": 0.9, "exception_probability": 0.2})
+    with pytest.raises(ValidationError, match="must not exceed 1"):
+        BehavioralHabit.model_validate(payload)
+
+
 def test_profile_validator_reports_identity_catalog_and_portfolio_errors() -> None:
     planning_case, catalog = _read_models(CASE)
     invalid_habits = [
@@ -270,6 +287,48 @@ def test_profile_validator_reports_identity_catalog_and_portfolio_errors() -> No
     }
 
 
+def test_profile_validator_reports_fact_chain_location_and_overload_errors() -> None:
+    planning_case, catalog = _read_models(CASE)
+    profile = valid_profile()
+    overloaded = HabitCadence(
+        minimum_occurrences=1,
+        typical_occurrences=1,
+        maximum_occurrences=5,
+        period_days=1,
+    )
+    habits = [
+        item.model_copy(update={"cadence": overloaded}) if index < 3 else item
+        for index, item in enumerate(profile.habits)
+    ]
+    habits[3] = habits[3].model_copy(
+        update={
+            "predecessor_intents": ["invented_predecessor"],
+            "location_ids": ["invented_location"],
+            "incompatible_habit_ids": [habits[3].habit_id],
+        }
+    )
+    invalid = profile.model_copy(
+        update={
+            "source_case_id": "different_case",
+            "immutable_facts": {"occupation": "astronaut"},
+            "effective_from": profile.effective_from + timedelta(days=1),
+            "habits": habits,
+        }
+    )
+
+    report = validate_behavioral_profile(planning_case, catalog, invalid)
+
+    assert {item.code for item in report.issues} >= {
+        "PROFILE_CASE_MISMATCH",
+        "PROFILE_FACTS_MISMATCH",
+        "PROFILE_EFFECTIVE_DATE_MISMATCH",
+        "PROFILE_UNKNOWN_CHAIN_INTENT",
+        "PROFILE_UNKNOWN_LOCATION",
+        "PROFILE_SELF_INCOMPATIBLE",
+        "PROFILE_DAILY_OVERLOAD",
+    }
+
+
 def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:
     invalid = valid_profile().model_copy(update={"resident_id": "someone_else"})
     valid = valid_profile()
@@ -286,3 +345,28 @@ def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:
     assert (result.output_dir / "intended-habits.json").is_file()
     assert (result.output_dir / "profile.sha256").read_text().strip() == result.profile_digest
     assert result.profile_digest == behavioral_profile_digest(valid)
+
+
+def test_profile_generation_fails_after_repair_exhaustion(tmp_path: Path) -> None:
+    invalid = valid_profile().model_copy(update={"resident_id": "someone_else"})
+    client = FakeClient([invalid, invalid, invalid])
+    output = tmp_path / "invalid-profile"
+
+    with pytest.raises(HybridPlanningError, match="failed validation"):
+        generate_behavioral_profile(
+            CASE,
+            output,
+            HybridPlanningConfig(model="fake"),
+            client=client,
+        )
+
+    manifest = json.loads((output / "run.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "failed"
+    assert len(client.prompts) == 3
+
+
+def test_profile_generation_preserves_existing_output(tmp_path: Path) -> None:
+    output = tmp_path / "existing"
+    output.mkdir()
+    with pytest.raises(HybridPlanningError, match="already exists"):
+        generate_behavioral_profile(CASE, output, HybridPlanningConfig(model="fake"))

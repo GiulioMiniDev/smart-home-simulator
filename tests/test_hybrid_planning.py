@@ -9,9 +9,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
+from test_behavioral_profile import valid_profile
 from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
+from smart_home_sim.hybrid_planning.behavioral_models import HabitLedger
 from smart_home_sim.hybrid_planning.comparison import compare_scenarios
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioError, LMStudioExchange
 from smart_home_sim.hybrid_planning.materialization import materialize_scenario
@@ -110,6 +112,53 @@ def weekly_brief() -> WeeklyBrief:
             for index in range(7)
         ],
     )
+
+
+def profile_aware_week() -> tuple[WeeklyBrief, list[DailyProposal], list[DailyProposal]]:
+    distinct = [
+        "read",
+        "evening_walk",
+        "clean_kitchen",
+        "buy_groceries",
+        "watch_documentary",
+        "start_laundry",
+        "weekly_meal_preparation",
+    ]
+    base = weekly_brief()
+    brief = base.model_copy(
+        update={
+            "days": [
+                item.model_copy(update={"goal_intents": [intent]})
+                for item, intent in zip(base.days, distinct, strict=True)
+            ]
+        }
+    )
+    accepted = [
+        proposal(item.date, intent)
+        for item, intent in zip(brief.days, distinct, strict=True)
+    ]
+    broken = list(accepted)
+    for index in (5, 6):
+        current = broken[index]
+        chain = [
+            activity(
+                "travel_to_mothers_home",
+                "mother_house_barcelona",
+                "afternoon",
+                "short",
+            ),
+            activity(
+                "visit_mother_and_have_dinner",
+                "mother_house_barcelona",
+                "evening",
+                "medium",
+            ),
+            activity("travel_home", "living_room_01", "evening", "short"),
+        ]
+        broken[index] = current.model_copy(
+            update={"activities": [*current.activities[:-2], *chain, *current.activities[-2:]]}
+        )
+    return brief, broken, accepted
 
 
 class FakeClient:
@@ -369,6 +418,79 @@ def test_existing_output_directory_is_not_touched(tmp_path: Path) -> None:
     with pytest.raises(HybridPlanningError, match="already exists"):
         generate_hybrid_plan(CASE, output, HybridPlanningConfig(model="fake"))
     assert marker.read_text() == "keep"
+
+
+def test_profile_aware_plan_repairs_frequency_and_writes_ground_truth(tmp_path: Path) -> None:
+    brief, broken, accepted = profile_aware_week()
+    profile_path = tmp_path / "behavioral-profile.json"
+    profile_path.write_text(valid_profile().model_dump_json(by_alias=True), encoding="utf-8")
+    client = FakeClient([brief, *broken, accepted[-1]])
+    output = tmp_path / "habit-aware"
+
+    result = generate_hybrid_plan(
+        CASE,
+        output,
+        HybridPlanningConfig(model="fake", max_diversity_repairs=0),
+        behavioral_profile_path=profile_path,
+        client=client,
+    )
+
+    assert result.habit_gate is not None and result.habit_gate.valid
+    assert (output / "habit-budget.json").is_file()
+    assert (output / "habit-gate-report.json").is_file()
+    assert (output / "planned-habit-trace.json").is_file()
+    assert (output / "habit-ledger.json").is_file()
+    assert (output / "days/2026-08-16/habit-repair-1/proposal.json").is_file()
+    assert json.loads((output / "run.json").read_text())["executionPerformed"] is False
+    assert "barcelona_tommaso_gardener_week" not in "\n".join(client.prompts)
+
+
+def test_profile_aware_plan_rejects_ledger_digest_before_calling_llm(tmp_path: Path) -> None:
+    profile_path = tmp_path / "behavioral-profile.json"
+    profile_path.write_text(valid_profile().model_dump_json(by_alias=True), encoding="utf-8")
+    ledger_path = tmp_path / "ledger.json"
+    ledger_path.write_text(
+        HabitLedger(profile_digest="0" * 64, entries=[]).model_dump_json(by_alias=True),
+        encoding="utf-8",
+    )
+    client = FakeClient([])
+    output = tmp_path / "digest-mismatch"
+
+    with pytest.raises(HybridPlanningError, match="digest"):
+        generate_hybrid_plan(
+            CASE,
+            output,
+            HybridPlanningConfig(model="fake"),
+            behavioral_profile_path=profile_path,
+            ledger_path=ledger_path,
+            client=client,
+        )
+
+    assert client.prompts == []
+    assert not (output / "weekly-brief").exists()
+
+
+def test_profile_aware_plan_fails_after_exhausting_habit_repairs(tmp_path: Path) -> None:
+    brief, broken, _ = profile_aware_week()
+    profile_path = tmp_path / "behavioral-profile.json"
+    profile_path.write_text(valid_profile().model_dump_json(by_alias=True), encoding="utf-8")
+    client = FakeClient([brief, *broken, broken[-1], broken[-1]])
+    output = tmp_path / "habit-failure"
+
+    with pytest.raises(HybridPlanningError, match="habit gate"):
+        generate_hybrid_plan(
+            CASE,
+            output,
+            HybridPlanningConfig(model="fake", max_diversity_repairs=0),
+            behavioral_profile_path=profile_path,
+            client=client,
+        )
+
+    manifest = json.loads((output / "run.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "failed"
+    assert manifest["habitGatePassed"] is False
+    assert len(client.prompts) == 10
+    assert not (output / "scenario.json").exists()
 
 
 def test_hybrid_plan_cli_reports_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
