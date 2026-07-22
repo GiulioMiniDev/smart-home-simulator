@@ -249,8 +249,14 @@ def _daily_schema(
     return schema
 
 
-def _weekly_schema(catalog: ActivityCatalog) -> dict[str, object]:
+def _weekly_schema(
+    catalog: ActivityCatalog,
+    budget: HabitBudget | None = None,
+) -> dict[str, object]:
     schema = deepcopy(WeeklyBrief.model_json_schema(by_alias=True))
+    zero_target_intents = {
+        item.intent for item in budget.items if item.target_occurrences == 0
+    } if budget is not None else set()
     definitions = schema["$defs"]
     assert isinstance(definitions, dict)
     day_definition = definitions["WeeklyDayBrief"]
@@ -263,7 +269,11 @@ def _weekly_schema(catalog: ActivityCatalog) -> dict[str, object]:
         "maxItems": 5,
         "items": {
             "type": "string",
-            "enum": [item.intent for item in catalog.activities],
+            "enum": [
+                item.intent
+                for item in catalog.activities
+                if item.intent not in zero_target_intents
+            ],
         },
     }
     required = day_definition["required"]
@@ -418,7 +428,9 @@ def generate_hybrid_plan(
                 budget,
             ),
             seed=planning_case.seed,
-            schema_override=_weekly_schema(catalog) if behavioral_profile is not None else None,
+            schema_override=(
+                _weekly_schema(catalog, budget) if behavioral_profile is not None else None
+            ),
         )
         _persist_exchange(output_dir / "weekly-brief" / "attempt-1", brief_exchange, brief)
         _validate_weekly_brief(

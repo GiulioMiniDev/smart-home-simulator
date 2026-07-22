@@ -14,7 +14,9 @@ from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
 from smart_home_sim.hybrid_planning.behavioral_models import HabitLedger
+from smart_home_sim.hybrid_planning.behavioral_validation import behavioral_profile_digest
 from smart_home_sim.hybrid_planning.comparison import compare_scenarios
+from smart_home_sim.hybrid_planning.habit_gates import derive_habit_budget, initial_habit_ledger
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioError, LMStudioExchange
 from smart_home_sim.hybrid_planning.materialization import materialize_scenario
 from smart_home_sim.hybrid_planning.metrics import diversity_metrics, most_repetitive_day_index
@@ -32,6 +34,7 @@ from smart_home_sim.hybrid_planning.prompts import structural_repair_prompt
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
     _read_models,
+    _weekly_schema,
     generate_hybrid_plan,
 )
 
@@ -75,6 +78,28 @@ def test_overflow_repair_prompt_gives_capacity_instructions() -> None:
 
     assert "remove or defer optional activities" in prompt
     assert "at most four evening activities" in prompt
+
+
+def test_weekly_schema_excludes_zero_target_habits() -> None:
+    planning_case, catalog = _read_models(CASE)
+    profile = valid_profile()
+    digest = behavioral_profile_digest(profile)
+    ledger = initial_habit_ledger(digest, profile)
+    dates = planning_case.dates()
+    budget = derive_habit_budget(
+        profile,
+        ledger,
+        dates,
+        {value: planning_case.calendar_day(value).day_type for value in dates},
+    )
+
+    schema = _weekly_schema(catalog, budget)
+    intents = schema["$defs"]["WeeklyDayBrief"]["properties"]["goalIntents"]["items"][
+        "enum"
+    ]
+
+    assert "visit_mother_and_have_dinner" not in intents
+    assert "watch_documentary" in intents
 
 
 def proposal(value: date, distinctive_intent: str) -> DailyProposal:
