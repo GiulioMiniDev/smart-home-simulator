@@ -1,4 +1,0 @@
-resourceEventId,at,resourceId,activityExecutionId,actorId,operation,units,availableUnitsAfter
-resource_3f646b769dccb9e7,2026-08-10T06:45:00+02:00,insulin_pen_01,activity_03a9fec63c1b1d97,tommaso_bianchi,acquired,1,0
-resource_8eed88f9a3468148,2026-08-10T06:45:00+02:00,insulin_pen_01,activity_03a9fec63c1b1d97,tommaso_bianchi,requested,1,1
-resource_aedaead92b4a8068,2026-08-10T06:50:00+02:00,insulin_pen_01,activity_03a9fec63c1b1d97,tommaso_bianchi,released,1,1
