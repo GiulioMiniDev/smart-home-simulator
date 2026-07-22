@@ -493,12 +493,51 @@ def test_profile_aware_plan_fails_after_exhausting_habit_repairs(tmp_path: Path)
     assert not (output / "scenario.json").exists()
 
 
-def test_hybrid_plan_cli_reports_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    output = tmp_path / "run"
-    diversity = SimpleNamespace(distinct_day_signatures=7, day_count=7)
+def test_behavioral_profile_cli_reports_frozen_outputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "profile"
+    profile = valid_profile()
 
     def fake_generate(*_args: object, **_kwargs: object) -> SimpleNamespace:
-        return SimpleNamespace(output_dir=output, diversity=diversity, comparison={})
+        return SimpleNamespace(
+            output_dir=output,
+            profile=profile,
+            profile_digest="a" * 64,
+        )
+
+    monkeypatch.setattr("smart_home_sim.cli.generate_behavioral_profile", fake_generate)
+    result = runner.invoke(
+        app,
+        [
+            "generate-behavioral-profile",
+            str(CASE),
+            "--output-dir",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert str((output / "behavioral-profile.json").resolve()) in result.stdout
+    assert str((output / "profile.sha256").resolve()) in result.stdout
+    assert "8 intended habits frozen" in result.stdout
+
+
+def test_hybrid_plan_cli_reports_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = tmp_path / "run"
+    profile_path = tmp_path / "behavioral-profile.json"
+    ledger_path = tmp_path / "habit-ledger.json"
+    diversity = SimpleNamespace(distinct_day_signatures=7, day_count=7)
+    received: dict[str, object] = {}
+
+    def fake_generate(*_args: object, **kwargs: object) -> SimpleNamespace:
+        received.update(kwargs)
+        return SimpleNamespace(
+            output_dir=output,
+            diversity=diversity,
+            comparison={},
+            habit_gate=SimpleNamespace(valid=True),
+        )
 
     monkeypatch.setattr("smart_home_sim.cli.generate_hybrid_plan", fake_generate)
     result = runner.invoke(
@@ -508,6 +547,10 @@ def test_hybrid_plan_cli_reports_outputs(tmp_path: Path, monkeypatch: pytest.Mon
             str(CASE),
             "--output-dir",
             str(output),
+            "--behavioral-profile",
+            str(profile_path),
+            "--habit-ledger",
+            str(ledger_path),
             "--model",
             "local-model",
             "--compare-with",
@@ -517,7 +560,11 @@ def test_hybrid_plan_cli_reports_outputs(tmp_path: Path, monkeypatch: pytest.Mon
     assert result.exit_code == 0
     assert "Hybrid canonical plan written" in result.stdout
     assert "7/7 distinct" in result.stdout
+    assert "Habit gate passed" in result.stdout
+    assert str((output / "habit-ledger.json").resolve()) in result.stdout
     assert "Comparison written" in result.stdout
+    assert received["behavioral_profile_path"] == profile_path
+    assert received["ledger_path"] == ledger_path
 
 
 def test_hybrid_plan_cli_reports_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -527,7 +574,24 @@ def test_hybrid_plan_cli_reports_failure(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.setattr("smart_home_sim.cli.generate_hybrid_plan", fail)
     result = runner.invoke(
         app,
-        ["generate-hybrid-plan", str(CASE), "--output-dir", str(tmp_path / "run")],
+        [
+            "generate-hybrid-plan",
+            str(CASE),
+            "--output-dir",
+            str(tmp_path / "run"),
+            "--behavioral-profile",
+            str(tmp_path / "behavioral-profile.json"),
+        ],
     )
     assert result.exit_code == 1
     assert "offline" in result.stderr
+
+
+def test_hybrid_plan_cli_requires_behavioral_profile(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["generate-hybrid-plan", str(CASE), "--output-dir", str(tmp_path / "run")],
+    )
+
+    assert result.exit_code == 2
+    assert "--behavioral-profile" in result.output

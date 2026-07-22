@@ -332,25 +332,40 @@ compilazione o simulazione.
 
 ### Prototipo di pianificazione ibrida locale
 
-Il vertical slice della Milestone 8.1 usa LM Studio soltanto per proporre la struttura
-semantica di una settimana. Il simulatore materializza gli orari, valida e compila il
-piano, ma **non lo esegue**:
+Il vertical slice della Milestone 8.1 usa LM Studio per creare prima una verità
+comportamentale dettagliata e congelata, poi per proporre una settimana coerente con
+quelle abitudini. Prima di lanciare i comandi, LM Studio deve essere in esecuzione con
+`qwen2.5-coder-7b-instruct` caricato e il server locale disponibile sulla porta 1234.
+Il flusso è autonomo e non richiede la supervisione di Codex:
 
-```bash
-PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim generate-hybrid-plan \
-  examples/hybrid/tommaso_bianchi_week.planning-case.json \
-  --output-dir generated/hybrid-planning/tommaso-prova-1 \
-  --model qwen2.5-coder-7b-instruct \
+```powershell
+.\.venv\Scripts\smart-home-sim.exe generate-behavioral-profile `
+  examples/hybrid/tommaso_bianchi_week.planning-case.json `
+  --output-dir generated/hybrid-planning/tommaso-profile
+
+.\.venv\Scripts\smart-home-sim.exe generate-hybrid-plan `
+  examples/hybrid/tommaso_bianchi_week.planning-case.json `
+  --output-dir generated/hybrid-planning/tommaso-week `
+  --behavioral-profile generated/hybrid-planning/tommaso-profile/behavioral-profile.json `
   --compare-with generated/tommaso_bianchi/tommaso_bianchi.json
 ```
 
-La generazione effettua una chiamata di regia settimanale e sette chiamate giornaliere,
-con memoria compatta progressiva e al massimo due revisioni esplicite per varietà
-insufficiente. Il baseline passato con `--compare-with` viene letto soltanto dopo che
-scenario e piano canonico sono stati accettati; non entra nei prompt o nella memoria.
-Prompt, risposte, digest, checkpoint, report e confronto restano isolati nella directory
-della run. LM Studio non è richiesto per validare, compilare, simulare o riprodurre
-artefatti già esistenti.
+Il primo comando valida il profilo e ne congela anche il digest. Il secondo richiede
+esplicitamente quel profilo, calcola i budget longitudinali, effettua una chiamata di
+regia settimanale e sette chiamate giornaliere, quindi applica gate deterministici per
+abitudini e varietà. Un `--habit-ledger` prodotto dalla settimana precedente può essere
+passato alla successiva: questo permette di scalare a mesi o a un anno senza affidare
+all'LLM tutta la memoria storica. Le riparazioni automatiche sono limitate; se i gate
+continuano a fallire il comando termina senza materializzare un piano accettato.
+
+Il simulatore materializza gli orari, valida e compila il piano, ma **non lo esegue**.
+Il baseline passato con `--compare-with` viene letto soltanto dopo che scenario e piano
+canonico sono stati accettati; non entra nei prompt o nella memoria. Prompt, risposte,
+digest, checkpoint, report e confronto restano isolati nella directory della run. I file
+`intended-habits.json`, `habit-budget.json`, `planned-habit-trace.json` e gli altri
+artefatti di ground truth servono alla valutazione finale e **non devono essere forniti
+come input agli algoritmi di habit mining**. LM Studio non è richiesto per validare,
+compilare, simulare o riprodurre artefatti già esistenti.
 
 Gli artefatti pubblici congelati sono:
 

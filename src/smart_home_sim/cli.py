@@ -62,7 +62,11 @@ from smart_home_sim.formatting import (
     format_environment_text_report,
     format_text_report,
 )
-from smart_home_sim.hybrid_planning import HybridPlanningError, generate_hybrid_plan
+from smart_home_sim.hybrid_planning import (
+    HybridPlanningError,
+    generate_behavioral_profile,
+    generate_hybrid_plan,
+)
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
@@ -128,12 +132,44 @@ app = typer.Typer(
 )
 
 
-@app.command("generate-hybrid-plan")
-def generate_hybrid_plan_command(
+@app.command("generate-behavioral-profile")
+def generate_behavioral_profile_command(
     case_path: Path,
     output_dir: Annotated[Path, typer.Option("--output-dir")],
     model: Annotated[str, typer.Option("--model")] = "qwen2.5-coder-7b-instruct",
     base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.65,
+) -> None:
+    """Generate, validate, and freeze a behavioral profile without simulation."""
+    try:
+        result = generate_behavioral_profile(
+            case_path,
+            output_dir,
+            HybridPlanningConfig(
+                model=model,
+                base_url=base_url,
+                temperature=temperature,
+            ),
+        )
+    except (HybridPlanningError, ValueError) as error:
+        typer.echo(f"Behavioral profile generation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    profile_path = (result.output_dir / "behavioral-profile.json").resolve()
+    digest_path = (result.output_dir / "profile.sha256").resolve()
+    typer.echo(f"Frozen behavioral profile written to: {profile_path}")
+    typer.echo(f"Profile digest written to: {digest_path}")
+    typer.echo(f"{len(result.profile.habits)} intended habits frozen")
+
+
+@app.command("generate-hybrid-plan")
+def generate_hybrid_plan_command(
+    case_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir")],
+    behavioral_profile: Annotated[Path, typer.Option("--behavioral-profile")],
+    model: Annotated[str, typer.Option("--model")] = "qwen2.5-coder-7b-instruct",
+    base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
+    habit_ledger: Annotated[Path | None, typer.Option("--habit-ledger")] = None,
     baseline: Annotated[Path | None, typer.Option("--compare-with")] = None,
     temperature: Annotated[float, typer.Option("--temperature")] = 0.65,
     max_diversity_repairs: Annotated[int, typer.Option("--max-diversity-repairs")] = 2,
@@ -149,6 +185,8 @@ def generate_hybrid_plan_command(
                 temperature=temperature,
                 max_diversity_repairs=max_diversity_repairs,
             ),
+            behavioral_profile_path=behavioral_profile,
+            ledger_path=habit_ledger,
             baseline_path=baseline,
         )
     except (HybridPlanningError, ValueError) as error:
@@ -161,6 +199,10 @@ def generate_hybrid_plan_command(
         f"{result.diversity.distinct_day_signatures}/{result.diversity.day_count} "
         "distinct daily sequences"
     )
+    habit_gate_path = (result.output_dir / "habit-gate-report.json").resolve()
+    ledger_path = (result.output_dir / "habit-ledger.json").resolve()
+    typer.echo(f"Habit gate passed; report written to: {habit_gate_path}")
+    typer.echo(f"Updated habit ledger written to: {ledger_path}")
     if result.comparison is not None:
         comparison_path = (result.output_dir / "comparison/report.json").resolve()
         typer.echo(f"Comparison written to: {comparison_path}")
