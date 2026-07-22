@@ -21,7 +21,10 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
 )
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioError, LMStudioExchange
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig, TimeBand
-from smart_home_sim.hybrid_planning.profile_service import generate_behavioral_profile
+from smart_home_sim.hybrid_planning.profile_service import (
+    _profile_schema,
+    generate_behavioral_profile,
+)
 from smart_home_sim.hybrid_planning.service import HybridPlanningError, _read_models
 
 ROOT = Path(__file__).parents[1]
@@ -385,6 +388,23 @@ def test_profile_validator_rejects_routine_cadence_mismatch() -> None:
     report = validate_behavioral_profile(planning_case, catalog, profile)
 
     assert "PROFILE_ROUTINE_CADENCE_MISMATCH" in {item.code for item in report.issues}
+
+
+def test_profile_schema_requires_named_behavioral_traits() -> None:
+    planning_case, catalog = _read_models(CASE)
+
+    schema = _profile_schema(planning_case, catalog)
+    traits = schema["properties"]["syntheticTraits"]
+
+    assert traits["required"] == [
+        "chronotype",
+        "routineRigidity",
+        "socialOrientation",
+        "mealRegularity",
+        "activityLevel",
+        "noveltySeeking",
+    ]
+    assert traits["additionalProperties"] is False
 
 
 def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:

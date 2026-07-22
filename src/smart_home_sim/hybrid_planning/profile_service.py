@@ -82,6 +82,22 @@ def _profile_schema(
         "type": "object",
         "const": planning_case.resident.profile,
     }
+    trait_names = [
+        "chronotype",
+        "routineRigidity",
+        "socialOrientation",
+        "mealRegularity",
+        "activityLevel",
+        "noveltySeeking",
+    ]
+    properties["syntheticTraits"] = {
+        "type": "object",
+        "properties": {
+            name: {"type": "string", "minLength": 8} for name in trait_names
+        },
+        "required": trait_names,
+        "additionalProperties": False,
+    }
     definitions = schema["$defs"]
     assert isinstance(definitions, dict)
     habit = definitions["BehavioralHabit"]
