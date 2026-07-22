@@ -62,6 +62,8 @@ from smart_home_sim.formatting import (
     format_environment_text_report,
     format_text_report,
 )
+from smart_home_sim.hybrid_planning import HybridPlanningError, generate_hybrid_plan
+from smart_home_sim.hybrid_planning.models import HybridPlanningConfig
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
     load_home_policy,
@@ -124,6 +126,44 @@ app = typer.Typer(
     no_args_is_help=True,
     help="Smart-home scenario, behavior authoring, validation, and compilation",
 )
+
+
+@app.command("generate-hybrid-plan")
+def generate_hybrid_plan_command(
+    case_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir")],
+    model: Annotated[str, typer.Option("--model")] = "qwen2.5-coder-7b-instruct",
+    base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
+    baseline: Annotated[Path | None, typer.Option("--compare-with")] = None,
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.65,
+    max_diversity_repairs: Annotated[int, typer.Option("--max-diversity-repairs")] = 2,
+) -> None:
+    """Generate and compile a semantic plan with LM Studio, without executing it."""
+    try:
+        result = generate_hybrid_plan(
+            case_path,
+            output_dir,
+            HybridPlanningConfig(
+                model=model,
+                base_url=base_url,
+                temperature=temperature,
+                max_diversity_repairs=max_diversity_repairs,
+            ),
+            baseline_path=baseline,
+        )
+    except (HybridPlanningError, ValueError) as error:
+        typer.echo(f"Hybrid planning failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    plan_path = (result.output_dir / "canonical-plan.json").resolve()
+    typer.echo(f"Hybrid canonical plan written to: {plan_path}")
+    typer.echo(
+        "Diversity: "
+        f"{result.diversity.distinct_day_signatures}/{result.diversity.day_count} "
+        "distinct daily sequences"
+    )
+    if result.comparison is not None:
+        comparison_path = (result.output_dir / "comparison/report.json").resolve()
+        typer.echo(f"Comparison written to: {comparison_path}")
 
 
 @app.command()

@@ -1,0 +1,411 @@
+from __future__ import annotations
+
+import json
+from datetime import date, datetime
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+from zoneinfo import ZoneInfo
+
+import pytest
+from pydantic import ValidationError
+from typer.testing import CliRunner
+
+from smart_home_sim.cli import app
+from smart_home_sim.hybrid_planning.comparison import compare_scenarios
+from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioError, LMStudioExchange
+from smart_home_sim.hybrid_planning.materialization import materialize_scenario
+from smart_home_sim.hybrid_planning.metrics import diversity_metrics, most_repetitive_day_index
+from smart_home_sim.hybrid_planning.models import (
+    DailyProposal,
+    DurationClass,
+    HybridPlanningConfig,
+    PlanningCase,
+    ProposedActivity,
+    TimeBand,
+    WeeklyBrief,
+    WeeklyDayBrief,
+)
+from smart_home_sim.hybrid_planning.service import (
+    HybridPlanningError,
+    _read_models,
+    generate_hybrid_plan,
+)
+
+ROOT = Path(__file__).parents[1]
+CASE = ROOT / "examples/hybrid/tommaso_bianchi_week.planning-case.json"
+BASELINE = ROOT / "generated/tommaso_bianchi/tommaso_bianchi.json"
+runner = CliRunner()
+
+
+def activity(
+    intent: str,
+    location: str,
+    band: str,
+    duration: str = "short",
+    *,
+    mandatory: bool = True,
+) -> ProposedActivity:
+    return ProposedActivity(
+        intent=intent,
+        location_id=location,
+        time_band=TimeBand(band),
+        duration_class=DurationClass(duration),
+        mandatory=mandatory,
+        priority=80 if mandatory else 30,
+        rationale=f"Plausible {intent}",
+    )
+
+
+def proposal(value: date, distinctive_intent: str) -> DailyProposal:
+    distinctive_locations = {
+        "read": "living_room_01",
+        "evening_walk": "neighborhood_park",
+        "clean_kitchen": "kitchen_01",
+        "buy_groceries": "supermarket_barcelona",
+        "watch_documentary": "living_room_01",
+        "start_laundry": "bathroom_01",
+        "weekly_meal_preparation": "kitchen_01",
+    }
+    activities = [
+        activity("wake_up", "bedroom_01", "early_morning", "brief"),
+        activity("take_morning_medication", "bedroom_01", "early_morning", "brief"),
+        activity("morning_toilet_and_shower", "bathroom_01", "early_morning"),
+        activity("prepare_and_eat_breakfast", "kitchen_01", "morning", "medium"),
+    ]
+    if value.weekday() < 5:
+        activities.append(activity("work_shift", "garden_workplace", "morning", "extended"))
+    activities.extend(
+        [
+            activity(
+                distinctive_intent,
+                distinctive_locations[distinctive_intent],
+                "evening" if value.weekday() < 5 else "afternoon",
+                "medium",
+                mandatory=False,
+            ),
+            activity("evening_hygiene", "bathroom_01", "night", "brief"),
+            activity("sleep", "bedroom_01", "night", "extended"),
+        ]
+    )
+    return DailyProposal(
+        date=value,
+        narrative_intent=f"A distinct plan for {value.isoformat()}",
+        activities=activities,
+    )
+
+
+def weekly_brief() -> WeeklyBrief:
+    start = date(2026, 8, 10)
+    return WeeklyBrief(
+        week_theme="A balanced summer week",
+        variety_strategy=["vary evening leisure", "reserve domestic tasks for the weekend"],
+        days=[
+            WeeklyDayBrief(
+                date=start.fromordinal(start.toordinal() + index),
+                day_type="workday" if index < 5 else "weekend",
+                narrative_intent=f"Day {index + 1}",
+                distinctive_goals=[f"Distinct goal {index + 1}"],
+            )
+            for index in range(7)
+        ],
+    )
+
+
+class FakeClient:
+    def __init__(self, outputs: list[Any]) -> None:
+        self.outputs = list(outputs)
+        self.prompts: list[str] = []
+
+    def complete_json(self, **kwargs: Any) -> tuple[Any, LMStudioExchange]:
+        self.prompts.append(kwargs["user_prompt"])
+        value = self.outputs.pop(0)
+        content = value.model_dump_json(by_alias=True)
+        return value, LMStudioExchange(
+            request={"messages": [{"content": kwargs["user_prompt"]}]},
+            api_response={"choices": [{"message": {"content": content}}]},
+            raw_content=content,
+        )
+
+
+def test_hybrid_plan_generates_compiles_and_compares_without_exposing_baseline(
+    tmp_path: Path,
+) -> None:
+    distinct = [
+        "read",
+        "evening_walk",
+        "clean_kitchen",
+        "buy_groceries",
+        "watch_documentary",
+        "start_laundry",
+        "weekly_meal_preparation",
+    ]
+    brief = weekly_brief()
+    daily = [proposal(item.date, intent) for item, intent in zip(brief.days, distinct, strict=True)]
+    invalid_activity = daily[0].activities[0].model_copy(update={"intent": "invented_intent"})
+    invalid_first_day = daily[0].model_copy(
+        update={"activities": [invalid_activity, *daily[0].activities[1:]]}
+    )
+    client = FakeClient([brief, invalid_first_day, *daily])
+    output = tmp_path / "hybrid"
+
+    result = generate_hybrid_plan(
+        CASE,
+        output,
+        HybridPlanningConfig(model="fake-model", max_diversity_repairs=0),
+        baseline_path=BASELINE,
+        client=client,
+    )
+
+    assert result.plan.days and result.diversity.passes_gate
+    assert result.comparison is not None and result.comparison["comparable"] is True
+    assert json.loads((output / "run.json").read_text())["executionPerformed"] is False
+    assert json.loads((output / "validation-report.json").read_text())["valid"] is True
+    assert json.loads((output / "compilation-report.json").read_text())["success"] is True
+    assert (output / "memory-checkpoint.json").is_file()
+    assert (output / "days/2026-08-10/attempt-1/proposal.json").is_file()
+    assert (output / "days/2026-08-10/attempt-2/proposal.json").is_file()
+    assert "invented_intent" in client.prompts[2]
+    all_prompts = "\n".join(client.prompts)
+    assert "act_10_01" not in all_prompts
+    assert "gemini-2.5-flash" not in all_prompts
+    assert "barcelona_tommaso_gardener_week" not in all_prompts
+
+
+def test_diversity_gate_repairs_the_most_repetitive_day(tmp_path: Path) -> None:
+    brief = weekly_brief()
+    repeated = [proposal(item.date, "read") for item in brief.days]
+    first_index = most_repetitive_day_index(repeated)
+    repaired_one = proposal(brief.days[first_index].date, "evening_walk")
+    after_first = list(repeated)
+    after_first[first_index] = repaired_one
+    second_index = most_repetitive_day_index(after_first)
+    repaired_two = proposal(brief.days[second_index].date, "clean_kitchen")
+    client = FakeClient([brief, *repeated, repaired_one, repaired_two])
+
+    with pytest.raises(HybridPlanningError, match="diversity gate"):
+        generate_hybrid_plan(
+            CASE,
+            tmp_path / "repaired",
+            HybridPlanningConfig(model="fake", max_diversity_repairs=2),
+            client=client,
+        )
+
+    report = json.loads((tmp_path / "repaired/diversity-report.json").read_text())
+    assert report["passesGate"] is False
+    assert len(client.prompts) == 10
+
+
+def test_materializer_rejects_unknown_location_and_date_gap() -> None:
+    planning_case, _ = _read_models(CASE)
+    config = HybridPlanningConfig(model="fake")
+    brief = weekly_brief()
+    proposals = [proposal(item.date, "read") for item in brief.days]
+    proposals[0].activities[0] = proposals[0].activities[0].model_copy(
+        update={"location_id": "missing"}
+    )
+    with pytest.raises(ValueError, match="unknown proposed location"):
+        materialize_scenario(
+            planning_case,
+            proposals,
+            config,
+            datetime(2026, 7, 22, tzinfo=ZoneInfo("Europe/Madrid")),
+        )
+    with pytest.raises(ValueError, match="cover the planning window"):
+        materialize_scenario(
+            planning_case,
+            proposals[:-1],
+            config,
+            datetime(2026, 7, 22, tzinfo=ZoneInfo("Europe/Madrid")),
+        )
+
+
+def test_metrics_identify_repetition() -> None:
+    days = [proposal(date(2026, 8, 10 + index), "read") for index in range(7)]
+    metrics = diversity_metrics(days)
+    assert not metrics.passes_gate
+    assert metrics.distinct_day_signatures == 2
+    assert most_repetitive_day_index(days) == 4
+    assert most_repetitive_day_index(days[:1]) == 0
+
+
+def test_comparison_rejects_non_scenario_and_detects_mismatch() -> None:
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
+    changed = json.loads(json.dumps(baseline["scenario"]))
+    changed["residents"][0]["residentId"] = "someone_else"
+    report = compare_scenarios(changed, baseline)
+    assert report["sameResidents"] is False
+    assert report["comparable"] is False
+    with pytest.raises(ValueError, match="life scenario"):
+        compare_scenarios({}, baseline)
+    with pytest.raises(ValueError, match="JSON object"):
+        compare_scenarios([], baseline)
+
+
+def test_planning_case_rejects_inconsistent_boundaries_and_calendar() -> None:
+    raw = json.loads(CASE.read_text(encoding="utf-8"))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["routineRequirements"][0]["minimumOccurrences"] = 2
+    with pytest.raises(ValidationError, match="maximumOccurrences"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["initialState"]["at"] = "2026-08-10T01:00:00+02:00"
+    with pytest.raises(ValidationError, match="initialState.at"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["planningWindow"]["start"] = "2026-08-10T01:00:00+02:00"
+    invalid["initialState"]["at"] = invalid["planningWindow"]["start"]
+    with pytest.raises(ValidationError, match="start must be local midnight"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["planningWindow"]["end"] = "2026-08-17T01:00:00+02:00"
+    with pytest.raises(ValidationError, match="end must be local midnight"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["calendar"] = [
+        {"date": "2026-08-10", "dayType": "holiday"},
+        {"date": "2026-08-10", "dayType": "workday"},
+    ]
+    with pytest.raises(ValidationError, match="calendar dates must be unique"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["calendar"] = [{"date": "2026-08-17", "dayType": "holiday"}]
+    with pytest.raises(ValidationError, match="inside the planning window"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    invalid = json.loads(json.dumps(raw))
+    invalid["initialState"]["residents"][0]["residentId"] = "someone_else"
+    with pytest.raises(ValidationError, match="planning resident"):
+        PlanningCase.model_validate_json(json.dumps(invalid))
+
+    explicit = json.loads(json.dumps(raw))
+    explicit["calendar"] = [{"date": "2026-08-15", "dayType": "holiday"}]
+    planning_case = PlanningCase.model_validate_json(json.dumps(explicit))
+    assert planning_case.calendar_day(date(2026, 8, 15)).day_type == "holiday"
+
+
+def test_lmstudio_client_parses_structured_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    value = weekly_brief()
+
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            body = {"choices": [{"message": {"content": value.model_dump_json(by_alias=True)}}]}
+            return json.dumps(body).encode()
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_args, **_kwargs: Response())
+    client = LMStudioClient(HybridPlanningConfig(model="local"))
+    parsed, exchange = client.complete_json(
+        schema_name="weekly",
+        output_model=WeeklyBrief,
+        system_prompt="system",
+        user_prompt="user",
+        seed=1,
+        schema_override={"type": "object"},
+    )
+    assert parsed == value
+    assert exchange.request["response_format"]["type"] == "json_schema"
+    assert exchange.request["response_format"]["json_schema"]["schema"] == {
+        "type": "object"
+    }
+
+
+def test_lmstudio_client_wraps_transport_and_invalid_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import urllib.error
+
+    client = LMStudioClient(HybridPlanningConfig(model="local"))
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(urllib.error.URLError("offline")),
+    )
+    with pytest.raises(LMStudioError, match="unavailable"):
+        client.complete_json(
+            schema_name="weekly",
+            output_model=WeeklyBrief,
+            system_prompt="system",
+            user_prompt="user",
+            seed=1,
+        )
+
+    class InvalidResponse:
+        def __enter__(self) -> InvalidResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"choices":[{"message":{"content":"not-json"}}]}'
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_args, **_kwargs: InvalidResponse())
+    with pytest.raises(LMStudioError, match="invalid structured response"):
+        client.complete_json(
+            schema_name="weekly",
+            output_model=WeeklyBrief,
+            system_prompt="system",
+            user_prompt="user",
+            seed=1,
+        )
+
+
+def test_existing_output_directory_is_not_touched(tmp_path: Path) -> None:
+    output = tmp_path / "exists"
+    output.mkdir()
+    marker = output / "keep.txt"
+    marker.write_text("keep")
+    with pytest.raises(HybridPlanningError, match="already exists"):
+        generate_hybrid_plan(CASE, output, HybridPlanningConfig(model="fake"))
+    assert marker.read_text() == "keep"
+
+
+def test_hybrid_plan_cli_reports_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = tmp_path / "run"
+    diversity = SimpleNamespace(distinct_day_signatures=7, day_count=7)
+
+    def fake_generate(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(output_dir=output, diversity=diversity, comparison={})
+
+    monkeypatch.setattr("smart_home_sim.cli.generate_hybrid_plan", fake_generate)
+    result = runner.invoke(
+        app,
+        [
+            "generate-hybrid-plan",
+            str(CASE),
+            "--output-dir",
+            str(output),
+            "--model",
+            "local-model",
+            "--compare-with",
+            str(BASELINE),
+        ],
+    )
+    assert result.exit_code == 0
+    assert "Hybrid canonical plan written" in result.stdout
+    assert "7/7 distinct" in result.stdout
+    assert "Comparison written" in result.stdout
+
+
+def test_hybrid_plan_cli_reports_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise HybridPlanningError("offline")
+
+    monkeypatch.setattr("smart_home_sim.cli.generate_hybrid_plan", fail)
+    result = runner.invoke(
+        app,
+        ["generate-hybrid-plan", str(CASE), "--output-dir", str(tmp_path / "run")],
+    )
+    assert result.exit_code == 1
+    assert "offline" in result.stderr

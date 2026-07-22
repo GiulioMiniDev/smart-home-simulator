@@ -330,6 +330,28 @@ UV_NO_EDITABLE=1 uv run smart-home-sim prepare-authoring-repair \
 Il ciclo riguarda esclusivamente l'authoring esterno: non introduce chiamate LLM durante
 compilazione o simulazione.
 
+### Prototipo di pianificazione ibrida locale
+
+Il vertical slice della Milestone 8.1 usa LM Studio soltanto per proporre la struttura
+semantica di una settimana. Il simulatore materializza gli orari, valida e compila il
+piano, ma **non lo esegue**:
+
+```bash
+PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim generate-hybrid-plan \
+  examples/hybrid/tommaso_bianchi_week.planning-case.json \
+  --output-dir generated/hybrid-planning/tommaso-prova-1 \
+  --model qwen2.5-coder-7b-instruct \
+  --compare-with generated/tommaso_bianchi/tommaso_bianchi.json
+```
+
+La generazione effettua una chiamata di regia settimanale e sette chiamate giornaliere,
+con memoria compatta progressiva e al massimo due revisioni esplicite per varietà
+insufficiente. Il baseline passato con `--compare-with` viene letto soltanto dopo che
+scenario e piano canonico sono stati accettati; non entra nei prompt o nella memoria.
+Prompt, risposte, digest, checkpoint, report e confronto restano isolati nella directory
+della run. LM Studio non è richiesto per validare, compilare, simulare o riprodurre
+artefatti già esistenti.
+
 Gli artefatti pubblici congelati sono:
 
 - `schemas/scenario-1.0.0.schema.json`;

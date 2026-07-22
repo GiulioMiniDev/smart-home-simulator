@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "hybrid_planning_case",
+  "caseId": "tommaso_bianchi_2026_08_10",
+  "language": "en-US",
+  "timeZone": "Europe/Madrid",
+  "planningWindow": {
+    "start": "2026-08-10T00:00:00+02:00",
+    "end": "2026-08-17T00:00:00+02:00"
+  },
+  "seed": 42,
+  "resident": {
+    "residentId": "tommaso_bianchi",
+    "displayName": "Tommaso Bianchi",
+    "profile": {
+      "age": 30,
+      "occupation": "gardener",
+      "city": "Barcelona",
+      "condition": "type_1_diabetes"
+    }
+  },
+  "modelReferences": {
+    "activityCatalog": {
+      "referenceId": "activity_catalog",
+      "version": "1.0.0"
+    },
+    "homeModel": {
+      "referenceId": "barcelona_apartment_tommaso",
+      "version": "1.0.0"
+    }
+  },
+  "locations": [
+    {"locationId": "bedroom_01", "kind": "room"},
+    {"locationId": "bathroom_01", "kind": "room"},
+    {"locationId": "kitchen_01", "kind": "room"},
+    {"locationId": "living_room_01", "kind": "room"},
+    {"locationId": "hallway_01", "kind": "room"},
+    {"locationId": "garden_workplace", "kind": "external"},
+    {"locationId": "pharmacy_barcelona", "kind": "external"},
+    {"locationId": "neighborhood_park", "kind": "external"},
+    {"locationId": "supermarket_barcelona", "kind": "external"},
+    {"locationId": "mother_house_barcelona", "kind": "external"}
+  ],
+  "resources": [
+    {
+      "resourceId": "insulin_pen_01",
+      "resourceType": "medication",
+      "locationId": "bedroom_01"
+    },
+    {
+      "resourceId": "fridge_01",
+      "resourceType": "appliance",
+      "locationId": "kitchen_01"
+    },
+    {
+      "resourceId": "bed_01",
+      "resourceType": "furniture",
+      "locationId": "bedroom_01"
+    }
+  ],
+  "initialState": {
+    "at": "2026-08-10T00:00:00+02:00",
+    "residents": [
+      {
+        "residentId": "tommaso_bianchi",
+        "locationId": "bedroom_01",
+        "facts": {"at_home": true}
+      }
+    ],
+    "resourceFacts": {
+      "fridge_01": {"open": false},
+      "insulin_pen_01": {"available": true}
+    },
+    "environmentFacts": {"ambient_temperature": 24}
+  },
+  "calendar": [],
+  "routineRequirements": [
+    {
+      "intent": "take_morning_medication",
+      "timeBand": "early_morning",
+      "minimumOccurrences": 1,
+      "maximumOccurrences": 1
+    },
+    {
+      "intent": "work_shift",
+      "dayTypes": ["workday"],
+      "timeBand": "morning",
+      "minimumOccurrences": 1,
+      "maximumOccurrences": 1
+    },
+    {
+      "intent": "sleep",
+      "timeBand": "night",
+      "minimumOccurrences": 1,
+      "maximumOccurrences": 1
+    }
+  ],
+  "contextNotes": [
+    "This is a synthetic planning case. Preserve supplied facts and make conservative assumptions.",
+    "Generate meaningful weekly variation instead of repeating one idealized routine."
+  ]
+}
