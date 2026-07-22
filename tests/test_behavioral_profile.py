@@ -245,6 +245,19 @@ class AlwaysStructurallyInvalidClient:
         raise LMStudioError("invalid structured response: impossible probability pair")
 
 
+class MixedRepairClient(FakeClient):
+    def __init__(self, outputs: list[BehavioralProfile]) -> None:
+        super().__init__(outputs)
+        self.structure_failures = 2
+
+    def complete_json(self, **kwargs: Any) -> tuple[BehavioralProfile, LMStudioExchange]:
+        if self.structure_failures:
+            self.structure_failures -= 1
+            self.prompts.append(kwargs["user_prompt"])
+            raise LMStudioError("invalid structured response: probability pair")
+        return super().complete_json(**kwargs)
+
+
 def test_cadence_rejects_inverted_bounds() -> None:
     with pytest.raises(ValidationError, match="typicalOccurrences"):
         HabitCadence(
@@ -427,6 +440,23 @@ def test_profile_generation_fails_after_structural_repair_exhaustion(
     assert len(client.prompts) == 3
     assert json.loads((output / "run.json").read_text())["status"] == "failed"
     assert (output / "attempts/attempt-3/structure-error.txt").is_file()
+
+
+def test_profile_generation_keeps_separate_structure_and_semantic_repair_budgets(
+    tmp_path: Path,
+) -> None:
+    invalid = valid_profile().model_copy(update={"resident_id": "someone_else"})
+    client = MixedRepairClient([invalid, valid_profile()])
+
+    result = generate_behavioral_profile(
+        CASE,
+        tmp_path / "profile",
+        HybridPlanningConfig(model="fake"),
+        client=client,
+    )
+
+    assert result.validation.valid
+    assert len(client.prompts) == 4
 
 
 def test_profile_generation_fails_after_repair_exhaustion(tmp_path: Path) -> None:

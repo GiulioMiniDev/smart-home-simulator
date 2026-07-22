@@ -128,7 +128,11 @@ def generate_behavioral_profile(
     prompt = behavioral_profile_prompt(planning_case, catalog)
     schema = _profile_schema(planning_case, catalog)
     try:
-        for attempt in range(1, config.max_structure_repairs + 2):
+        attempt = 0
+        structure_repairs = 0
+        semantic_repairs = 0
+        while True:
+            attempt += 1
             try:
                 profile, exchange = active_client.complete_json(
                     schema_name="behavioral_profile",
@@ -143,8 +147,9 @@ def generate_behavioral_profile(
                     output_dir / "attempts" / f"attempt-{attempt}" / "structure-error.txt",
                     str(error) + "\n",
                 )
-                if attempt > config.max_structure_repairs:
+                if structure_repairs >= config.max_structure_repairs:
                     raise
+                structure_repairs += 1
                 prompt = behavioral_profile_structure_repair_prompt(
                     planning_case,
                     catalog,
@@ -181,11 +186,12 @@ def generate_behavioral_profile(
                 )
                 _write_json(output_dir / "run.json", manifest)
                 return BehavioralProfileResult(output_dir, profile, digest, validation)
-            if attempt > config.max_structure_repairs:
+            if semantic_repairs >= config.max_structure_repairs:
                 codes = ", ".join(item.code for item in validation.issues)
                 raise HybridPlanningError(
                     f"behavioral profile failed validation after explicit repairs: {codes}"
                 )
+            semantic_repairs += 1
             prompt = behavioral_profile_repair_prompt(
                 planning_case,
                 catalog,
