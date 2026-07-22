@@ -63,6 +63,26 @@ def _case_payload(planning_case: PlanningCase) -> dict[str, object]:
     }
 
 
+def _required_anchor_slots(planning_case: PlanningCase) -> list[dict[str, object]]:
+    return [
+        {
+            "position": index,
+            "kind": "anchor",
+            "intent": requirement.intent,
+            "applicableDayTypes": requirement.day_types,
+            "preferredTimeBands": (
+                [requirement.time_band.value] if requirement.time_band is not None else []
+            ),
+            "cadence": {
+                "minimumOccurrences": requirement.minimum_occurrences,
+                "maximumOccurrences": requirement.maximum_occurrences,
+                "periodDays": 1,
+            },
+        }
+        for index, requirement in enumerate(planning_case.routine_requirements, start=1)
+    ]
+
+
 def _behavioral_payload(
     profile: BehavioralProfile | None,
     budget: HabitBudget | None,
@@ -89,6 +109,7 @@ def behavioral_profile_prompt(
             "optionalMinimum": 2,
             "rareMinimum": 1,
         },
+        "requiredAnchorSlots": _required_anchor_slots(planning_case),
     }
     return f"""Create the frozen behavioral profile for this resident.
 
@@ -133,6 +154,7 @@ def behavioral_profile_repair_prompt(
     payload = {
         "case": _case_payload(planning_case),
         "allowedActivities": _catalog_payload(catalog),
+        "requiredAnchorSlots": _required_anchor_slots(planning_case),
         "rejectedProfile": rejected.model_dump(mode="json", by_alias=True),
         "validationIssues": [item.model_dump(mode="json", by_alias=True) for item in issues],
     }

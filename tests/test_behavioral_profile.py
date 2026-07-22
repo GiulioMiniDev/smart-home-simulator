@@ -386,6 +386,8 @@ def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:
     )
     assert result.profile == valid
     assert len(client.prompts) == 2
+    assert '"requiredAnchorSlots"' in client.prompts[1]
+    assert '"applicableDayTypes": [\n        "workday"' in client.prompts[1]
     assert (result.output_dir / "behavioral-profile.json").is_file()
     assert (result.output_dir / "intended-habits.json").is_file()
     assert (result.output_dir / "profile.sha256").read_text().strip() == result.profile_digest
