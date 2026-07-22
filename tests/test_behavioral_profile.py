@@ -22,6 +22,7 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioError, LMStudioExchange
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig, TimeBand
 from smart_home_sim.hybrid_planning.profile_service import (
+    _canonicalize_routine_anchors,
     _profile_schema,
     generate_behavioral_profile,
 )
@@ -405,6 +406,30 @@ def test_profile_schema_requires_named_behavioral_traits() -> None:
         "noveltySeeking",
     ]
     assert traits["additionalProperties"] is False
+
+
+def test_profile_generation_canonicalizes_immutable_routine_fields() -> None:
+    planning_case, _catalog = _read_models(CASE)
+    profile = valid_profile()
+    work = profile.habits[1].model_copy(
+        update={
+            "applicable_day_types": [],
+            "cadence": HabitCadence(
+                minimum_occurrences=1,
+                typical_occurrences=1,
+                maximum_occurrences=1,
+                period_days=7,
+            ),
+        }
+    )
+    profile = profile.model_copy(update={"habits": [profile.habits[0], work, *profile.habits[2:]]})
+
+    normalized, changes = _canonicalize_routine_anchors(planning_case, profile)
+    normalized_work = next(item for item in normalized.habits if item.intent == "work_shift")
+
+    assert normalized_work.applicable_day_types == ["workday"]
+    assert normalized_work.cadence.period_days == 1
+    assert any(item["intent"] == "work_shift" for item in changes)
 
 
 def test_profile_generation_repairs_then_freezes(tmp_path: Path) -> None:

@@ -11,7 +11,11 @@ from zoneinfo import ZoneInfo
 from pydantic import BaseModel
 
 from smart_home_sim.domain.behavior import ActivityCatalog
-from smart_home_sim.hybrid_planning.behavioral_models import BehavioralProfile
+from smart_home_sim.hybrid_planning.behavioral_models import (
+    BehavioralProfile,
+    HabitCadence,
+    HabitKind,
+)
 from smart_home_sim.hybrid_planning.behavioral_validation import (
     ProfileValidationReport,
     behavioral_profile_digest,
@@ -120,6 +124,58 @@ def _profile_schema(
     return schema
 
 
+def _canonicalize_routine_anchors(
+    planning_case: PlanningCase,
+    profile: BehavioralProfile,
+) -> tuple[BehavioralProfile, list[dict[str, object]]]:
+    requirements = {item.intent: item for item in planning_case.routine_requirements}
+    habits = []
+    changes: list[dict[str, object]] = []
+    for habit in profile.habits:
+        requirement = requirements.get(habit.intent)
+        if requirement is None:
+            habits.append(habit)
+            continue
+        before = {
+            "kind": habit.kind.value,
+            "cadence": habit.cadence.model_dump(mode="json", by_alias=True),
+            "applicableDayTypes": habit.applicable_day_types,
+            "preferredTimeBands": [item.value for item in habit.preferred_time_bands],
+        }
+        typical = min(
+            requirement.maximum_occurrences,
+            max(requirement.minimum_occurrences, habit.cadence.typical_occurrences),
+        )
+        bands = (
+            [requirement.time_band]
+            if requirement.time_band is not None
+            else habit.preferred_time_bands
+        )
+        normalized = habit.model_copy(
+            update={
+                "kind": HabitKind.anchor,
+                "cadence": HabitCadence(
+                    minimum_occurrences=requirement.minimum_occurrences,
+                    typical_occurrences=typical,
+                    maximum_occurrences=requirement.maximum_occurrences,
+                    period_days=1,
+                ),
+                "applicable_day_types": list(requirement.day_types),
+                "preferred_time_bands": bands,
+            }
+        )
+        after = {
+            "kind": normalized.kind.value,
+            "cadence": normalized.cadence.model_dump(mode="json", by_alias=True),
+            "applicableDayTypes": normalized.applicable_day_types,
+            "preferredTimeBands": [item.value for item in normalized.preferred_time_bands],
+        }
+        if before != after:
+            changes.append({"intent": habit.intent, "before": before, "after": after})
+        habits.append(normalized)
+    return profile.model_copy(update={"habits": habits}), changes
+
+
 def generate_behavioral_profile(
     case_path: Path,
     output_dir: Path,
@@ -173,6 +229,11 @@ def generate_behavioral_profile(
                 )
                 continue
             _persist_exchange(output_dir / "attempts" / f"attempt-{attempt}", exchange, profile)
+            profile, normalizations = _canonicalize_routine_anchors(planning_case, profile)
+            _write_json(
+                output_dir / "attempts" / f"attempt-{attempt}" / "normalizations.json",
+                {"changes": normalizations},
+            )
             validation = validate_behavioral_profile(planning_case, catalog, profile)
             _write_json(output_dir / f"validation-attempt-{attempt}.json", validation)
             if validation.valid:
