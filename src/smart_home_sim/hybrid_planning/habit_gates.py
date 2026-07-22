@@ -45,6 +45,66 @@ def initial_habit_ledger(profile_digest: str, profile: BehavioralProfile) -> Hab
     )
 
 
+def constrain_daily_habit_limits(
+    profile: BehavioralProfile,
+    ledger: HabitLedger,
+    budget: HabitBudget,
+    accepted_proposals: list[DailyProposal],
+    proposal: DailyProposal,
+) -> tuple[DailyProposal, list[dict[str, object]]]:
+    """Drop repeated non-anchor habits that exceed frozen longitudinal limits."""
+    habits_by_intent = {item.intent: item for item in profile.habits}
+    budget_by_habit = {item.habit_id: item for item in budget.items}
+    counts = {item.habit_id: 0 for item in profile.habits}
+    last_seen = {item.habit_id: item.last_seen for item in ledger.entries}
+    for accepted in sorted(accepted_proposals, key=lambda item: item.date):
+        for activity in accepted.activities:
+            habit = habits_by_intent.get(activity.intent)
+            if habit is None:
+                continue
+            counts[habit.habit_id] += 1
+            previous = last_seen[habit.habit_id]
+            if previous is None or accepted.date > previous:
+                last_seen[habit.habit_id] = accepted.date
+
+    kept = []
+    changes: list[dict[str, object]] = []
+    removal_capacity = max(0, len(proposal.activities) - 4)
+    for activity in proposal.activities:
+        habit = habits_by_intent.get(activity.intent)
+        if habit is None or habit.kind is HabitKind.anchor:
+            kept.append(activity)
+            continue
+        item = budget_by_habit[habit.habit_id]
+        previous = last_seen[habit.habit_id]
+        reason = None
+        if item.forbidden_until is not None and proposal.date <= item.forbidden_until:
+            reason = "forbidden_until"
+        elif counts[habit.habit_id] >= item.maximum_occurrences:
+            reason = "maximum_occurrences"
+        elif (
+            previous is not None
+            and habit.cooldown_days
+            and proposal.date <= previous + timedelta(days=habit.cooldown_days)
+        ):
+            reason = "cooldown"
+        if reason is not None and removal_capacity:
+            removal_capacity -= 1
+            changes.append(
+                {
+                    "date": proposal.date.isoformat(),
+                    "habitId": habit.habit_id,
+                    "intent": habit.intent,
+                    "reason": reason,
+                }
+            )
+            continue
+        kept.append(activity)
+        counts[habit.habit_id] += 1
+        last_seen[habit.habit_id] = proposal.date
+    return proposal.model_copy(update={"activities": kept}), changes
+
+
 def _effective_cadence(habit: BehavioralHabit, on_date: date) -> HabitCadence:
     active = [item for item in habit.drifts if item.effective_from <= on_date]
     if not active:

@@ -439,10 +439,10 @@ def test_existing_output_directory_is_not_touched(tmp_path: Path) -> None:
 
 
 def test_profile_aware_plan_repairs_frequency_and_writes_ground_truth(tmp_path: Path) -> None:
-    brief, broken, accepted = profile_aware_week()
+    brief, broken, _ = profile_aware_week()
     profile_path = tmp_path / "behavioral-profile.json"
     profile_path.write_text(valid_profile().model_dump_json(by_alias=True), encoding="utf-8")
-    client = FakeClient([brief, *broken, accepted[-1]])
+    client = FakeClient([brief, *broken])
     output = tmp_path / "habit-aware"
 
     result = generate_hybrid_plan(
@@ -458,7 +458,12 @@ def test_profile_aware_plan_repairs_frequency_and_writes_ground_truth(tmp_path: 
     assert (output / "habit-gate-report.json").is_file()
     assert (output / "planned-habit-trace.json").is_file()
     assert (output / "habit-ledger.json").is_file()
-    assert (output / "days/2026-08-16/habit-repair-1/proposal.json").is_file()
+    normalization_path = (
+        output / "days/2026-08-16/attempt-1/habit-limit-normalizations.json"
+    )
+    assert normalization_path.is_file()
+    normalizations = json.loads(normalization_path.read_text())["changes"]
+    assert any(item["intent"] == "visit_mother_and_have_dinner" for item in normalizations)
     assert json.loads((output / "run.json").read_text())["executionPerformed"] is False
     assert "barcelona_tommaso_gardener_week" not in "\n".join(client.prompts)
 
@@ -490,6 +495,15 @@ def test_profile_aware_plan_rejects_ledger_digest_before_calling_llm(tmp_path: P
 
 def test_profile_aware_plan_fails_after_exhausting_habit_repairs(tmp_path: Path) -> None:
     brief, broken, _ = profile_aware_week()
+    broken[-1] = broken[-1].model_copy(
+        update={
+            "activities": [
+                item
+                for item in broken[-1].activities
+                if item.intent != "weekly_meal_preparation"
+            ]
+        }
+    )
     profile_path = tmp_path / "behavioral-profile.json"
     profile_path.write_text(valid_profile().model_dump_json(by_alias=True), encoding="utf-8")
     client = FakeClient([brief, *broken, broken[-1], broken[-1]])

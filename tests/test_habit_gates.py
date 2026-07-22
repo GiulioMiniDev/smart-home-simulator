@@ -8,6 +8,7 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
     behavioral_profile_digest,
 )
 from smart_home_sim.hybrid_planning.habit_gates import (
+    constrain_daily_habit_limits,
     derive_habit_budget,
     evaluate_habit_plan,
     initial_habit_ledger,
@@ -97,6 +98,31 @@ def weekly_brief() -> WeeklyBrief:
             for index in range(7)
         ],
     )
+
+
+def test_daily_constraint_removes_non_anchor_cooldown_repetition() -> None:
+    profile, _, ledger, budget = context()
+    days = proposals()
+    mother = activity(
+        "visit_mother_and_have_dinner",
+        "mother_house_barcelona",
+        TimeBand.evening,
+    )
+    saturday = days[5].model_copy(update={"activities": [*days[5].activities, mother]})
+    sunday = days[6].model_copy(update={"activities": [*days[6].activities, mother]})
+
+    constrained, changes = constrain_daily_habit_limits(
+        profile,
+        ledger,
+        budget,
+        [saturday],
+        sunday,
+    )
+
+    intents = [item.intent for item in constrained.activities]
+    assert "visit_mother_and_have_dinner" not in intents
+    assert "take_morning_medication" in intents
+    assert any(item["reason"] == "maximum_occurrences" for item in changes)
 
 
 def context():

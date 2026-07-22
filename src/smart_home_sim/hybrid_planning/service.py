@@ -27,6 +27,7 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
 )
 from smart_home_sim.hybrid_planning.comparison import compare_scenarios
 from smart_home_sim.hybrid_planning.habit_gates import (
+    constrain_daily_habit_limits,
     derive_habit_budget,
     evaluate_habit_plan,
     initial_habit_ledger,
@@ -462,6 +463,32 @@ def generate_hybrid_plan(
                         day_brief.date,
                         proposal,
                     )
+                    if (
+                        behavioral_profile is not None
+                        and ledger is not None
+                        and budget is not None
+                    ):
+                        proposal, normalizations = constrain_daily_habit_limits(
+                            behavioral_profile,
+                            ledger,
+                            budget,
+                            proposals,
+                            proposal,
+                        )
+                        _write_json(
+                            output_dir
+                            / "days"
+                            / day_brief.date.isoformat()
+                            / f"attempt-{attempt}"
+                            / "habit-limit-normalizations.json",
+                            {"changes": normalizations},
+                        )
+                        _validate_daily_proposal(
+                            planning_case,
+                            catalog,
+                            day_brief.date,
+                            proposal,
+                        )
                     break
                 except HybridPlanningError as validation_error:
                     if attempt > config.max_structure_repairs:
@@ -514,6 +541,22 @@ def generate_hybrid_plan(
                 exchange,
                 replacement,
             )
+            if behavioral_profile is not None and ledger is not None and budget is not None:
+                replacement, normalizations = constrain_daily_habit_limits(
+                    behavioral_profile,
+                    ledger,
+                    budget,
+                    [item for item in proposals if item.date != target.date],
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target.date.isoformat()
+                    / f"diversity-repair-{repair_number}"
+                    / "habit-limit-normalizations.json",
+                    {"changes": normalizations},
+                )
             _validate_daily_proposal(planning_case, catalog, target.date, replacement)
             proposals[target_index] = replacement
             diversity = diversity_metrics(proposals)
@@ -578,6 +621,21 @@ def generate_hybrid_plan(
                     / f"habit-repair-{habit_repair_number}",
                     exchange,
                     replacement,
+                )
+                replacement, normalizations = constrain_daily_habit_limits(
+                    behavioral_profile,
+                    ledger,
+                    budget,
+                    [item for item in proposals if item.date != target_date],
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target_date.isoformat()
+                    / f"habit-repair-{habit_repair_number}"
+                    / "habit-limit-normalizations.json",
+                    {"changes": normalizations},
                 )
                 _validate_daily_proposal(
                     planning_case,
