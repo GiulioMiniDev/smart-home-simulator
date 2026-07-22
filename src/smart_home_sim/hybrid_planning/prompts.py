@@ -270,6 +270,13 @@ def structural_repair_prompt(
     profile: BehavioralProfile | None = None,
     budget: HabitBudget | None = None,
 ) -> str:
+    capacity_guidance = ""
+    if "overflow day" in error:
+        capacity_guidance = (
+            "Keep every required routine anchor, but remove or defer optional activities "
+            "until the day fits. On a workday use at most four evening activities, place sleep "
+            "last, and do not add replacements for removed optional items."
+        )
     payload = {
         "case": _case_payload(planning_case),
         "weeklyBrief": weekly_brief.model_dump(mode="json", by_alias=True),
@@ -280,9 +287,10 @@ def structural_repair_prompt(
     }
     return f"""Repair the rejected daily proposal below.
 
-Resolve the validation error using only exact supplied intent and location identifiers. Preserve
-the date, narrative and every unrelated valid choice. Return the complete replacement day, not a
-patch or explanation. Do not silently reinterpret the error.
+Resolve the validation error using only exact supplied intent and location identifiers.
+{capacity_guidance}
+Preserve the date, narrative and every unrelated valid choice. Return the complete replacement
+day, not a patch or explanation. Do not silently reinterpret the error.
 
 Repair input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""

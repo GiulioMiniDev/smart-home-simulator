@@ -28,6 +28,7 @@ from smart_home_sim.hybrid_planning.models import (
     WeeklyBrief,
     WeeklyDayBrief,
 )
+from smart_home_sim.hybrid_planning.prompts import structural_repair_prompt
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
     _read_models,
@@ -57,6 +58,23 @@ def activity(
         priority=80 if mandatory else 30,
         rationale=f"Plausible {intent}",
     )
+
+
+def test_overflow_repair_prompt_gives_capacity_instructions() -> None:
+    planning_case, catalog = _read_models(CASE)
+    brief = weekly_brief()
+    rejected = proposal(date(2026, 8, 10), "read")
+
+    prompt = structural_repair_prompt(
+        planning_case,
+        catalog,
+        brief,
+        rejected,
+        "activities overflow day 2026-08-10",
+    )
+
+    assert "remove or defer optional activities" in prompt
+    assert "at most four evening activities" in prompt
 
 
 def proposal(value: date, distinctive_intent: str) -> DailyProposal:
