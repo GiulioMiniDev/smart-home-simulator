@@ -163,6 +163,8 @@ type ValueExpression =
 - Ogni attivita deve avere `earliest <= preferred <= latest` e `minimumMinutes <= preferredMinutes <= maximumMinutes`, con durate positive.
 - Tutti gli orari e le durate devono stare nella finestra. Solo il sonno finale puo superare `end`, con `allowBoundaryTruncation: true`.
 - Mantieni routine, pasti, sonno, salute, lavoro e uscite coerenti con il caso. Non inventare farmaci o condizioni sanitarie.
+- Una routine stabile non significa timestamp copiati: varia in modo plausibile `preferred` e `preferredMinutes` fra giorni comparabili, normalmente di alcuni minuti e sempre dentro le finestre. Mantieni esatti soltanto impegni realmente fissi. Evita che sveglia, pasti, rientro e sonno abbiano lo stesso secondo per tutti i giorni.
+- Usa fame, fatica, cronotipo, salute, impegni e conseguenze del giorno precedente per motivare le variazioni. Non aggiungere rumore casuale privo di causa e non dichiarare come gia avvenuto un risultato che deve essere deciso dal simulatore.
 - Riusa un solo process model per ogni coppia distinta `(residentId, intent)` anche quando l'intent compare in molti giorni.
 
 ## 4. Intent ammessi e componenti esatti

@@ -6,13 +6,28 @@ from pathlib import Path
 
 import pytest
 
-from smart_home_sim.application.jobs import JobManager, _materialization_worker
+from smart_home_sim.application.jobs import (
+    JobManager,
+    _materialization_worker,
+    _sensor_policy_from_request,
+)
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobStatus
+from smart_home_sim.domain.materialization import SensorDeploymentPolicy
 from smart_home_sim.materialization.service import MaterializationFailure
 
 PROJECT_ROOT = Path(__file__).parents[1]
+
+
+def test_partial_sensor_policy_uses_realistic_research_defaults() -> None:
+    assert _sensor_policy_from_request(None) == SensorDeploymentPolicy.realistic()
+    assert _sensor_policy_from_request(
+        {"preset": "minimal"}
+    ) == SensorDeploymentPolicy.realistic(preset="minimal")
+    assert _sensor_policy_from_request(
+        {"policyVersion": "1.1.0", "preset": "minimal"}
+    ) == SensorDeploymentPolicy(preset="minimal")
 
 
 def test_process_isolated_materialization_reports_real_phases(tmp_path: Path) -> None:
@@ -62,6 +77,11 @@ def test_process_isolated_materialization_reports_real_phases(tmp_path: Path) ->
         assert {"compilation", "home", "binding", "sensors", "simulation", "projection"} <= phases
         assert workspace.get_home(home.home_id).current_home_artifact_id
         assert workspace.get_home(home.home_id).current_sensor_artifact_id
+        policy = json.loads(
+            workspace.read_artifact(artifacts["sensor_deployment_policy"].artifact_id)
+        )
+        assert policy["policyVersion"] == "1.2.0"
+        assert policy["observationProfile"] == "realistic"
     finally:
         manager.shutdown()
 

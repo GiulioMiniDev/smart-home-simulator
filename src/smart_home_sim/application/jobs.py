@@ -15,6 +15,24 @@ from smart_home_sim.materialization import materialize_workspace
 from smart_home_sim.materialization.service import MaterializationFailure
 
 
+def _sensor_policy_from_request(payload: dict[str, Any] | None) -> SensorDeploymentPolicy:
+    """Apply partial UI overrides to the research default, not the legacy model default."""
+    if not payload:
+        return SensorDeploymentPolicy.realistic()
+    version = payload.get("policyVersion", payload.get("policy_version"))
+    profile = payload.get("observationProfile", payload.get("observation_profile"))
+    if version == "1.1.0" or profile == "ideal":
+        return SensorDeploymentPolicy.model_validate(payload)
+    base = (
+        SensorDeploymentPolicy.adverse()
+        if profile == "adverse"
+        else SensorDeploymentPolicy.realistic()
+    )
+    return SensorDeploymentPolicy.model_validate(
+        {**base.model_dump(by_alias=True), **payload}
+    )
+
+
 def _materialization_worker(root: str, job_id: str) -> None:
     workspace = WorkspaceService.open(Path(root), reconcile=False, recover_jobs=False)
     request = workspace.job_request(job_id)
@@ -48,7 +66,7 @@ def _materialization_worker(root: str, job_id: str) -> None:
         behavior = workspace.artifact_path(request["behaviorArtifactId"])
         output = workspace.runs_path / job_id
         home_policy = HomeGenerationPolicy.model_validate(request.get("homePolicy") or {})
-        sensor_policy = SensorDeploymentPolicy.model_validate(request.get("sensorPolicy") or {})
+        sensor_policy = _sensor_policy_from_request(request.get("sensorPolicy"))
         materialize_workspace(
             scenario,
             behavior,

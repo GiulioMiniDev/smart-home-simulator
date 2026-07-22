@@ -78,6 +78,7 @@ class PirSensor(SensorBase):
     region_ids: list[str] = Field(min_length=1)
     coverage: Polygon2D
     hold_milliseconds: float = Field(default=30_000, gt=0)
+    hold_log_sigma: float = Field(default=0.0, ge=0, le=2)
 
     @model_validator(mode="after")
     def check_regions(self) -> PirSensor:
@@ -95,6 +96,7 @@ class ContactSensor(SensorBase):
     action_types: list[str] = Field(default_factory=list)
     action_trigger: Literal["started", "ended"] = "ended"
     pulse_milliseconds: float = Field(default=1000, gt=0)
+    pulse_log_sigma: float = Field(default=0.0, ge=0, le=2)
     open_value: JsonValue = True
     closed_value: JsonValue = False
 
@@ -132,6 +134,11 @@ class TemperatureSensor(SensorBase):
     sensor_type: Literal["temperature"] = "temperature"
     region_id: str = Field(min_length=1)
     baseline_celsius: float = Field(ge=-100, le=100)
+    climate_profile: Literal["fixed", "city_seasonal"] = "fixed"
+    room_offset_celsius: float = Field(default=0.0, ge=-10, le=10)
+    thermal_time_constant_hours: float = Field(default=0.0, ge=0, le=72)
+    quantization_celsius: float = Field(default=0.5, gt=0, le=10)
+    sample_phase_seconds: float = Field(default=0.0, ge=0)
     sources: list[TemperatureSource] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -408,7 +415,9 @@ class SensorProjectionReport(ContractModel):
     projector_name: Literal["smart-home-sim-sensor-projector"] = "smart-home-sim-sensor-projector"
     projector_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     projection_policy_version: Literal[
-        "event-driven-sensors-1.0.0", "event-driven-sensors-1.1.0"
+        "event-driven-sensors-1.0.0",
+        "event-driven-sensors-1.1.0",
+        "event-driven-sensors-1.2.0",
     ] = "event-driven-sensors-1.0.0"
     random_stream_policy: Literal["sha256-named-streams-1.0.0"] = "sha256-named-streams-1.0.0"
     success: bool

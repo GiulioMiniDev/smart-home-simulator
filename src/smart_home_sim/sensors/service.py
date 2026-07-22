@@ -5,7 +5,7 @@ import json
 import math
 import random
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -49,6 +49,7 @@ SUPPORTED_SENSOR_MODEL_VERSION = "1.0.0"
 SUPPORTED_TRACE_VERSION = "1.0.0"
 SUPPORTED_BUNDLE_VERSION = "1.0.0"
 ENHANCED_SENSOR_MODEL_VERSION = "1.1.0"
+REALISTIC_SENSOR_MODEL_VERSION = "1.2.0"
 PIR_ACTIVITY_ACTION_TYPES = frozenset(
     {
         "activate",
@@ -148,6 +149,21 @@ def _stream(seed: int, sensor_id: str, concern: str) -> random.Random:
     return random.Random(derived)
 
 
+def _lognormal_milliseconds(
+    trace: ExecutionTrace,
+    sensor_id: str,
+    concern: str,
+    median_milliseconds: float,
+    log_sigma: float,
+) -> float:
+    if log_sigma == 0:
+        return median_milliseconds
+    sampled = _stream(trace.seed, sensor_id, concern).lognormvariate(
+        math.log(median_milliseconds), log_sigma
+    )
+    return max(100.0, min(sampled, median_milliseconds * 8))
+
+
 def _in_failure(sensor: SensorDefinition, at: datetime) -> bool:
     return any(item.starts_at <= at < item.ends_at for item in sensor.failure_windows)
 
@@ -209,6 +225,13 @@ def _pir_candidates(
         if detected_at is None:
             continue
         action = actions.get(movement.action_execution_id)
+        hold_milliseconds = _lognormal_milliseconds(
+            trace,
+            sensor.sensor_id,
+            f"pir-hold:{movement.movement_id}",
+            sensor.hold_milliseconds,
+            sensor.hold_log_sigma,
+        )
         common = dict(
             origin="simulated_cause",
             cause_type="movement",
@@ -229,7 +252,7 @@ def _pir_candidates(
                     **common,
                 ),
                 Candidate(
-                    at=detected_at + timedelta(milliseconds=sensor.hold_milliseconds),
+                    at=detected_at + timedelta(milliseconds=hold_milliseconds),
                     value="OFF",
                     measurement="motion",
                     unit=None,
@@ -244,7 +267,6 @@ def _pir_candidates(
 
     entities = {item.entity_id: item for item in bundle.home_model.entities}
     points = {item.interaction_point_id: item for item in bundle.home_model.interaction_points}
-    hold = timedelta(milliseconds=sensor.hold_milliseconds)
     retrigger = _stream(trace.seed, sensor.sensor_id, "activity-pir-timing")
     for action in trace.action_executions:
         if action.action_type not in PIR_ACTIVITY_ACTION_TYPES or action.status != "completed":
@@ -268,6 +290,15 @@ def _pir_candidates(
         pulse_index = 0
         while pulse_at <= action.ended_at:
             group_id = f"{action.action_execution_id}:pir:{pulse_index}"
+            hold = timedelta(
+                milliseconds=_lognormal_milliseconds(
+                    trace,
+                    sensor.sensor_id,
+                    f"pir-hold:{group_id}",
+                    sensor.hold_milliseconds,
+                    sensor.hold_log_sigma,
+                )
+            )
             common = dict(
                 origin="simulated_cause",
                 cause_type="action_execution",
@@ -318,6 +349,13 @@ def _contact_candidates(trace: ExecutionTrace, sensor: ContactSensor) -> list[Ca
             ):
                 continue
             at = action.started_at if sensor.action_trigger == "started" else action.ended_at
+            pulse_milliseconds = _lognormal_milliseconds(
+                trace,
+                sensor.sensor_id,
+                f"contact-pulse:{action.action_execution_id}",
+                sensor.pulse_milliseconds,
+                sensor.pulse_log_sigma,
+            )
             common = dict(
                 origin="simulated_cause",
                 cause_type="action_execution",
@@ -337,8 +375,8 @@ def _contact_candidates(trace: ExecutionTrace, sensor: ContactSensor) -> list[Ca
                         group_start=True,
                         **common,
                     ),
-                    Candidate(
-                        at=at + timedelta(milliseconds=sensor.pulse_milliseconds),
+                Candidate(
+                    at=at + timedelta(milliseconds=pulse_milliseconds),
                         value="CLOSED",
                         measurement="contact",
                         unit=None,
@@ -418,8 +456,66 @@ def _temperature_deltas(trace: ExecutionTrace, sensor: TemperatureSensor) -> lis
     return sorted(deltas, key=lambda item: (item.at, item.transition.transition_id))
 
 
+CITY_CLIMATE_PARAMETERS: dict[str, tuple[float, float, float, int]] = {
+    # annual mean, seasonal amplitude, daily amplitude, warmest day of year
+    "barcelona": (18.2, 7.2, 3.8, 205),
+    "rome": (16.8, 7.8, 4.2, 205),
+    "roma": (16.8, 7.8, 4.2, 205),
+    "milan": (13.2, 9.8, 4.5, 205),
+    "milano": (13.2, 9.8, 4.5, 205),
+    "london": (11.3, 6.4, 3.0, 205),
+    "paris": (12.8, 7.2, 3.5, 205),
+    "madrid": (15.0, 10.2, 5.8, 205),
+}
+
+
+def _scenario_city(bundle: SimulationBundle) -> str:
+    for resident in bundle.scenario.residents:
+        city = resident.profile.get("city")
+        if isinstance(city, str) and city.strip():
+            return city.strip().casefold()
+    return "generic"
+
+
+def _climate_parameters(city: str) -> tuple[float, float, float, int]:
+    return next(
+        (values for name, values in CITY_CLIMATE_PARAMETERS.items() if name in city),
+        (15.0, 8.0, 4.0, 205),
+    )
+
+
+def _daily_climate_mean(at: datetime, city: str) -> float:
+    annual_mean, seasonal_amplitude, _, warmest_day = _climate_parameters(city)
+    day = at.timetuple().tm_yday
+    return annual_mean + seasonal_amplitude * math.cos(
+        2 * math.pi * (day - warmest_day) / 365.25
+    )
+
+
+def _weather_anomaly(seed: int, city: str, at: datetime) -> float:
+    # A short deterministic moving average produces weather spells instead of white noise.
+    anomaly = 0.0
+    total_weight = 0.0
+    for lag, weight in ((0, 1.0), (1, 0.65), (2, 0.35)):
+        day = (at - timedelta(days=lag)).date().isoformat()
+        anomaly += weight * _stream(seed, city, f"weather:{day}").gauss(0, 1.15)
+        total_weight += weight
+    return anomaly / total_weight
+
+
+def _outdoor_temperature(trace: ExecutionTrace, city: str, at: datetime) -> float:
+    mean = _daily_climate_mean(at, city) + _weather_anomaly(trace.seed, city, at)
+    _, _, daily_amplitude, _ = _climate_parameters(city)
+    local_hour = at.hour + at.minute / 60 + at.second / 3600
+    return mean + daily_amplitude * math.sin(2 * math.pi * (local_hour - 9) / 24)
+
+
 def _temperature_candidates(
-    trace: ExecutionTrace, sensor: TemperatureSensor, *, enhanced: bool
+    trace: ExecutionTrace,
+    bundle: SimulationBundle,
+    sensor: TemperatureSensor,
+    *,
+    enhanced: bool,
 ) -> list[Candidate]:
     deltas = _temperature_deltas(trace, sensor)
     current = sensor.baseline_celsius
@@ -427,21 +523,53 @@ def _temperature_candidates(
         interval = min(source.sample_interval_seconds for source in sensor.sources)
         candidates: list[Candidate] = []
         delta_index = 0
-        sample_at = trace.started_at
+        sample_at = trace.started_at + timedelta(seconds=sensor.sample_phase_seconds)
+        city = _scenario_city(bundle)
+        initial_ambient = bundle.scenario.initial_state.environment_facts.get(
+            "ambient_temperature"
+        )
+        if (
+            sensor.climate_profile == "city_seasonal"
+            and isinstance(initial_ambient, (int, float))
+            and not isinstance(initial_ambient, bool)
+        ):
+            current = float(initial_ambient) + sensor.room_offset_celsius
+        source_adjustment = 0.0
         while sample_at <= trace.ended_at:
             sample_transition: StateTransition | None = None
             while delta_index < len(deltas) and deltas[delta_index].at <= sample_at:
                 delta = deltas[delta_index]
-                current += delta.amount
+                if sensor.climate_profile == "city_seasonal":
+                    source_adjustment += delta.amount
+                else:
+                    current += delta.amount
                 sample_transition = delta.transition
                 delta_index += 1
-            local_hour = sample_at.hour + sample_at.minute / 60 + sample_at.second / 3600
-            daily_component = TEMPERATURE_DAILY_AMPLITUDE_CELSIUS * math.sin(
-                2 * math.pi * (local_hour - 9) / 24
-            )
+            if sensor.climate_profile == "city_seasonal":
+                outdoor = _outdoor_temperature(trace, city, sample_at)
+                climate_mean = _daily_climate_mean(sample_at, city)
+                target = (
+                    sensor.baseline_celsius
+                    + sensor.room_offset_celsius
+                    + 0.32 * (outdoor - climate_mean)
+                    + source_adjustment
+                )
+                if sensor.thermal_time_constant_hours > 0:
+                    alpha = 1 - math.exp(
+                        -interval / (sensor.thermal_time_constant_hours * 3600)
+                    )
+                    current += alpha * (target - current)
+                else:
+                    current = target
+                value = current
+            else:
+                local_hour = sample_at.hour + sample_at.minute / 60 + sample_at.second / 3600
+                daily_component = TEMPERATURE_DAILY_AMPLITUDE_CELSIUS * math.sin(
+                    2 * math.pi * (local_hour - 9) / 24
+                )
+                value = current + daily_component
             value = (
-                round((current + daily_component) / TEMPERATURE_QUANTUM_CELSIUS)
-                * TEMPERATURE_QUANTUM_CELSIUS
+                round(value / sensor.quantization_celsius) * sensor.quantization_celsius
             )
             if sample_transition is None:
                 common = dict(
@@ -506,7 +634,11 @@ def _temperature_candidates(
 
 
 def _false_positive_candidates(
-    trace: ExecutionTrace, sensor: SensorDefinition, seed: int
+    trace: ExecutionTrace,
+    sensor: SensorDefinition,
+    seed: int,
+    *,
+    realistic: bool,
 ) -> list[Candidate]:
     probability = sensor.error_model.false_positive_probability_per_day
     if probability == 0:
@@ -554,9 +686,52 @@ def _false_positive_candidates(
             )
             continue
         elif isinstance(sensor, ContactSensor):
-            measurement = "contact"
-            value = "OPEN" if value_stream.random() < 0.5 else "CLOSED"
-            unit = None
+            if not realistic:
+                candidates.append(
+                    Candidate(
+                        at=at,
+                        value=value_stream.choice(("OPEN", "CLOSED")),
+                        measurement="contact",
+                        unit=None,
+                        origin="false_positive",
+                        cause_type="noise",
+                    )
+                )
+                continue
+            group_id = f"false-positive:{sensor.sensor_id}:{day_index}"
+            pulse = _lognormal_milliseconds(
+                trace,
+                sensor.sensor_id,
+                f"false-positive-contact:{day_index}",
+                sensor.pulse_milliseconds,
+                sensor.pulse_log_sigma,
+            )
+            candidates.extend(
+                [
+                    Candidate(
+                        at=at,
+                        value="OPEN",
+                        measurement="contact",
+                        unit=None,
+                        origin="false_positive",
+                        cause_type="noise",
+                        group_id=group_id,
+                        group_start=True,
+                    ),
+                    Candidate(
+                        at=at + timedelta(milliseconds=pulse),
+                        value="CLOSED",
+                        measurement="contact",
+                        unit=None,
+                        origin="false_positive",
+                        cause_type="noise",
+                        group_id=group_id,
+                        applies_cooldown=False,
+                        applies_false_negative=False,
+                    ),
+                ]
+            )
+            continue
         else:
             measurement = "temperature"
             deviation = max(0.5, sensor.error_model.measurement_noise_standard_deviation * 3)
@@ -575,6 +750,64 @@ def _false_positive_candidates(
     return candidates
 
 
+def _reconcile_binary_candidates(
+    candidates: list[Candidate], *, on_value: str, off_value: str
+) -> list[Candidate]:
+    """Collapse overlapping pulses into one coherent state-machine transition stream."""
+    if not candidates or not all(item.group_id is not None for item in candidates):
+        result: list[Candidate] = []
+        state: JsonValue = off_value
+        for candidate in candidates:
+            if candidate.value not in {on_value, off_value} or candidate.value != state:
+                result.append(candidate)
+                state = candidate.value
+        return result
+
+    by_time: dict[datetime, list[Candidate]] = {}
+    for candidate in candidates:
+        by_time.setdefault(candidate.at, []).append(candidate)
+    active_groups: set[str] = set()
+    current_output_group: str | None = None
+    sequence = 0
+    result = []
+    for at in sorted(by_time):
+        batch = by_time[at]
+        was_on = bool(active_groups)
+        for candidate in batch:
+            if candidate.value == off_value and candidate.group_id is not None:
+                active_groups.discard(candidate.group_id)
+        for candidate in batch:
+            if candidate.value == on_value and candidate.group_id is not None:
+                active_groups.add(candidate.group_id)
+        is_on = bool(active_groups)
+        if was_on == is_on:
+            continue
+        desired = on_value if is_on else off_value
+        representative = next(item for item in batch if item.value == desired)
+        if is_on:
+            current_output_group = f"reconciled:{sequence}"
+            sequence += 1
+            result.append(
+                replace(
+                    representative,
+                    group_id=current_output_group,
+                    group_start=True,
+                )
+            )
+        else:
+            result.append(
+                replace(
+                    representative,
+                    group_id=current_output_group,
+                    group_start=False,
+                    applies_cooldown=False,
+                    applies_false_negative=False,
+                )
+            )
+            current_output_group = None
+    return result
+
+
 def _sensor_candidates(
     trace: ExecutionTrace,
     bundle: SimulationBundle,
@@ -582,17 +815,26 @@ def _sensor_candidates(
     seed: int,
     *,
     enhanced: bool,
+    realistic: bool,
 ) -> list[Candidate]:
     if isinstance(sensor, PirSensor):
         nominal = _pir_candidates(trace, bundle, sensor, enhanced=enhanced)
     elif isinstance(sensor, ContactSensor):
         nominal = _contact_candidates(trace, sensor)
     else:
-        nominal = _temperature_candidates(trace, sensor, enhanced=enhanced)
-    return sorted(
-        [*nominal, *_false_positive_candidates(trace, sensor, seed)],
+        nominal = _temperature_candidates(trace, bundle, sensor, enhanced=enhanced)
+    candidates = sorted(
+        [
+            *nominal,
+            *_false_positive_candidates(trace, sensor, seed, realistic=realistic),
+        ],
         key=lambda item: (item.at, item.origin, item.cause_ids),
     )
+    if realistic and isinstance(sensor, PirSensor):
+        return _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+    if realistic and isinstance(sensor, ContactSensor):
+        return _reconcile_binary_candidates(candidates, on_value="OPEN", off_value="CLOSED")
+    return candidates
 
 
 def _observation_identifier(sensor_id: str, index: int, candidate: Candidate) -> str:
@@ -607,8 +849,16 @@ def _project_sensor(
     seed: int,
     *,
     enhanced: bool,
+    realistic: bool,
 ) -> tuple[list[ObservableSensorRecord], list[OracleObservationLink], Counters]:
-    candidates = _sensor_candidates(trace, bundle, sensor, seed, enhanced=enhanced)
+    candidates = _sensor_candidates(
+        trace,
+        bundle,
+        sensor,
+        seed,
+        enhanced=enhanced,
+        realistic=realistic,
+    )
     counters = Counters(candidate_count=len(candidates))
     dropout = _stream(seed, sensor.sensor_id, "dropout")
     false_negative = _stream(seed, sensor.sensor_id, "false-negative")
@@ -667,7 +917,12 @@ def _project_sensor(
             and isinstance(value, (int, float))
             and standard_deviation > 0
         ):
-            value = round(float(value) + measurement_noise.gauss(0, standard_deviation), 6)
+            noisy_value = float(value) + measurement_noise.gauss(0, standard_deviation)
+            value = round(
+                round(noisy_value / sensor.quantization_celsius)
+                * sensor.quantization_celsius,
+                6,
+            )
             noisy = True
         observation_id = _observation_identifier(sensor.sensor_id, len(records), candidate)
         records.append(
@@ -747,7 +1002,9 @@ def _failed_result(
             sensor_model_version=model.sensor_model_version if model else None,
             sensor_model_sha256=canonical_sha256(model) if model else None,
             projection_policy_version=(
-                "event-driven-sensors-1.1.0"
+                "event-driven-sensors-1.2.0"
+                if model and model.sensor_model_version == REALISTIC_SENSOR_MODEL_VERSION
+                else "event-driven-sensors-1.1.0"
                 if model and model.sensor_model_version == ENHANCED_SENSOR_MODEL_VERSION
                 else "event-driven-sensors-1.0.0"
             ),
@@ -891,9 +1148,19 @@ def project_sensors(
     if issues:
         return _failed_result(issues, trace=trace, model=model, bundle=bundle)
 
-    enhanced = model.sensor_model_version == ENHANCED_SENSOR_MODEL_VERSION
+    enhanced = model.sensor_model_version in {
+        ENHANCED_SENSOR_MODEL_VERSION,
+        REALISTIC_SENSOR_MODEL_VERSION,
+    }
+    realistic = model.sensor_model_version == REALISTIC_SENSOR_MODEL_VERSION
     projection_policy_version = (
-        "event-driven-sensors-1.1.0" if enhanced else "event-driven-sensors-1.0.0"
+        (
+            "event-driven-sensors-1.2.0"
+            if model.sensor_model_version == REALISTIC_SENSOR_MODEL_VERSION
+            else "event-driven-sensors-1.1.0"
+        )
+        if enhanced
+        else "event-driven-sensors-1.0.0"
     )
     records: list[ObservableSensorRecord] = []
     links: list[OracleObservationLink] = []
@@ -901,7 +1168,12 @@ def project_sensors(
     try:
         for sensor in model.sensors:
             sensor_records, sensor_links, counters = _project_sensor(
-                trace, bundle, sensor, trace.seed, enhanced=enhanced
+                trace,
+                bundle,
+                sensor,
+                trace.seed,
+                enhanced=enhanced,
+                realistic=realistic,
             )
             records.extend(sensor_records)
             links.extend(sensor_links)

@@ -45,7 +45,7 @@ An activity has:
 
 Its end is represented by either a duration range or an explicit end window. A duration range has minimum, preferred and maximum minutes. Dependency groups support `all` and `any` predecessor semantics plus minimum and optional maximum lag.
 
-Activities must remain inside the simulation window. `allowBoundaryTruncation` is the explicit exception for an activity, such as the final night's sleep, that starts inside the window and continues after observation stops.
+Activities must remain inside the simulation window. `allowBoundaryTruncation` is the explicit exception for an activity, such as the final night's sleep, that starts inside the requested window. Despite the legacy field name, the runtime does not cut such an activity: it completes it, extends the execution trace, and projects the completion tail to sensors. Evaluation reports must distinguish that tail from the requested analysis window.
 
 The contract does not choose exact times inside flexible windows. That is the responsibility of the plan compiler.
 

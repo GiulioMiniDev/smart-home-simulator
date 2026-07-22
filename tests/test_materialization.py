@@ -20,7 +20,12 @@ from smart_home_sim.domain.materialization import (
     SyntheticWorkspaceManifest,
 )
 from smart_home_sim.domain.models import Location, LocationKind, Scenario
-from smart_home_sim.domain.sensors import SensorModel
+from smart_home_sim.domain.sensors import (
+    ContactSensor,
+    PirSensor,
+    SensorModel,
+    TemperatureSensor,
+)
 from smart_home_sim.environment import validate_home_model
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
@@ -145,6 +150,43 @@ def test_sensor_deployment_presets_are_valid_and_projectable(
         assert {"movement", "action_execution"} <= pir_causes
 
 
+def test_realistic_sensor_profile_is_deterministic_and_state_coherent() -> None:
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    policy = SensorDeploymentPolicy.realistic()
+    first = deploy_sensors(bundle, policy)
+    second = deploy_sensors(bundle, policy)
+
+    assert first == second
+    assert first.sensor_model is not None
+    assert first.sensor_model.sensor_model_version == "1.2.0"
+    pir = [item for item in first.sensor_model.sensors if isinstance(item, PirSensor)]
+    contacts = [
+        item for item in first.sensor_model.sensors if isinstance(item, ContactSensor)
+    ]
+    temperatures = [
+        item for item in first.sensor_model.sensors if isinstance(item, TemperatureSensor)
+    ]
+    assert all(item.hold_log_sigma > 0 for item in pir)
+    assert all(item.pulse_log_sigma > 0 for item in contacts)
+    assert all(item.climate_profile == "city_seasonal" for item in temperatures)
+    assert len({item.sample_phase_seconds for item in temperatures}) == len(temperatures)
+
+    trace = simulate_bundle(bundle).trace
+    assert trace is not None
+    projection = project_sensors(trace, bundle, first.sensor_model)
+    assert projection.report.success
+    assert projection.report.projection_policy_version == "event-driven-sensors-1.2.0"
+    assert projection.observable_log is not None
+    binary_states: dict[tuple[str, object], set[object]] = {}
+    for record in projection.observable_log.records:
+        if record.sensor_type in {"pir", "contact"}:
+            binary_states.setdefault(
+                (record.sensor_id, record.observed_at), set()
+            ).add(record.value)
+    assert all(len(values) == 1 for values in binary_states.values())
+    assert projection.report.summary.noisy_observation_count > 0
+
+
 def test_generated_bindings_use_physical_interaction_targets() -> None:
     bundle = golden_model("simulation-bundle.json", SimulationBundle)
     providers_by_action = {
@@ -222,7 +264,7 @@ def test_policy_loading_and_contract_invariants(tmp_path: Path) -> None:
     )
     assert load_home_policy(None) == HomeGenerationPolicy()
     assert load_home_policy(home_path) == HomeGenerationPolicy()
-    assert load_sensor_policy(None) == SensorDeploymentPolicy()
+    assert load_sensor_policy(None) == SensorDeploymentPolicy.realistic()
     assert load_sensor_policy(sensor_path).preset == "dense"
     with pytest.raises(ValidationError):
         HomeGenerationPolicy(room_width_meters=1)

@@ -238,7 +238,8 @@
       "default": "event-driven-sensors-1.0.0",
       "enum": [
         "event-driven-sensors-1.0.0",
-        "event-driven-sensors-1.1.0"
+        "event-driven-sensors-1.1.0",
+        "event-driven-sensors-1.2.0"
       ],
       "title": "Projectionpolicyversion",
       "type": "string"

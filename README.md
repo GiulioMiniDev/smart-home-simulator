@@ -82,11 +82,15 @@ Installare le dipendenze, costruire il frontend e avviare il servizio locale:
 ```bash
 UV_NO_EDITABLE=1 uv sync --locked
 cd frontend && npm ci && npm run build && cd ..
-UV_NO_EDITABLE=1 uv run smart-home-sim-app --workspace workspace --name "Research lab"
+UV_NO_EDITABLE=1 uv run smart-home-sim-app --name "Research lab"
 ```
 
 Il launcher ascolta soltanto su loopback, apre il browser per default e crea o riapre il
-workspace indicato. `--no-browser` è disponibile per server di test. I metadati applicativi
+workspace indicato. Se `--workspace` non viene specificato usa la directory locale
+`~/.smart-home-simulator/workspace`, esterna al repository e non sincronizzata da Git.
+Database, run, export, ambienti virtuali e build locali non devono essere versionati;
+gli esperimenti da condividere vanno selezionati esplicitamente in `generated/` oppure
+trasferiti come archivio `.shw`. `--no-browser` è disponibile per server di test. I metadati applicativi
 sono in `workspace/workspace.sqlite3`; trace, log, oracle ed export restano file immutabili
 con dimensione e SHA-256 catalogati. Non spostare singoli file a mano: usare **Archive
 workspace** nella pagina Exports per produrre uno snapshot portabile `.shw` verificabile.
@@ -116,7 +120,19 @@ UV_NO_EDITABLE=1 uv run smart-home-sim run-synthetic \
 ```
 
 Il comando usa per default le policy `compact-grid 1.1.0` e sensori `room_coverage
-1.1.0`, ma accetta file custom con `--home-policy` e `--sensor-policy`. Pubblica la
+1.2.0` con profilo osservativo `realistic`, ma accetta file custom con `--home-policy` e
+`--sensor-policy`. Il profilo realistico usa durate PIR e contatto distribuite, latenza,
+jitter, dropout, falsi negativi e positivi, rumore e campionamento termico sfalsato. La
+temperatura combina città e data dello scenario con inerzia e offset distinti per stanza;
+se la città manca usa un profilo stagionale generico. `SensorDeploymentPolicy()` conserva
+il profilo ideale 1.1.0 per replay e test legacy, mentre
+`examples/policies/sensor-realistic-1.2.0.json` rende esplicito il nuovo default di ricerca.
+La finestra dello scenario resta l'intervallo richiesto per pianificazione e analisi, ma
+un'attività autorizzata con `allowBoundaryTruncation` può terminare oltre il confine finale:
+il runtime la completa, estende `execution-trace.endedAt` e proietta anche la relativa coda
+sensoriale. Il nome del campo è conservato per compatibilità con il contratto 1.0.0; nelle
+valutazioni la coda va riportata separatamente dalla finestra principale, non tagliata.
+Pubblica la
 directory solo dopo il successo di compilazione, binding M4, simulazione M5 e proiezione
 M6; se un gate fallisce rimuove lo staging. Il manifest finale verifica 17 artefatti con
 digest canonici. I generatori possono essere usati separatamente con `generate-home` e

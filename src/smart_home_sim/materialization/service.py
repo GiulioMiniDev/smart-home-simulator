@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import tempfile
@@ -122,6 +123,12 @@ def _distributed_position(boundary: Polygon2D, index: int, count: int) -> Point2
         x=minimum_x + (maximum_x - minimum_x) * (column + 1) / (columns + 1),
         y=minimum_y + (maximum_y - minimum_y) * (row + 1) / (rows + 1),
     )
+
+
+def _stable_fraction(*parts: str) -> float:
+    material = ":".join(parts).encode("utf-8")
+    value = int.from_bytes(hashlib.sha256(material).digest()[:8], "big")
+    return value / (2**64 - 1)
 
 
 RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
@@ -571,6 +578,11 @@ def deploy_sensors(
         false_negative_probability=policy.false_negative_probability,
         false_positive_probability_per_day=policy.false_positive_probability_per_day,
     )
+    timing = SensorTiming(
+        latency_milliseconds=policy.latency_milliseconds,
+        clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
+        cooldown_milliseconds=policy.pir_cooldown_milliseconds,
+    )
     for region in selected:
         positions = [_center(region.boundary)]
         if policy.preset == "dense":
@@ -591,7 +603,8 @@ def deploy_sensors(
                     region_ids=[region.region_id],
                     coverage=region.boundary,
                     hold_milliseconds=policy.pir_hold_milliseconds,
-                    timing=SensorTiming(cooldown_milliseconds=policy.pir_cooldown_milliseconds),
+                    hold_log_sigma=policy.pir_hold_log_sigma,
+                    timing=timing,
                     error_model=pir_error,
                 )
             )
@@ -619,6 +632,11 @@ def deploy_sensors(
                 fact=None,
                 action_types=["enter_home", "leave_home"],
                 pulse_milliseconds=policy.contact_pulse_milliseconds,
+                pulse_log_sigma=policy.contact_pulse_log_sigma,
+                timing=SensorTiming(
+                    latency_milliseconds=policy.latency_milliseconds,
+                    clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
+                ),
                 error_model=pir_error,
             )
         )
@@ -629,6 +647,11 @@ def deploy_sensors(
                 position=points[entity.interaction_point_id],
                 entity_id=entity.entity_id,
                 pulse_milliseconds=policy.contact_pulse_milliseconds,
+                pulse_log_sigma=policy.contact_pulse_log_sigma,
+                timing=SensorTiming(
+                    latency_milliseconds=policy.latency_milliseconds,
+                    clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
+                ),
                 error_model=pir_error,
             )
         )
@@ -652,12 +675,24 @@ def deploy_sensors(
             entity for entity in region_entities if entity.entity_id in active_entity_ids
         ]
         source_entities = active_entities or region_entities[:1]
+        room_fraction = _stable_fraction(bundle.seed.__str__(), region.region_id, "temperature")
+        room_offset = (room_fraction - 0.5) * 1.4 if policy.use_city_climate else 0.0
+        sample_phase = (
+            room_fraction * policy.temperature_sample_interval_seconds
+            if policy.stagger_temperature_sampling
+            else 0.0
+        )
         sensors.append(
             TemperatureSensor(
                 sensor_id=f"temperature_{region.region_id}",
                 position=_center(region.boundary),
                 region_id=region.region_id,
                 baseline_celsius=policy.temperature_baseline_celsius,
+                climate_profile="city_seasonal" if policy.use_city_climate else "fixed",
+                room_offset_celsius=round(room_offset, 6),
+                thermal_time_constant_hours=policy.temperature_thermal_time_constant_hours,
+                quantization_celsius=policy.temperature_quantization_celsius,
+                sample_phase_seconds=round(sample_phase, 6),
                 sources=[
                     TemperatureSource(
                         entity_id=source.entity_id,
@@ -679,7 +714,7 @@ def deploy_sensors(
         )
     model = SensorModel(
         sensor_model_id=f"{home.home_id}__{policy.preset}__sensors",
-        sensor_model_version="1.1.0",
+        sensor_model_version="1.2.0" if policy.policy_version == "1.2.0" else "1.1.0",
         source_bundle_id=bundle.bundle_id,
         source_bundle_sha256=canonical_sha256(bundle),
         seed=bundle.seed,
@@ -909,7 +944,7 @@ def load_home_policy(path: Path | None) -> HomeGenerationPolicy:
 
 def load_sensor_policy(path: Path | None) -> SensorDeploymentPolicy:
     if path is None:
-        return SensorDeploymentPolicy()
+        return SensorDeploymentPolicy.realistic()
     return _load_model(path, SensorDeploymentPolicy)
 
 

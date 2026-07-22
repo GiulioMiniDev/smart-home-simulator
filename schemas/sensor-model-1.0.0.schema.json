@@ -70,6 +70,13 @@
           "title": "Pulsemilliseconds",
           "type": "number"
         },
+        "pulseLogSigma": {
+          "default": 0.0,
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Pulselogsigma",
+          "type": "number"
+        },
         "openValue": {
           "$ref": "#/$defs/JsonValue",
           "default": true
@@ -133,6 +140,13 @@
           "default": 30000,
           "exclusiveMinimum": 0,
           "title": "Holdmilliseconds",
+          "type": "number"
+        },
+        "holdLogSigma": {
+          "default": 0.0,
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Holdlogsigma",
           "type": "number"
         }
       },
@@ -301,6 +315,42 @@
           "maximum": 100,
           "minimum": -100,
           "title": "Baselinecelsius",
+          "type": "number"
+        },
+        "climateProfile": {
+          "default": "fixed",
+          "enum": [
+            "fixed",
+            "city_seasonal"
+          ],
+          "title": "Climateprofile",
+          "type": "string"
+        },
+        "roomOffsetCelsius": {
+          "default": 0.0,
+          "maximum": 10,
+          "minimum": -10,
+          "title": "Roomoffsetcelsius",
+          "type": "number"
+        },
+        "thermalTimeConstantHours": {
+          "default": 0.0,
+          "maximum": 72,
+          "minimum": 0,
+          "title": "Thermaltimeconstanthours",
+          "type": "number"
+        },
+        "quantizationCelsius": {
+          "default": 0.5,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Quantizationcelsius",
+          "type": "number"
+        },
+        "samplePhaseSeconds": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Samplephaseseconds",
           "type": "number"
         },
         "sources": {

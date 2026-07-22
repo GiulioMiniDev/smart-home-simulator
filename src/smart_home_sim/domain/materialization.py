@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import ConfigDict, Field, JsonValue, model_validator
 
@@ -42,18 +42,82 @@ class SensorDeploymentPolicy(ContractModel):
 
     schema_version: Literal["1.0.0"] = "1.0.0"
     document_type: Literal["sensor_deployment_policy"] = "sensor_deployment_policy"
-    policy_version: Literal["1.1.0"] = "1.1.0"
+    policy_version: Literal["1.1.0", "1.2.0"] = "1.1.0"
     preset: Literal["minimal", "room_coverage", "dense"] = "room_coverage"
+    observation_profile: Literal["ideal", "realistic", "adverse"] = "ideal"
     pir_hold_milliseconds: float = Field(default=5_000, gt=0)
+    pir_hold_log_sigma: float = Field(default=0.0, ge=0, le=2)
     pir_cooldown_milliseconds: float = Field(default=750, ge=0)
     contact_pulse_milliseconds: float = Field(default=1000, gt=0)
+    contact_pulse_log_sigma: float = Field(default=0.0, ge=0, le=2)
+    latency_milliseconds: float = Field(default=0.0, ge=0)
+    clock_jitter_milliseconds: float = Field(default=0.0, ge=0)
     temperature_baseline_celsius: float = Field(default=20.0, ge=-100, le=100)
     temperature_sample_interval_seconds: float = Field(default=900, gt=0)
     temperature_source_delta_celsius: float = Field(default=0.5, gt=0, le=20)
+    temperature_quantization_celsius: float = Field(default=0.5, gt=0, le=10)
+    temperature_thermal_time_constant_hours: float = Field(default=0.0, ge=0, le=72)
+    use_city_climate: bool = False
+    stagger_temperature_sampling: bool = False
     dropout_probability: float = Field(default=0.0, ge=0, le=1)
     false_negative_probability: float = Field(default=0.0, ge=0, le=1)
     false_positive_probability_per_day: float = Field(default=0.0, ge=0, le=1)
     temperature_noise_standard_deviation: float = Field(default=0.0, ge=0)
+
+    @model_validator(mode="after")
+    def check_policy_version(self) -> Self:
+        if self.policy_version == "1.1.0" and self.observation_profile != "ideal":
+            raise ValueError("sensor policy 1.1.0 only supports the ideal observationProfile")
+        return self
+
+    @classmethod
+    def realistic(
+        cls,
+        *,
+        preset: Literal["minimal", "room_coverage", "dense"] = "room_coverage",
+    ) -> Self:
+        """Research default calibrated to the order of magnitude of CASAS sensors."""
+        return cls(
+            policy_version="1.2.0",
+            preset=preset,
+            observation_profile="realistic",
+            pir_hold_milliseconds=3_500,
+            pir_hold_log_sigma=0.45,
+            pir_cooldown_milliseconds=750,
+            contact_pulse_milliseconds=5_500,
+            contact_pulse_log_sigma=0.65,
+            latency_milliseconds=80,
+            clock_jitter_milliseconds=250,
+            temperature_baseline_celsius=22.0,
+            temperature_sample_interval_seconds=900,
+            temperature_source_delta_celsius=0.7,
+            temperature_quantization_celsius=0.1,
+            temperature_thermal_time_constant_hours=4.0,
+            use_city_climate=True,
+            stagger_temperature_sampling=True,
+            dropout_probability=0.005,
+            false_negative_probability=0.02,
+            false_positive_probability_per_day=0.15,
+            temperature_noise_standard_deviation=0.12,
+        )
+
+    @classmethod
+    def adverse(
+        cls,
+        *,
+        preset: Literal["minimal", "room_coverage", "dense"] = "room_coverage",
+    ) -> Self:
+        return cls(
+            **{
+                **cls.realistic(preset=preset).model_dump(),
+                "observation_profile": "adverse",
+                "dropout_probability": 0.04,
+                "false_negative_probability": 0.1,
+                "false_positive_probability_per_day": 0.75,
+                "temperature_noise_standard_deviation": 0.35,
+                "clock_jitter_milliseconds": 1_000,
+            }
+        )
 
 
 class MaterializationIssue(ContractModel):

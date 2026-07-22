@@ -16,8 +16,11 @@
       "type": "string"
     },
     "policyVersion": {
-      "const": "1.1.0",
       "default": "1.1.0",
+      "enum": [
+        "1.1.0",
+        "1.2.0"
+      ],
       "title": "Policyversion",
       "type": "string"
     },
@@ -31,10 +34,27 @@
       "title": "Preset",
       "type": "string"
     },
+    "observationProfile": {
+      "default": "ideal",
+      "enum": [
+        "ideal",
+        "realistic",
+        "adverse"
+      ],
+      "title": "Observationprofile",
+      "type": "string"
+    },
     "pirHoldMilliseconds": {
       "default": 5000,
       "exclusiveMinimum": 0,
       "title": "Pirholdmilliseconds",
+      "type": "number"
+    },
+    "pirHoldLogSigma": {
+      "default": 0.0,
+      "maximum": 2,
+      "minimum": 0,
+      "title": "Pirholdlogsigma",
       "type": "number"
     },
     "pirCooldownMilliseconds": {
@@ -47,6 +67,25 @@
       "default": 1000,
       "exclusiveMinimum": 0,
       "title": "Contactpulsemilliseconds",
+      "type": "number"
+    },
+    "contactPulseLogSigma": {
+      "default": 0.0,
+      "maximum": 2,
+      "minimum": 0,
+      "title": "Contactpulselogsigma",
+      "type": "number"
+    },
+    "latencyMilliseconds": {
+      "default": 0.0,
+      "minimum": 0,
+      "title": "Latencymilliseconds",
+      "type": "number"
+    },
+    "clockJitterMilliseconds": {
+      "default": 0.0,
+      "minimum": 0,
+      "title": "Clockjittermilliseconds",
       "type": "number"
     },
     "temperatureBaselineCelsius": {
@@ -68,6 +107,30 @@
       "maximum": 20,
       "title": "Temperaturesourcedeltacelsius",
       "type": "number"
+    },
+    "temperatureQuantizationCelsius": {
+      "default": 0.5,
+      "exclusiveMinimum": 0,
+      "maximum": 10,
+      "title": "Temperaturequantizationcelsius",
+      "type": "number"
+    },
+    "temperatureThermalTimeConstantHours": {
+      "default": 0.0,
+      "maximum": 72,
+      "minimum": 0,
+      "title": "Temperaturethermaltimeconstanthours",
+      "type": "number"
+    },
+    "useCityClimate": {
+      "default": false,
+      "title": "Usecityclimate",
+      "type": "boolean"
+    },
+    "staggerTemperatureSampling": {
+      "default": false,
+      "title": "Staggertemperaturesampling",
+      "type": "boolean"
     },
     "dropoutProbability": {
       "default": 0.0,

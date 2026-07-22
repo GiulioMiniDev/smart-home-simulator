@@ -68,6 +68,11 @@ an invented provider release for any required provenance field.
    or model retrieval as a separate activity; do not leave a location mismatch.
 10. Mandatory fixed activities must not overlap for the same resident. Every activity has
     a duration or end window, and every reference and dependency resolves.
+11. Stable routines must retain plausible day-to-day variation. Do not copy identical
+    preferred timestamps and preferred durations across comparable days unless they are
+    fixed commitments. Use chronotype, fatigue, hunger, prior-day state and calendar
+    context to vary preferences by a few minutes while remaining inside declared windows.
+    The simulator, not the authoring response, remains authoritative for actual times.
 
 ## Mandatory compilation and contingency rules
 

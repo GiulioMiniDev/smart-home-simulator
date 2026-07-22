@@ -27,6 +27,7 @@ relativi controlli di compatibilità.
 | 6.1 | Materializzazione automatica scenario-first | scenario + process package M3 accettati + policy | casa, sensori e workspace M3–M6 transazionale | **Completata e congelata — 1.0.0** |
 | 7 | Applicazione UI, workspace, export e replay | workspace M6.1 + artefatti M1–M6 | applicazione end-to-end + dataset JSONL/CSV/XES + replay | **Completata e congelata — 1.0.0** |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
+| 8.1 | Authoring ibrido locale LLM + simulatore | profilo, durata, stato precedente e calendario | piani a rolling horizon validati con provenance completa | Pianificata |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
 ## Regola generale di avanzamento
@@ -633,6 +634,56 @@ il runtime non richiede né invoca un LLM.
   di eseguirli headless;
 - contratti, esempi, golden handoff, test, lint, benchmark e copertura minima obbligatoria
   del 95% sono completi.
+
+## Milestone 8.1 — Authoring ibrido locale LLM + simulatore
+
+### Responsabilità
+
+Integrare un LLM locale come strategia sostituibile di authoring ad alto livello, senza
+attribuirgli autorità su fattibilità, stato, fisica, sensori o ground truth. Il ricercatore
+sceglie profilo, durata, seed e modello; il simulatore conserva l'autorità deterministica
+su validazione, compilazione, esecuzione e proiezione osservabile.
+
+### Contenuto
+
+- adattatore locale compatibile con l'endpoint OpenAI-style di LM Studio, disattivabile e
+  non richiesto per replay o simulazione di artefatti già accettati;
+- pianificazione incrementale giornaliera o settimanale, evitando una singola risposta
+  monolitica per orizzonti lunghi;
+- contesto minimo composto da profilo, calendario futuro, impegni, riepilogo precedente e
+  stato autorevole realmente ottenuto dalla simulazione;
+- responsabilità LLM limitata a intenzioni, routine, eccezioni, attività opzionali e
+  relazioni causali; timestamp esatti, movimenti, ambiente e sensori restano deterministici;
+- validazione completa e massimo due tentativi di riparazione strutturata prima del
+  rifiuto del blocco, senza patch silenziose;
+- cache immutabile di prompt, risposta, modello, parametri, digest, tentativi e revisione
+  umana, così il replay non richiede una nuova chiamata al modello;
+- fallback esplicito a piano manuale o generatore a regole quando il provider è assente o
+  il piano non supera i gate;
+- UI per scegliere durata, chunk, modello locale e livello di varietà, ispezionare la
+  proposta e approvarla prima della pubblicazione;
+- confronto sperimentale a parità di profilo fra piano manuale, generatore probabilistico
+  e LLM locale, demandando le metriche definitive alla Milestone 9.
+
+### Fuori perimetro
+
+- addestramento o fine-tuning di modelli;
+- sistemi multi-agent, memoria conversazionale generale o autonomia non vincolata;
+- generazione LLM di eventi sensoriali, traiettorie, temperature o guasti;
+- dipendenza da servizi cloud per eseguire o riprodurre un dataset accettato;
+- modifica automatica dei contratti per adattarli a una risposta del modello.
+
+### Definition of done
+
+- ogni piano accettato supera gli stessi gate degli input manuali;
+- una run può essere riprodotta senza LM Studio usando gli artefatti persistiti;
+- nessuna risposta LLM modifica direttamente stato autorevole o log osservabile;
+- il rolling horizon usa lo stato effettivo precedente e non il piano che si presumeva di
+  ottenere;
+- provider assente, timeout e risposta invalida producono esiti espliciti e recuperabili;
+- provenance, cache, privacy locale, test, benchmark e documentazione sono completi;
+- l'esperimento distingue il contributo dell'LLM alla varietà dal contributo del
+  simulatore alla correttezza.
 
 ## Milestone 9 — Calibrazione e valutazione sperimentale
 

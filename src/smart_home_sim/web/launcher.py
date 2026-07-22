@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument(
         "--workspace",
         type=Path,
-        default=Path.cwd() / "smart-home-workspace",
+        default=Path.home() / ".smart-home-simulator" / "workspace",
         help="Persistent workspace directory",
     )
     parser.add_argument("--name", default="Research workspace", help="Name for a new workspace")

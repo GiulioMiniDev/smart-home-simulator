@@ -362,7 +362,7 @@ function HomePage() {
     if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
     setWorking(true); setNotice(undefined);
     try {
-      await api(`/homes/${homeId}/runs`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId, sensor_policy: { preset: "room_coverage" } }) });
+      await api(`/homes/${homeId}/runs`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId }) });
       setNotice({ kind: "success", text: "The run was queued in an isolated local worker." });
       await resource.reload();
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
