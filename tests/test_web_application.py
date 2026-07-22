@@ -38,6 +38,14 @@ def test_local_api_session_workspace_authoring_and_errors(tmp_path: Path) -> Non
             )
         )
         imported = client.post(
+            f"/api/homes/{home_id}/authoring-bundle",
+            headers=headers,
+            json=payload,
+        )
+        assert imported.status_code == 200
+        assert imported.json()["valid"] is True
+        assert imported.json()["bundleArtifact"]["role"] == "simulation_authoring_bundle"
+        advanced = client.post(
             f"/api/homes/{home_id}/authoring",
             headers=headers,
             json={
@@ -45,8 +53,8 @@ def test_local_api_session_workspace_authoring_and_errors(tmp_path: Path) -> Non
                 "personal_process_package": payload["personalProcessPackage"],
             },
         )
-        assert imported.status_code == 200
-        assert imported.json()["valid"] is True
+        assert advanced.status_code == 200
+        assert advanced.json()["valid"] is True
         detail = client.get(f"/api/homes/{home_id}", headers=headers).json()
         assert detail["residents"][0]["sourceResidentId"] == "resident_1"
         overview = client.get("/api/overview", headers=headers).json()
@@ -80,6 +88,44 @@ def test_api_rejects_non_loopback_client(tmp_path: Path) -> None:
         response = client.get("/api/session")
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "LOOPBACK_REQUIRED"
+
+
+def test_failed_job_detail_serves_persisted_structured_issues(tmp_path: Path) -> None:
+    root = tmp_path / "workspace"
+    workspace = WorkspaceService.create(root, "Failed run API")
+    home = workspace.create_home("Failed run")
+    job = workspace.create_job("simulation", home_id=home.home_id, seed=7)
+    workspace.append_event(
+        job.job_id,
+        "issue",
+        "Action 'leave_home' failed its precondition.",
+        level="error",
+        payload={
+            "phase": "simulation",
+            "code": "PRECONDITION_FAILED",
+            "stage": "execution",
+            "path": "$.actionBindings[activity_7:action_02]",
+            "details": {"activityId": "activity_7", "actual": False},
+        },
+    )
+    workspace.update_job(
+        job.job_id,
+        JobStatus.failed,
+        JobProgress(phase="simulation", percent=52, message="Precondition failed"),
+        error_code="PRECONDITION_FAILED",
+        error_message="Action 'leave_home' failed its precondition.",
+    )
+
+    app = create_app(root)
+    with TestClient(app) as client:
+        headers = {"X-Workspace-Token": _token(client)}
+        detail = client.get(f"/api/jobs/{job.job_id}", headers=headers)
+
+    assert detail.status_code == 200
+    payload = detail.json()
+    issue = next(event for event in payload["events"] if event["eventType"] == "issue")
+    assert issue["payload"]["code"] == "PRECONDITION_FAILED"
+    assert issue["payload"]["details"] == {"activityId": "activity_7", "actual": False}
 
 
 def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:

@@ -1,0 +1,3 @@
+{"activityExecutionId":"activity_03a9fec63c1b1d97","actorId":"tommaso_bianchi","at":"2026-08-10T06:45:00+02:00","availableUnitsAfter":0,"operation":"acquired","resourceEventId":"resource_3f646b769dccb9e7","resourceId":"insulin_pen_01","units":1}
+{"activityExecutionId":"activity_03a9fec63c1b1d97","actorId":"tommaso_bianchi","at":"2026-08-10T06:45:00+02:00","availableUnitsAfter":1,"operation":"requested","resourceEventId":"resource_8eed88f9a3468148","resourceId":"insulin_pen_01","units":1}
+{"activityExecutionId":"activity_03a9fec63c1b1d97","actorId":"tommaso_bianchi","at":"2026-08-10T06:50:00+02:00","availableUnitsAfter":1,"operation":"released","resourceEventId":"resource_aedaead92b4a8068","resourceId":"insulin_pen_01","units":1}

@@ -1,0 +1,283 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "application_export_manifest",
+  "exportId": "export_a14c91bd952b4628",
+  "runId": "job_2a5af78efde3487b",
+  "sourceBundleSha256": "48b1367f28cccac554d195983ad0cc854bd73a19803495b2f50ac7c1f08d6de4",
+  "sourceTraceSemanticDigest": "5abe4fe5c765d067aa2c91bc3529950c89c2508a95fb490d8e558bb3368c59a4",
+  "seed": 42,
+  "createdAt": "2026-07-22T13:49:05.972563Z",
+  "observableOracleSeparated": true,
+  "files": [
+    {
+      "role": "observable",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/observable.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 7527,
+      "sizeBytes": 1669349,
+      "sha256": "763d716ee4a5f25faa95d5b984b7ed396b87eeea241e1d0d0ae7d3e57b03d8ac"
+    },
+    {
+      "role": "observable",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/observable.csv",
+      "mediaType": "text/csv",
+      "recordCount": 7527,
+      "sizeBytes": 847909,
+      "sha256": "60071d15296c04c84ad18e27086372d92b2f17e061c2b7af78e8278d5a426bff"
+    },
+    {
+      "role": "observable",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/observable.xes",
+      "mediaType": "application/xml",
+      "recordCount": 7527,
+      "sizeBytes": 3116239,
+      "sha256": "3f10aac96690739b314a89898679b89b181931a8da84f71615cf3d7c2780d618"
+    },
+    {
+      "role": "oracle",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/oracle.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 7527,
+      "sizeBytes": 1844709,
+      "sha256": "236f2f82c26a8b039479a7c24e0dc23fb6ebaf231112c55afbf817e8d92d67ea"
+    },
+    {
+      "role": "oracle",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/oracle.csv",
+      "mediaType": "text/csv",
+      "recordCount": 7527,
+      "sizeBytes": 1073007,
+      "sha256": "bcd735470de3614ad1efefdabdde778599eb86e157739f76692df9e0bff2819f"
+    },
+    {
+      "role": "oracle",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/oracle.xes",
+      "mediaType": "application/xml",
+      "recordCount": 7527,
+      "sizeBytes": 3327802,
+      "sha256": "fcd6542523194019a952a904e569056a497247641a641678fa3f19a8c2c0ea93"
+    },
+    {
+      "role": "activities",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/activities.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 76,
+      "sizeBytes": 40691,
+      "sha256": "6c64a2ced12238770b291ff763efd56783c15c4cd1e1bb69806dd8a28aa1b8e5"
+    },
+    {
+      "role": "activities",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/activities.csv",
+      "mediaType": "text/csv",
+      "recordCount": 76,
+      "sizeBytes": 25316,
+      "sha256": "4f3287d78e31c3efcd637e5aedcb941c96f6d7824fb4e9a1a96521c05c471f71"
+    },
+    {
+      "role": "activities",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/activities.xes",
+      "mediaType": "application/xml",
+      "recordCount": 76,
+      "sizeBytes": 61863,
+      "sha256": "bbd5fc52cec395d22f055b11062d6bf2b0688a63c144adaa58e086efe48f0afd"
+    },
+    {
+      "role": "actions",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/actions.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 324,
+      "sizeBytes": 134629,
+      "sha256": "3d20ca59077455b03c15ec006970af3f604bd39171a5a993beba30b11f3adb3b"
+    },
+    {
+      "role": "actions",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/actions.csv",
+      "mediaType": "text/csv",
+      "recordCount": 324,
+      "sizeBytes": 66826,
+      "sha256": "754b41830eb4291c5b24a14292283d7d8ded87543c7d47875a164822c02bd6a7"
+    },
+    {
+      "role": "actions",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/actions.xes",
+      "mediaType": "application/xml",
+      "recordCount": 324,
+      "sizeBytes": 207754,
+      "sha256": "8fc6737236ed12550b6f78e0d27fbc53f02fdecd73c2fffee071a251eeb5dd01"
+    },
+    {
+      "role": "movements",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/movements.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 118,
+      "sizeBytes": 120288,
+      "sha256": "4f18c29b5fc2b7a37621ebf3077b03d89fcfa0f9c73ed92d0b7c5a9a88512603"
+    },
+    {
+      "role": "movements",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/movements.csv",
+      "mediaType": "text/csv",
+      "recordCount": 118,
+      "sizeBytes": 112435,
+      "sha256": "70831c763f77562603efc7fb95232adf7ea4f0cd625cbb0d78798f45abe775e9"
+    },
+    {
+      "role": "movements",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/movements.xes",
+      "mediaType": "application/xml",
+      "recordCount": 118,
+      "sizeBytes": 150183,
+      "sha256": "ac5ea9f12b703f55e832a31c16f3a045f5688325309efc81f6371fd3cc62fbeb"
+    },
+    {
+      "role": "state_transitions",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/state_transitions.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 538,
+      "sizeBytes": 160543,
+      "sha256": "3d354b0454ab943fe30cb1387ba45f6ab6ab403d746311efea525c9402668079"
+    },
+    {
+      "role": "state_transitions",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/state_transitions.csv",
+      "mediaType": "text/csv",
+      "recordCount": 538,
+      "sizeBytes": 103019,
+      "sha256": "cad021cc9a9c7c454d100788a06dbc8c405c948fee6c37a4558311688856991c"
+    },
+    {
+      "role": "state_transitions",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/state_transitions.xes",
+      "mediaType": "application/xml",
+      "recordCount": 538,
+      "sizeBytes": 281839,
+      "sha256": "3f9891437bab2e2777e49853a7fa47af6b3dccb87c52d45854a658ea3173896c"
+    },
+    {
+      "role": "resources",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/resources.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 3,
+      "sizeBytes": 739,
+      "sha256": "206960e9ba5ce0643b9970339e89c7751e64b08ed7cf8583564824b71575ff3f"
+    },
+    {
+      "role": "resources",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/resources.csv",
+      "mediaType": "text/csv",
+      "recordCount": 3,
+      "sizeBytes": 465,
+      "sha256": "530aab7cc4f088937f0833ea90baeee1a5ff83889225b34a5c2cae5b08236a27"
+    },
+    {
+      "role": "resources",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/resources.xes",
+      "mediaType": "application/xml",
+      "recordCount": 3,
+      "sizeBytes": 1647,
+      "sha256": "ae568ec909573dac8fddff30ca47afc175b5185791da3b20720917517a3e1fbe"
+    },
+    {
+      "role": "runtime_events",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/runtime_events.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 0,
+      "sizeBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "role": "runtime_events",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/runtime_events.csv",
+      "mediaType": "text/csv",
+      "recordCount": 0,
+      "sizeBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "role": "runtime_events",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/runtime_events.xes",
+      "mediaType": "application/xml",
+      "recordCount": 0,
+      "sizeBytes": 282,
+      "sha256": "9acf0fa030ceb80baec64a288888f25f08f0e55c02972b032b83c76159537150"
+    },
+    {
+      "role": "plan_deviations",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/plan_deviations.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 0,
+      "sizeBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "role": "plan_deviations",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/plan_deviations.csv",
+      "mediaType": "text/csv",
+      "recordCount": 0,
+      "sizeBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "role": "plan_deviations",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/plan_deviations.xes",
+      "mediaType": "application/xml",
+      "recordCount": 0,
+      "sizeBytes": 283,
+      "sha256": "1db9a00aaccd261640b3ffdc68ccdb07b5bbb4c9be7eb9a016cc51ba9cb5d1b9"
+    },
+    {
+      "role": "final_state",
+      "format": "jsonl",
+      "relativePath": "export_a14c91bd952b4628/final_state.jsonl",
+      "mediaType": "application/x-ndjson",
+      "recordCount": 1,
+      "sizeBytes": 1291,
+      "sha256": "2da2947e974cf938c06bdaa6b62f581b682d6c149bbf85f8e12e244be5b1952c"
+    },
+    {
+      "role": "final_state",
+      "format": "csv",
+      "relativePath": "export_a14c91bd952b4628/final_state.csv",
+      "mediaType": "text/csv",
+      "recordCount": 1,
+      "sizeBytes": 1425,
+      "sha256": "431c5d3b36d23b6d83c082ff9a8d1154ee9c38dfe630caac453c983e9dc9671e"
+    },
+    {
+      "role": "final_state",
+      "format": "xes",
+      "relativePath": "export_a14c91bd952b4628/final_state.xes",
+      "mediaType": "application/xml",
+      "recordCount": 1,
+      "sizeBytes": 1732,
+      "sha256": "1d26028575b2b4ce743dc53492c4b481dc0774a8b6f61bfb7537d1308063b36b"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "reportVersion": "1.0.0",
+  "success": true,
+  "sourceBundleId": "barcelona_tommaso_gardener_week__barcelona_apartment_tommaso__1.0.0",
+  "sourceBundleSha256": "48b1367f28cccac554d195983ad0cc854bd73a19803495b2f50ac7c1f08d6de4",
+  "traceSha256": "533cce5d68a398ce9b6be9ef6a0bee92d718a747cac5d99f2388b996180a8078",
+  "semanticDigest": "5abe4fe5c765d067aa2c91bc3529950c89c2508a95fb490d8e558bb3368c59a4",
+  "issues": [],
+  "summary": {
+    "plannedActivityCount": 76,
+    "completedActivityCount": 76,
+    "deviatedActivityCount": 0,
+    "failedActivityCount": 0,
+    "droppedActivityCount": 0,
+    "actionExecutionCount": 324,
+    "movementCount": 118,
+    "stateTransitionCount": 538,
+    "runtimeEventCount": 0,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}

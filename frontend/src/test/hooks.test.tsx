@@ -22,6 +22,20 @@ describe("resource and persistent-state hooks", () => {
     expect(result.current.error).toMatchObject({ message: "Error: offline", status: 0 });
   });
 
+  it("keeps a disabled resource idle without issuing a request", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const { result, rerender } = renderHook(
+      ({ path }: { path?: string }) => useResource(path),
+      { initialProps: { path: undefined as string | undefined } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(fetcher).not.toHaveBeenCalled();
+    fetcher.mockResolvedValueOnce(new Response(JSON.stringify({ ready: true }), { status: 200 }));
+    rerender({ path: "/enabled" });
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+  });
+
   it("reads and writes stored values", () => {
     localStorage.setItem("setting", JSON.stringify("dark"));
     const { result } = renderHook(() => useStoredState("setting", "light"));

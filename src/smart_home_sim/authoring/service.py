@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from smart_home_sim.authoring.preflight import validate_deterministic_preconditions
 from smart_home_sim.behavior.service import (
     default_action_catalog_path,
     default_activity_catalog_path,
@@ -27,6 +28,8 @@ from smart_home_sim.domain.authoring import (
     AuthoringRepairSource,
     SimulationAuthoringBundle,
 )
+from smart_home_sim.domain.behavior import ActionCatalog, PersonalProcessPackage, VariableCatalog
+from smart_home_sim.domain.models import Scenario
 from smart_home_sim.validation.service import (
     MAX_JSON_NESTING,
     MAX_SCENARIO_BYTES,
@@ -348,6 +351,7 @@ def validate_authoring_payload(payload: Any) -> AuthoringValidationResult:
     behavior_payload = payload["personalProcessPackage"]
     issues: list[AuthoringIngestionIssue] = []
     canonical_plan_sha256: str | None = None
+    compilation_plan = None
 
     scenario_report = validate_payload(scenario_payload)
     for item in scenario_report.issues:
@@ -363,6 +367,7 @@ def validate_authoring_payload(payload: Any) -> AuthoringValidationResult:
         )
     if scenario_report.valid:
         compilation_result = compile_payload(scenario_payload)
+        compilation_plan = compilation_result.plan
         canonical_plan_sha256 = compilation_result.report.canonical_plan_sha256
         for item in compilation_result.report.issues:
             issues.append(
@@ -393,6 +398,31 @@ def validate_authoring_payload(payload: Any) -> AuthoringValidationResult:
                     details=item.details,
                 )
             )
+        if behavior_report.valid and compilation_plan is not None:
+            scenario = Scenario.model_validate_json(json.dumps(scenario_payload))
+            package = PersonalProcessPackage.model_validate_json(json.dumps(behavior_payload))
+            action_catalog = ActionCatalog.model_validate_json(
+                json.dumps(_load_catalog(default_action_catalog_path()))
+            )
+            variable_catalog = VariableCatalog.model_validate_json(
+                json.dumps(_load_catalog(default_variable_catalog_path()))
+            )
+            for finding in validate_deterministic_preconditions(
+                scenario,
+                compilation_plan,
+                package,
+                action_catalog,
+                variable_catalog,
+            ):
+                issues.append(
+                    _authoring_issue(
+                        "DETERMINISTIC_PRECONDITION_FAILED",
+                        "behavior",
+                        finding.path,
+                        finding.message,
+                        details=finding.details,
+                    )
+                )
     else:
         issues.append(
             _authoring_issue(

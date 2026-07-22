@@ -53,9 +53,34 @@ describe("complete application routes", () => {
 
   it.each([
     ["/", "Good evidence starts"], ["/homes", "Workspace catalogue"], ["/residents", "People and provenance"],
-    ["/simulations", "Execution centre"], ["/exports", "Portable datasets"], ["/help", "First deterministic run"], ["/missing", "does not exist"],
+    ["/simulations", "Execution centre"], ["/exports", "Portable datasets"], ["/help", "Generate one authoring bundle"], ["/missing", "does not exist"],
   ])("renders %s", async (path, text) => {
     mount(path); expect(await screen.findByText(new RegExp(text))).toBeInTheDocument();
+  });
+
+  it("provides personalized simplified and Advanced prompts in the integrated guide", async () => {
+    const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    mount("/help");
+    await screen.findByRole("heading", { name: "Generate one authoring bundle" });
+    fireEvent.change(screen.getByLabelText(/Person and case description/), { target: { value: "Lucia Rossi, August 2026" } });
+    const copyButtons = screen.getAllByRole("button", { name: "Copy prompt" });
+    fireEvent.click(copyButtons[0]);
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0]?.[0]).toContain("Lucia Rossi, August 2026");
+    expect(writeText.mock.calls[0]?.[0]).not.toContain("[PERSON_AND_CASE_DESCRIPTION]");
+    fireEvent.click(copyButtons[1]);
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(writeText.mock.calls[1]?.[0]).toContain("simulation_authoring_bundle");
+    expect(writeText.mock.calls[1]?.[0]).toContain("generate-simulation-inputs-1.2.2-simplified");
+    expect(writeText.mock.calls[1]?.[0]).not.toContain("[GENERATION_TIMESTAMP]");
+    expect(writeText.mock.calls[1]?.[0]).toMatch(/20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/);
+    writeText.mockRejectedValueOnce(new Error("Clipboard denied"));
+    fireEvent.click(copyButtons[0]);
+    expect(await screen.findByRole("button", { name: "Copy failed" })).toBeInTheDocument();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    fireEvent.click(copyButtons[1]);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Copy failed" })).toHaveLength(2));
   });
 
   it("creates a home and exercises the undoable home and sensor editors", async () => {
@@ -96,6 +121,41 @@ describe("complete application routes", () => {
     fireEvent.click(await screen.findByRole("button", { name: /walk/ }));
     fireEvent.click(screen.getByRole("button", { name: /Verify semantic digest/ }));
     await waitFor(() => expect(screen.getByText(/Replay verified/)).toBeInTheDocument());
+  });
+
+  it("shows structured failed-run diagnostics without requesting unavailable evidence", async () => {
+    const failed = { ...job, status: "failed" as const, progress: { ...job.progress, phase: "simulation", percent: 52, message: "Action precondition failed" }, errorCode: "PRECONDITION_FAILED", errorMessage: "Action 'leave_home' failed precondition 'resident.at_home'." };
+    overrides["/jobs/run_1"] = { job: failed, artifacts: {}, events: [
+      { jobId: "run_1", sequence: 4, occurredAt: now, eventType: "issue", level: "error", message: "Action 'leave_home' failed precondition 'resident.at_home'.", payload: { phase: "simulation", code: "PRECONDITION_FAILED", stage: "execution", path: "$.actionBindings[activity_7:action_02]", details: { activityId: "activity_7", actionType: "leave_home", expected: true, actual: false } } },
+      { jobId: "run_1", sequence: 5, occurredAt: now, eventType: "issue", level: "error", message: "Additional diagnostic context", payload: { stage: "output", details: { context: { source: "worker" } } } },
+    ] };
+    mount("/simulations/run_1");
+    expect(await screen.findByRole("heading", { name: "Execution evidence was not published" })).toBeInTheDocument();
+    expect(screen.getAllByText("PRECONDITION_FAILED")).toHaveLength(2);
+    expect(screen.getByText("$.actionBindings[activity_7:action_02]")).toBeInTheDocument();
+    expect(screen.getByText("activity_7")).toBeInTheDocument();
+    expect(screen.getByText('{"source":"worker"}')).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "diary" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "observations" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "replay" })).toBeDisabled();
+    const requested = vi.mocked(fetch).mock.calls.map(([input]) => String(input));
+    expect(requested.some((url) => url.includes("/runs/run_1/"))).toBe(false);
+  });
+
+  it("falls back to the job error when a failed run has no issue event", async () => {
+    const failed = { ...job, status: "failed" as const, progress: { ...job.progress, phase: "failed", message: "Worker stopped" }, errorCode: undefined, errorMessage: undefined };
+    overrides["/jobs/run_1"] = { job: failed, artifacts: {}, events: [] };
+    mount("/simulations/run_1");
+    expect(await screen.findByText("The run failed before execution evidence could be published.")).toBeInTheDocument();
+    expect(screen.getByText("RUN_FAILED")).toBeInTheDocument();
+    expect(screen.getByText(/Diary, observations and replay become available only after a completed run/)).toBeInTheDocument();
+
+    cleanup();
+    const exited = { ...failed, finishedAt: undefined, errorCode: "WORKER_EXIT", errorMessage: "Worker exited before publication." };
+    overrides["/jobs/run_1"] = { job: exited, artifacts: {}, events: [] };
+    mount("/simulations/run_1");
+    expect(await screen.findByText("Worker exited before publication.")).toBeInTheDocument();
+    expect(screen.getByText("WORKER_EXIT")).toBeInTheDocument();
   });
 
   it("covers diagnostic, empty and active dashboard states", async () => {
@@ -152,15 +212,37 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const file = new File(["{}"], "input.json", { type: "application/json" });
     Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Scenario JSON/), { target: { files: [file] } });
-    fireEvent.change(screen.getByLabelText(/Personal process package/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate and attach/ }));
-    expect(await screen.findByText(/Authoring passed validation/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
+    expect(await screen.findByText(/complete authoring bundle passed validation/)).toBeInTheDocument();
     cleanup(); overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [] };
     mount("/homes/home_1");
     await screen.findByRole("heading", { name: "Golden home" });
     fireEvent.click(screen.getByRole("button", { name: "Run simulation" }));
     expect(await screen.findByText(/queued in an isolated/)).toBeInTheDocument();
+  });
+
+  it("keeps split-document import Advanced and reports malformed bundle JSON", async () => {
+    const emptyDetail = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    overrides["/homes/home_1"] = emptyDetail;
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    fireEvent.click(screen.getByText(/Advanced: import canonical documents separately/));
+    const file = new File(["{}"], "canonical.json", { type: "application/json" });
+    Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
+    fireEvent.change(screen.getByLabelText(/Scenario JSON/), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText(/Personal process package/), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /Validate Advanced import/ }));
+    expect(await screen.findByText(/complete authoring bundle passed validation/)).toBeInTheDocument();
+
+    cleanup();
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const malformed = new File(["{"], "broken-bundle.json", { type: "application/json" });
+    Object.defineProperty(malformed, "text", { value: () => Promise.resolve("{") });
+    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [malformed] } });
+    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
+    expect(await screen.findByText(/“broken-bundle.json” is not valid JSON/)).toBeInTheDocument();
   });
 
   it("edits all sensor types, nudges objects, removes drafts and imports models", async () => {
@@ -274,13 +356,12 @@ describe("complete application routes", () => {
 
   it("shows invalid authoring and failed creation without partial state", async () => {
     overrides["/homes/home_1"] = { home, residents: [], models: {}, jobs: [] };
-    overrides["/homes/home_1/authoring"] = { valid: false, issues: [{ message: "Behavior mismatch" }] };
+    overrides["/homes/home_1/authoring-bundle"] = { valid: false, issues: [{ code: "BEHAVIOR_MISMATCH", path: "$.personalProcessPackage", message: "Behavior mismatch" }, { code: "BEHAVIOR_MISMATCH", path: "$.personalProcessPackage", message: "Behavior mismatch" }] };
     mount("/homes/home_1"); await screen.findByText("Attach accepted authoring");
     const file = new File(["{}"], "input.json"); Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Scenario JSON/), { target: { files: [file] } });
-    fireEvent.change(screen.getByLabelText(/Personal process package/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate and attach/ }));
-    expect(await screen.findByText("Behavior mismatch")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
+    expect(await screen.findByText("Behavior mismatch (BEHAVIOR_MISMATCH · $.personalProcessPackage)")).toBeInTheDocument();
     cleanup(); overrides["/homes"] = new Response(JSON.stringify({ error: { message: "Name conflict" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/homes"); await screen.findByText("Name conflict");
   });
@@ -319,12 +400,11 @@ describe("complete application routes", () => {
 
   it("reports failed authoring, run start and model publication requests", async () => {
     overrides["/homes/home_1"] = { home, residents: [], models: {}, jobs: [] };
-    overrides["/homes/home_1/authoring"] = new Response(JSON.stringify({ error: { message: "Upload failed" } }), { status: 409, headers: { "Content-Type": "application/json" } });
+    overrides["/homes/home_1/authoring-bundle"] = new Response(JSON.stringify({ error: { message: "Upload failed" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/homes/home_1"); await screen.findByText("Attach accepted authoring");
     const file = new File(["{}"], "input.json"); Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Scenario JSON/), { target: { files: [file] } });
-    fireEvent.change(screen.getByLabelText(/Personal process package/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate and attach/ }));
+    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
     expect(await screen.findByText("Upload failed")).toBeInTheDocument();
     cleanup(); overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [] };
     overrides["/homes/home_1/runs"] = new Response(JSON.stringify({ error: { message: "Worker unavailable" } }), { status: 409, headers: { "Content-Type": "application/json" } });

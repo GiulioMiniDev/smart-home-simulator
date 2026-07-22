@@ -642,6 +642,72 @@ class WorkspaceService:
             created_at=created,
         )
 
+    def replace_authoring_residents(
+        self,
+        home_id: str,
+        residents: list[tuple[str, str]],
+        *,
+        scenario_artifact_id: str,
+        behavior_artifact_id: str,
+    ) -> list[ResidentSummary]:
+        """Synchronize a home's active residents with one accepted authoring revision."""
+        self.ensure_writable()
+        self.get_home(home_id)
+        source_ids = [source_id for source_id, _ in residents]
+        if len(source_ids) != len(set(source_ids)):
+            raise WorkspaceError("accepted authoring contains duplicate resident identifiers")
+        now = utc_now()
+        with self.transaction() as connection:
+            if source_ids:
+                placeholders = ", ".join("?" for _ in source_ids)
+                connection.execute(
+                    f"""UPDATE residents SET deleted_at=?
+                        WHERE home_id=? AND deleted_at IS NULL
+                        AND source_resident_id NOT IN ({placeholders})""",  # noqa: S608
+                    (now.isoformat(), home_id, *source_ids),
+                )
+            else:
+                connection.execute(
+                    "UPDATE residents SET deleted_at=? WHERE home_id=? AND deleted_at IS NULL",
+                    (now.isoformat(), home_id),
+                )
+            for source_id, display_name in residents:
+                row = connection.execute(
+                    """SELECT resident_id, created_at FROM residents
+                        WHERE home_id=? AND source_resident_id=?""",
+                    (home_id, source_id),
+                ).fetchone()
+                normalized_name = display_name.strip() or source_id
+                if row is None:
+                    connection.execute(
+                        """INSERT INTO residents(
+                            resident_id, home_id, source_resident_id, display_name,
+                            scenario_artifact_id, behavior_artifact_id, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            f"resident_{uuid4().hex[:16]}",
+                            home_id,
+                            source_id,
+                            normalized_name,
+                            scenario_artifact_id,
+                            behavior_artifact_id,
+                            now.isoformat(),
+                        ),
+                    )
+                else:
+                    connection.execute(
+                        """UPDATE residents SET display_name=?, scenario_artifact_id=?,
+                            behavior_artifact_id=?, deleted_at=NULL
+                            WHERE resident_id=?""",
+                        (
+                            normalized_name,
+                            scenario_artifact_id,
+                            behavior_artifact_id,
+                            row["resident_id"],
+                        ),
+                    )
+        return self.list_residents(home_id)
+
     def list_residents(self, home_id: str | None = None) -> list[ResidentSummary]:
         query = "SELECT * FROM residents WHERE deleted_at IS NULL"
         parameters: tuple[Any, ...] = ()

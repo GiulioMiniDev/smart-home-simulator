@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "home_generation_policy",
+  "policyId": "compact-grid",
+  "policyVersion": "1.1.0",
+  "roomWidthMeters": 6.0,
+  "roomHeightMeters": 6.0,
+  "externalSpacingMeters": 12.0,
+  "doorwayWidthMeters": 1.0,
+  "transportDistanceMeters": 500.0
+}

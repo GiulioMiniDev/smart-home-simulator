@@ -10,6 +10,7 @@ from smart_home_sim.application.jobs import JobManager, _materialization_worker
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobStatus
+from smart_home_sim.materialization.service import MaterializationFailure
 
 PROJECT_ROOT = Path(__file__).parents[1]
 
@@ -124,3 +125,68 @@ def test_worker_entry_point_is_covered_in_process_and_records_failures(tmp_path:
     failed = workspace.get_job(failed.job_id)
     assert failed.status is JobStatus.failed
     assert failed.error_code == "WORKSPACEERROR"
+
+
+def test_worker_persists_structured_gate_issues_before_marking_run_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Structured failure")
+    home = workspace.create_home("Minimal")
+    payload = json.loads(
+        (PROJECT_ROOT / "examples/authoring/minimal.authoring-bundle.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    imported = ApplicationService(workspace).import_authoring(
+        home.home_id, payload["scenario"], payload["personalProcessPackage"]
+    )
+    job = workspace.create_job(
+        "materialization",
+        home_id=home.home_id,
+        request={
+            "scenarioArtifactId": imported["scenarioArtifact"]["artifactId"],
+            "behaviorArtifactId": imported["behaviorArtifact"]["artifactId"],
+        },
+    )
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise MaterializationFailure(
+            "simulation",
+            "Simulation failed.",
+            [
+                {
+                    "code": "PRECONDITION_FAILED",
+                    "severity": "error",
+                    "stage": "execution",
+                    "path": "$.actionBindings[activity_7:action_02]",
+                    "message": "Action 'leave_home' failed its precondition.",
+                    "details": {
+                        "activityId": "activity_7",
+                        "actionType": "leave_home",
+                        "expected": True,
+                        "actual": False,
+                    },
+                }
+            ],
+        )
+
+    monkeypatch.setattr("smart_home_sim.application.jobs.materialize_workspace", fail)
+
+    _materialization_worker(str(workspace.root), job.job_id)
+
+    failed = workspace.get_job(job.job_id)
+    events = [event for event in workspace.list_events(job.job_id) if event.event_type == "issue"]
+    assert failed.status is JobStatus.failed
+    assert failed.progress.phase == "simulation"
+    assert failed.error_code == "PRECONDITION_FAILED"
+    assert failed.error_message == "Action 'leave_home' failed its precondition."
+    assert len(events) == 1
+    assert events[0].level == "error"
+    assert events[0].payload["phase"] == "simulation"
+    assert events[0].payload["path"] == "$.actionBindings[activity_7:action_02]"
+    assert events[0].payload["details"] == {
+        "activityId": "activity_7",
+        "actionType": "leave_home",
+        "expected": True,
+        "actual": False,
+    }

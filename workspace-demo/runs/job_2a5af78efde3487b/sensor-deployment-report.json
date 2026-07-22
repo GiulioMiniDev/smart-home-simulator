@@ -1,0 +1,23 @@
+{
+  "reportVersion": "1.0.0",
+  "generatorName": "smart-home-sim-sensor-deployer",
+  "generatorVersion": "1.1.0",
+  "success": true,
+  "preset": "room_coverage",
+  "policyVersion": "1.1.0",
+  "policySha256": "96b38fad7b58ebd6784094feb46bde201a125f65f4939a0637aa6dc9065f4fea",
+  "sourceBundleId": "barcelona_tommaso_gardener_week__barcelona_apartment_tommaso__1.0.0",
+  "sourceBundleSha256": "48b1367f28cccac554d195983ad0cc854bd73a19803495b2f50ac7c1f08d6de4",
+  "sourceHomeSha256": "cf076814b952bc0dd2784de777d3287528c71e9119db73e2d8834e757fcad93e",
+  "sensorModelId": "barcelona_apartment_tommaso__room_coverage__sensors",
+  "sensorModelVersion": "1.1.0",
+  "sensorModelSha256": "60579e8c567159f4b789ce8fabebad0d6b6854ed9cc0a5a69752110e2a124dac",
+  "issues": [],
+  "summary": {
+    "sensorCount": 11,
+    "pirCount": 5,
+    "contactCount": 1,
+    "temperatureCount": 5,
+    "errorCount": 0
+  }
+}

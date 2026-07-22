@@ -95,6 +95,11 @@ def test_legacy_bundle_fails_strict_runtime_precondition() -> None:
     assert result.trace is None
     assert result.report.issues[0].code == "PRECONDITION_FAILED"
     assert "failed precondition" in result.report.issues[0].message
+    assert result.report.issues[0].details["activityId"]
+    assert result.report.issues[0].details["actionType"]
+    assert result.report.issues[0].details["fact"]
+    assert "expected" in result.report.issues[0].details
+    assert "actual" in result.report.issues[0].details
 
 
 @pytest.mark.parametrize(

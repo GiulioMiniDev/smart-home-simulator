@@ -11,6 +11,7 @@ from smart_home_sim.authoring.service import (
     ingest_authoring_file,
     prepare_authoring_repair_file,
     validate_authoring_file,
+    validate_authoring_payload,
 )
 
 ROOT = Path(__file__).parents[1]
@@ -23,6 +24,35 @@ def _payload() -> dict[str, object]:
 
 def _write(path: Path, payload: object) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _append_actions(
+    payload: dict[str, object], intent: str, actions: list[dict[str, object]]
+) -> None:
+    package = payload["personalProcessPackage"]  # type: ignore[index]
+    binding = next(item for item in package["bindings"] if item["intent"] == intent)
+    model = next(
+        item
+        for item in package["processModels"]
+        if item["processModelId"] == binding["processModelId"]
+    )
+    edge = next(item for item in model["edges"] if item["targetNodeId"] == "end")
+    previous = edge["sourceNodeId"]
+    model["edges"].remove(edge)
+    for index, action in enumerate(actions, start=1):
+        node_id = f"preflight_extra_{index}"
+        model["nodes"].append(
+            {
+                "nodeId": node_id,
+                "kind": "action",
+                "actionType": action["actionType"],
+                "arguments": action.get("arguments", {}),
+                "durationWeight": 1,
+            }
+        )
+        model["edges"].append({"sourceNodeId": previous, "targetNodeId": node_id})
+        previous = node_id
+    model["edges"].append({"sourceNodeId": previous, "targetNodeId": "end"})
 
 
 def test_valid_bundle_is_published_as_two_valid_canonical_documents(tmp_path: Path) -> None:
@@ -61,6 +91,59 @@ def test_validation_is_deterministic_and_does_not_write(tmp_path: Path) -> None:
 
     assert first == second
     assert list(tmp_path.iterdir()) == []
+
+
+def test_preflight_rejects_provably_false_cross_action_state() -> None:
+    payload = _payload()
+    _append_actions(
+        payload,
+        "eat_breakfast",
+        [
+            {"actionType": "leave_home"},
+            {"actionType": "leave_home"},
+            {
+                "actionType": "put_item",
+                "arguments": {
+                    "itemRole": {"source": "literal", "value": "never_taken"}
+                },
+            },
+        ],
+    )
+
+    report = validate_authoring_payload(payload).report
+
+    findings = [
+        item for item in report.issues if item.code == "DETERMINISTIC_PRECONDITION_FAILED"
+    ]
+    assert not report.valid
+    assert len(findings) == 2
+    assert {item.details["actionType"] for item in findings} == {"leave_home", "put_item"}
+    assert {item.details["actual"] for item in findings} == {False, "absent"}
+    assert all(item.stage == "behavior" for item in findings)
+    assert all(item.path.startswith("$.personalProcessPackage.processModels[") for item in findings)
+
+
+def test_preflight_preserves_unknown_home_generated_entity_state() -> None:
+    payload = _payload()
+    _append_actions(
+        payload,
+        "eat_breakfast",
+        [
+            {
+                "actionType": "close",
+                "arguments": {
+                    "target": {"source": "literal", "value": "generated_cabinet"}
+                },
+            }
+        ],
+    )
+
+    report = validate_authoring_payload(payload).report
+
+    assert report.valid
+    assert "DETERMINISTIC_PRECONDITION_FAILED" not in {
+        item.code for item in report.issues
+    }
 
 
 def test_invalid_scenario_blocks_behavior_validation_and_output(tmp_path: Path) -> None:
@@ -246,6 +329,52 @@ def test_distributed_prompt_1_2_is_single_self_contained_authoring_request() -> 
             separators=(",", ":"),
         )
         assert compact in prompt
+
+
+def test_simplified_prompt_1_2_2_tracks_frozen_catalogs_and_state_contract() -> None:
+    prompt = (
+        ROOT / "prompts/generate-simulation-inputs-1.2.2-simplified.md"
+    ).read_text(encoding="utf-8")
+    activity_catalog = json.loads(
+        (ROOT / "src/smart_home_sim/catalogs/activity-catalog-1.0.0.json").read_text()
+    )
+
+    intent_section = prompt.split("## 4. Intent ammessi e componenti esatti", 1)[1].split(
+        "## 5. Componenti e sequenze obbligatorie di azioni", 1
+    )[0]
+    documented_intents = {
+        line.split(" = ", 1)[0]: line.split(" = ", 1)[1].split(", ")
+        for line in intent_section.splitlines()
+        if " = " in line and not line.startswith("Ogni ")
+    }
+    assert documented_intents == {
+        item["intent"]: item["components"] for item in activity_catalog["activities"]
+    }
+
+    component_section = prompt.split(
+        "## 5. Componenti e sequenze obbligatorie di azioni", 1
+    )[1].split("## 6. Grafo e catalogo azioni", 1)[0]
+    documented_components = {
+        line.split(": ", 1)[0]: line.split(": ", 1)[1].split(" -> ")
+        for line in component_section.splitlines()
+        if ": " in line and not line.startswith(("Per ", "Attenzione"))
+    }
+    assert documented_components == {
+        item["componentId"]: item["requiredActionTypes"]
+        for item in activity_catalog["components"]
+    }
+
+    assert 'documentType: "personal_process_package"' in prompt
+    assert 'language: string;' in prompt
+    assert 'referenceId: "activity_catalog"' in prompt
+    assert 'catalogId: "smart_home_action_catalog"' in prompt
+    assert "La fine di `simulationWindow` e esclusiva" in prompt
+    assert "Registro cronologico di stato: obbligatorio" in prompt
+    assert "move_to_capability(home_entrance) -> enter_home [ponte]" in prompt
+    assert "operation = take | refill | store" in prompt
+    assert "operation = collect | load | start | unload | hang | iron" in prompt
+    assert "take_dose" not in prompt
+    assert 'referenceId: "smart_home_activity_catalog"' not in prompt
 
 
 def test_invalid_bundle_produces_deterministic_self_contained_repair_request(

@@ -1,0 +1,2531 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "life_scenario",
+  "scenarioId": "sim_tommaso_bianchi",
+  "title": "Weekly Routine for Tommaso Bianchi",
+  "language": "en",
+  "timeZone": "Europe/Madrid",
+  "simulationWindow": {
+    "start": "2026-11-02T00:00:00+01:00",
+    "end": "2026-11-08T23:59:59+01:00"
+  },
+  "seed": 1,
+  "provenance": {
+    "authorType": "external_llm",
+    "generatorName": "smart-home-simulator-external-llm-authoring",
+    "generatorVersion": "1.2.0",
+    "modelName": "gemini-3.6-flash",
+    "promptTemplateVersion": "generate-simulation-inputs-1.2.1-simplified",
+    "generatedAt": "2026-07-22T14:24:19+02:00",
+    "humanReviewed": false,
+    "parameters": {}
+  },
+  "modelReferences": {
+    "activityCatalog": {
+      "referenceId": "smart_home_activity_catalog",
+      "version": "1.0.0"
+    },
+    "homeModel": {
+      "referenceId": "barcelona_apartment_tommaso",
+      "version": "1.0.0"
+    },
+    "sensorModel": null
+  },
+  "materializationPolicy": {
+    "authoritativeStateSource": "scenario_initial_then_previous_execution",
+    "revalidateBeforeEachDay": true,
+    "requireEveryDate": true,
+    "allowLocalRepair": true,
+    "repairOrder": [
+      "shift_within_window",
+      "shorten_within_range",
+      "apply_declared_fallback",
+      "drop_optional_activity",
+      "reject_day_plan"
+    ]
+  },
+  "residents": [
+    {
+      "residentId": "tommaso_bianchi",
+      "displayName": "Tommaso Bianchi",
+      "profile": {
+        "age": 30,
+        "gender": "female",
+        "occupation": "gardener",
+        "healthConditions": [
+          "diabetic_type_1"
+        ],
+        "medication": [
+          "insulin"
+        ],
+        "chronotype": "early_bird",
+        "stressLevel": 20
+      }
+    }
+  ],
+  "externalPeople": [],
+  "locations": [
+    {
+      "locationId": "bedroom",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "bathroom",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "kitchen",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "living_room",
+      "kind": "room",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "garden_workplace",
+      "kind": "external",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "supermarket",
+      "kind": "external",
+      "memberLocationIds": [],
+      "attributes": {}
+    },
+    {
+      "locationId": "city_park",
+      "kind": "external",
+      "memberLocationIds": [],
+      "attributes": {}
+    }
+  ],
+  "resources": [
+    {
+      "resourceId": "bed",
+      "resourceType": "furniture",
+      "locationId": "bedroom",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "shower_facility",
+      "resourceType": "sanitary",
+      "locationId": "bathroom",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "toilet",
+      "resourceType": "sanitary",
+      "locationId": "bathroom",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "refrigerator",
+      "resourceType": "appliance",
+      "locationId": "kitchen",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "stove",
+      "resourceType": "appliance",
+      "locationId": "kitchen",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "medication_kit",
+      "resourceType": "storage",
+      "locationId": "bedroom",
+      "capacity": 1,
+      "attributes": {}
+    },
+    {
+      "resourceId": "television",
+      "resourceType": "appliance",
+      "locationId": "living_room",
+      "capacity": 1,
+      "attributes": {}
+    }
+  ],
+  "initialState": {
+    "at": "2026-11-02T00:00:00+01:00",
+    "residents": [
+      {
+        "residentId": "tommaso_bianchi",
+        "locationId": "bedroom",
+        "facts": {}
+      }
+    ],
+    "environmentFacts": {},
+    "resourceFacts": {
+      "refrigerator": {
+        "open": {
+          "source": "literal",
+          "value": false
+        }
+      },
+      "television": {
+        "active": {
+          "source": "literal",
+          "value": false
+        }
+      }
+    }
+  },
+  "commitments": [],
+  "days": [
+    {
+      "date": "2026-11-02",
+      "context": {
+        "dayType": "weekday",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_mon_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T06:30:00+01:00",
+            "preferred": "2026-11-02T06:45:00+01:00",
+            "latest": "2026-11-02T07:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T07:15:00+01:00",
+            "preferred": "2026-11-02T07:20:00+01:00",
+            "latest": "2026-11-02T07:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T07:30:00+01:00",
+            "preferred": "2026-11-02T07:40:00+01:00",
+            "latest": "2026-11-02T08:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_commute_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T08:15:00+01:00",
+            "preferred": "2026-11-02T08:30:00+01:00",
+            "latest": "2026-11-02T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "work_shift",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T09:00:00+01:00",
+            "preferred": "2026-11-02T09:00:00+01:00",
+            "latest": "2026-11-02T09:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 240.0,
+            "preferredMinutes": 300.0,
+            "maximumMinutes": 360.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T14:00:00+01:00",
+            "preferred": "2026-11-02T14:15:00+01:00",
+            "latest": "2026-11-02T14:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 45.0,
+            "maximumMinutes": 60.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_commute_home",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_home",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T17:00:00+01:00",
+            "preferred": "2026-11-02T17:15:00+01:00",
+            "latest": "2026-11-02T17:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_evening_relax",
+          "actorId": "tommaso_bianchi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T18:30:00+01:00",
+            "preferred": "2026-11-02T19:00:00+01:00",
+            "latest": "2026-11-02T20:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 120.0,
+            "maximumMinutes": 180.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_mon_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-02T22:00:00+01:00",
+            "preferred": "2026-11-02T22:30:00+01:00",
+            "latest": "2026-11-02T23:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "context": {
+        "dayType": "weekday",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_tue_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T06:30:00+01:00",
+            "preferred": "2026-11-03T06:45:00+01:00",
+            "latest": "2026-11-03T07:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T07:15:00+01:00",
+            "preferred": "2026-11-03T07:20:00+01:00",
+            "latest": "2026-11-03T07:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T07:30:00+01:00",
+            "preferred": "2026-11-03T07:40:00+01:00",
+            "latest": "2026-11-03T08:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_commute_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T08:15:00+01:00",
+            "preferred": "2026-11-03T08:30:00+01:00",
+            "latest": "2026-11-03T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "work_shift",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T09:00:00+01:00",
+            "preferred": "2026-11-03T09:00:00+01:00",
+            "latest": "2026-11-03T09:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 240.0,
+            "preferredMinutes": 300.0,
+            "maximumMinutes": 360.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T14:00:00+01:00",
+            "preferred": "2026-11-03T14:15:00+01:00",
+            "latest": "2026-11-03T14:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 45.0,
+            "maximumMinutes": 60.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_commute_home",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_home",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T17:00:00+01:00",
+            "preferred": "2026-11-03T17:15:00+01:00",
+            "latest": "2026-11-03T17:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_tv",
+          "actorId": "tommaso_bianchi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T19:00:00+01:00",
+            "preferred": "2026-11-03T19:30:00+01:00",
+            "latest": "2026-11-03T20:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 90.0,
+            "maximumMinutes": 120.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_tue_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-03T22:00:00+01:00",
+            "preferred": "2026-11-03T22:30:00+01:00",
+            "latest": "2026-11-03T23:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-11-04",
+      "context": {
+        "dayType": "weekday",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_wed_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T06:30:00+01:00",
+            "preferred": "2026-11-04T06:45:00+01:00",
+            "latest": "2026-11-04T07:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T07:15:00+01:00",
+            "preferred": "2026-11-04T07:20:00+01:00",
+            "latest": "2026-11-04T07:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T07:30:00+01:00",
+            "preferred": "2026-11-04T07:40:00+01:00",
+            "latest": "2026-11-04T08:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_commute_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T08:15:00+01:00",
+            "preferred": "2026-11-04T08:30:00+01:00",
+            "latest": "2026-11-04T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "work_shift",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T09:00:00+01:00",
+            "preferred": "2026-11-04T09:00:00+01:00",
+            "latest": "2026-11-04T09:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 240.0,
+            "preferredMinutes": 300.0,
+            "maximumMinutes": 360.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T14:00:00+01:00",
+            "preferred": "2026-11-04T14:15:00+01:00",
+            "latest": "2026-11-04T14:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 45.0,
+            "maximumMinutes": 60.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_commute_home",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_home",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T17:00:00+01:00",
+            "preferred": "2026-11-04T17:15:00+01:00",
+            "latest": "2026-11-04T17:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_relax",
+          "actorId": "tommaso_bianchi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T18:30:00+01:00",
+            "preferred": "2026-11-04T19:00:00+01:00",
+            "latest": "2026-11-04T20:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 120.0,
+            "maximumMinutes": 180.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_wed_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-04T22:00:00+01:00",
+            "preferred": "2026-11-04T22:30:00+01:00",
+            "latest": "2026-11-04T23:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "context": {
+        "dayType": "weekday",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_thu_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T06:30:00+01:00",
+            "preferred": "2026-11-05T06:45:00+01:00",
+            "latest": "2026-11-05T07:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T07:15:00+01:00",
+            "preferred": "2026-11-05T07:20:00+01:00",
+            "latest": "2026-11-05T07:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T07:30:00+01:00",
+            "preferred": "2026-11-05T07:40:00+01:00",
+            "latest": "2026-11-05T08:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_commute_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T08:15:00+01:00",
+            "preferred": "2026-11-05T08:30:00+01:00",
+            "latest": "2026-11-05T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "work_shift",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T09:00:00+01:00",
+            "preferred": "2026-11-05T09:00:00+01:00",
+            "latest": "2026-11-05T09:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 240.0,
+            "preferredMinutes": 300.0,
+            "maximumMinutes": 360.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T14:00:00+01:00",
+            "preferred": "2026-11-05T14:15:00+01:00",
+            "latest": "2026-11-05T14:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 45.0,
+            "maximumMinutes": 60.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_commute_home",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_home",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T17:00:00+01:00",
+            "preferred": "2026-11-05T17:15:00+01:00",
+            "latest": "2026-11-05T17:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_tv",
+          "actorId": "tommaso_bianchi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T19:00:00+01:00",
+            "preferred": "2026-11-05T19:30:00+01:00",
+            "latest": "2026-11-05T20:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 90.0,
+            "maximumMinutes": 120.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_thu_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-05T22:00:00+01:00",
+            "preferred": "2026-11-05T22:30:00+01:00",
+            "latest": "2026-11-05T23:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-11-06",
+      "context": {
+        "dayType": "weekday",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_fri_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T06:30:00+01:00",
+            "preferred": "2026-11-06T06:45:00+01:00",
+            "latest": "2026-11-06T07:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T07:15:00+01:00",
+            "preferred": "2026-11-06T07:20:00+01:00",
+            "latest": "2026-11-06T07:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T07:30:00+01:00",
+            "preferred": "2026-11-06T07:40:00+01:00",
+            "latest": "2026-11-06T08:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_commute_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_to_work",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T08:15:00+01:00",
+            "preferred": "2026-11-06T08:30:00+01:00",
+            "latest": "2026-11-06T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_work",
+          "actorId": "tommaso_bianchi",
+          "intent": "work_shift",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T09:00:00+01:00",
+            "preferred": "2026-11-06T09:00:00+01:00",
+            "latest": "2026-11-06T09:15:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 240.0,
+            "preferredMinutes": 300.0,
+            "maximumMinutes": 360.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "garden_workplace"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T14:00:00+01:00",
+            "preferred": "2026-11-06T14:15:00+01:00",
+            "latest": "2026-11-06T14:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 45.0,
+            "maximumMinutes": 60.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_commute_home",
+          "actorId": "tommaso_bianchi",
+          "intent": "commute_home",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T17:00:00+01:00",
+            "preferred": "2026-11-06T17:15:00+01:00",
+            "latest": "2026-11-06T17:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 20.0,
+            "preferredMinutes": 30.0,
+            "maximumMinutes": 45.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_relax",
+          "actorId": "tommaso_bianchi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T18:30:00+01:00",
+            "preferred": "2026-11-06T19:00:00+01:00",
+            "latest": "2026-11-06T20:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 120.0,
+            "maximumMinutes": 180.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_fri_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-06T22:30:00+01:00",
+            "preferred": "2026-11-06T23:00:00+01:00",
+            "latest": "2026-11-06T23:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-11-07",
+      "context": {
+        "dayType": "weekend",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_sat_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T07:30:00+01:00",
+            "preferred": "2026-11-07T08:00:00+01:00",
+            "latest": "2026-11-07T08:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T08:30:00+01:00",
+            "preferred": "2026-11-07T08:35:00+01:00",
+            "latest": "2026-11-07T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T08:45:00+01:00",
+            "preferred": "2026-11-07T09:00:00+01:00",
+            "latest": "2026-11-07T09:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 25.0,
+            "preferredMinutes": 35.0,
+            "maximumMinutes": 50.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_groceries",
+          "actorId": "tommaso_bianchi",
+          "intent": "buy_groceries",
+          "locationIds": [
+            "supermarket"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T10:00:00+01:00",
+            "preferred": "2026-11-07T10:30:00+01:00",
+            "latest": "2026-11-07T11:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 30.0,
+            "preferredMinutes": 60.0,
+            "maximumMinutes": 90.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T13:00:00+01:00",
+            "preferred": "2026-11-07T13:30:00+01:00",
+            "latest": "2026-11-07T14:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 45.0,
+            "preferredMinutes": 60.0,
+            "maximumMinutes": 90.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_relax",
+          "actorId": "tommaso_bianchi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T15:30:00+01:00",
+            "preferred": "2026-11-07T16:00:00+01:00",
+            "latest": "2026-11-07T17:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 90.0,
+            "preferredMinutes": 150.0,
+            "maximumMinutes": 180.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_tv",
+          "actorId": "tommaso_bianchi",
+          "intent": "watch_television",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T20:00:00+01:00",
+            "preferred": "2026-11-07T20:30:00+01:00",
+            "latest": "2026-11-07T21:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 90.0,
+            "maximumMinutes": 120.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sat_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-07T22:30:00+01:00",
+            "preferred": "2026-11-07T23:00:00+01:00",
+            "latest": "2026-11-07T23:59:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    },
+    {
+      "date": "2026-11-08",
+      "context": {
+        "dayType": "weekend",
+        "narrativeIntent": null,
+        "facts": {}
+      },
+      "activities": [
+        {
+          "activityId": "act_sun_wake_up",
+          "actorId": "tommaso_bianchi",
+          "intent": "morning_toilet_and_shower",
+          "locationIds": [
+            "bathroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T07:30:00+01:00",
+            "preferred": "2026-11-08T08:00:00+01:00",
+            "latest": "2026-11-08T08:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 15.0,
+            "preferredMinutes": 25.0,
+            "maximumMinutes": 40.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_medication",
+          "actorId": "tommaso_bianchi",
+          "intent": "take_morning_medication",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T08:30:00+01:00",
+            "preferred": "2026-11-08T08:35:00+01:00",
+            "latest": "2026-11-08T08:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 5.0,
+            "preferredMinutes": 10.0,
+            "maximumMinutes": 15.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_breakfast",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_and_eat_breakfast",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T08:45:00+01:00",
+            "preferred": "2026-11-08T09:00:00+01:00",
+            "latest": "2026-11-08T09:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 25.0,
+            "preferredMinutes": 35.0,
+            "maximumMinutes": 50.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_prep_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "prepare_sunday_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T11:30:00+01:00",
+            "preferred": "2026-11-08T12:00:00+01:00",
+            "latest": "2026-11-08T12:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 45.0,
+            "preferredMinutes": 60.0,
+            "maximumMinutes": 90.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_eat_lunch",
+          "actorId": "tommaso_bianchi",
+          "intent": "eat_lunch",
+          "locationIds": [
+            "kitchen"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T13:00:00+01:00",
+            "preferred": "2026-11-08T13:15:00+01:00",
+            "latest": "2026-11-08T13:45:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 50.0,
+            "preferredMinutes": 75.0,
+            "maximumMinutes": 100.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_walk",
+          "actorId": "tommaso_bianchi",
+          "intent": "long_sunday_walk",
+          "locationIds": [
+            "city_park"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T16:00:00+01:00",
+            "preferred": "2026-11-08T16:30:00+01:00",
+            "latest": "2026-11-08T17:00:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 90.0,
+            "maximumMinutes": 120.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_relax",
+          "actorId": "tommaso_bianchi",
+          "intent": "read_and_rest",
+          "locationIds": [
+            "living_room"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T19:00:00+01:00",
+            "preferred": "2026-11-08T19:30:00+01:00",
+            "latest": "2026-11-08T20:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 60.0,
+            "preferredMinutes": 90.0,
+            "maximumMinutes": 120.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": false,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        },
+        {
+          "activityId": "act_sun_sleep",
+          "actorId": "tommaso_bianchi",
+          "intent": "sleep",
+          "locationIds": [
+            "bedroom"
+          ],
+          "startWindow": {
+            "earliest": "2026-11-08T22:00:00+01:00",
+            "preferred": "2026-11-08T22:30:00+01:00",
+            "latest": "2026-11-08T23:30:00+01:00"
+          },
+          "endWindow": null,
+          "duration": {
+            "minimumMinutes": 420.0,
+            "preferredMinutes": 480.0,
+            "maximumMinutes": 540.0
+          },
+          "mandatory": true,
+          "priority": 50,
+          "canOverlapForActor": false,
+          "allowBoundaryTruncation": true,
+          "dependencyGroups": [],
+          "participantIds": [],
+          "requiredResources": [],
+          "preconditions": [],
+          "effects": [],
+          "activation": {
+            "mode": "always",
+            "condition": null,
+            "fallbackForActivityId": null,
+            "fallbackTrigger": null
+          },
+          "commitmentId": null,
+          "labels": [],
+          "extensions": {}
+        }
+      ]
+    }
+  ],
+  "runtimeEventCandidates": [],
+  "declaredConstraints": [],
+  "requestedOutputs": {
+    "observableSensorLog": true,
+    "oracleGroundTruth": true,
+    "executedActivityTrace": true,
+    "planExecutionDiff": true,
+    "finalDailyDiaries": true,
+    "finalScenarioState": true,
+    "formats": [
+      "jsonl"
+    ]
+  },
+  "extensions": {}
+}

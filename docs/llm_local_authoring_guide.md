@@ -15,8 +15,11 @@ autoriparare risposte o generare un intero anno.
 - `prompts/generate-simulation-inputs-1.2.0.md`: prompt completo e autorevole;
 - `prompts/generate-simulation-inputs-1.2.0-simplified.md`: versione compatta usata nella
   prova Qwen del 2026-07-21;
-- `prompts/generate-simulation-inputs-1.2.1-simplified.md`: revisione successiva che aggiunge
-  guardrail di plausibilità e provenance.
+- `prompts/generate-simulation-inputs-1.2.1-simplified.md`: revisione storica con guardrail
+  di plausibilità e provenance, non più consigliata;
+- `prompts/generate-simulation-inputs-1.2.2-simplified.md`: versione compatta corrente,
+  con riferimenti e argomenti allineati ai cataloghi congelati, intervallo end-exclusive e
+  registro cronologico per `at_home`, oggetti trasportati, aperture e attivazioni.
 
 Il prompt completo misura 102.717 byte. Il prompt semplificato 1.2.0 usato nella prova ne
 misura 24.717: una riduzione del 75,9% per byte. Le riduzioni in token devono essere misurate
@@ -40,8 +43,10 @@ correzioni manuali. Questi valori non devono essere ricostruiti o presentati com
 
 ## Procedura
 
-1. Scegliere un prompt e sostituire `[PERSON_AND_CASE_DESCRIPTION]` con la descrizione del
-   caso.
+1. Scegliere un prompt. La guida integrata dell'app inserisce localmente la descrizione del
+   caso e, per la versione 1.2.2, un timestamp ISO corrente. Usando direttamente il file,
+   sostituire `[PERSON_AND_CASE_DESCRIPTION]` e `[GENERATION_TIMESTAMP]` prima di inviarlo
+   al modello.
 2. Salvare la descrizione, il prompt o il suo digest e tutti i parametri di inference.
 3. Inviare il prompt al modello esterno e salvare la risposta JSON senza modificarla.
 4. Eseguire l'ingestion:

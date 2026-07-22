@@ -220,6 +220,10 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             home_id, request.scenario, request.personal_process_package
         )
 
+    @app.post("/api/homes/{home_id}/authoring-bundle", dependencies=[secured])
+    def import_authoring_bundle(home_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        return application.import_authoring_bundle(home_id, request)
+
     @app.put("/api/homes/{home_id}/home-model", dependencies=[secured])
     def publish_home(home_id: str, request: ModelPublish) -> dict[str, Any]:
         return application.publish_home(home_id, request.model)

@@ -2,10 +2,12 @@ import {
   Activity,
   AlertCircle,
   ArrowLeft,
+  BookOpen,
   Check,
   ChevronDown,
   CircleDot,
   Clock3,
+  Copy,
   Download,
   FileJson,
   Filter,
@@ -50,6 +52,7 @@ import {
 } from "./components";
 import { useResource, useStoredState } from "./hooks";
 import { addObstacle, addRoom, addSensor, removeSelection } from "./editor";
+import { authoringPrompts } from "./prompts";
 import type {
   DiaryEntry,
   ExportManifest,
@@ -90,11 +93,30 @@ function duration(start: string, end: string): string {
 
 async function readJson(file: File): Promise<Record<string, unknown>> {
   if (file.size > 50 * 1024 * 1024) throw new Error("The selected JSON file is larger than 50 MiB");
-  const value = JSON.parse(await file.text()) as unknown;
+  let value: unknown;
+  try {
+    value = JSON.parse(await file.text()) as unknown;
+  } catch (reason) {
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    throw new Error(`“${file.name}” is not valid JSON: ${detail}`);
+  }
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("The selected file must contain one JSON object");
+    throw new Error(`“${file.name}” must contain one JSON object`);
   }
   return value as Record<string, unknown>;
+}
+
+type ImportIssue = { code?: string; path?: string; message: string };
+
+function summarizeIssues(issues: ImportIssue[]): string {
+  const unique = new Map<string, ImportIssue>();
+  for (const issue of issues) {
+    unique.set(`${issue.code ?? ""}|${issue.path ?? ""}|${issue.message}`, issue);
+  }
+  return [...unique.values()].map((issue) => {
+    const context = [issue.code, issue.path].filter(Boolean).join(" · ");
+    return context ? `${issue.message} (${context})` : issue.message;
+  }).join(" · ");
 }
 
 export function App() {
@@ -290,6 +312,7 @@ function HomePage() {
   const resource = useResource<HomeDetail>(`/homes/${homeId}`);
   const [tab, setTab] = useState<"overview" | "home" | "sensors" | "runs">("overview");
   const [selectedId, setSelectedId] = useState<string>();
+  const [bundleFile, setBundleFile] = useState<File>();
   const [scenarioFile, setScenarioFile] = useState<File>();
   const [behaviorFile, setBehaviorFile] = useState<File>();
   const [working, setWorking] = useState(false);
@@ -312,18 +335,28 @@ function HomePage() {
   const activeJob = detail.jobs.find((job) => !terminal.has(job.status));
   const inputResident = detail.residents.find((resident) => resident.scenarioArtifactId && resident.behaviorArtifactId);
 
-  const importInputs = async () => {
-    if (!scenarioFile || !behaviorFile) return;
+  const submitAuthoring = async (path: string, body: () => Promise<Record<string, unknown>>) => {
     setWorking(true); setNotice(undefined);
     try {
-      const result = await api<{ valid: boolean; issues: Array<{ message: string }>; scenarioArtifact?: { artifactId: string } }>(`/homes/${homeId}/authoring`, {
+      const result = await api<{ valid: boolean; issues: ImportIssue[]; bundleArtifact?: { artifactId: string } }>(`/homes/${homeId}/${path}`, {
         method: "POST",
-        body: JSON.stringify({ scenario: await readJson(scenarioFile), personal_process_package: await readJson(behaviorFile) }),
+        body: JSON.stringify(await body()),
       });
-      if (!result.valid) setNotice({ kind: "error", text: result.issues.map((item) => item.message).join(" · ") });
-      else { setNotice({ kind: "success", text: "Authoring passed validation, compilation and behavior compatibility gates." }); await resource.reload(); }
+      if (!result.valid) setNotice({ kind: "error", text: summarizeIssues(result.issues) });
+      else { setNotice({ kind: "success", text: "The complete authoring bundle passed validation, compilation and behavior compatibility gates." }); await resource.reload(); }
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
     finally { setWorking(false); }
+  };
+  const importBundle = async () => {
+    if (!bundleFile) return;
+    await submitAuthoring("authoring-bundle", () => readJson(bundleFile));
+  };
+  const importAdvancedInputs = async () => {
+    if (!scenarioFile || !behaviorFile) return;
+    await submitAuthoring("authoring", async () => ({
+      scenario: await readJson(scenarioFile),
+      personal_process_package: await readJson(behaviorFile),
+    }));
   };
   const startRun = async () => {
     if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
@@ -418,10 +451,19 @@ function HomePage() {
         <section className="surface context-sheet">
           <div className="section-heading"><div><p className="eyebrow">Resident context</p><h2>{detail.residents.length ? `${detail.residents.length} associated resident${detail.residents.length === 1 ? "" : "s"}` : "Attach accepted authoring"}</h2></div><Users size={21} /></div>
           {detail.residents.length ? <div className="resident-list">{detail.residents.map((resident) => <div key={resident.residentId}><span className="avatar"><UserRound size={17} /></span><span><strong>{resident.displayName}</strong><code>{resident.sourceResidentId}</code></span><StatusBadge status="valid" /></div>)}</div> : <div className="import-flow">
-            <p>Both files enter the same atomic M3 gate. Neither is published if validation, compilation or behavior compatibility fails.</p>
-            <label className="file-picker"><FileJson size={20} /><span><strong>Scenario JSON</strong><small>{scenarioFile?.name ?? "Choose the accepted scenario"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setScenarioFile(event.target.files?.[0])} /></label>
-            <label className="file-picker"><ListTree size={20} /><span><strong>Personal process package</strong><small>{behaviorFile?.name ?? "Choose the matching process package"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBehaviorFile(event.target.files?.[0])} /></label>
-            <button className="button primary" disabled={!scenarioFile || !behaviorFile || working} onClick={() => void importInputs()}><Upload size={16} /> Validate and attach</button>
+            <p>Import the single pure-JSON response generated by your external LLM. Nothing is published unless the whole bundle passes every authoritative gate.</p>
+            <Link className="import-guide-link" to="/help#authoring"><BookOpen size={18} /><span><strong>Need to generate the file?</strong><small>Open the integrated guide and copy the simplified or complete prompt.</small></span></Link>
+            <label className="file-picker bundle-picker"><FileJson size={22} /><span><strong>Simulation authoring bundle</strong><small>{bundleFile?.name ?? "Choose the complete authoring-bundle.json"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBundleFile(event.target.files?.[0])} /></label>
+            <button className="button primary" disabled={!bundleFile || working} onClick={() => void importBundle()}><Upload size={16} /> Validate bundle and attach</button>
+            <details className="advanced-import">
+              <summary><ChevronDown size={17} /><span><strong>Advanced: import canonical documents separately</strong><small>For debugging, migrations and expert intervention.</small></span></summary>
+              <div>
+                <p>The server reconstructs one bundle and applies the same atomic validation pipeline.</p>
+                <label className="file-picker"><FileJson size={20} /><span><strong>Scenario JSON</strong><small>{scenarioFile?.name ?? "Choose the accepted scenario"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setScenarioFile(event.target.files?.[0])} /></label>
+                <label className="file-picker"><ListTree size={20} /><span><strong>Personal process package</strong><small>{behaviorFile?.name ?? "Choose the matching process package"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBehaviorFile(event.target.files?.[0])} /></label>
+                <button className="button secondary" disabled={!scenarioFile || !behaviorFile || working} onClick={() => void importAdvancedInputs()}><Upload size={16} /> Validate Advanced import</button>
+              </div>
+            </details>
           </div>}
         </section>
         <section className="surface evidence-sheet">
@@ -508,9 +550,13 @@ function RunPage() {
   const [playing, setPlaying] = useState(false);
   const [exportNotice, setExportNotice] = useState<string>();
   const [exportManifest, setExportManifest] = useState<ExportManifest>();
-  const diary = useResource<{ items: DiaryEntry[]; total: number }>(terminal.has(detail.data?.job.status ?? "") ? `/runs/${runId}/diary?limit=500` : "/jobs?limit=1");
-  const observations = useResource<{ items: Observation[]; total: number; mode: string }>(terminal.has(detail.data?.job.status ?? "") ? `/runs/${runId}/observations?limit=500&include_oracle=${oracle}` : "/jobs?limit=1");
-  const timeline = useResource<TimelineEvent[]>(terminal.has(detail.data?.job.status ?? "") ? `/runs/${runId}/timeline?limit=5000` : "/jobs?limit=1");
+  const evidenceAvailable = detail.data?.job.status === "completed";
+  const diary = useResource<{ items: DiaryEntry[]; total: number }>(evidenceAvailable ? `/runs/${runId}/diary?limit=500` : undefined);
+  const observations = useResource<{ items: Observation[]; total: number; mode: string }>(evidenceAvailable ? `/runs/${runId}/observations?limit=500&include_oracle=${oracle}` : undefined);
+  const timeline = useResource<TimelineEvent[]>(evidenceAvailable ? `/runs/${runId}/timeline?limit=5000` : undefined);
+  useEffect(() => {
+    if (!evidenceAvailable && !["summary", "artifacts"].includes(tab)) setTab("summary");
+  }, [evidenceAvailable, tab]);
   useEffect(() => {
     if (!playing || !timeline.data?.length) return;
     const movements = timeline.data.filter((event) => event.kind === "movement");
@@ -521,6 +567,7 @@ function RunPage() {
   if (detail.loading) return <div className="page"><Skeleton lines={8} /></div>;
   if (detail.error || !detail.data) return <div className="page"><ErrorPanel message={detail.error?.message ?? "Run not found"} onRetry={() => void detail.reload()} /></div>;
   const job = detail.data.job;
+  const issueEvents = detail.data.events.filter((event) => event.eventType === "issue");
   const homeModelArtifact = detail.data.artifacts.home_model;
   const cancel = async () => { await api(`/jobs/${runId}/cancel`, { method: "POST" }); await detail.reload(); };
   const verify = async () => { try { const result = await api<{ matches: boolean; actualSemanticDigest: string }>(`/runs/${runId}/replay/verify`, { method: "POST" }); setExportNotice(result.matches ? `Replay verified: ${result.actualSemanticDigest}` : "Replay digest did not match"); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
@@ -529,14 +576,19 @@ function RunPage() {
     <Breadcrumbs items={[{ label: "Simulations", to: "/simulations" }, { label: runId }]} />
     <PageHeader eyebrow="Run evidence" title={runId} description={job.progress.message} actions={<><StatusBadge status={job.status} />{!terminal.has(job.status) && <button className="button danger" onClick={() => void cancel()}><Square size={15} /> Cancel safely</button>}</>} />
     {!terminal.has(job.status) && <section className="active-run-detail"><div className="phase-orbit" aria-hidden="true"><i /><span>{Math.round(job.progress.percent)}%</span></div><div><p className="eyebrow">Current backend phase</p><h2>{job.progress.phase}</h2><p>{job.progress.message}</p><ProgressBar value={job.progress.percent} label="Overall progress" /></div><ol>{detail.data.events.slice(-6).map((event) => <li key={event.sequence}><time>{formatTime(event.occurredAt)}</time><span>{event.message}</span></li>)}</ol></section>}
-    <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "diary", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={!terminal.has(job.status) && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
+    <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "diary", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={!evidenceAvailable && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
     {exportNotice && <div className="notice notice-success" role="status"><Check size={17} /><span>{exportNotice}</span><button className="icon-button" aria-label="Dismiss" onClick={() => setExportNotice(undefined)}><X size={15} /></button></div>}
-    {tab === "summary" && <><div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>Bundle, trace, observations and oracle remain separate and digest-addressable.</p><div className="button-row"><button className="button primary" disabled={job.status !== "completed"} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={job.status !== "completed"} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><StatusBadge status="valid" /></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
+    {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><StatusBadge status="valid" /></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
     {tab === "diary" && <section className="diary-layout"><div className="diary-list"><div className="section-heading"><div><p className="eyebrow">Authoritative execution trace</p><h2>Ground-truth diary</h2></div><span>{diary.data?.total ?? 0} activities</span></div>{diary.loading ? <Skeleton lines={8} /> : diary.error ? <ErrorPanel message={diary.error.message} /> : diary.data?.items?.map((entry) => <button key={entry.activityExecutionId} className={`diary-entry ${selectedDiary === entry.activityExecutionId ? "is-selected" : ""}`} onClick={() => setSelectedDiary(entry.activityExecutionId)}><time>{formatTime(entry.actualStart)}</time><span><strong>{entry.intent.replaceAll("_", " ")}</strong><small>{entry.actorId} · {duration(entry.actualStart, entry.actualEnd)} · {entry.actions.length} actions</small></span><StatusBadge status={entry.status} /></button>)}</div><DiaryInspector entry={diary.data?.items?.find((item) => item.activityExecutionId === selectedDiary) ?? diary.data?.items?.[0]} /></section>}
     {tab === "observations" && <section><div className="observable-toolbar"><div><p className="eyebrow">Sensor projection</p><h2>{oracle ? "Oracle-linked observations" : "Observable device log"}</h2></div><div className="mode-switch" role="group" aria-label="Data visibility"><button aria-pressed={!oracle} onClick={() => setOracle(false)}>Observable</button><button aria-pressed={oracle} onClick={() => setOracle(true)}>Oracle links</button></div></div><p className="mode-explanation">{oracle ? "Identity and activity appear only through the separate oracle mapping." : "This view contains only fields a physical device could expose."}</p>{observations.loading ? <Skeleton lines={8} /> : observations.error ? <ErrorPanel message={observations.error.message} /> : <div className="observation-table"><div className="observation-head"><span>Time</span><span>Sensor</span><span>Measurement</span><span>Value</span><span>Quality</span>{oracle && <span>Ground-truth cause</span>}</div>{observations.data?.items?.map((record) => <div className="observation-row" key={record.observationId}><time>{formatTime(record.observedAt)}</time><span><code>{record.sensorId}</code><small>{record.sensorType}</small></span><span>{record.measurement}</span><strong>{String(record.value)}{record.unit ? ` ${record.unit}` : ""}</strong><StatusBadge status={record.quality} />{oracle && <span className="cause-cell">{record.oracleCause ? <><b>{record.oracleCause.origin.replaceAll("_", " ")}</b><small>{record.oracleCause.residentIds.join(", ") || "No resident identity"} · {record.oracleCause.causeType}</small></> : "No oracle link"}</span>}</div>)}</div>}</section>}
     {tab === "replay" && <section className="replay-workbench"><div className="replay-toolbar"><button className="button secondary" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={15} /> : <Play size={15} />}{playing ? "Pause" : "Play movements"}</button><button className="button secondary" onClick={() => void verify()}><ShieldCheck size={15} /> Verify semantic digest</button><span>{selectedEvent ? `${formatTime(selectedEvent.at)} · ${selectedEvent.label}` : "Select an event on the timeline"}</span></div><div className="replay-stage">{homeModelArtifact ? <ReplayPlan runId={runId} activeMovement={selectedEvent} /> : <EmptyState title="Home artifact unavailable"><p>The plan cannot be reconstructed without the persisted home model.</p></EmptyState>}<aside className="timeline-panel"><div className="section-heading"><div><p className="eyebrow">Synchronized trace</p><h2>Timeline</h2></div><Activity size={19} /></div>{timeline.loading ? <Skeleton lines={7} /> : timeline.error ? <ErrorPanel message={timeline.error.message} /> : timeline.data?.slice(0, 800).map((event) => <button key={event.id} className={`timeline-event kind-${event.kind} ${selectedEvent?.id === event.id ? "is-selected" : ""}`} onClick={() => setSelectedEvent(event)}><time>{formatTime(event.at)}</time><i /><span><strong>{event.label.replaceAll("_", " ")}</strong><small>{event.kind} · {event.actorId}</small></span></button>)}</aside></div></section>}
     {tab === "artifacts" && <div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Artifact</span><span>Size</span><span>SHA-256</span></div>{Object.entries(detail.data.artifacts).map(([role, artifact]) => <div className="artifact-row" key={artifact.artifactId}><span>{role.replaceAll("_", " ")}</span><code>{artifact.artifactId}</code><span>{new Intl.NumberFormat(undefined, { style: "unit", unit: "megabyte", maximumFractionDigits: 2 }).format(artifact.sizeBytes / 1_000_000)}</span><code title={artifact.sha256}>{artifact.sha256.slice(0, 16)}…</code></div>)}</div>}
   </div>;
+}
+
+function FailureDiagnostics({ job, events }: { job: JobRecord; events: JobEvent[] }) {
+  const diagnostics = events.length ? events : [{ jobId: job.jobId, sequence: 0, occurredAt: job.finishedAt ?? job.requestedAt, eventType: "issue" as const, level: "error" as const, message: job.errorMessage ?? "The run failed before execution evidence could be published.", payload: { code: job.errorCode ?? "RUN_FAILED", phase: job.progress.phase } }];
+  return <section className="failure-diagnostics" role="alert"><div className="failure-diagnostics-heading"><span><AlertCircle size={20} /></span><div><p className="eyebrow">Run stopped safely</p><h2>Execution evidence was not published</h2><p>The source artifacts remain intact. Resolve the diagnostics below, then start a new run.</p></div></div><div className="failure-issue-list">{diagnostics.map((event) => { const payload = event.payload; const details = payload.details && typeof payload.details === "object" && !Array.isArray(payload.details) ? payload.details as Record<string, unknown> : {}; return <article key={event.sequence}><div><code>{String(payload.code ?? job.errorCode ?? "RUN_FAILED")}</code><span>{String(payload.phase ?? payload.stage ?? job.progress.phase)}</span></div><h3>{event.message}</h3>{payload.path ? <p className="failure-path"><span>Path</span><code>{String(payload.path)}</code></p> : null}{Object.keys(details).length ? <dl>{Object.entries(details).map(([key, value]) => <div key={key}><dt>{key.replace(/([A-Z])/g, " $1")}</dt><dd>{typeof value === "object" ? JSON.stringify(value) : String(value)}</dd></div>)}</dl> : null}</article>; })}</div></section>;
 }
 
 function DiaryInspector({ entry }: { entry?: DiaryEntry }) {
@@ -555,8 +607,33 @@ function ExportsPage() {
   return <div className="page"><PageHeader eyebrow="Portable datasets" title="Exports" description="Streaming JSONL, CSV and XES projections with versions, seeds, digests and source relations." actions={<button className="button secondary" onClick={() => void download("/workspace/archive", "smart-home-workspace.shw")}><Download size={16} /> Archive workspace</button>} />{jobs.loading ? <Skeleton lines={6} /> : jobs.error ? <ErrorPanel message={jobs.error.message} /> : completed.length ? <div className="export-run-list">{completed.map((job) => <Link key={job.jobId} to={`/simulations/${job.jobId}`} className="export-run"><span className="object-symbol"><Download size={18} /></span><span><strong>{job.jobId}</strong><small>Build or verify an export from the run detail.</small></span><StatusBadge status="completed" /><span>Open export builder</span></Link>)}</div> : <EmptyState title="No completed run to export" icon={<Download size={25} />}><p>Exports are always derived from persisted, digest-verified execution artifacts.</p></EmptyState>}<section className="format-notes"><div><p className="eyebrow">JSONL</p><h2>Streaming records</h2><p>One canonical record per line, suited to large datasets and incremental tools.</p></div><div><p className="eyebrow">CSV</p><h2>Stable columns</h2><p>Separate files per artifact family. Nested values remain canonical JSON cells.</p></div><div><p className="eyebrow">XES</p><h2>Process mining</h2><p>Explicit trace and event mappings preserve source identifiers and timestamps.</p></div></section></div>;
 }
 
+function promptWithCase(template: string, caseDescription: string): string {
+  const description = caseDescription.trim() || "[DESCRIVI QUI PERSONA, ABITUDINI, VINCOLI, DATE E OBIETTIVO DELLO STUDIO]";
+  return template
+    .replace("{{PERSON_AND_CASE_DESCRIPTION}}", description)
+    .replace("[PERSON_AND_CASE_DESCRIPTION]", description)
+    .replaceAll("[GENERATION_TIMESTAMP]", new Date().toISOString());
+}
+
+function PromptCard({ title, label, description, template, caseDescription }: { title: string; label: string; description: string; template: string; caseDescription: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const prompt = promptWithCase(template, caseDescription);
+  const copy = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard access is unavailable");
+      await navigator.clipboard.writeText(prompt);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1800);
+    } catch {
+      setCopyState("error");
+    }
+  };
+  return <div className="prompt-card"><div className="prompt-card-heading"><div><span>{label}</span><h3>{title}</h3><p>{description}</p></div><button className="button secondary" onClick={() => void copy()}>{copyState === "copied" ? <Check size={15} /> : <Copy size={15} />}{copyState === "copied" ? "Copied" : copyState === "error" ? "Copy failed" : "Copy prompt"}</button></div><details><summary>Preview the complete prompt</summary><pre>{prompt}</pre></details></div>;
+}
+
 function HelpPage() {
-  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From accepted authoring to inspectable evidence" description="The shortest complete path through the local application." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#first-run">First run</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery</a><a href="#keyboard">Keyboard</a></nav><article><section id="first-run"><span>01</span><div><h2>First deterministic run</h2><ol><li>Create a home from the Homes page.</li><li>Attach the accepted scenario and personal process package.</li><li>Read and resolve every validation issue before publication.</li><li>Start materialization. The worker compiles, builds the home, binds behavior, deploys sensors, executes and projects observations.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="truth"><span>02</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>03</span><div><h2>Safe interruption and recovery</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p></div></section><section id="keyboard"><span>04</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
+  const [caseDescription, setCaseDescription] = useState("");
+  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">Which file to use</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM to return one pure JSON object containing both the scenario and its personal process package.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into both prompts; the simplified prompt also receives a current ISO generation timestamp. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Complete prompt" label="Recommended · Advanced 1.2.0" description="The authoritative path: full frozen schemas and catalogs for strict reproducibility and detailed diagnostics." template={authoringPrompts.advanced.text} caseDescription={caseDescription} /><PromptCard title="Simplified prompt" label="Corrected · compact 1.2.2" description="Preserves the requested duration and adds exact catalog references, end-exclusive dates and a chronological state ledger. Application validation remains mandatory." template={authoringPrompts.simplified.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the complete <code>authoring-bundle.json</code> in Resident context.</li><li>Resolve every reported validation issue; rejected bundles publish no authoring revision.</li><li>Start materialization. The worker compiles, builds the home, binds behavior, deploys sensors, executes and projects observations.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>Source, canonical and runtime files</h2><p><strong>Import the source bundle in the ordinary workflow.</strong> It has <code>documentType: simulation_authoring_bundle</code> and contains <code>scenario</code> plus <code>personalProcessPackage</code>. Canonical split files are internal validated projections. Runtime inputs may reference upgraded execution catalogs and are not a substitute for the researcher-authored source.</p><p>The collapsed Advanced importer accepts the two canonical documents separately for debugging or controlled migration. It does not silently repair or upgrade them.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption and recovery</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
 }
 
 function NotFound() {

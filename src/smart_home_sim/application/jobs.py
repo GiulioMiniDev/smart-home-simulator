@@ -12,6 +12,7 @@ from smart_home_sim.domain.application import JobProgress, JobRecord, JobStatus
 from smart_home_sim.domain.materialization import HomeGenerationPolicy, SensorDeploymentPolicy
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.materialization import materialize_workspace
+from smart_home_sim.materialization.service import MaterializationFailure
 
 
 def _materialization_worker(root: str, job_id: str) -> None:
@@ -96,6 +97,30 @@ def _materialization_worker(root: str, job_id: str) -> None:
                     percent=workspace.get_job(job_id).progress.percent,
                     message="Cancelled before publication",
                 ),
+            )
+    except MaterializationFailure as error:
+        current = workspace.get_job(job_id)
+        if current.status is not JobStatus.cancelled:
+            for issue in error.issues:
+                payload = {"phase": error.phase, **issue}
+                workspace.append_event(
+                    job_id,
+                    "issue",
+                    str(issue.get("message") or error.message),
+                    level="error",
+                    payload=payload,
+                )
+            workspace.update_job(
+                job_id,
+                JobStatus.failed,
+                JobProgress(
+                    phase=error.phase,
+                    percent=current.progress.percent,
+                    message=error.message,
+                ),
+                process_id=os.getpid(),
+                error_code=error.code,
+                error_message=error.message,
             )
     except Exception as error:
         current = workspace.get_job(job_id)

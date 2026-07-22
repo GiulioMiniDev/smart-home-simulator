@@ -215,11 +215,22 @@ dd { margin: 0; }
 .resident-list > div > span:nth-child(2) { display: flex; flex-direction: column; }
 .resident-list code { color: var(--text-faint); }
 .import-flow { display: grid; gap: .7rem; padding: 1.1rem; }
+.import-guide-link { display: flex; align-items: center; gap: .7rem; padding: .75rem; border-inline-start: 3px solid var(--indigo); background: var(--indigo-soft); color: var(--text); text-decoration: none; }
+.import-guide-link > span { display: flex; flex-direction: column; }
+.import-guide-link small { color: var(--text-soft); }
 .file-picker { position: relative; display: flex; align-items: center; gap: .75rem; min-height: 62px; padding: .7rem; border: 1px dashed var(--line-strong); border-radius: 6px; background: var(--surface-raised); cursor: pointer; }
 .file-picker:hover { border-color: var(--teal); }
 .file-picker > span { display: flex; flex-direction: column; }
 .file-picker small { color: var(--text-faint); }
 .file-picker input { position: absolute; inset: 0; cursor: pointer; opacity: 0; }
+.bundle-picker { min-height: 76px; border-color: color-mix(in oklch, var(--teal) 60%, var(--line)); background: var(--teal-soft); }
+.advanced-import { margin-top: .4rem; border-top: 1px solid var(--line); }
+.advanced-import > summary { display: flex; align-items: center; gap: .6rem; padding: .85rem 0; color: var(--text-soft); cursor: pointer; list-style: none; }
+.advanced-import > summary::-webkit-details-marker { display: none; }
+.advanced-import > summary > span { display: flex; flex-direction: column; }
+.advanced-import > summary small { color: var(--text-faint); }
+.advanced-import[open] > summary svg { transform: rotate(180deg); }
+.advanced-import > div { display: grid; gap: .7rem; padding: 0 0 .5rem; }
 .definition-list { display: grid; margin: 0; padding: 0 1.15rem; }
 .definition-list > div { display: grid; grid-template-columns: minmax(110px, .7fr) 1.3fr; gap: .8rem; align-items: center; min-height: 49px; border-bottom: 1px solid var(--line); }
 .definition-list dd { display: flex; min-width: 0; align-items: center; gap: .5rem; }
@@ -309,6 +320,21 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .active-run-detail time { color: var(--text-faint); font-variant-numeric: tabular-nums; }
 .run-summary-grid > .surface { padding-bottom: 1rem; }
 .run-summary-grid > .surface > p, .run-summary-grid .button-row { margin: 1rem; }
+.failure-diagnostics { margin-bottom: 1rem; border: 1px solid color-mix(in oklch, var(--red) 38%, var(--line)); border-radius: var(--radius); background: color-mix(in oklch, var(--red-soft) 72%, var(--surface)); overflow: hidden; }
+.failure-diagnostics-heading { display: flex; gap: .9rem; padding: 1rem 1.1rem; border-bottom: 1px solid color-mix(in oklch, var(--red) 22%, var(--line)); }
+.failure-diagnostics-heading > span { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; flex: 0 0 auto; border-radius: 50%; background: var(--red); color: white; }
+.failure-diagnostics-heading h2, .failure-diagnostics-heading p { margin: .1rem 0; }
+.failure-issue-list { display: grid; gap: 1px; background: color-mix(in oklch, var(--red) 16%, var(--line)); }
+.failure-issue-list article { padding: 1rem 1.1rem; background: var(--surface); }
+.failure-issue-list article > div:first-child { display: flex; align-items: center; gap: .65rem; color: var(--muted); }
+.failure-issue-list article > div:first-child code { color: var(--red); font-weight: 700; }
+.failure-issue-list h3 { margin: .55rem 0; font-size: 1rem; }
+.failure-path { display: flex; gap: .65rem; align-items: baseline; margin: .35rem 0; color: var(--muted); }
+.failure-path code { overflow-wrap: anywhere; color: var(--text); }
+.failure-issue-list dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .55rem; margin: .8rem 0 0; }
+.failure-issue-list dl div { min-width: 0; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * .65); }
+.failure-issue-list dt { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+.failure-issue-list dd { margin: .2rem 0 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: .8rem; }
 .diary-layout { display: grid; grid-template-columns: minmax(380px, .95fr) minmax(340px, 1.05fr); min-height: 650px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .diary-list { max-height: 760px; overflow: auto; border-inline-end: 1px solid var(--line); }
 .diary-entry { display: grid; width: 100%; grid-template-columns: 65px minmax(0, 1fr) auto; align-items: center; gap: .7rem; padding: .7rem 1rem; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
@@ -373,6 +399,20 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .guide-layout article > section { display: grid; grid-template-columns: 52px 1fr; gap: 1rem; padding: 1.4rem 0 2rem; border-top: 1px solid var(--line); scroll-margin-top: 85px; }
 .guide-layout article > section > span { color: var(--teal); font: 700 .75rem "Cascadia Code", monospace; }
 .guide-layout li, .guide-layout p { line-height: 1.65; }
+.case-description { display: grid; gap: .45rem; margin: 1rem 0; color: var(--text-soft); font-size: .76rem; font-weight: 650; }
+.case-description textarea { min-height: 130px; resize: vertical; padding: .8rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; line-height: 1.5; }
+.case-description small { color: var(--text-faint); font-weight: 400; }
+.prompt-grid { display: grid; gap: .8rem; }
+.prompt-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.prompt-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem; }
+.prompt-card-heading > div > span { color: var(--teal); font: 700 .67rem "Cascadia Code", monospace; text-transform: uppercase; }
+.prompt-card h3 { margin: .25rem 0; }
+.prompt-card p { margin: 0; color: var(--text-soft); font-size: .8rem; }
+.prompt-card details { border-top: 1px solid var(--line); }
+.prompt-card summary { padding: .65rem 1rem; color: var(--text-soft); font-size: .75rem; cursor: pointer; }
+.prompt-card pre { max-height: 430px; margin: 0; overflow: auto; padding: 1rem; border-top: 1px solid var(--line); background: var(--surface-cool); color: var(--text-soft); font: .7rem/1.55 "Cascadia Code", monospace; white-space: pre-wrap; }
+.guide-callout { display: flex; align-items: flex-start; gap: .7rem; margin-top: 1rem; padding: .8rem; border-inline-start: 3px solid var(--teal); background: var(--teal-soft); }
+.guide-callout p { margin: 0; }
 .concept-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border: 1px solid var(--line); background: var(--line); }
 .concept-pair > div { display: grid; gap: .4rem; padding: .9rem; background: var(--surface); }
 .concept-pair p { margin: 0; font-size: .8rem; }

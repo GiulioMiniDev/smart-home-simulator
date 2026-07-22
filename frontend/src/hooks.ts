@@ -8,11 +8,17 @@ export interface ResourceState<T> {
   reload: () => Promise<void>;
 }
 
-export function useResource<T>(path: string): ResourceState<T> {
+export function useResource<T>(path?: string): ResourceState<T> {
   const [data, setData] = useState<T>();
   const [error, setError] = useState<ApiError>();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(path));
   const reload = useCallback(async () => {
+    if (!path) {
+      setData(undefined);
+      setError(undefined);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(undefined);
     try {
@@ -24,6 +30,7 @@ export function useResource<T>(path: string): ResourceState<T> {
     }
   }, [path]);
   useEffect(() => {
+    setData(undefined);
     void reload();
   }, [reload]);
   return { data, error, loading, reload };

@@ -73,6 +73,56 @@ def test_workspace_persists_relationships_jobs_and_manifest(tmp_path: Path) -> N
     assert WorkspaceService.open(root).summary().workspace_id == manifest.workspace.workspace_id
 
 
+def test_authoring_resident_replacement_updates_revives_and_removes(tmp_path: Path) -> None:
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Resident revisions")
+    home = workspace.create_home("Revision home")
+    scenario_1 = workspace.put_object(b"scenario-1", role="scenario", suffix=".bin")
+    behavior_1 = workspace.put_object(b"behavior-1", role="behavior", suffix=".bin")
+    first = workspace.replace_authoring_residents(
+        home.home_id,
+        [("resident_a", "Resident A"), ("resident_b", "Resident B")],
+        scenario_artifact_id=scenario_1.artifact_id,
+        behavior_artifact_id=behavior_1.artifact_id,
+    )
+    assert [item.source_resident_id for item in first] == ["resident_a", "resident_b"]
+
+    scenario_2 = workspace.put_object(b"scenario-2", role="scenario", suffix=".bin")
+    behavior_2 = workspace.put_object(b"behavior-2", role="behavior", suffix=".bin")
+    second = workspace.replace_authoring_residents(
+        home.home_id,
+        [("resident_b", "Resident B updated"), ("resident_c", "Resident C")],
+        scenario_artifact_id=scenario_2.artifact_id,
+        behavior_artifact_id=behavior_2.artifact_id,
+    )
+    assert [item.source_resident_id for item in second] == ["resident_b", "resident_c"]
+    assert all(item.scenario_artifact_id == scenario_2.artifact_id for item in second)
+    assert second[0].display_name == "Resident B updated"
+
+    with pytest.raises(WorkspaceError, match="duplicate resident"):
+        workspace.replace_authoring_residents(
+            home.home_id,
+            [("resident_b", "B"), ("resident_b", "Duplicate")],
+            scenario_artifact_id=scenario_2.artifact_id,
+            behavior_artifact_id=behavior_2.artifact_id,
+        )
+
+    assert workspace.replace_authoring_residents(
+        home.home_id,
+        [],
+        scenario_artifact_id=scenario_2.artifact_id,
+        behavior_artifact_id=behavior_2.artifact_id,
+    ) == []
+    revived = workspace.replace_authoring_residents(
+        home.home_id,
+        [("resident_a", "Revived A")],
+        scenario_artifact_id=scenario_2.artifact_id,
+        behavior_artifact_id=behavior_2.artifact_id,
+    )
+    assert [(item.source_resident_id, item.display_name) for item in revived] == [
+        ("resident_a", "Revived A")
+    ]
+
+
 def test_workspace_rejects_unsafe_or_corrupt_artifacts_and_recovers_jobs(
     tmp_path: Path,
 ) -> None:

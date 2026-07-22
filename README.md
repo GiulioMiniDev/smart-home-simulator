@@ -237,10 +237,14 @@ Il flusso di authoring consigliato usa un solo file:
 prompt a un LLM esterno e salva il solo JSON restituito. Non deve allegare separatamente
 schemi o cataloghi.
 
-Per modelli locali 7B–8B è disponibile anche il prompt sperimentale compatto
-`prompts/generate-simulation-inputs-1.2.1-simplified.md`. La prova Qwen 2.5 Coder 7B,
-comprensiva di risposta, ingestion report, workspace Windows/macOS e limiti qualitativi, è
-documentata nel
+Per modelli locali è disponibile anche il prompt compatto corretto
+`prompts/generate-simulation-inputs-1.2.2-simplified.md`. La guida integrata inserisce
+automaticamente la descrizione del caso e il timestamp ISO di generazione; usando il file
+manualmente occorre sostituire sia `[PERSON_AND_CASE_DESCRIPTION]` sia
+`[GENERATION_TIMESTAMP]`. La versione 1.2.2 corregge riferimenti catalogo, intervallo
+temporale end-exclusive, argomenti azione e precondizioni cronologiche. La precedente prova
+Qwen 2.5 Coder 7B, eseguita con versioni compatte antecedenti e comprensiva di risposta,
+ingestion report, workspace Windows/macOS e limiti qualitativi, è documentata nel
 [report di authoring locale](docs/evaluation/esperimento_simulazione_7giorni_mario_rossi.md).
 Il prompt completo resta il riferimento autorevole; zero errori di ingestion non sostituisce
 la valutazione di plausibilità della routine generata.

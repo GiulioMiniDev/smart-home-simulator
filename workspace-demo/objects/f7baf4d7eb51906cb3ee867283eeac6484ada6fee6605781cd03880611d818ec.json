@@ -1,0 +1,4546 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "personal_process_package",
+  "packageId": "lucia_rossi_august_2026_processes",
+  "packageVersion": "1.0.0",
+  "sourceScenarioId": "lucia_rossi_august_2026",
+  "sourceScenarioVersion": "1.0.0",
+  "language": "it",
+  "provenance": {
+    "authorType": "external_llm",
+    "generatorName": "smart-home-simulator-external-llm-authoring",
+    "generatorVersion": "1.2.0",
+    "modelName": "gpt-5-codex",
+    "promptTemplateVersion": "generate-simulation-inputs-1.2.1-simplified",
+    "generatedAt": "2026-07-21T22:03:45+02:00",
+    "humanReviewed": false,
+    "parameters": {}
+  },
+  "catalogs": {
+    "activityCatalog": {
+      "catalogId": "smart_home_activity_catalog",
+      "version": "1.0.0"
+    },
+    "variableCatalog": {
+      "catalogId": "smart_home_variable_catalog",
+      "version": "1.0.0"
+    },
+    "actionCatalog": {
+      "catalogId": "smart_home_action_catalog",
+      "version": "1.0.0"
+    }
+  },
+  "processModels": [
+    {
+      "processModelId": "pm_lucia_01",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 1",
+      "description": "Primitive action flow first introduced for intent buy_groceries.",
+      "implementedComponents": [
+        "shop",
+        "carry_purchases"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "shop",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "groceries",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_02",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 2",
+      "description": "Primitive action flow first introduced for intent call_friend_paolo.",
+      "implementedComponents": [
+        "phone_call"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "communicate",
+          "arguments": {
+            "channel": {
+              "source": "literal",
+              "value": "phone",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_03",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 3",
+      "description": "Primitive action flow first introduced for intent clean_bathroom.",
+      "implementedComponents": [
+        "clean_surface"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "clean",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "floor",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_04",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 4",
+      "description": "Primitive action flow first introduced for intent clean_kitchen.",
+      "implementedComponents": [
+        "clean_surface"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "clean",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "countertop",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_05",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 5",
+      "description": "Primitive action flow first introduced for intent commute_home.",
+      "implementedComponents": [
+        "travel",
+        "enter_home"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "leave_home",
+          "arguments": {},
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "travel_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "enter_home",
+          "arguments": {},
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_06",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 6",
+      "description": "Primitive action flow first introduced for intent commute_to_work.",
+      "implementedComponents": [
+        "travel"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "leave_home",
+          "arguments": {},
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "travel_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_07",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 7",
+      "description": "Primitive action flow first introduced for intent eat_dinner.",
+      "implementedComponents": [
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_08",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 8",
+      "description": "Primitive action flow first introduced for intent evening_hygiene.",
+      "implementedComponents": [
+        "personal_hygiene"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "hygiene",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_09",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 9",
+      "description": "Primitive action flow first introduced for intent evening_walk.",
+      "implementedComponents": [
+        "walk"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "exercise",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "walking",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_10",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 10",
+      "description": "Primitive action flow first introduced for intent hang_laundry.",
+      "implementedComponents": [
+        "hang_laundry"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "hang",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_11",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 11",
+      "description": "Primitive action flow first introduced for intent indoor_light_exercise.",
+      "implementedComponents": [
+        "exercise"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "exercise",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "light_stretching",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_12",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 12",
+      "description": "Primitive action flow first introduced for intent morning_toilet_and_shower.",
+      "implementedComponents": [
+        "use_toilet",
+        "shower"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "toilet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "shower_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "shower",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "shower_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_13",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 13",
+      "description": "Primitive action flow first introduced for intent prepare_and_eat_breakfast.",
+      "implementedComponents": [
+        "prepare_food",
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_06",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "literal",
+              "value": "breakfast",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_07",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_08",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_09",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_10",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_11",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "action_06",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_06",
+          "targetNodeId": "action_07",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_07",
+          "targetNodeId": "action_08",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_08",
+          "targetNodeId": "action_09",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_09",
+          "targetNodeId": "action_10",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_10",
+          "targetNodeId": "action_11",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_11",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_14",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 14",
+      "description": "Primitive action flow first introduced for intent prepare_light_dinner.",
+      "implementedComponents": [
+        "prepare_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_06",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "literal",
+              "value": "dinner",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_07",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_08",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "action_06",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_06",
+          "targetNodeId": "action_07",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_07",
+          "targetNodeId": "action_08",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_08",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_15",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 15",
+      "description": "Primitive action flow first introduced for intent prepare_simple_lunch.",
+      "implementedComponents": [
+        "prepare_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_06",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "literal",
+              "value": "lunch",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_07",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_08",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "action_06",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_06",
+          "targetNodeId": "action_07",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_07",
+          "targetNodeId": "action_08",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_08",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_16",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 16",
+      "description": "Primitive action flow first introduced for intent read.",
+      "implementedComponents": [
+        "read"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "reading",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_17",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 17",
+      "description": "Primitive action flow first introduced for intent read_and_rest.",
+      "implementedComponents": [
+        "read",
+        "rest"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "reading",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "lying",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "resting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_18",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 18",
+      "description": "Primitive action flow first introduced for intent read_in_bed.",
+      "implementedComponents": [
+        "read_in_bed"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "reading",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_19",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 19",
+      "description": "Primitive action flow first introduced for intent rest.",
+      "implementedComponents": [
+        "rest"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "lying",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "resting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_20",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 20",
+      "description": "Primitive action flow first introduced for intent return_home_and_store_purchases.",
+      "implementedComponents": [
+        "travel",
+        "enter_home",
+        "store_purchases"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "leave_home",
+          "arguments": {},
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "travel_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "enter_home",
+          "arguments": {},
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_06",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_07",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "action_06",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_06",
+          "targetNodeId": "action_07",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_07",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_21",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 21",
+      "description": "Primitive action flow first introduced for intent sleep.",
+      "implementedComponents": [
+        "sleep"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "lying",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "sleeping",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_22",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 22",
+      "description": "Primitive action flow first introduced for intent start_laundry.",
+      "implementedComponents": [
+        "collect_laundry",
+        "load_laundry",
+        "start_laundry"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "collect",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "load",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "start",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_23",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 23",
+      "description": "Primitive action flow first introduced for intent take_recycling_out.",
+      "implementedComponents": [
+        "carry_recycling",
+        "leave_home",
+        "discard_recycling"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "leave_home",
+          "arguments": {},
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_24",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 24",
+      "description": "Primitive action flow first introduced for intent tidy_living_room_and_hallway.",
+      "implementedComponents": [
+        "tidy_area"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "organize",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "bag",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_25",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 25",
+      "description": "Primitive action flow first introduced for intent wake_up_without_alarm.",
+      "implementedComponents": [
+        "wake_up"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_26",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 26",
+      "description": "Primitive action flow first introduced for intent wash_breakfast_dishes.",
+      "implementedComponents": [
+        "wash_dishes"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "kitchen_sink_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "clean",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "dishes",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "kitchen_sink_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_27",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 27",
+      "description": "Primitive action flow first introduced for intent watch_documentary.",
+      "implementedComponents": [
+        "watch_media"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "television_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "watching_tv",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "television_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_28",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 28",
+      "description": "Primitive action flow first introduced for intent weekly_meal_preparation.",
+      "implementedComponents": [
+        "prepare_food",
+        "portion_food",
+        "store_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_04",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_05",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_06",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "literal",
+              "value": "dinner",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_07",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "stove_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_08",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_09",
+          "kind": "action",
+          "actionType": "organize",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "clothes",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_10",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_11",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "utensils",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_12",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "fridge_01",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "action_04",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_04",
+          "targetNodeId": "action_05",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_05",
+          "targetNodeId": "action_06",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_06",
+          "targetNodeId": "action_07",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_07",
+          "targetNodeId": "action_08",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_08",
+          "targetNodeId": "action_09",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_09",
+          "targetNodeId": "action_10",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_10",
+          "targetNodeId": "action_11",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_11",
+          "targetNodeId": "action_12",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_12",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    {
+      "processModelId": "pm_lucia_29",
+      "processModelVersion": "1.0.0",
+      "residentId": "resident_lucia_rossi",
+      "title": "Lucia process model 29",
+      "description": "Primitive action flow first introduced for intent work_shift.",
+      "implementedComponents": [
+        "work"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_01",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_02",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "action_03",
+          "kind": "action",
+          "actionType": "perform_work",
+          "arguments": {
+            "mode": {
+              "source": "literal",
+              "value": "desk_work",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "action_01",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_01",
+          "targetNodeId": "action_02",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_02",
+          "targetNodeId": "action_03",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "action_03",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    }
+  ],
+  "bindings": [
+    {
+      "bindingId": "bind_lucia_buy_groceries",
+      "residentId": "resident_lucia_rossi",
+      "intent": "buy_groceries",
+      "processModelId": "pm_lucia_01",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_call_friend_paolo",
+      "residentId": "resident_lucia_rossi",
+      "intent": "call_friend_paolo",
+      "processModelId": "pm_lucia_02",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_call_mother",
+      "residentId": "resident_lucia_rossi",
+      "intent": "call_mother",
+      "processModelId": "pm_lucia_02",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_clean_bathroom",
+      "residentId": "resident_lucia_rossi",
+      "intent": "clean_bathroom",
+      "processModelId": "pm_lucia_03",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_clean_kitchen",
+      "residentId": "resident_lucia_rossi",
+      "intent": "clean_kitchen",
+      "processModelId": "pm_lucia_04",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_commute_home",
+      "residentId": "resident_lucia_rossi",
+      "intent": "commute_home",
+      "processModelId": "pm_lucia_05",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_commute_to_work",
+      "residentId": "resident_lucia_rossi",
+      "intent": "commute_to_work",
+      "processModelId": "pm_lucia_06",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_eat_dinner",
+      "residentId": "resident_lucia_rossi",
+      "intent": "eat_dinner",
+      "processModelId": "pm_lucia_07",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_eat_lunch",
+      "residentId": "resident_lucia_rossi",
+      "intent": "eat_lunch",
+      "processModelId": "pm_lucia_07",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_evening_hygiene",
+      "residentId": "resident_lucia_rossi",
+      "intent": "evening_hygiene",
+      "processModelId": "pm_lucia_08",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_evening_walk",
+      "residentId": "resident_lucia_rossi",
+      "intent": "evening_walk",
+      "processModelId": "pm_lucia_09",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_hang_laundry",
+      "residentId": "resident_lucia_rossi",
+      "intent": "hang_laundry",
+      "processModelId": "pm_lucia_10",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_indoor_light_exercise",
+      "residentId": "resident_lucia_rossi",
+      "intent": "indoor_light_exercise",
+      "processModelId": "pm_lucia_11",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_long_sunday_walk",
+      "residentId": "resident_lucia_rossi",
+      "intent": "long_sunday_walk",
+      "processModelId": "pm_lucia_09",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_morning_toilet_and_shower",
+      "residentId": "resident_lucia_rossi",
+      "intent": "morning_toilet_and_shower",
+      "processModelId": "pm_lucia_12",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_prepare_and_eat_breakfast",
+      "residentId": "resident_lucia_rossi",
+      "intent": "prepare_and_eat_breakfast",
+      "processModelId": "pm_lucia_13",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_prepare_light_dinner",
+      "residentId": "resident_lucia_rossi",
+      "intent": "prepare_light_dinner",
+      "processModelId": "pm_lucia_14",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_prepare_simple_lunch",
+      "residentId": "resident_lucia_rossi",
+      "intent": "prepare_simple_lunch",
+      "processModelId": "pm_lucia_15",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_read",
+      "residentId": "resident_lucia_rossi",
+      "intent": "read",
+      "processModelId": "pm_lucia_16",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_read_and_rest",
+      "residentId": "resident_lucia_rossi",
+      "intent": "read_and_rest",
+      "processModelId": "pm_lucia_17",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_read_in_bed",
+      "residentId": "resident_lucia_rossi",
+      "intent": "read_in_bed",
+      "processModelId": "pm_lucia_18",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_rest",
+      "residentId": "resident_lucia_rossi",
+      "intent": "rest",
+      "processModelId": "pm_lucia_19",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_return_home_and_store_purchases",
+      "residentId": "resident_lucia_rossi",
+      "intent": "return_home_and_store_purchases",
+      "processModelId": "pm_lucia_20",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_short_evening_walk",
+      "residentId": "resident_lucia_rossi",
+      "intent": "short_evening_walk",
+      "processModelId": "pm_lucia_09",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_sleep",
+      "residentId": "resident_lucia_rossi",
+      "intent": "sleep",
+      "processModelId": "pm_lucia_21",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_start_laundry",
+      "residentId": "resident_lucia_rossi",
+      "intent": "start_laundry",
+      "processModelId": "pm_lucia_22",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_take_recycling_out",
+      "residentId": "resident_lucia_rossi",
+      "intent": "take_recycling_out",
+      "processModelId": "pm_lucia_23",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_tidy_living_room_and_hallway",
+      "residentId": "resident_lucia_rossi",
+      "intent": "tidy_living_room_and_hallway",
+      "processModelId": "pm_lucia_24",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_travel_to_supermarket",
+      "residentId": "resident_lucia_rossi",
+      "intent": "travel_to_supermarket",
+      "processModelId": "pm_lucia_06",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_wake_up_without_alarm",
+      "residentId": "resident_lucia_rossi",
+      "intent": "wake_up_without_alarm",
+      "processModelId": "pm_lucia_25",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_wash_breakfast_dishes",
+      "residentId": "resident_lucia_rossi",
+      "intent": "wash_breakfast_dishes",
+      "processModelId": "pm_lucia_26",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_watch_documentary",
+      "residentId": "resident_lucia_rossi",
+      "intent": "watch_documentary",
+      "processModelId": "pm_lucia_27",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_watch_late_news",
+      "residentId": "resident_lucia_rossi",
+      "intent": "watch_late_news",
+      "processModelId": "pm_lucia_27",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_watch_sunday_program",
+      "residentId": "resident_lucia_rossi",
+      "intent": "watch_sunday_program",
+      "processModelId": "pm_lucia_27",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_watch_television",
+      "residentId": "resident_lucia_rossi",
+      "intent": "watch_television",
+      "processModelId": "pm_lucia_27",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_weekly_meal_preparation",
+      "residentId": "resident_lucia_rossi",
+      "intent": "weekly_meal_preparation",
+      "processModelId": "pm_lucia_28",
+      "applicability": [],
+      "fallback": false
+    },
+    {
+      "bindingId": "bind_lucia_work_shift",
+      "residentId": "resident_lucia_rossi",
+      "intent": "work_shift",
+      "processModelId": "pm_lucia_29",
+      "applicability": [],
+      "fallback": false
+    }
+  ]
+}

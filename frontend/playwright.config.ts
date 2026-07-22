@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const applicationCommand = process.platform === "win32"
+  ? "..\\.venv\\Scripts\\python.exe -m smart_home_sim.web.launcher --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser"
+  : "uv --project .. run smart-home-sim-app --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser";
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 45_000,
@@ -18,7 +22,7 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 5"] } },
   ],
   webServer: {
-    command: "uv --project .. run smart-home-sim-app --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser",
+    command: applicationCommand,
     url: "http://127.0.0.1:8766/api/session",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

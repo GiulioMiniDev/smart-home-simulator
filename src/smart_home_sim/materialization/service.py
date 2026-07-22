@@ -64,6 +64,33 @@ from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle
 
 
+class MaterializationFailure(RuntimeError):
+    def __init__(self, phase: str, message: str, issues: list[Any] | None = None) -> None:
+        normalized = [
+            issue.model_dump(mode="json", by_alias=True)
+            if hasattr(issue, "model_dump")
+            else dict(issue)
+            for issue in (issues or [])
+        ]
+        if not normalized:
+            normalized = [
+                {
+                    "code": f"{phase.upper()}_FAILED",
+                    "severity": "error",
+                    "stage": phase,
+                    "path": "$",
+                    "message": message,
+                    "details": {},
+                }
+            ]
+        first = normalized[0]
+        super().__init__(message)
+        self.phase = phase
+        self.code = str(first.get("code") or f"{phase.upper()}_FAILED")
+        self.message = str(first.get("message") or message)
+        self.issues = normalized
+
+
 def _rectangle(x: float, y: float, width: float, height: float) -> Polygon2D:
     return Polygon2D(
         vertices=[
@@ -728,7 +755,9 @@ def materialize_workspace(
         compilation = compile_scenario(scenario)
         _json(staging / "compilation-report.json", compilation.report)
         if compilation.plan is None:
-            raise RuntimeError("scenario compilation failed")
+            raise MaterializationFailure(
+                "compilation", "Scenario compilation failed.", compilation.report.issues
+            )
         _json(staging / "canonical-plan.json", compilation.plan)
         emit(
             "compilation",
@@ -740,7 +769,9 @@ def materialize_workspace(
         home_result = generate_home(scenario, package, home_policy)
         _json(staging / "home-generation-report.json", home_result.report)
         if home_result.home is None:
-            raise RuntimeError("home generation failed")
+            raise MaterializationFailure(
+                "home", "home generation failed", home_result.report.issues
+            )
         _json(staging / "home-model.json", home_result.home)
         emit(
             "home",
@@ -757,8 +788,11 @@ def materialize_workspace(
         )
         _json(staging / "environment-report.json", bundle_result.report)
         if bundle_result.bundle is None:
-            codes = ", ".join(item.code for item in bundle_result.report.issues[:5])
-            raise RuntimeError(f"environment bundle gate failed: {codes}")
+            raise MaterializationFailure(
+                "binding",
+                "Environment bundle validation failed.",
+                bundle_result.report.issues,
+            )
         _json(staging / "simulation-bundle.json", bundle_result.bundle)
         emit(
             "binding",
@@ -770,7 +804,9 @@ def materialize_workspace(
         sensor_result = deploy_sensors(bundle_result.bundle, sensor_policy)
         _json(staging / "sensor-deployment-report.json", sensor_result.report)
         if sensor_result.sensor_model is None:
-            raise RuntimeError("sensor deployment failed")
+            raise MaterializationFailure(
+                "sensors", "Sensor deployment failed.", sensor_result.report.issues
+            )
         _json(staging / "sensor-model.json", sensor_result.sensor_model)
         emit(
             "sensors",
@@ -783,8 +819,9 @@ def materialize_workspace(
         simulation = simulate_bundle(bundle_result.bundle)
         _json(staging / "simulation-report.json", simulation.report)
         if simulation.trace is None:
-            codes = ", ".join(item.code for item in simulation.report.issues[:5])
-            raise RuntimeError(f"simulation failed: {codes}")
+            raise MaterializationFailure(
+                "simulation", "Simulation failed.", simulation.report.issues
+            )
         _json(staging / "execution-trace.json", simulation.trace)
         emit(
             "simulation",
@@ -803,8 +840,9 @@ def materialize_workspace(
         )
         _json(staging / "sensor-projection-report.json", projection.report)
         if projection.observable_log is None or projection.oracle_mapping is None:
-            codes = ", ".join(item.code for item in projection.report.issues[:5])
-            raise RuntimeError(f"sensor projection failed: {codes}")
+            raise MaterializationFailure(
+                "projection", "Sensor projection failed.", projection.report.issues
+            )
         _json(staging / "observable-sensor-log.json", projection.observable_log)
         _json(staging / "oracle-mapping.json", projection.oracle_mapping)
         emit(

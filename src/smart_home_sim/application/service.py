@@ -40,18 +40,31 @@ def _reference(path: str) -> GraphicalReference | None:
 
 
 def _issues(items: list[Any]) -> list[ApplicationIssue]:
-    return [
-        ApplicationIssue(
-            code=item.code,
-            severity=item.severity,
-            stage=item.stage,
-            path=item.path,
-            message=item.message,
-            details=item.details,
-            graphical_reference=_reference(item.path),
+    results: list[ApplicationIssue] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for item in items:
+        key = (
+            item.code,
+            item.severity,
+            item.path,
+            item.message,
+            json.dumps(item.details, sort_keys=True, default=str),
         )
-        for item in items
-    ]
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append(
+            ApplicationIssue(
+                code=item.code,
+                severity=item.severity,
+                stage=item.stage,
+                path=item.path,
+                message=item.message,
+                details=item.details,
+                graphical_reference=_reference(item.path),
+            )
+        )
+    return results
 
 
 class ApplicationService:
@@ -64,16 +77,26 @@ class ApplicationService:
         scenario_payload: dict[str, Any],
         behavior_payload: dict[str, Any],
     ) -> dict[str, Any]:
-        self.workspace.ensure_writable()
-        self.workspace.get_home(home_id)
-        result = validate_authoring_payload(
+        """Backward-compatible Advanced import for two canonical documents."""
+        return self.import_authoring_bundle(
+            home_id,
             {
                 "schemaVersion": "1.0.0",
                 "documentType": "simulation_authoring_bundle",
                 "scenario": scenario_payload,
                 "personalProcessPackage": behavior_payload,
-            }
+            },
         )
+
+    def import_authoring_bundle(
+        self,
+        home_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Validate and publish one researcher-facing authoring bundle."""
+        self.workspace.ensure_writable()
+        self.workspace.get_home(home_id)
+        result = validate_authoring_payload(payload)
         issues = _issues(result.report.issues)
         self.workspace.replace_validation_issues(home_id, issues)
         if not result.report.valid:
@@ -84,6 +107,26 @@ class ApplicationService:
             }
         assert result.scenario_json is not None
         assert result.behavior_json is not None
+        canonical_bundle_json = (
+            json.dumps(
+                {
+                    "schemaVersion": "1.0.0",
+                    "documentType": "simulation_authoring_bundle",
+                    "scenario": json.loads(result.scenario_json),
+                    "personalProcessPackage": json.loads(result.behavior_json),
+                },
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
+        bundle_artifact = self.workspace.put_object(
+            canonical_bundle_json.encode("utf-8"),
+            role="simulation_authoring_bundle",
+            schema_version="1.0.0",
+            home_id=home_id,
+        )
         scenario_artifact = self.workspace.put_object(
             result.scenario_json.encode("utf-8"),
             role="scenario",
@@ -97,40 +140,49 @@ class ApplicationService:
             home_id=home_id,
         )
         scenario = Scenario.model_validate_json(result.scenario_json)
-        resident_results = []
-        existing = {item.source_resident_id for item in self.workspace.list_residents(home_id)}
-        for resident in scenario.residents:
-            if resident.resident_id in existing:
-                continue
-            resident_results.append(
-                self.workspace.add_resident(
-                    home_id,
-                    resident.resident_id,
-                    resident.display_name or resident.resident_id,
-                    scenario_artifact_id=scenario_artifact.artifact_id,
-                    behavior_artifact_id=behavior_artifact.artifact_id,
-                )
-            )
+        resident_results = self.workspace.replace_authoring_residents(
+            home_id,
+            [
+                (resident.resident_id, resident.display_name or resident.resident_id)
+                for resident in scenario.residents
+            ],
+            scenario_artifact_id=scenario_artifact.artifact_id,
+            behavior_artifact_id=behavior_artifact.artifact_id,
+        )
+        source_bundle = {
+            "artifactId": bundle_artifact.artifact_id,
+            "sha256": bundle_artifact.sha256,
+        }
+        report = result.report.model_dump(mode="json", by_alias=True)
+        bundle_revision = self.workspace.create_revision(
+            home_id,
+            "authoring_bundle",
+            bundle_artifact.artifact_id,
+            status="valid",
+            provenance={"ingestionReport": report},
+        )
         scenario_revision = self.workspace.create_revision(
             home_id,
             "scenario",
             scenario_artifact.artifact_id,
             status="valid",
-            provenance={"ingestionReport": result.report.model_dump(mode="json", by_alias=True)},
+            provenance={"ingestionReport": report, "sourceBundle": source_bundle},
         )
         behavior_revision = self.workspace.create_revision(
             home_id,
             "behavior",
             behavior_artifact.artifact_id,
             status="valid",
-            provenance={"ingestionReport": result.report.model_dump(mode="json", by_alias=True)},
+            provenance={"ingestionReport": report, "sourceBundle": source_bundle},
         )
         return {
             "valid": True,
-            "report": result.report.model_dump(mode="json", by_alias=True),
+            "report": report,
             "issues": [item.model_dump(mode="json", by_alias=True) for item in issues],
+            "bundleArtifact": bundle_artifact.model_dump(mode="json", by_alias=True),
             "scenarioArtifact": scenario_artifact.model_dump(mode="json", by_alias=True),
             "behaviorArtifact": behavior_artifact.model_dump(mode="json", by_alias=True),
+            "bundleRevisionId": bundle_revision,
             "scenarioRevisionId": scenario_revision,
             "behaviorRevisionId": behavior_revision,
             "residents": [item.model_dump(mode="json", by_alias=True) for item in resident_results],

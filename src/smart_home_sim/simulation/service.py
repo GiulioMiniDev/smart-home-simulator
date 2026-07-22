@@ -75,11 +75,19 @@ MINUTE_US = 60_000_000
 
 
 class SimulationFailure(RuntimeError):
-    def __init__(self, code: str, message: str, path: str = "$") -> None:
-        super().__init__(code, message, path)
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        path: str = "$",
+        details: dict[str, JsonValue] | None = None,
+    ) -> None:
+        normalized_details = details or {}
+        super().__init__(code, message, path, normalized_details)
         self.code = code
         self.message = message
         self.path = path
+        self.details = normalized_details
 
     def __str__(self) -> str:
         return self.message
@@ -984,6 +992,17 @@ class SimulationEngine:
                     "PRECONDITION_FAILED",
                     f"Action '{node.action_type}' failed precondition '{fact}'.",
                     f"$.actionBindings[{activity.source_activity_id}:{node.node_id}]",
+                    details={
+                        "activityId": activity.source_activity_id,
+                        "residentId": activity.actor_id,
+                        "processModelId": binding.process_model_id,
+                        "nodeId": node.node_id,
+                        "actionType": node.action_type or "",
+                        "fact": fact,
+                        "operator": operator.value,
+                        "expected": precondition.value,
+                        "actual": actual if present else "absent",
+                    },
                 )
         day = self._day_for(activity.scheduled_start.date())
         for precondition in node.preconditions:
@@ -1781,6 +1800,7 @@ def simulate_bundle(bundle: SimulationBundle) -> SimulationResult:
                 stage="execution",
                 path=error.path,
                 message=str(error),
+                details=error.details,
             )
         ]
         return SimulationResult(
