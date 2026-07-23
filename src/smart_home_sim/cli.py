@@ -303,10 +303,16 @@ def generate_hybrid_plan_command(
     base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
     habit_ledger: Annotated[Path | None, typer.Option("--habit-ledger")] = None,
     baseline: Annotated[Path | None, typer.Option("--compare-with")] = None,
+    process_package: Annotated[Path | None, typer.Option("--process-package")] = None,
     temperature: Annotated[float, typer.Option("--temperature")] = 0.65,
     max_diversity_repairs: Annotated[int, typer.Option("--max-diversity-repairs")] = 2,
 ) -> None:
-    """Generate and compile a semantic plan with LM Studio, without executing it."""
+    """Generate and compile a semantic plan with LM Studio, without executing it.
+
+    Pass --process-package to enable the authoritative simulation gate: each generated
+    week is materialized, bundled and executed with the M5 engine; days whose activities
+    fail to execute are regenerated until the week runs or the repair budget is exhausted.
+    """
     try:
         result = generate_hybrid_plan(
             case_path,
@@ -320,6 +326,7 @@ def generate_hybrid_plan_command(
             behavioral_profile_path=behavioral_profile,
             ledger_path=habit_ledger,
             baseline_path=baseline,
+            process_package_path=process_package,
         )
     except (HybridPlanningError, ValueError) as error:
         typer.echo(f"Hybrid planning failed: {error}", err=True)
@@ -350,8 +357,13 @@ def generate_hybrid_month_command(
     temperature: Annotated[float, typer.Option("--temperature")] = 0.65,
     chunk_days: Annotated[int, typer.Option("--chunk-days", min=1, max=7)] = 7,
     resume: Annotated[bool, typer.Option("--resume")] = False,
+    process_package: Annotated[Path | None, typer.Option("--process-package")] = None,
 ) -> None:
-    """Generate one month of validated plans without simulation execution."""
+    """Generate one month of validated plans.
+
+    Pass --process-package to gate every weekly chunk through the authoritative M5
+    simulation and repair non-executable days, so the month is simulatable by construction.
+    """
     try:
         result = generate_one_month_plan(
             case_path,
@@ -364,6 +376,7 @@ def generate_hybrid_month_command(
             ),
             chunk_days=chunk_days,
             resume=resume,
+            process_package_path=process_package,
         )
     except (HybridPlanningError, ValueError) as error:
         typer.echo(f"Hybrid month generation failed: {error}", err=True)

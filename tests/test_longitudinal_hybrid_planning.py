@@ -173,10 +173,11 @@ class FakeChunkGenerator:
         *,
         behavioral_profile_path: Path,
         ledger_path: Path | None,
+        process_package_path: Path | None = None,
         initial_memory: PlanningMemory,
         client: Any,
     ) -> SimpleNamespace:
-        del client
+        del client, process_package_path
         self.call_count += 1
         planning_case = PlanningCase.model_validate_json(
             case_path.read_text(encoding="utf-8")

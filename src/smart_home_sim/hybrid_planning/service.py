@@ -13,7 +13,9 @@ from pydantic import BaseModel, ValidationError
 
 from smart_home_sim.behavior.service import default_activity_catalog_path
 from smart_home_sim.compiler import compile_scenario
-from smart_home_sim.domain.behavior import ActivityCatalog
+from smart_home_sim.compiler.service import CompilationResult
+from smart_home_sim.domain.behavior import ActivityCatalog, PersonalProcessPackage
+from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.hybrid_planning.behavioral_models import (
     BehavioralProfile,
@@ -74,6 +76,7 @@ from smart_home_sim.hybrid_planning.prompts import (
     structural_repair_prompt,
     weekly_prompt,
 )
+from smart_home_sim.hybrid_planning.simulation_gate import simulate_chunk
 from smart_home_sim.validation.service import validate_scenario
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -178,6 +181,7 @@ def _validate_daily_proposal(
     *,
     required_intents: set[str] | None = None,
     behavioral_profile: BehavioralProfile | None = None,
+    enforce_spatial: bool = False,
 ) -> None:
     if proposal.date != expected_date:
         raise HybridPlanningError(f"daily proposal returned unexpected date {proposal.date}")
@@ -226,10 +230,11 @@ def _validate_daily_proposal(
                 f"routine '{requirement.intent}' must use timeBand "
                 f"'{requirement.time_band.value}' on {day_type}"
             )
-    spatial_violations = spatial_coherence_violations(planning_case, proposal)
-    if spatial_violations:
-        details = "; ".join(f"{item.code}: {item.message}" for item in spatial_violations)
-        raise HybridPlanningError(f"daily proposal is spatially incoherent: {details}")
+    if enforce_spatial:
+        spatial_violations = spatial_coherence_violations(planning_case, proposal)
+        if spatial_violations:
+            details = "; ".join(f"{item.code}: {item.message}" for item in spatial_violations)
+            raise HybridPlanningError(f"daily proposal is spatially incoherent: {details}")
     if behavioral_profile is not None:
         guardrail_violations = [
             *daily_life_violations(day_type, proposal),
@@ -641,6 +646,159 @@ def _read_behavioral_context(
     return profile, digest, ledger, budget
 
 
+def _finalize_repaired_day(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    brief: WeeklyBrief,
+    replacement: DailyProposal,
+    other_proposals: list[DailyProposal],
+    behavioral_profile: BehavioralProfile | None,
+    budget: HabitBudget | None,
+    ledger: HabitLedger | None,
+    target_date: date,
+) -> DailyProposal:
+    """Run the normalization pipeline and validation on a regenerated day proposal."""
+
+    if behavioral_profile is not None:
+        replacement, _ = _canonicalize_daily_anchors(planning_case, behavioral_profile, replacement)
+        replacement, _ = _reserve_future_weekly_goals(behavioral_profile, brief, replacement)
+        if ledger is not None and budget is not None:
+            replacement, _ = constrain_daily_habit_limits(
+                behavioral_profile, ledger, budget, other_proposals, replacement
+            )
+        replacement, _ = normalize_habit_preferences(behavioral_profile, replacement)
+        replacement, _ = normalize_daily_guardrails(
+            planning_case,
+            catalog,
+            planning_case.calendar_day(replacement.date).day_type,
+            replacement,
+        )
+    required = set(
+        next((item.goal_intents for item in brief.days if item.date == target_date), [])
+    )
+    _validate_daily_proposal(
+        planning_case,
+        catalog,
+        target_date,
+        replacement,
+        required_intents=required,
+        behavioral_profile=behavioral_profile,
+        enforce_spatial=True,
+    )
+    return replacement
+
+
+def _enforce_simulation_gate(
+    *,
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    brief: WeeklyBrief,
+    proposals: list[DailyProposal],
+    scenario: Scenario,
+    compilation: CompilationResult,
+    process_package: PersonalProcessPackage,
+    behavioral_profile: BehavioralProfile | None,
+    budget: HabitBudget | None,
+    ledger: HabitLedger | None,
+    config: HybridPlanningConfig,
+    active_client: CompletionClient,
+    output_dir: Path,
+    generated_at: datetime,
+) -> tuple[Scenario, CompilationResult]:
+    """Simulate the chunk and repair implicated days until it executes, or fail explicitly.
+
+    The chunk is executed with the authoritative M5 engine. On failure the days holding the
+    implicated activities are regenerated with a simulation-repair prompt and the scenario is
+    re-materialised and re-compiled, up to ``config.max_structure_repairs`` times.
+    """
+
+    reports: list[dict[str, object]] = []
+    sim_repairs = 0
+    while True:
+        if compilation.plan is None:
+            raise HybridPlanningError("simulation gate reached a chunk without a plan")
+        gate = simulate_chunk(scenario, compilation.plan, process_package)
+        reports.append(
+            {
+                "attempt": sim_repairs + 1,
+                "success": gate.success,
+                "stage": gate.stage,
+                "messages": list(gate.messages[:6]),
+                "failingDates": sorted(item.isoformat() for item in gate.failing_dates),
+            }
+        )
+        if gate.success:
+            break
+        if sim_repairs >= config.max_structure_repairs or not gate.failing_dates:
+            _write_json(output_dir / "simulation-gate-report.json", {"attempts": reports})
+            raise HybridPlanningError(
+                "generated week is not executable by the simulator after repairs: "
+                + "; ".join(gate.messages[:4])
+            )
+        sim_repairs += 1
+        error_message = (
+            "The generated day is not executable by the simulator: "
+            + "; ".join(gate.messages[:4])
+            + ". Keep the resident's movements physically consistent: never schedule a home "
+            "activity while the resident is away at work or outside, and ensure every trip "
+            "out has a matching return home before any subsequent home activity."
+        )
+        for target_date in sorted(gate.failing_dates):
+            matches = [i for i, item in enumerate(proposals) if item.date == target_date]
+            if not matches:
+                continue
+            target_index = matches[0]
+            target = proposals[target_index]
+            replacement, exchange = active_client.complete_json(
+                schema_name="simulation_repair",
+                output_model=DailyProposal,
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=structural_repair_prompt(
+                    planning_case,
+                    catalog,
+                    brief,
+                    target,
+                    error_message,
+                    behavioral_profile,
+                    budget,
+                ),
+                seed=planning_case.seed + 300 + sim_repairs,
+                schema_override=_daily_schema(planning_case, catalog, target_date),
+            )
+            _persist_exchange(
+                output_dir / "days" / target_date.isoformat() / f"simulation-repair-{sim_repairs}",
+                exchange,
+                replacement,
+            )
+            replacement = _finalize_repaired_day(
+                planning_case,
+                catalog,
+                brief,
+                replacement,
+                [item for item in proposals if item.date != target_date],
+                behavioral_profile,
+                budget,
+                ledger,
+                target_date,
+            )
+            proposals[target_index] = replacement
+        scenario = materialize_scenario(planning_case, proposals, config, generated_at)
+        validation = validate_scenario(scenario)
+        if not validation.valid:
+            raise HybridPlanningError(
+                "simulation-repaired scenario failed validation: "
+                + ", ".join(item.code for item in validation.issues)
+            )
+        compilation = compile_scenario(scenario)
+        if compilation.plan is None:
+            raise HybridPlanningError(
+                "simulation-repaired scenario failed compilation: "
+                + ", ".join(item.code for item in compilation.report.issues)
+            )
+    _write_json(output_dir / "simulation-gate-report.json", {"attempts": reports})
+    return scenario, compilation
+
+
 def generate_hybrid_plan(
     case_path: Path,
     output_dir: Path,
@@ -649,6 +807,7 @@ def generate_hybrid_plan(
     behavioral_profile_path: Path | None = None,
     ledger_path: Path | None = None,
     baseline_path: Path | None = None,
+    process_package_path: Path | None = None,
     initial_memory: PlanningMemory | None = None,
     client: CompletionClient | None = None,
 ) -> HybridPlanningResult:
@@ -689,6 +848,16 @@ def generate_hybrid_plan(
             _write_json(output_dir / "habit-ledger-input.json", ledger)
             _write_json(output_dir / "habit-budget.json", budget)
             run_manifest["behavioralProfileDigest"] = profile_digest
+        process_package: PersonalProcessPackage | None = None
+        if process_package_path is not None:
+            try:
+                process_package = PersonalProcessPackage.model_validate_json(
+                    process_package_path.read_text(encoding="utf-8")
+                )
+            except (OSError, UnicodeDecodeError, ValueError) as error:
+                raise HybridPlanningError(
+                    f"cannot load process package for simulation gate: {error}"
+                ) from error
         memory = initial_memory or PlanningMemory()
         brief, brief_exchange = active_client.complete_json(
             schema_name="weekly_brief",
@@ -836,6 +1005,7 @@ def generate_hybrid_plan(
                         proposal,
                         required_intents=set(day_brief.goal_intents),
                         behavioral_profile=behavioral_profile,
+                        enforce_spatial=process_package is not None,
                     )
                     break
                 except HybridPlanningError as validation_error:
@@ -965,6 +1135,7 @@ def generate_hybrid_plan(
                 replacement,
                 required_intents=set(target_brief.goal_intents),
                 behavioral_profile=behavioral_profile,
+                enforce_spatial=process_package is not None,
             )
             proposals[target_index] = replacement
             diversity = diversity_metrics(proposals)
@@ -1102,6 +1273,7 @@ def generate_hybrid_plan(
                         )
                     ),
                     behavioral_profile=behavioral_profile,
+                    enforce_spatial=process_package is not None,
                 )
                 proposals[target_index] = replacement
                 habit_gate = evaluate_habit_plan(
@@ -1167,6 +1339,25 @@ def generate_hybrid_plan(
                 "materialized scenario failed compilation: "
                 + ", ".join(item.code for item in compilation.report.issues)
             )
+
+        if process_package is not None:
+            scenario, compilation = _enforce_simulation_gate(
+                planning_case=planning_case,
+                catalog=catalog,
+                brief=brief,
+                proposals=proposals,
+                scenario=scenario,
+                compilation=compilation,
+                process_package=process_package,
+                behavioral_profile=behavioral_profile,
+                budget=budget,
+                ledger=ledger,
+                config=config,
+                active_client=active_client,
+                output_dir=output_dir,
+                generated_at=generated_at,
+            )
+
         _write_json(output_dir / "scenario.json", scenario)
         _write_json(output_dir / "canonical-plan.json", compilation.plan)
 

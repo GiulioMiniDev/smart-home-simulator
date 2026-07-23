@@ -54,6 +54,7 @@ class ChunkGenerator(Protocol):
         *,
         behavioral_profile_path: Path,
         ledger_path: Path | None,
+        process_package_path: Path | None,
         initial_memory: PlanningMemory,
         client: CompletionClient | None,
     ) -> HybridPlanningResult:
@@ -244,6 +245,7 @@ def generate_one_month_plan(
     *,
     chunk_days: int = 7,
     resume: bool = False,
+    process_package_path: Path | None = None,
     client: CompletionClient | None = None,
     chunk_generator: ChunkGenerator = generate_hybrid_plan,
 ) -> LongitudinalPlanningResult:
@@ -354,6 +356,7 @@ def generate_one_month_plan(
                 config,
                 behavioral_profile_path=profile_snapshot_path,
                 ledger_path=ledger_path,
+                process_package_path=process_package_path,
                 initial_memory=checkpoint.planning_memory,
                 client=client,
             )
