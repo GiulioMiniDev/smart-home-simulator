@@ -16,6 +16,20 @@ describe("local API client", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
+  it("refreshes a stale session after a 401 and retries once", async () => {
+    sessionStorage.setItem("habitat-lab-session", "stale");
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: { code: "SESSION_TOKEN_INVALID", message: "Invalid local session" } }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ token: "fresh" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(api<{ ok: boolean }>("/overview")).resolves.toEqual({ ok: true });
+    expect(sessionStorage.getItem("habitat-lab-session")).toBe("fresh");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect((fetcher.mock.calls[0][1]?.headers as Headers).get("X-Workspace-Token")).toBe("stale");
+    expect((fetcher.mock.calls[2][1]?.headers as Headers).get("X-Workspace-Token")).toBe("fresh");
+  });
+
   it("reports session, structured, plain and empty responses", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("no", { status: 503 })));
     await expect(api("/overview")).rejects.toMatchObject({ status: 503 });

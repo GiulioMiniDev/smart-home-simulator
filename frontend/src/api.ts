@@ -20,12 +20,25 @@ async function sessionToken(): Promise<string> {
   return payload.token;
 }
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function requestWithSession(path: string, options: RequestInit = {}): Promise<Response> {
   const token = await sessionToken();
   const headers = new Headers(options.headers);
   headers.set("X-Workspace-Token", token);
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await fetch(`/api${path}`, { ...options, headers });
+  if (response.status !== 401) return response;
+  clearSession();
+  const refreshedToken = await sessionToken();
+  const refreshedHeaders = new Headers(options.headers);
+  refreshedHeaders.set("X-Workspace-Token", refreshedToken);
+  if (options.body && !refreshedHeaders.has("Content-Type")) {
+    refreshedHeaders.set("Content-Type", "application/json");
+  }
+  return fetch(`/api${path}`, { ...options, headers: refreshedHeaders });
+}
+
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await requestWithSession(path, options);
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as
       | { error?: { code?: string; message?: string }; detail?: { code?: string; message?: string } }
