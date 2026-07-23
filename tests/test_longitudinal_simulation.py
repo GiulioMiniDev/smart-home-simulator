@@ -23,7 +23,11 @@ from smart_home_sim.domain.models import Scenario
 from smart_home_sim.environment import build_bundle_files
 from smart_home_sim.materialization import deploy_sensors, generate_home
 from smart_home_sim.sensors import project_sensors
-from smart_home_sim.simulation import simulate_bundle
+from smart_home_sim.simulation import (
+    run_longitudinal_file,
+    simulate_bundle,
+    verify_longitudinal_run,
+)
 from smart_home_sim.simulation.longitudinal_aggregate import (
     aggregate_execution_traces,
     aggregate_oracle_mappings,
@@ -67,6 +71,7 @@ def _make_minimal_scenario(
 
     if data.get("commitments"):
         for com in data["commitments"]:
+            com["activityId"] = f"{activity_prefix}{com['activityId']}"
             com["start"] = start.replace("00:00:00", "08:00:00")
             com["end"] = start.replace("00:00:00", "08:30:00")
 
@@ -457,5 +462,80 @@ def test_longitudinal_aggregation(tmp_path: Path) -> None:
     # Rejection of non-chronological order
     with pytest.raises(ValueError, match="is before"):
         aggregate_execution_traces("test_run", 1, [sim2.trace, sim1.trace])
+
+
+def test_run_longitudinal_file_full_orchestration_and_resume(tmp_path: Path) -> None:
+    sc1_dict = _make_minimal_scenario(
+        start="2026-10-12T00:00:00+02:00",
+        end="2026-10-13T00:00:00+02:00",
+        initial_at="2026-10-12T00:00:00+02:00",
+        activity_prefix="c1_",
+        seed=1,
+    )
+    sc2_dict = _make_minimal_scenario(
+        start="2026-10-13T00:00:00+02:00",
+        end="2026-10-14T00:00:00+02:00",
+        initial_at="2026-10-13T00:00:00+02:00",
+        activity_prefix="c2_",
+        seed=1,
+    )
+    ppp_dict = _make_ppp()
+
+    sc1_file = tmp_path / "sc1.json"
+    sc2_file = tmp_path / "sc2.json"
+    ppp_file = tmp_path / "ppp.json"
+    sc1_file.write_text(json.dumps(sc1_dict), encoding="utf-8")
+    sc2_file.write_text(json.dumps(sc2_dict), encoding="utf-8")
+    ppp_file.write_text(json.dumps(ppp_dict), encoding="utf-8")
+
+    manifest_data = {
+        "schemaVersion": "1.0.0",
+        "documentType": "longitudinal_simulation_manifest",
+        "runId": "full_test_run",
+        "scenarioPaths": ["sc1.json", "sc2.json"],
+        "personalProcessPackagePath": "ppp.json",
+        "seed": 1,
+    }
+    manifest_file = tmp_path / "manifest.json"
+    manifest_file.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    output_dir = tmp_path / "run_out"
+
+    # Full orchestration run
+    report = run_longitudinal_file(manifest_file, output_directory=output_dir)
+    assert report.success is True
+    assert len(report.chunks) == 2
+    assert (output_dir / "home-model.json").is_file()
+    assert (output_dir / "sensor-model.json").is_file()
+    assert (output_dir / "checkpoint.json").is_file()
+    assert (output_dir / "run.json").is_file()
+    assert (output_dir / "chunks/0001/execution-trace.json").is_file()
+    assert (output_dir / "chunks/0002/execution-trace.json").is_file()
+    assert (output_dir / "aggregate/execution-trace.json").is_file()
+    assert (output_dir / "aggregate/observable-sensor-log.json").is_file()
+    assert (output_dir / "aggregate/oracle-mapping.json").is_file()
+    assert (output_dir / "workspace-manifest.json").is_file()
+
+    # Replay verification
+    verify_res = verify_longitudinal_run(output_dir)
+    assert verify_res.matches is True
+
+    # Resumption test: modify chunk 2 completed record to test resume
+    cp_text = (output_dir / "checkpoint.json").read_text(encoding="utf-8")
+    cp_data = json.loads(cp_text)
+    cp_data["completedChunkCount"] = 1
+    cp_data["chunks"] = cp_data["chunks"][:1]
+    (output_dir / "checkpoint.json").write_text(json.dumps(cp_data), encoding="utf-8")
+
+    resume_report = run_longitudinal_file(manifest_file, output_directory=output_dir, resume=True)
+    assert resume_report.success is True
+    assert len(resume_report.chunks) == 2
+
+    # Tampered checkpoint test
+    cp_data["manifestSha256"] = "0" * 64
+    (output_dir / "checkpoint.json").write_text(json.dumps(cp_data), encoding="utf-8")
+    with pytest.raises(ValueError, match="digest mismatch"):
+        run_longitudinal_file(manifest_file, output_directory=output_dir, resume=True)
+
 
 

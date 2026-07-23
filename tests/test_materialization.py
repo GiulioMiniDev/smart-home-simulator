@@ -351,7 +351,7 @@ def test_materialization_cli_commands(tmp_path: Path) -> None:
             str(workspace),
         ],
     )
-    assert repeated.exit_code == 1
+    assert repeated.exit_code == 2
 
 
 def test_deploy_sensors_for_bundles_union_coverage() -> None:
