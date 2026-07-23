@@ -643,6 +643,11 @@ il runtime non richiede né invoca un LLM.
 - behavioral profile dettagliato, validato, congelato e riutilizzabile;
 - orchestratore plan-only di un mese implementato con chunk settimanali, memoria bounded,
   habit ledger, gate causali, checkpoint atomico e resume;
+- target delle abitudini vincolanti, guardrail di vita quotidiana e catene semantiche
+  applicati a generazione e riparazione;
+- qualità longitudinale estesa a densità, frequenza attesa/osservata, aderenza temporale e
+  aderenza di luogo, con confronto A/B riproducibile e baseline isolato;
+- progressione sperimentale prevista per milestone di un mese, tre mesi e sei mesi;
 - pilot live di un mese ancora da validare prima di abilitare i gate a tre e sei mesi.
 
 ### Responsabilità

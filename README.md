@@ -364,6 +364,28 @@ sette giorni:
   --chunk-days 7
 ```
 
+Per rigenerare il mese congelato di Tommaso e confrontarlo con la run precedente:
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path 'src').Path
+.\.venv\Scripts\python.exe -m smart_home_sim.cli generate-hybrid-month `
+  examples/hybrid/tommaso_bianchi_week.planning-case.json `
+  --behavioral-profile generated/hybrid-planning/tommaso-behavioral-profile-20260722-attempt-7/behavioral-profile.json `
+  --output-dir generated/hybrid-planning/tommaso-one-month-guarded-20260723 `
+  --model qwen2.5-coder-7b-instruct `
+  --chunk-days 7
+
+.\.venv\Scripts\python.exe -m smart_home_sim.cli compare-hybrid-months `
+  generated/hybrid-planning/tommaso-one-month-20260723 `
+  generated/hybrid-planning/tommaso-one-month-guarded-20260723 `
+  --baseline generated/tommaso_bianchi/tommaso_bianchi.json `
+  --output generated/hybrid-planning/tommaso-one-month-guarded-20260723/ab-comparison.json
+```
+
+Il primo comando genera e compila soltanto il piano: non esegue la simulazione e non
+legge il baseline. Il secondo verifica i digest dei due mesi accettati e legge il baseline
+solo a generazione conclusa, senza inviare alcun dato a LM Studio.
+
 Se LM Studio, il terminale o il processo vengono interrotti, lo stesso comando può essere
 ripetuto con `--resume`. Profilo, configurazione, checkpoint e digest degli artefatti già
 accettati devono coincidere; i chunk completati non vengono rigenerati. Un chunk fallito
@@ -373,6 +395,11 @@ Il comando scrive proposte, scambi LLM, report di validazione e compilazione, le
 memoria bounded e report longitudinali sotto `generated/hybrid-planning/`, directory
 intenzionalmente ignorata da Git. Non accetta il baseline Tommaso come input: il confronto
 resta un’operazione separata e successiva alla finalizzazione.
+
+I gate longitudinali misurano anche densità giornaliera, presenza di nutrizione e igiene,
+catene semantiche, frequenza attesa e osservata delle abitudini, aderenza a fascia oraria e
+luogo. I target del profilo sono vincolanti; preferenze non conformi vengono normalizzate e
+registrate, mentre violazioni non riparabili fanno fallire esplicitamente il chunk.
 
 Il primo comando valida il profilo e ne congela anche il digest. Il secondo richiede
 esplicitamente quel profilo, calcola i budget longitudinali, effettua una chiamata di
