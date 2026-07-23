@@ -95,7 +95,10 @@ class HybridPlanningResult:
     plan: CanonicalPlan
     diversity: DiversityMetrics
     comparison: dict[str, object] | None
+    proposals: tuple[DailyProposal, ...]
+    memory: PlanningMemory
     habit_gate: HabitGateReport | None = None
+    habit_ledger: HabitLedger | None = None
 
 
 def _write_text(path: Path, value: str) -> None:
@@ -468,12 +471,15 @@ def _updated_memory(memory: PlanningMemory, proposal: DailyProposal) -> Planning
         recent_days=recent,
         intent_frequency=frequencies,
         intent_last_seen=last_seen,
-        day_signatures=[*memory.day_signatures, day_signature(proposal)],
+        day_signatures=[*memory.day_signatures, day_signature(proposal)][-30:],
     )
 
 
-def _rebuild_memory(proposals: list[DailyProposal]) -> PlanningMemory:
-    memory = PlanningMemory()
+def _rebuild_memory(
+    proposals: list[DailyProposal],
+    initial: PlanningMemory | None = None,
+) -> PlanningMemory:
+    memory = initial or PlanningMemory()
     for proposal in proposals:
         memory = _updated_memory(memory, proposal)
     return memory
@@ -548,6 +554,7 @@ def generate_hybrid_plan(
     behavioral_profile_path: Path | None = None,
     ledger_path: Path | None = None,
     baseline_path: Path | None = None,
+    initial_memory: PlanningMemory | None = None,
     client: CompletionClient | None = None,
 ) -> HybridPlanningResult:
     if output_dir.exists():
@@ -571,6 +578,7 @@ def generate_hybrid_plan(
     ledger: HabitLedger | None = None
     budget: HabitBudget | None = None
     habit_gate: HabitGateReport | None = None
+    updated_ledger: HabitLedger | None = None
     try:
         if ledger_path is not None and behavioral_profile_path is None:
             raise HybridPlanningError("habit ledger requires a behavioral profile")
@@ -586,6 +594,7 @@ def generate_hybrid_plan(
             _write_json(output_dir / "habit-ledger-input.json", ledger)
             _write_json(output_dir / "habit-budget.json", budget)
             run_manifest["behavioralProfileDigest"] = profile_digest
+        memory = initial_memory or PlanningMemory()
         brief, brief_exchange = active_client.complete_json(
             schema_name="weekly_brief",
             output_model=WeeklyBrief,
@@ -595,6 +604,7 @@ def generate_hybrid_plan(
                 catalog,
                 behavioral_profile,
                 budget,
+                memory,
             ),
             seed=planning_case.seed,
             schema_override=(
@@ -626,7 +636,6 @@ def generate_hybrid_plan(
             )
 
         proposals: list[DailyProposal] = []
-        memory = PlanningMemory()
         for index, day_brief in enumerate(brief.days):
             attempt = 1
             prompt = daily_prompt(
@@ -916,7 +925,12 @@ def generate_hybrid_plan(
             _write_json(output_dir / "planned-habit-trace.json", trace)
             _write_json(output_dir / "habit-ledger.json", updated_ledger)
 
-        final_memory = _rebuild_memory(proposals)
+        for proposal in proposals:
+            _write_json(
+                output_dir / "days" / proposal.date.isoformat() / "accepted-proposal.json",
+                proposal,
+            )
+        final_memory = _rebuild_memory(proposals, initial_memory)
         _write_json(output_dir / "memory-checkpoint.json", final_memory)
         generated_at = datetime.now(ZoneInfo(planning_case.time_zone))
         scenario = materialize_scenario(planning_case, proposals, config, generated_at)
@@ -961,11 +975,14 @@ def generate_hybrid_plan(
         )
         _write_json(output_dir / "run.json", run_manifest)
         return HybridPlanningResult(
-            output_dir,
-            compilation.plan,
-            diversity,
-            comparison,
-            habit_gate,
+            output_dir=output_dir,
+            plan=compilation.plan,
+            diversity=diversity,
+            comparison=comparison,
+            proposals=tuple(proposals),
+            memory=final_memory,
+            habit_gate=habit_gate,
+            habit_ledger=updated_ledger,
         )
     except (HybridPlanningError, LMStudioError, ValueError) as error:
         run_manifest.update({"status": "failed", "error": str(error)})

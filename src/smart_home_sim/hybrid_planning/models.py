@@ -146,10 +146,10 @@ class DailyProposal(ContractModel):
 class PlanningMemory(ContractModel):
     schema_version: Literal["1.0.0"] = "1.0.0"
     through_date: date | None = None
-    recent_days: list[dict[str, object]] = Field(default_factory=list)
+    recent_days: list[dict[str, object]] = Field(default_factory=list, max_length=14)
     intent_frequency: dict[str, int] = Field(default_factory=dict)
     intent_last_seen: dict[str, date] = Field(default_factory=dict)
-    day_signatures: list[str] = Field(default_factory=list)
+    day_signatures: list[str] = Field(default_factory=list, max_length=30)
 
 
 class HybridPlanningConfig(ContractModel):

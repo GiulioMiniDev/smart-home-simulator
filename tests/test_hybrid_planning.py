@@ -25,6 +25,7 @@ from smart_home_sim.hybrid_planning.models import (
     DurationClass,
     HybridPlanningConfig,
     PlanningCase,
+    PlanningMemory,
     ProposedActivity,
     TimeBand,
     WeeklyBrief,
@@ -36,6 +37,7 @@ from smart_home_sim.hybrid_planning.service import (
     _canonicalize_daily_anchors,
     _canonicalize_weekly_goals,
     _read_models,
+    _updated_memory,
     _weekly_schema,
     generate_hybrid_plan,
 )
@@ -303,6 +305,62 @@ class FakeClient:
             api_response={"choices": [{"message": {"content": content}}]},
             raw_content=content,
         )
+
+
+def test_planning_memory_keeps_only_thirty_day_signatures() -> None:
+    memory = PlanningMemory(day_signatures=[f"signature-{index}" for index in range(30)])
+
+    updated = _updated_memory(
+        memory,
+        proposal(date(2026, 8, 10), "read"),
+    )
+
+    assert len(updated.day_signatures) == 30
+    assert updated.day_signatures[0] == "signature-1"
+
+
+def test_hybrid_plan_includes_prior_memory_in_weekly_and_daily_prompts(
+    tmp_path: Path,
+) -> None:
+    brief, broken, _ = profile_aware_week()
+    profile_path = tmp_path / "behavioral-profile.json"
+    profile_path.write_text(
+        valid_profile().model_dump_json(by_alias=True),
+        encoding="utf-8",
+    )
+    prior = PlanningMemory(
+        through_date=date(2026, 8, 9),
+        recent_days=[
+            {
+                "date": "2026-08-09",
+                "narrativeIntent": "Quiet Sunday",
+                "intents": ["read"],
+            }
+        ],
+        intent_frequency={"read": 2},
+        intent_last_seen={"read": date(2026, 8, 9)},
+        day_signatures=["wake_up|read|sleep"],
+    )
+    client = FakeClient([brief, *broken])
+
+    result = generate_hybrid_plan(
+        CASE,
+        tmp_path / "run",
+        HybridPlanningConfig(model="fake", max_diversity_repairs=0),
+        behavioral_profile_path=profile_path,
+        initial_memory=prior,
+        client=client,
+    )
+
+    assert "2026-08-09" in client.prompts[0]
+    assert "2026-08-09" in client.prompts[1]
+    assert [item.date for item in result.proposals] == [
+        date.fromordinal(date(2026, 8, 10).toordinal() + offset)
+        for offset in range(7)
+    ]
+    assert result.memory.through_date == date(2026, 8, 16)
+    assert result.memory.intent_frequency["read"] >= 3
+    assert result.habit_ledger is not None
 
 
 def test_hybrid_plan_generates_compiles_and_compares_without_exposing_baseline(

@@ -174,15 +174,22 @@ def weekly_prompt(
     _catalog: ActivityCatalog,
     profile: BehavioralProfile | None = None,
     budget: HabitBudget | None = None,
+    memory: PlanningMemory | None = None,
 ) -> str:
     payload = {
         "case": _case_payload(planning_case),
+        "planningMemory": (memory or PlanningMemory()).model_dump(
+            mode="json",
+            by_alias=True,
+        ),
         **_behavioral_payload(profile, budget),
     }
     return f"""Design the narrative structure for this planning window.
 
 Make workdays and weekends structurally different. Preserve recurring necessities, but vary
 leisure, domestic, social and errand choices. Give every day at least one distinctive goal.
+Use prior planning memory to avoid repeating the variable shell, while retaining profile
+supported habits.
 Do not treat an available location or resource as evidence that an event must happen.
 Do not invent named relationships that the case does not support.
 
