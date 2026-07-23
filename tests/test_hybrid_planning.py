@@ -33,6 +33,7 @@ from smart_home_sim.hybrid_planning.models import (
 from smart_home_sim.hybrid_planning.prompts import structural_repair_prompt
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
+    _canonicalize_daily_anchors,
     _read_models,
     _weekly_schema,
     generate_hybrid_plan,
@@ -100,6 +101,36 @@ def test_weekly_schema_excludes_zero_target_habits() -> None:
 
     assert "visit_mother_and_have_dinner" not in intents
     assert "watch_documentary" in intents
+
+
+def test_daily_anchor_canonicalization_adds_sleep_and_removes_weekend_work() -> None:
+    planning_case, _catalog = _read_models(CASE)
+    profile = valid_profile()
+    monday = proposal(date(2026, 8, 10), "read")
+    monday = monday.model_copy(
+        update={"activities": [item for item in monday.activities if item.intent != "sleep"]}
+    )
+
+    normalized_monday, monday_changes = _canonicalize_daily_anchors(
+        planning_case, profile, monday
+    )
+    sunday = proposal(date(2026, 8, 16), "read")
+    sunday = sunday.model_copy(
+        update={
+            "activities": [
+                *sunday.activities,
+                activity("work_shift", "garden_workplace", "morning", "long"),
+            ]
+        }
+    )
+    normalized_sunday, sunday_changes = _canonicalize_daily_anchors(
+        planning_case, profile, sunday
+    )
+
+    assert [item.intent for item in normalized_monday.activities].count("sleep") == 1
+    assert "work_shift" not in [item.intent for item in normalized_sunday.activities]
+    assert any(item["action"] == "insert" and item["intent"] == "sleep" for item in monday_changes)
+    assert any(item["action"] == "remove" for item in sunday_changes)
 
 
 def proposal(value: date, distinctive_intent: str) -> DailyProposal:

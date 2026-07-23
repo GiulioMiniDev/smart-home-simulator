@@ -51,9 +51,11 @@ from smart_home_sim.hybrid_planning.metrics import (
 from smart_home_sim.hybrid_planning.models import (
     DailyProposal,
     DiversityMetrics,
+    DurationClass,
     HybridPlanningConfig,
     PlanningCase,
     PlanningMemory,
+    ProposedActivity,
     WeeklyBrief,
 )
 from smart_home_sim.hybrid_planning.prompts import (
@@ -212,6 +214,94 @@ def _validate_daily_proposal(
         )
     except ValueError as error:
         raise HybridPlanningError(str(error)) from error
+
+
+def _canonicalize_daily_anchors(
+    planning_case: PlanningCase,
+    profile: BehavioralProfile,
+    proposal: DailyProposal,
+) -> tuple[DailyProposal, list[dict[str, object]]]:
+    """Make immutable routines exact while preserving the LLM's non-anchor choices."""
+    habits_by_intent = {item.intent: item for item in profile.habits}
+    activities = list(proposal.activities)
+    changes: list[dict[str, object]] = []
+    day_type = planning_case.calendar_day(proposal.date).day_type
+    for requirement in planning_case.routine_requirements:
+        indexes = [
+            index
+            for index, activity in enumerate(activities)
+            if activity.intent == requirement.intent
+        ]
+        eligible = not requirement.day_types or day_type in requirement.day_types
+        if not eligible:
+            for index in reversed(indexes):
+                activities.pop(index)
+                changes.append(
+                    {
+                        "action": "remove",
+                        "intent": requirement.intent,
+                        "reason": f"routine_not_applicable_on_{day_type}",
+                    }
+                )
+            continue
+
+        habit = habits_by_intent[requirement.intent]
+        band = requirement.time_band or habit.preferred_time_bands[0]
+        if not indexes:
+            activities.append(
+                ProposedActivity(
+                    intent=requirement.intent,
+                    location_id=habit.location_ids[0],
+                    time_band=band,
+                    duration_class=DurationClass.short,
+                    mandatory=True,
+                    priority=100,
+                    rationale="Inserted deterministically from the frozen routine anchor.",
+                )
+            )
+            changes.append(
+                {
+                    "action": "insert",
+                    "intent": requirement.intent,
+                    "reason": "required_routine_missing",
+                }
+            )
+            continue
+
+        first = indexes[0]
+        current = activities[first]
+        location = (
+            current.location_id
+            if current.location_id in habit.location_ids
+            else habit.location_ids[0]
+        )
+        normalized = current.model_copy(
+            update={
+                "location_id": location,
+                "time_band": band,
+                "mandatory": True,
+                "priority": max(current.priority, 100),
+            }
+        )
+        if normalized != current:
+            activities[first] = normalized
+            changes.append(
+                {
+                    "action": "update",
+                    "intent": requirement.intent,
+                    "reason": "canonical_routine_fields",
+                }
+            )
+        for index in reversed(indexes[1:]):
+            activities.pop(index)
+            changes.append(
+                {
+                    "action": "remove",
+                    "intent": requirement.intent,
+                    "reason": "duplicate_routine_anchor",
+                }
+            )
+    return proposal.model_copy(update={"activities": activities}), changes
 
 
 def _daily_schema(
@@ -469,17 +559,21 @@ def generate_hybrid_plan(
                     proposal,
                 )
                 try:
-                    _validate_daily_proposal(
-                        planning_case,
-                        catalog,
-                        day_brief.date,
-                        proposal,
-                    )
-                    if (
-                        behavioral_profile is not None
-                        and ledger is not None
-                        and budget is not None
-                    ):
+                    if behavioral_profile is not None:
+                        proposal, anchor_changes = _canonicalize_daily_anchors(
+                            planning_case,
+                            behavioral_profile,
+                            proposal,
+                        )
+                        _write_json(
+                            output_dir
+                            / "days"
+                            / day_brief.date.isoformat()
+                            / f"attempt-{attempt}"
+                            / "anchor-normalizations.json",
+                            {"changes": anchor_changes},
+                        )
+                    if behavioral_profile is not None and ledger is not None and budget is not None:
                         proposal, normalizations = constrain_daily_habit_limits(
                             behavioral_profile,
                             ledger,
@@ -495,12 +589,12 @@ def generate_hybrid_plan(
                             / "habit-limit-normalizations.json",
                             {"changes": normalizations},
                         )
-                        _validate_daily_proposal(
-                            planning_case,
-                            catalog,
-                            day_brief.date,
-                            proposal,
-                        )
+                    _validate_daily_proposal(
+                        planning_case,
+                        catalog,
+                        day_brief.date,
+                        proposal,
+                    )
                     break
                 except HybridPlanningError as validation_error:
                     if attempt > config.max_structure_repairs:
@@ -553,6 +647,20 @@ def generate_hybrid_plan(
                 exchange,
                 replacement,
             )
+            if behavioral_profile is not None:
+                replacement, anchor_changes = _canonicalize_daily_anchors(
+                    planning_case,
+                    behavioral_profile,
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target.date.isoformat()
+                    / f"diversity-repair-{repair_number}"
+                    / "anchor-normalizations.json",
+                    {"changes": anchor_changes},
+                )
             if behavioral_profile is not None and ledger is not None and budget is not None:
                 replacement, normalizations = constrain_daily_habit_limits(
                     behavioral_profile,
@@ -633,6 +741,19 @@ def generate_hybrid_plan(
                     / f"habit-repair-{habit_repair_number}",
                     exchange,
                     replacement,
+                )
+                replacement, anchor_changes = _canonicalize_daily_anchors(
+                    planning_case,
+                    behavioral_profile,
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target_date.isoformat()
+                    / f"habit-repair-{habit_repair_number}"
+                    / "anchor-normalizations.json",
+                    {"changes": anchor_changes},
                 )
                 replacement, normalizations = constrain_daily_habit_limits(
                     behavioral_profile,
