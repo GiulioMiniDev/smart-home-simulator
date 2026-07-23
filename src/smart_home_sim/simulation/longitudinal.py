@@ -153,26 +153,26 @@ def run_longitudinal_file(
         # Temporary files for bundle building
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            sc_file = tmp_path / "scenario.json"
+            sc_file = resolved.scenario_paths[idx]
             plan_file = tmp_path / "plan.json"
             pkg_file = tmp_path / "package.json"
             home_file = tmp_path / "home.json"
 
-            sc_file.write_text(sc.model_dump_json(by_alias=True), encoding="utf-8")
             plan_file.write_text(
-                compilation.plan.model_dump_json(by_alias=True), encoding="utf-8"
+                compilation.plan.model_dump_json(by_alias=True, indent=2), encoding="utf-8"
             )
             chunk_pkg = resolved.package.model_copy(update={"source_scenario_id": sc.scenario_id})
             pkg_file.write_text(
-                chunk_pkg.model_dump_json(by_alias=True), encoding="utf-8"
+                chunk_pkg.model_dump_json(by_alias=True, indent=2), encoding="utf-8"
             )
             home_file.write_text(
-                home_res.home.model_dump_json(by_alias=True), encoding="utf-8"
+                home_res.home.model_dump_json(by_alias=True, indent=2), encoding="utf-8"
             )
 
             bundle_res = build_bundle_files(sc_file, plan_file, pkg_file, home_file)
             if bundle_res.bundle is None:
-                raise ValueError(f"failed to build simulation bundle for chunk {idx + 1}")
+                issues = [item.model_dump(mode="json", by_alias=True) for item in bundle_res.report.issues]
+                raise ValueError(f"failed to build simulation bundle for chunk {idx + 1}: {issues}")
             bundles.append(bundle_res.bundle)
 
     # Step 2: Deploy shared sensor model
