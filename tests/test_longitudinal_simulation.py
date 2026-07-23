@@ -8,6 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 import smart_home_sim.simulation.service as sim_service
+from smart_home_sim.compiler import compile_scenario
 from smart_home_sim.domain.environment import Point2D
 from smart_home_sim.domain.execution import FinalWorldState, ResidentFinalState
 from smart_home_sim.domain.longitudinal import (
@@ -17,7 +18,9 @@ from smart_home_sim.domain.longitudinal import (
     LongitudinalSimulationManifest,
     LongitudinalSimulationReport,
 )
+from smart_home_sim.domain.models import Scenario
 from smart_home_sim.environment import build_bundle_files
+from smart_home_sim.materialization import generate_home
 from smart_home_sim.simulation import simulate_bundle
 from smart_home_sim.simulation.longitudinal_state import validate_handoff
 from smart_home_sim.simulation.longitudinal_validation import (
@@ -319,7 +322,18 @@ def test_longitudinal_state_handoff_and_validation(tmp_path: Path) -> None:
     sc2_file.write_text(json.dumps(sc2_dict), encoding="utf-8")
     ppp_file.write_text(json.dumps(ppp_dict), encoding="utf-8")
 
-    bundle_res = build_bundle_files(sc2_file, ppp_file)
+    sc2_obj = Scenario.model_validate(sc2_dict)
+    ppp_obj = PersonalProcessPackage.model_validate(ppp_dict)
+
+    compilation = compile_scenario(sc2_obj)
+    plan_file = tmp_path / "plan.json"
+    plan_file.write_text(compilation.plan.model_dump_json(by_alias=True), encoding="utf-8")
+
+    home_res = generate_home(sc2_obj, ppp_obj)
+    home_file = tmp_path / "home.json"
+    home_file.write_text(home_res.home.model_dump_json(by_alias=True), encoding="utf-8")
+
+    bundle_res = build_bundle_files(sc2_file, plan_file, ppp_file, home_file)
     assert bundle_res.bundle is not None
     bundle = bundle_res.bundle
 

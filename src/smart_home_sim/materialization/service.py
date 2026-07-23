@@ -563,10 +563,50 @@ def generate_home(
 
 
 def deploy_sensors(
-    bundle: SimulationBundle,
+    bundle: SimulationBundle, policy: SensorDeploymentPolicy | None = None
+) -> SensorDeploymentResult:
+    return deploy_sensors_for_bundles([bundle], policy)
+
+
+def deploy_sensors_for_bundles(
+    bundles: Sequence[SimulationBundle],
     policy: SensorDeploymentPolicy | None = None,
 ) -> SensorDeploymentResult:
+    if not bundles:
+        raise ValueError("bundles sequence must not be empty")
+
     policy = policy or SensorDeploymentPolicy()
+
+    first_bundle = bundles[0]
+    first_home_sha = canonical_sha256(first_bundle.home_model)
+
+    for i, bundle in enumerate(bundles):
+        if canonical_sha256(bundle.home_model) != first_home_sha:
+            raise ValueError(f"bundle {i + 1} has an incompatible home model digest")
+        if bundle.seed != first_bundle.seed:
+            raise ValueError(f"bundle {i + 1} has a mismatched seed ({bundle.seed} vs {first_bundle.seed})")
+
+    seen_binding_keys: set[tuple[str, str]] = set()
+    union_action_bindings: list[ResolvedActionBinding] = []
+    for bundle in bundles:
+        for binding in bundle.action_bindings:
+            key = (binding.source_activity_id, binding.node_id)
+            if key not in seen_binding_keys:
+                seen_binding_keys.add(key)
+                union_action_bindings.append(binding)
+
+    return _deploy_sensors_core(
+        bundle=first_bundle,
+        action_bindings=union_action_bindings,
+        policy=policy,
+    )
+
+
+def _deploy_sensors_core(
+    bundle: SimulationBundle,
+    action_bindings: Sequence[ResolvedActionBinding],
+    policy: SensorDeploymentPolicy,
+) -> SensorDeploymentResult:
     home = bundle.home_model
     local_regions = [item for item in home.regions if item.kind is RegionKind.room]
     if not local_regions:
@@ -611,7 +651,7 @@ def deploy_sensors(
     entities = {item.entity_id: item for item in home.entities}
     state_contact_entity_ids = {
         capability.provider_id
-        for binding in bundle.action_bindings
+        for binding in action_bindings
         if binding.action_type in {"open", "close"}
         for capability in binding.capability_bindings
         if capability.provider_type == "entity"
@@ -660,7 +700,7 @@ def deploy_sensors(
         entities_by_region[entity.region_id].append(entity)
     active_entity_ids = {
         capability.provider_id
-        for binding in bundle.action_bindings
+        for binding in action_bindings
         if binding.action_type in {"activate", "deactivate"}
         for capability in binding.capability_bindings
         if capability.provider_type == "entity"

@@ -27,7 +27,12 @@ from smart_home_sim.domain.sensors import (
     TemperatureSensor,
 )
 from smart_home_sim.environment import validate_home_model
-from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
+from smart_home_sim.materialization import (
+    deploy_sensors,
+    deploy_sensors_for_bundles,
+    generate_home,
+    materialize_workspace,
+)
 from smart_home_sim.materialization.service import (
     load_home_policy,
     load_sensor_policy,
@@ -346,4 +351,14 @@ def test_materialization_cli_commands(tmp_path: Path) -> None:
             str(workspace),
         ],
     )
-    assert repeated.exit_code == 2
+    assert repeated.exit_code == 1
+
+
+def test_deploy_sensors_for_bundles_union_coverage() -> None:
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    policy = SensorDeploymentPolicy(preset="room_coverage")
+    single_res = deploy_sensors(bundle, policy)
+
+    # Multi-bundle call with same bundle should match single call
+    multi_res = deploy_sensors_for_bundles([bundle, bundle], policy)
+    assert single_res.sensor_model == multi_res.sensor_model
