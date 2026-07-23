@@ -3,7 +3,13 @@ from __future__ import annotations
 from smart_home_sim.domain.behavior import ActivityCatalog
 from smart_home_sim.hybrid_planning.behavioral_models import BehavioralProfile
 from smart_home_sim.hybrid_planning.longitudinal_models import QualityViolation
-from smart_home_sim.hybrid_planning.models import DailyProposal
+from smart_home_sim.hybrid_planning.models import (
+    DailyProposal,
+    DurationClass,
+    PlanningCase,
+    ProposedActivity,
+    TimeBand,
+)
 
 NOURISHMENT_INTENTS = frozenset(
     {
@@ -188,6 +194,194 @@ def semantic_violations(
         key = (item.code, item.date, item.intent, item.message)
         unique[key] = item
     return list(unique.values())
+
+
+def _scaffold_activity(
+    intent: str,
+    location_id: str,
+    time_band: TimeBand,
+    duration_class: DurationClass,
+    rationale: str,
+) -> ProposedActivity:
+    return ProposedActivity(
+        intent=intent,
+        location_id=location_id,
+        time_band=time_band,
+        duration_class=duration_class,
+        mandatory=True,
+        priority=100,
+        rationale=rationale,
+    )
+
+
+def normalize_daily_guardrails(
+    planning_case: PlanningCase,
+    catalog: ActivityCatalog,
+    day_type: str,
+    proposal: DailyProposal,
+) -> tuple[DailyProposal, list[dict[str, object]]]:
+    known_intents = {item.intent for item in catalog.activities}
+    known_locations = {item.location_id for item in planning_case.locations}
+    activities = list(proposal.activities)
+    changes: list[dict[str, object]] = []
+
+    def record(intent: str, reason: str) -> None:
+        changes.append(
+            {
+                "date": proposal.date.isoformat(),
+                "action": "insert",
+                "intent": intent,
+                "reason": reason,
+            }
+        )
+
+    intents = [item.intent for item in activities]
+    if not HYGIENE_INTENTS.intersection(intents):
+        candidates = [
+            ("morning_toilet_and_shower", "bathroom_01"),
+            ("morning_toilet_and_wash", "bathroom_01"),
+        ]
+        available = [
+            item
+            for item in candidates
+            if item[0] in known_intents and item[1] in known_locations
+        ]
+        if available:
+            intent, location = available[proposal.date.toordinal() % len(available)]
+            insert_at = next(
+                (
+                    index + 1
+                    for index, item in enumerate(activities)
+                    if item.intent == "take_morning_medication"
+                ),
+                0,
+            )
+            activities.insert(
+                insert_at,
+                _scaffold_activity(
+                    intent,
+                    location,
+                    TimeBand.early_morning,
+                    DurationClass.short,
+                    "Deterministic daily hygiene scaffold.",
+                ),
+            )
+            record(intent, "missing_hygiene")
+
+    intents = [item.intent for item in activities]
+    if not NOURISHMENT_INTENTS.intersection(intents):
+        workday_candidates = [
+            "prepare_and_eat_breakfast",
+            "eat_breakfast_and_read_news",
+            "eat_breakfast_with_radio_news",
+        ]
+        weekend_candidates = [
+            "prepare_weekend_breakfast",
+            "prepare_and_eat_breakfast",
+            "eat_breakfast_and_listen_to_radio",
+        ]
+        candidates = (
+            workday_candidates if day_type == "workday" else weekend_candidates
+        )
+        available = [item for item in candidates if item in known_intents]
+        if available and "kitchen_01" in known_locations:
+            intent = available[proposal.date.toordinal() % len(available)]
+            insert_at = next(
+                (
+                    index
+                    for index, item in enumerate(activities)
+                    if item.intent in {"commute_to_work", "work_shift", "sleep"}
+                ),
+                len(activities),
+            )
+            activities.insert(
+                insert_at,
+                _scaffold_activity(
+                    intent,
+                    "kitchen_01",
+                    TimeBand.morning,
+                    DurationClass.medium,
+                    "Deterministic daily nourishment scaffold.",
+                ),
+            )
+            record(intent, "missing_nourishment")
+
+    intents = [item.intent for item in activities]
+    if "work_shift" in intents:
+        work_index = intents.index("work_shift")
+        if "commute_to_work" not in intents[:work_index]:
+            location = (
+                "garden_workplace"
+                if "garden_workplace" in known_locations
+                else activities[work_index].location_id
+            )
+            activities.insert(
+                work_index,
+                _scaffold_activity(
+                    "commute_to_work",
+                    location,
+                    TimeBand.morning,
+                    DurationClass.short,
+                    "Deterministic outbound work-travel scaffold.",
+                ),
+            )
+            record("commute_to_work", "work_shift_chain")
+        intents = [item.intent for item in activities]
+        work_index = intents.index("work_shift")
+        if "commute_home" not in intents[work_index + 1 :]:
+            location = (
+                "hallway_01"
+                if "hallway_01" in known_locations
+                else activities[work_index].location_id
+            )
+            activities.insert(
+                work_index + 1,
+                _scaffold_activity(
+                    "commute_home",
+                    location,
+                    TimeBand.afternoon,
+                    DurationClass.short,
+                    "Deterministic return work-travel scaffold.",
+                ),
+            )
+            record("commute_home", "work_shift_chain")
+
+    intents = [item.intent for item in activities]
+    if "visit_mother_and_have_dinner" in intents:
+        visit_index = intents.index("visit_mother_and_have_dinner")
+        if "travel_to_mothers_home" not in intents[:visit_index]:
+            activities.insert(
+                visit_index,
+                _scaffold_activity(
+                    "travel_to_mothers_home",
+                    "mother_house_barcelona",
+                    TimeBand.afternoon,
+                    DurationClass.short,
+                    "Deterministic outbound family-visit scaffold.",
+                ),
+            )
+            record("travel_to_mothers_home", "mother_visit_chain")
+        intents = [item.intent for item in activities]
+        visit_index = intents.index("visit_mother_and_have_dinner")
+        if "travel_home" not in intents[visit_index + 1 :]:
+            home_location = (
+                "hallway_01"
+                if "hallway_01" in known_locations
+                else "living_room_01"
+            )
+            activities.insert(
+                visit_index + 1,
+                _scaffold_activity(
+                    "travel_home",
+                    home_location,
+                    TimeBand.evening,
+                    DurationClass.short,
+                    "Deterministic return family-visit scaffold.",
+                ),
+            )
+            record("travel_home", "mother_visit_chain")
+
+    return proposal.model_copy(update={"activities": activities}), changes
 
 
 def normalize_habit_preferences(

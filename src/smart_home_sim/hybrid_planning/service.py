@@ -29,6 +29,7 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
 from smart_home_sim.hybrid_planning.comparison import compare_scenarios
 from smart_home_sim.hybrid_planning.guardrails import (
     daily_life_violations,
+    normalize_daily_guardrails,
     normalize_habit_preferences,
     semantic_violations,
 )
@@ -780,6 +781,20 @@ def generate_hybrid_plan(
                             / "habit-preference-normalizations.json",
                             {"changes": preference_changes},
                         )
+                        proposal, guardrail_changes = normalize_daily_guardrails(
+                            planning_case,
+                            catalog,
+                            planning_case.calendar_day(proposal.date).day_type,
+                            proposal,
+                        )
+                        _write_json(
+                            output_dir
+                            / "days"
+                            / day_brief.date.isoformat()
+                            / f"attempt-{attempt}"
+                            / "guardrail-normalizations.json",
+                            {"changes": guardrail_changes},
+                        )
                     _validate_daily_proposal(
                         planning_case,
                         catalog,
@@ -893,6 +908,20 @@ def generate_hybrid_plan(
                     / f"diversity-repair-{repair_number}"
                     / "habit-preference-normalizations.json",
                     {"changes": preference_changes},
+                )
+                replacement, guardrail_changes = normalize_daily_guardrails(
+                    planning_case,
+                    catalog,
+                    planning_case.calendar_day(replacement.date).day_type,
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target.date.isoformat()
+                    / f"diversity-repair-{repair_number}"
+                    / "guardrail-normalizations.json",
+                    {"changes": guardrail_changes},
                 )
             target_brief = next(item for item in brief.days if item.date == target.date)
             _validate_daily_proposal(
@@ -1011,6 +1040,20 @@ def generate_hybrid_plan(
                     / f"habit-repair-{habit_repair_number}"
                     / "habit-preference-normalizations.json",
                     {"changes": preference_changes},
+                )
+                replacement, guardrail_changes = normalize_daily_guardrails(
+                    planning_case,
+                    catalog,
+                    planning_case.calendar_day(replacement.date).day_type,
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target_date.isoformat()
+                    / f"habit-repair-{habit_repair_number}"
+                    / "guardrail-normalizations.json",
+                    {"changes": guardrail_changes},
                 )
                 _validate_daily_proposal(
                     planning_case,

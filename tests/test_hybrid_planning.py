@@ -583,6 +583,12 @@ def test_hybrid_plan_normalizes_habit_preferences_and_writes_artifact(
                 if item.intent == "buy_groceries"
                 else item
                 for item in groceries_day.activities
+                if item.intent
+                not in {
+                    "morning_toilet_and_shower",
+                    "commute_to_work",
+                    "commute_home",
+                }
             ]
         }
     )
@@ -620,6 +626,15 @@ def test_hybrid_plan_normalizes_habit_preferences_and_writes_artifact(
     assert {item["field"] for item in artifact["changes"]} == {
         "timeBand",
         "locationId",
+    }
+    guardrail_artifact = json.loads(
+        (
+            output
+            / "days/2026-08-13/attempt-1/guardrail-normalizations.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert {item["reason"] for item in guardrail_artifact["changes"]} == {
+        "work_shift_chain",
     }
 
 

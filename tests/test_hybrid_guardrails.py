@@ -2,10 +2,11 @@ from datetime import date
 
 import pytest
 from test_behavioral_profile import valid_profile
-from test_hybrid_planning import activity
+from test_hybrid_planning import CASE, _read_models, activity
 
 from smart_home_sim.hybrid_planning.guardrails import (
     daily_life_violations,
+    normalize_daily_guardrails,
     normalize_habit_preferences,
     semantic_violations,
 )
@@ -61,6 +62,38 @@ def test_daily_life_accepts_complete_variable_day() -> None:
     )
 
     assert daily_life_violations("weekend", complete) == []
+
+
+def test_daily_guardrail_normalization_supplies_safe_structural_scaffolding() -> None:
+    planning_case, catalog = _read_models(CASE)
+    incomplete = DailyProposal(
+        date=date(2026, 8, 10),
+        narrative_intent="Workday whose structural details need repair",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", "early_morning"),
+            activity("work_shift", "garden_workplace", "morning"),
+            activity("watch_television", "living_room_01", "evening"),
+            activity("sleep", "bedroom_01", "night"),
+        ],
+    )
+
+    normalized, changes = normalize_daily_guardrails(
+        planning_case,
+        catalog,
+        "workday",
+        incomplete,
+    )
+
+    intents = [item.intent for item in normalized.activities]
+    assert intents.index("commute_to_work") < intents.index("work_shift")
+    assert intents.index("work_shift") < intents.index("commute_home")
+    assert daily_life_violations("workday", normalized) == []
+    assert semantic_violations(valid_profile(), normalized) == []
+    assert {item["reason"] for item in changes} == {
+        "missing_hygiene",
+        "missing_nourishment",
+        "work_shift_chain",
+    }
 
 
 @pytest.mark.parametrize(
