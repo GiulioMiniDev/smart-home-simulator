@@ -648,7 +648,8 @@ il runtime non richiede né invoca un LLM.
 - qualità longitudinale estesa a densità, frequenza attesa/osservata, aderenza temporale e
   aderenza di luogo, con confronto A/B riproducibile e baseline isolato;
 - progressione sperimentale prevista per milestone di un mese, tre mesi e sei mesi;
-- pilot live di un mese ancora da validare prima di abilitare i gate a tre e sei mesi.
+- pilot live di 31 giorni completato con 5 chunk, 28 firme distinte, copertura quotidiana
+  completa e tutte le abitudini dentro gli intervalli attesi; prossimo gate: tre mesi.
 
 ### Responsabilità
 
