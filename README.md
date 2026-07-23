@@ -350,6 +350,30 @@ Il flusso è autonomo e non richiede la supervisione di Codex:
   --compare-with generated/tommaso_bianchi/tommaso_bianchi.json
 ```
 
+### Pianificazione ibrida di un mese
+
+Dopo aver congelato il profilo, il planner può produrre un mese esatto in chunk di massimo
+sette giorni:
+
+```powershell
+.\.venv\Scripts\smart-home-sim.exe generate-hybrid-month `
+  examples/hybrid/tommaso_bianchi_week.planning-case.json `
+  --behavioral-profile generated/hybrid-planning/tommaso-profile/behavioral-profile.json `
+  --output-dir generated/hybrid-planning/tommaso-one-month `
+  --model qwen2.5-coder-7b-instruct `
+  --chunk-days 7
+```
+
+Se LM Studio, il terminale o il processo vengono interrotti, lo stesso comando può essere
+ripetuto con `--resume`. Profilo, configurazione, checkpoint e digest degli artefatti già
+accettati devono coincidere; i chunk completati non vengono rigenerati. Un chunk fallito
+resta disponibile per la diagnosi ma non avanza il checkpoint.
+
+Il comando scrive proposte, scambi LLM, report di validazione e compilazione, ledger,
+memoria bounded e report longitudinali sotto `generated/hybrid-planning/`, directory
+intenzionalmente ignorata da Git. Non accetta il baseline Tommaso come input: il confronto
+resta un’operazione separata e successiva alla finalizzazione.
+
 Il primo comando valida il profilo e ne congela anche il digest. Il secondo richiede
 esplicitamente quel profilo, calcola i budget longitudinali, effettua una chiamata di
 regia settimanale e sette chiamate giornaliere, quindi applica gate deterministici per
@@ -358,7 +382,8 @@ passato alla successiva: questo permette di scalare a mesi o a un anno senza aff
 all'LLM tutta la memoria storica. Le riparazioni automatiche sono limitate; se i gate
 continuano a fallire il comando termina senza materializzare un piano accettato.
 
-Il simulatore materializza gli orari, valida e compila il piano, ma **non lo esegue**.
+Entrambi i comandi di planning materializzano gli orari, validano e compilano i piani, ma
+**non li eseguono** e non generano ambiente, execution trace o dati sensoriali.
 Il baseline passato con `--compare-with` viene letto soltanto dopo che scenario e piano
 canonico sono stati accettati; non entra nei prompt o nella memoria. Prompt, risposte,
 digest, checkpoint, report e confronto restano isolati nella directory della run. I file

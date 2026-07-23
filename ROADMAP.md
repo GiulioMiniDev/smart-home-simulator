@@ -27,7 +27,7 @@ relativi controlli di compatibilità.
 | 6.1 | Materializzazione automatica scenario-first | scenario + process package M3 accettati + policy | casa, sensori e workspace M3–M6 transazionale | **Completata e congelata — 1.0.0** |
 | 7 | Applicazione UI, workspace, export e replay | workspace M6.1 + artefatti M1–M6 | applicazione end-to-end + dataset JSONL/CSV/XES + replay | **Completata e congelata — 1.0.0** |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
-| 8.1 | Authoring ibrido locale LLM + simulatore | profilo, durata, stato precedente e calendario | piani a rolling horizon validati con provenance completa | Pianificata |
+| 8.1 | Authoring ibrido locale LLM + simulatore | profilo, durata, stato precedente e calendario | piani a rolling horizon validati con provenance completa | **In corso — prototipo settimanale accettato, pilot mensile da validare** |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
 ## Regola generale di avanzamento
@@ -636,6 +636,14 @@ il runtime non richiede né invoca un LLM.
   del 95% sono completi.
 
 ## Milestone 8.1 — Authoring ibrido locale LLM + simulatore
+
+### Stato di avanzamento
+
+- vertical slice di sette giorni accettato con LM Studio;
+- behavioral profile dettagliato, validato, congelato e riutilizzabile;
+- orchestratore plan-only di un mese implementato con chunk settimanali, memoria bounded,
+  habit ledger, gate causali, checkpoint atomico e resume;
+- pilot live di un mese ancora da validare prima di abilitare i gate a tre e sei mesi.
 
 ### Responsabilità
 
