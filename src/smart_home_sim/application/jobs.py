@@ -157,6 +157,107 @@ def _materialization_worker(root: str, job_id: str) -> None:
             )
 
 
+def _longitudinal_worker(root: str, job_id: str) -> None:
+    workspace = WorkspaceService.open(Path(root), reconcile=False, recover_jobs=False)
+    request = workspace.job_request(job_id)
+
+    def progress(phase: str, percent: float, message: str, counters: dict[str, int]) -> None:
+        current = workspace.get_job(job_id)
+        if current.status is JobStatus.cancelled:
+            raise InterruptedError("job was cancelled")
+        total = counters.get("total") or sum(counters.values()) or None
+        workspace.update_job(
+            job_id,
+            JobStatus.running,
+            JobProgress(
+                phase=phase,
+                percent=percent,
+                completed_units=counters.get("chunk", sum(counters.values())),
+                total_units=total,
+                message=message,
+            ),
+            process_id=os.getpid(),
+        )
+
+    try:
+        workspace.update_job(
+            job_id,
+            JobStatus.running,
+            JobProgress(phase="starting", percent=1, message="Started longitudinal simulation worker"),
+            process_id=os.getpid(),
+        )
+        manifest_artifact_id = request["manifestArtifactId"]
+        manifest_path = workspace.artifact_path(manifest_artifact_id)
+        output = workspace.runs_path / job_id
+        from smart_home_sim.simulation.longitudinal import run_longitudinal_file
+
+        report = run_longitudinal_file(
+            manifest_path,
+            output_directory=output,
+            resume=True,
+            progress=progress,
+            cancelled=lambda: workspace.get_job(job_id).status is JobStatus.cancelled,
+        )
+        if not report.success:
+            raise RuntimeError(f"Longitudinal simulation failed: {report.issues}")
+
+        descriptors = workspace.import_run_directory(job_id, output)
+        by_role = {item.role: item for item in descriptors}
+        if "home_model" in by_role:
+            workspace.create_revision(
+                workspace.get_job(job_id).home_id or "",
+                "home",
+                by_role["home_model"].artifact_id,
+                status="valid",
+                provenance={"jobId": job_id, "source": "longitudinal-1.0.0"},
+            )
+        if "sensor_model" in by_role:
+            workspace.create_revision(
+                workspace.get_job(job_id).home_id or "",
+                "sensor",
+                by_role["sensor_model"].artifact_id,
+                status="valid",
+                provenance={"jobId": job_id, "source": "longitudinal-1.0.0"},
+            )
+        workspace.update_job(
+            job_id,
+            JobStatus.completed,
+            JobProgress(
+                phase="completed",
+                percent=100,
+                message="Longitudinal multi-scenario simulation completed successfully",
+            ),
+            process_id=os.getpid(),
+            result_reference=job_id,
+        )
+    except InterruptedError:
+        if workspace.get_job(job_id).status is not JobStatus.cancelled:
+            workspace.update_job(
+                job_id,
+                JobStatus.cancelled,
+                JobProgress(
+                    phase="cancelled",
+                    percent=workspace.get_job(job_id).progress.percent,
+                    message="Cancelled before completion",
+                ),
+            )
+    except Exception as error:
+        current = workspace.get_job(job_id)
+        if current.status is not JobStatus.cancelled:
+            workspace.update_job(
+                job_id,
+                JobStatus.failed,
+                JobProgress(
+                    phase="failed",
+                    percent=current.progress.percent,
+                    message="Longitudinal simulation worker failed",
+                ),
+                process_id=os.getpid(),
+                error_code=type(error).__name__.upper(),
+                error_message=str(error),
+            )
+
+
 class JobManager:
     def __init__(self, workspace: WorkspaceService, *, max_workers: int = 2) -> None:
         self.workspace = workspace
@@ -204,6 +305,37 @@ class JobManager:
                 target=_materialization_worker,
                 args=(str(self.workspace.root), job.job_id),
                 name=f"smart-home-sim-{job.job_id}",
+            )
+            process.start()
+            self._processes[job.job_id] = process
+        return self.workspace.get_job(job.job_id)
+
+    def start_longitudinal_run(
+        self,
+        home_id: str,
+        manifest_artifact_id: str,
+        *,
+        seed: int | None = None,
+    ) -> JobRecord:
+        self.workspace.artifact_path(manifest_artifact_id)
+        with self._lock:
+            self._prune()
+            running = sum(process.is_alive() for process in self._processes.values())
+            if running >= self.max_workers:
+                raise WorkspaceError("all local workers are busy")
+            job = self.workspace.create_job(
+                "simulation",
+                home_id=home_id,
+                seed=seed,
+                request={
+                    "manifestArtifactId": manifest_artifact_id,
+                    "kind": "longitudinal",
+                },
+            )
+            process = self._context.Process(
+                target=_longitudinal_worker,
+                args=(str(self.workspace.root), job.job_id),
+                name=f"smart-home-sim-longitudinal-{job.job_id}",
             )
             process.start()
             self._processes[job.job_id] = process

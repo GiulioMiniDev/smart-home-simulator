@@ -315,6 +315,7 @@ function HomePage() {
   const [bundleFile, setBundleFile] = useState<File>();
   const [scenarioFile, setScenarioFile] = useState<File>();
   const [behaviorFile, setBehaviorFile] = useState<File>();
+  const [manifestFile, setManifestFile] = useState<File>();
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
   const [homeDraft, setHomeDraft] = useState<HomeModel>();
@@ -357,6 +358,31 @@ function HomePage() {
       scenario: await readJson(scenarioFile),
       personal_process_package: await readJson(behaviorFile),
     }));
+  };
+  const importLongitudinalManifest = async () => {
+    if (!manifestFile) return;
+    setWorking(true); setNotice(undefined);
+    try {
+      const manifest = await readJson(manifestFile);
+      const imported = await api<{ valid: boolean; manifestArtifactId?: string; issues?: ImportIssue[]; runId?: string; chunkCount?: number }>(`/homes/${homeId}/longitudinal`, {
+        method: "POST",
+        body: JSON.stringify({ manifest }),
+      });
+      if (!imported.valid) {
+        setNotice({ kind: "error", text: summarizeIssues(imported.issues ?? []) });
+      } else {
+        await api(`/homes/${homeId}/longitudinal-runs`, {
+          method: "POST",
+          body: JSON.stringify({ manifest_artifact_id: imported.manifestArtifactId }),
+        });
+        setNotice({ kind: "success", text: `Longitudinal run '${imported.runId ?? "run"}' queued with ${imported.chunkCount ?? 0} sequence chunks.` });
+        await resource.reload();
+      }
+    } catch (reason) {
+      setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) });
+    } finally {
+      setWorking(false);
+    }
   };
   const startRun = async () => {
     if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
@@ -462,6 +488,14 @@ function HomePage() {
                 <label className="file-picker"><FileJson size={20} /><span><strong>Scenario JSON</strong><small>{scenarioFile?.name ?? "Choose the accepted scenario"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setScenarioFile(event.target.files?.[0])} /></label>
                 <label className="file-picker"><ListTree size={20} /><span><strong>Personal process package</strong><small>{behaviorFile?.name ?? "Choose the matching process package"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBehaviorFile(event.target.files?.[0])} /></label>
                 <button className="button secondary" disabled={!scenarioFile || !behaviorFile || working} onClick={() => void importAdvancedInputs()}><Upload size={16} /> Validate Advanced import</button>
+              </div>
+            </details>
+            <details className="advanced-import">
+              <summary><ChevronDown size={17} /><span><strong>Longitudinal: import multi-scenario manifest</strong><small>For multi-day or multi-week continuous simulation runs.</small></span></summary>
+              <div>
+                <p>Upload a longitudinal simulation manifest JSON defining sequence chunks and package inputs.</p>
+                <label className="file-picker"><FileJson size={20} /><span><strong>Longitudinal manifest JSON</strong><small>{manifestFile?.name ?? "Choose manifest.json"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setManifestFile(event.target.files?.[0])} /></label>
+                <button className="button primary" disabled={!manifestFile || working} onClick={() => void importLongitudinalManifest()}><Upload size={16} /> Validate and launch longitudinal run</button>
               </div>
             </details>
           </div>}

@@ -46,6 +46,17 @@ class MaterializationStart(ApiModel):
     sensor_policy: dict[str, Any] = Field(default_factory=dict)
 
 
+class LongitudinalImport(ApiModel):
+    manifest: dict[str, Any]
+    scenarios: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    personal_process_package: dict[str, Any] | None = None
+
+
+class LongitudinalRunStart(ApiModel):
+    manifest_artifact_id: str = Field(min_length=1)
+    seed: int | None = None
+
+
 class ModelPublish(ApiModel):
     model: dict[str, Any]
 
@@ -241,6 +252,23 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             seed=request.seed,
             home_policy=request.home_policy,
             sensor_policy=request.sensor_policy,
+        ).model_dump(mode="json", by_alias=True)
+
+    @app.post("/api/homes/{home_id}/longitudinal", dependencies=[secured])
+    def import_longitudinal(home_id: str, request: LongitudinalImport) -> dict[str, Any]:
+        return application.import_longitudinal_manifest(
+            home_id,
+            request.manifest,
+            scenarios_payload=request.scenarios,
+            behavior_payload=request.personal_process_package,
+        )
+
+    @app.post("/api/homes/{home_id}/longitudinal-runs", status_code=202, dependencies=[secured])
+    def start_longitudinal_run(home_id: str, request: LongitudinalRunStart) -> dict[str, Any]:
+        return jobs.start_longitudinal_run(
+            home_id,
+            request.manifest_artifact_id,
+            seed=request.seed,
         ).model_dump(mode="json", by_alias=True)
 
     @app.get("/api/jobs", dependencies=[secured])

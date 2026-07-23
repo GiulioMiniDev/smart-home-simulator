@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -9,9 +11,13 @@ from smart_home_sim.application.workspace import WorkspaceError, WorkspaceServic
 from smart_home_sim.authoring.service import validate_authoring_payload
 from smart_home_sim.domain.application import ApplicationIssue, GraphicalReference
 from smart_home_sim.domain.environment import HomeModel
+from smart_home_sim.domain.longitudinal import LongitudinalSimulationManifest
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.sensors import SensorModel
 from smart_home_sim.environment import validate_home_model
+from smart_home_sim.simulation.longitudinal_validation import (
+    load_and_validate_longitudinal_manifest,
+)
 
 
 def _reference(path: str) -> GraphicalReference | None:
@@ -187,6 +193,66 @@ class ApplicationService:
             "behaviorRevisionId": behavior_revision,
             "residents": [item.model_dump(mode="json", by_alias=True) for item in resident_results],
         }
+
+    def import_longitudinal_manifest(
+        self,
+        home_id: str,
+        manifest_payload: dict[str, Any],
+        scenarios_payload: dict[str, dict[str, Any]] | None = None,
+        behavior_payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Validate and publish a longitudinal multi-scenario simulation manifest package."""
+        self.workspace.ensure_writable()
+        self.workspace.get_home(home_id)
+        scenarios_payload = scenarios_payload or {}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+
+            for rel_path, sc_dict in scenarios_payload.items():
+                target_file = tmp_path / rel_path
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+                target_file.write_text(json.dumps(sc_dict), encoding="utf-8")
+
+            if behavior_payload:
+                pkg_path_str = manifest_payload.get("personalProcessPackagePath", "personal-process-package.json")
+                pkg_file = tmp_path / pkg_path_str
+                pkg_file.parent.mkdir(parents=True, exist_ok=True)
+                pkg_file.write_text(json.dumps(behavior_payload), encoding="utf-8")
+
+            manifest_file = tmp_path / "manifest.json"
+            manifest_file.write_text(json.dumps(manifest_payload), encoding="utf-8")
+
+            try:
+                resolved = load_and_validate_longitudinal_manifest(manifest_file)
+            except Exception as error:
+                issue = ApplicationIssue(
+                    code="LONGITUDINAL_MANIFEST_INVALID",
+                    severity="error",
+                    stage="compatibility",
+                    path="$",
+                    message=str(error),
+                )
+                return {
+                    "valid": False,
+                    "issues": [issue.model_dump(mode="json", by_alias=True)],
+                }
+
+            manifest_bytes = json.dumps(manifest_payload, indent=2).encode("utf-8")
+            manifest_artifact = self.workspace.put_object(
+                manifest_bytes,
+                role="longitudinal_simulation_manifest",
+                schema_version="1.0.0",
+                home_id=home_id,
+            )
+
+            return {
+                "valid": True,
+                "manifestArtifactId": manifest_artifact.artifact_id,
+                "chunkCount": len(resolved.scenarios),
+                "runId": resolved.manifest.run_id,
+                "seed": resolved.manifest.seed,
+            }
 
     def publish_home(self, home_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.workspace.ensure_writable()
