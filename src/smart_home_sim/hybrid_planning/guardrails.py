@@ -585,6 +585,27 @@ def normalize_daily_guardrails(
             )
             record("travel_home", "mother_visit_chain")
 
+    # Drop exact duplicate activities (same intent, location and time band): the model
+    # sometimes emits a routine twice, which wastes a slot and inflates day-to-day similarity.
+    if enforce_simulatable:
+        seen: set[tuple[str, str, str]] = set()
+        deduped: list[ProposedActivity] = []
+        for activity in activities:
+            key = (activity.intent, activity.location_id, activity.time_band.value)
+            if key in seen:
+                changes.append(
+                    {
+                        "date": proposal.date.isoformat(),
+                        "action": "remove",
+                        "intent": activity.intent,
+                        "reason": "duplicate_activity",
+                    }
+                )
+                continue
+            seen.add(key)
+            deduped.append(activity)
+        activities = deduped
+
     # Realize any assigned goal intent the model dropped: placing an indoor variety activity
     # is mechanical (the model already chose the goal in the weekly brief), so the machine
     # scaffolds it deterministically rather than bouncing the day back to the model.
