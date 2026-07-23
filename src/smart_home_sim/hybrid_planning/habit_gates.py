@@ -21,7 +21,7 @@ from smart_home_sim.hybrid_planning.behavioral_models import (
 from smart_home_sim.hybrid_planning.behavioral_validation import (
     behavioral_profile_digest,
 )
-from smart_home_sim.hybrid_planning.models import DailyProposal, WeeklyBrief
+from smart_home_sim.hybrid_planning.models import DailyProposal, TimeBand, WeeklyBrief
 
 GATE_CODES = (
     "HABIT_REQUIRED_MISSING",
@@ -106,12 +106,58 @@ def constrain_daily_habit_limits(
     return proposal.model_copy(update={"activities": kept}), changes
 
 
-def _effective_cadence(habit: BehavioralHabit, on_date: date) -> HabitCadence:
+def effective_habit_cadence(
+    habit: BehavioralHabit,
+    on_date: date,
+) -> HabitCadence:
     active = [item for item in habit.drifts if item.effective_from <= on_date]
     if not active:
         return habit.cadence
     latest = max(active, key=lambda item: item.effective_from)
     return latest.cadence_override or habit.cadence
+
+
+def effective_habit_time_bands(
+    habit: BehavioralHabit,
+    on_date: date,
+) -> list[TimeBand]:
+    active = [item for item in habit.drifts if item.effective_from <= on_date]
+    if not active:
+        return list(habit.preferred_time_bands)
+    latest = max(active, key=lambda item: item.effective_from)
+    return (
+        list(latest.preferred_time_bands_override)
+        or list(habit.preferred_time_bands)
+    )
+
+
+def expected_habit_occurrences(
+    habit: BehavioralHabit,
+    dates: list[date],
+    day_types: dict[date, str],
+    *,
+    cadence_field: str = "typical_occurrences",
+) -> float:
+    if cadence_field not in {
+        "minimum_occurrences",
+        "typical_occurrences",
+        "maximum_occurrences",
+    }:
+        raise ValueError(f"unsupported cadence field: {cadence_field}")
+    expected = 0.0
+    for value in dates:
+        cadence = effective_habit_cadence(habit, value)
+        # Non-daily cadences are measured over calendar time; applicable day
+        # types constrain placement. A daily cadence applies only on eligible
+        # days, such as one work shift per workday.
+        if (
+            habit.applicable_day_types
+            and cadence.period_days == 1
+            and day_types[value] not in habit.applicable_day_types
+        ):
+            continue
+        expected += getattr(cadence, cadence_field) / cadence.period_days
+    return expected
 
 
 def _eligible_dates(
@@ -147,11 +193,25 @@ def derive_habit_budget(
     items: list[HabitBudgetItem] = []
     for habit in profile.habits:
         entry = entries[habit.habit_id]
-        cadence = _effective_cadence(habit, dates[0])
         eligible_days = len(_eligible_dates(habit, dates, day_types))
-        expected = cadence.typical_occurrences * eligible_days / cadence.period_days
-        minimum = math.floor(cadence.minimum_occurrences * eligible_days / cadence.period_days)
-        maximum = math.ceil(cadence.maximum_occurrences * eligible_days / cadence.period_days)
+        cadence = effective_habit_cadence(habit, dates[0])
+        expected = expected_habit_occurrences(habit, dates, day_types)
+        minimum = math.floor(
+            expected_habit_occurrences(
+                habit,
+                dates,
+                day_types,
+                cadence_field="minimum_occurrences",
+            )
+        )
+        maximum = math.ceil(
+            expected_habit_occurrences(
+                habit,
+                dates,
+                day_types,
+                cadence_field="maximum_occurrences",
+            )
+        )
         if habit.kind is not HabitKind.anchor and cadence.maximum_occurrences and eligible_days:
             maximum = max(1, maximum)
             elapsed_days = (dates[-1] - profile.effective_from).days + 1
@@ -160,11 +220,13 @@ def derive_habit_budget(
                 for index in range(max(0, elapsed_days))
             ]
             elapsed_day_types = _default_day_types_for_dates(elapsed_dates)
-            cumulative_eligible = len(
-                _eligible_dates(habit, elapsed_dates, elapsed_day_types)
-            )
             cumulative_maximum = math.ceil(
-                cadence.maximum_occurrences * cumulative_eligible / cadence.period_days
+                expected_habit_occurrences(
+                    habit,
+                    elapsed_dates,
+                    elapsed_day_types,
+                    cadence_field="maximum_occurrences",
+                )
             )
             remaining_maximum = max(0, cumulative_maximum - entry.total_occurrences)
             maximum = min(maximum, remaining_maximum)
@@ -292,7 +354,7 @@ def evaluate_habit_plan(
                     intent=habit.intent,
                 )
             )
-        cadence = _effective_cadence(habit, proposals[0].date)
+        cadence = effective_habit_cadence(habit, proposals[0].date)
         if habit.kind is HabitKind.anchor and cadence.period_days == 1:
             for value in _eligible_dates(habit, [item.date for item in proposals], day_types):
                 count = sum(
@@ -487,9 +549,7 @@ def update_habit_ledger(
             for proposal in proposals
             if any(activity.intent == habit.intent for activity in proposal.activities)
         ]
-        eligible_days = len(_eligible_dates(habit, dates, day_types))
-        cadence = _effective_cadence(habit, dates[0])
-        expected = cadence.typical_occurrences * eligible_days / cadence.period_days
+        expected = expected_habit_occurrences(habit, dates, day_types)
         updated.append(
             HabitLedgerEntry(
                 habit_id=habit.habit_id,

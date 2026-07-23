@@ -20,6 +20,18 @@ class QualityViolation(ContractModel):
 CausalViolation = QualityViolation
 
 
+class LongitudinalHabitMetric(ContractModel):
+    habit_id: str = Field(min_length=1)
+    intent: str = Field(min_length=1)
+    expected_occurrences: float = Field(ge=0)
+    lower_occurrences: int = Field(ge=0)
+    upper_occurrences: int = Field(ge=0)
+    observed_occurrences: int = Field(ge=0)
+    target_deviation: float
+    temporal_adherence: float = Field(ge=0, le=1)
+    location_adherence: float = Field(ge=0, le=1)
+
+
 class LongitudinalQualityReport(ContractModel):
     schema_version: Literal["1.0.0"] = "1.0.0"
     document_type: Literal["longitudinal_planning_quality"] = (
@@ -28,8 +40,13 @@ class LongitudinalQualityReport(ContractModel):
     valid: bool
     day_count: int = Field(ge=0)
     maximum_consecutive_identical_days: int = Field(ge=0)
+    mean_daily_activities: float = Field(default=0, ge=0)
+    minimum_daily_activities: int = Field(default=0, ge=0)
+    maximum_daily_activities: int = Field(default=0, ge=0)
     optional_windows_without_variation: list[date] = Field(default_factory=list)
     causal_violations: list[QualityViolation] = Field(default_factory=list)
+    daily_life_violations: list[QualityViolation] = Field(default_factory=list)
+    habit_metrics: list[LongitudinalHabitMetric] = Field(default_factory=list)
     reasons: list[str] = Field(default_factory=list)
 
 

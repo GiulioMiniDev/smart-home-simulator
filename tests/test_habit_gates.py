@@ -222,6 +222,30 @@ def test_budget_turns_cadence_into_chunk_counts() -> None:
     assert items["visit_mother_and_have_dinner"].maximum_occurrences == 1
 
 
+def test_monthly_cadence_uses_calendar_window_when_weekends_limit_placement() -> None:
+    profile = valid_profile()
+    digest = behavioral_profile_digest(profile)
+    ledger = initial_habit_ledger(digest, profile)
+    dates = [date(2026, 8, 10) + timedelta(days=index) for index in range(31)]
+
+    budget = derive_habit_budget(
+        profile,
+        ledger,
+        dates,
+        {
+            value: "workday" if value.weekday() < 5 else "weekend"
+            for value in dates
+        },
+    )
+
+    mother_visits = next(
+        item
+        for item in budget.items
+        if item.intent == "visit_mother_and_have_dinner"
+    )
+    assert mother_visits.target_occurrences == 3
+
+
 def test_rare_habit_maximum_is_consumed_across_weekly_chunks() -> None:
     profile = valid_profile()
     rare = profile.habits[-1].model_copy(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -10,11 +10,19 @@ import pytest
 from test_behavioral_profile import valid_profile
 from test_hybrid_planning import activity, proposal
 
-from smart_home_sim.hybrid_planning.behavioral_models import HabitLedger
+from smart_home_sim.hybrid_planning.behavioral_models import (
+    HabitCadence,
+    HabitDrift,
+    HabitLedger,
+)
 from smart_home_sim.hybrid_planning.behavioral_validation import (
     behavioral_profile_digest,
 )
-from smart_home_sim.hybrid_planning.habit_gates import update_habit_ledger
+from smart_home_sim.hybrid_planning.habit_gates import (
+    effective_habit_cadence,
+    effective_habit_time_bands,
+    update_habit_ledger,
+)
 from smart_home_sim.hybrid_planning.longitudinal import (
     generate_one_month_plan,
     one_month_end,
@@ -22,14 +30,19 @@ from smart_home_sim.hybrid_planning.longitudinal import (
 )
 from smart_home_sim.hybrid_planning.longitudinal_models import (
     LongitudinalCheckpoint,
+    LongitudinalHabitMetric,
+    LongitudinalQualityReport,
 )
 from smart_home_sim.hybrid_planning.longitudinal_quality import (
     evaluate_longitudinal_quality,
 )
 from smart_home_sim.hybrid_planning.models import (
+    DailyProposal,
     HybridPlanningConfig,
     PlanningCase,
     PlanningMemory,
+    ProposedActivity,
+    TimeBand,
 )
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
@@ -40,15 +53,108 @@ from smart_home_sim.hybrid_planning.service import (
 ROOT = Path(__file__).parents[1]
 CASE = ROOT / "examples/hybrid/tommaso_bianchi_week.planning-case.json"
 
-VARIABLE_INTENTS = [
-    "read",
-    "evening_walk",
-    "clean_kitchen",
-    "buy_groceries",
-    "watch_documentary",
-    "start_laundry",
-    "weekly_meal_preparation",
-]
+def guarded_month_fixture() -> list[DailyProposal]:
+    start = date(2026, 8, 10)
+    variable_intents = [
+        "clean_kitchen",
+        "watch_documentary",
+        "start_laundry",
+        "weekly_meal_preparation",
+    ]
+    grocery_dates = {
+        date(2026, 8, 10),
+        date(2026, 8, 17),
+        date(2026, 8, 24),
+        date(2026, 8, 31),
+        date(2026, 9, 7),
+    }
+    mother_dates = {
+        date(2026, 8, 15),
+        date(2026, 8, 23),
+        date(2026, 9, 5),
+    }
+    result: list[DailyProposal] = []
+    for offset in range(31):
+        value = start + timedelta(days=offset)
+        daily = proposal(
+            value,
+            variable_intents[offset % len(variable_intents)],
+        )
+        additions: list[ProposedActivity] = []
+        if value in grocery_dates:
+            additions.append(
+                activity(
+                    "buy_groceries",
+                    "supermarket_barcelona",
+                    "afternoon",
+                )
+            )
+        if value.weekday() in {0, 2, 4}:
+            additions.append(
+                activity(
+                    "read",
+                    "living_room_01",
+                    "evening",
+                    mandatory=False,
+                )
+            )
+        if value.weekday() in {1, 5}:
+            additions.append(
+                activity(
+                    "evening_walk",
+                    "neighborhood_park",
+                    "evening",
+                    mandatory=False,
+                )
+            )
+        if value in mother_dates:
+            additions.extend(
+                [
+                    activity(
+                        "travel_to_mothers_home",
+                        "mother_house_barcelona",
+                        "afternoon",
+                    ),
+                    activity(
+                        "visit_mother_and_have_dinner",
+                        "mother_house_barcelona",
+                        "evening",
+                    ),
+                    activity(
+                        "travel_home",
+                        "living_room_01",
+                        "evening",
+                    ),
+                ]
+            )
+        daily = daily.model_copy(
+            update={
+                "activities": [
+                    *daily.activities[:-2],
+                    *additions,
+                    *daily.activities[-2:],
+                ]
+            }
+        )
+        result.append(daily)
+    return result
+
+
+def replace_habit_band(
+    proposal: DailyProposal,
+    intent: str,
+    band: TimeBand,
+) -> DailyProposal:
+    return proposal.model_copy(
+        update={
+            "activities": [
+                item.model_copy(update={"time_band": band})
+                if item.intent == intent
+                else item
+                for item in proposal.activities
+            ]
+        }
+    )
 
 
 class FakeChunkGenerator:
@@ -88,18 +194,14 @@ class FakeChunkGenerator:
         ledger = HabitLedger.model_validate_json(
             ledger_path.read_text(encoding="utf-8")
         )
-        proposals = [
-            proposal(
-                value,
-                "read"
-                if self.repeat_every_day
-                else VARIABLE_INTENTS[
-                    (value.toordinal() - date(2026, 8, 10).toordinal())
-                    % len(VARIABLE_INTENTS)
-                ],
-            )
-            for value in planning_case.dates()
-        ]
+        guarded_by_date = {
+            item.date: item for item in guarded_month_fixture()
+        }
+        proposals = (
+            [proposal(value, "read") for value in planning_case.dates()]
+            if self.repeat_every_day
+            else [guarded_by_date[value] for value in planning_case.dates()]
+        )
         output_dir.mkdir(parents=True)
         (output_dir / "canonical-plan.json").write_text(
             '{"documentType":"canonical_plan"}\n',
@@ -130,6 +232,61 @@ def test_one_month_end_clamps_day_for_shorter_month() -> None:
     assert one_month_end(date(2026, 1, 31)) == date(2026, 2, 28)
     assert one_month_end(date(2028, 1, 31)) == date(2028, 2, 29)
     assert one_month_end(date(2026, 8, 10)) == date(2026, 9, 10)
+
+
+def test_effective_habit_fields_follow_latest_drift() -> None:
+    habit = valid_profile().habits[-1]
+    drifted = habit.model_copy(
+        update={
+            "drifts": [
+                HabitDrift(
+                    effective_from=date(2026, 9, 1),
+                    rationale="A sustained change in the synthetic routine.",
+                    cadence_override=HabitCadence(
+                        minimum_occurrences=0,
+                        typical_occurrences=2,
+                        maximum_occurrences=2,
+                        period_days=30,
+                    ),
+                    preferred_time_bands_override=[TimeBand.evening],
+                )
+            ]
+        }
+    )
+
+    assert (
+        effective_habit_cadence(drifted, date(2026, 9, 2)).typical_occurrences
+        == 2
+    )
+    assert effective_habit_time_bands(
+        drifted, date(2026, 9, 2)
+    ) == [TimeBand.evening]
+
+
+def test_longitudinal_quality_contract_carries_mining_metrics() -> None:
+    metric = LongitudinalHabitMetric(
+        habit_id="weekly_groceries",
+        intent="buy_groceries",
+        expected_occurrences=4.4,
+        lower_occurrences=4,
+        upper_occurrences=5,
+        observed_occurrences=5,
+        target_deviation=0.6,
+        temporal_adherence=0.8,
+        location_adherence=1.0,
+    )
+    report = LongitudinalQualityReport(
+        valid=True,
+        day_count=31,
+        maximum_consecutive_identical_days=1,
+        mean_daily_activities=8.2,
+        minimum_daily_activities=6,
+        maximum_daily_activities=11,
+        habit_metrics=[metric],
+    )
+
+    assert report.habit_metrics == [metric]
+    assert report.mean_daily_activities == 8.2
 
 
 def test_slice_planning_case_covers_month_without_gaps() -> None:
@@ -190,6 +347,51 @@ def test_longitudinal_quality_rejects_four_identical_consecutive_days() -> None:
     assert "CONSECUTIVE_DUPLICATE_DAYS" in report.reasons
 
 
+def test_longitudinal_quality_rejects_sparse_daily_life() -> None:
+    sparse = DailyProposal(
+        date=date(2026, 8, 16),
+        narrative_intent="Sparse Sunday",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", "early_morning"),
+            activity("watch_television", "living_room_01", "evening"),
+            activity("read_and_rest", "living_room_01", "afternoon"),
+            activity("sleep", "bedroom_01", "night"),
+        ],
+    )
+
+    report = evaluate_longitudinal_quality(valid_profile(), [sparse])
+
+    assert "DAILY_LIFE_VIOLATIONS" in report.reasons
+    assert report.minimum_daily_activities == 4
+
+
+def test_longitudinal_quality_reports_habit_frequency_and_time_deviation() -> None:
+    days = guarded_month_fixture()
+    days[0] = replace_habit_band(
+        days[0],
+        "buy_groceries",
+        TimeBand.morning,
+    )
+
+    report = evaluate_longitudinal_quality(valid_profile(), days)
+
+    groceries = next(
+        item for item in report.habit_metrics if item.intent == "buy_groceries"
+    )
+    mother_visits = next(
+        item
+        for item in report.habit_metrics
+        if item.intent == "visit_mother_and_have_dinner"
+    )
+    assert groceries.temporal_adherence < 1
+    assert (
+        mother_visits.lower_occurrences
+        <= mother_visits.observed_occurrences
+        <= mother_visits.upper_occurrences
+    )
+    assert "HABIT_TEMPORAL_DEVIATION" in report.reasons
+
+
 def test_longitudinal_quality_rejects_commute_without_work_shift() -> None:
     day = proposal(date(2026, 8, 16), "read")
     bad = day.model_copy(
@@ -216,22 +418,7 @@ def test_longitudinal_quality_rejects_commute_without_work_shift() -> None:
 
 
 def test_longitudinal_quality_accepts_habit_skeleton_with_variable_shell() -> None:
-    intents = [
-        "read",
-        "evening_walk",
-        "clean_kitchen",
-        "buy_groceries",
-        "watch_documentary",
-        "start_laundry",
-        "weekly_meal_preparation",
-    ]
-    days = [
-        proposal(
-            date.fromordinal(date(2026, 8, 10).toordinal() + offset),
-            intent,
-        )
-        for offset, intent in enumerate(intents)
-    ]
+    days = guarded_month_fixture()[:7]
 
     report = evaluate_longitudinal_quality(valid_profile(), days)
 
