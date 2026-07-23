@@ -4,7 +4,7 @@ import hashlib
 import json
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol, TypeVar
 from zoneinfo import ZoneInfo
@@ -493,6 +493,42 @@ def _rebuild_memory(
     return memory
 
 
+def _reserve_future_weekly_goals(
+    profile: BehavioralProfile,
+    brief: WeeklyBrief,
+    proposal: DailyProposal,
+) -> tuple[DailyProposal, list[dict[str, str]]]:
+    habits = {item.intent: item for item in profile.habits}
+    current_goals = set(
+        next(item.goal_intents for item in brief.days if item.date == proposal.date)
+    )
+    future_reservations: dict[str, date] = {}
+    for day in brief.days:
+        if day.date <= proposal.date:
+            continue
+        for intent in day.goal_intents:
+            if intent in habits and intent not in future_reservations:
+                future_reservations[intent] = day.date
+    activities: list[ProposedActivity] = []
+    changes: list[dict[str, str]] = []
+    for activity in proposal.activities:
+        reserved_for = future_reservations.get(activity.intent)
+        if activity.intent in current_goals or reserved_for is None:
+            activities.append(activity)
+            continue
+        habit = habits[activity.intent]
+        changes.append(
+            {
+                "date": proposal.date.isoformat(),
+                "habitId": habit.habit_id,
+                "intent": activity.intent,
+                "reason": "future_weekly_goal_reserved",
+                "reservedFor": reserved_for.isoformat(),
+            }
+        )
+    return proposal.model_copy(update={"activities": activities}), changes
+
+
 def _read_models(case_path: Path) -> tuple[PlanningCase, ActivityCatalog]:
     try:
         planning_case = PlanningCase.model_validate_json(case_path.read_text(encoding="utf-8"))
@@ -685,6 +721,13 @@ def generate_hybrid_plan(
                             / "anchor-normalizations.json",
                             {"changes": anchor_changes},
                         )
+                    reservation_changes: list[dict[str, str]] = []
+                    if behavioral_profile is not None:
+                        proposal, reservation_changes = _reserve_future_weekly_goals(
+                            behavioral_profile,
+                            brief,
+                            proposal,
+                        )
                     if behavioral_profile is not None and ledger is not None and budget is not None:
                         proposal, normalizations = constrain_daily_habit_limits(
                             behavioral_profile,
@@ -699,7 +742,7 @@ def generate_hybrid_plan(
                             / day_brief.date.isoformat()
                             / f"attempt-{attempt}"
                             / "habit-limit-normalizations.json",
-                            {"changes": normalizations},
+                            {"changes": [*reservation_changes, *normalizations]},
                         )
                     _validate_daily_proposal(
                         planning_case,
@@ -778,6 +821,13 @@ def generate_hybrid_plan(
                     / "anchor-normalizations.json",
                     {"changes": anchor_changes},
                 )
+            reservation_changes = []
+            if behavioral_profile is not None:
+                replacement, reservation_changes = _reserve_future_weekly_goals(
+                    behavioral_profile,
+                    brief,
+                    replacement,
+                )
             if behavioral_profile is not None and ledger is not None and budget is not None:
                 replacement, normalizations = constrain_daily_habit_limits(
                     behavioral_profile,
@@ -792,7 +842,7 @@ def generate_hybrid_plan(
                     / target.date.isoformat()
                     / f"diversity-repair-{repair_number}"
                     / "habit-limit-normalizations.json",
-                    {"changes": normalizations},
+                    {"changes": [*reservation_changes, *normalizations]},
                 )
             target_brief = next(item for item in brief.days if item.date == target.date)
             _validate_daily_proposal(
@@ -879,6 +929,11 @@ def generate_hybrid_plan(
                     / "anchor-normalizations.json",
                     {"changes": anchor_changes},
                 )
+                replacement, reservation_changes = _reserve_future_weekly_goals(
+                    behavioral_profile,
+                    brief,
+                    replacement,
+                )
                 replacement, normalizations = constrain_daily_habit_limits(
                     behavioral_profile,
                     ledger,
@@ -892,7 +947,7 @@ def generate_hybrid_plan(
                     / target_date.isoformat()
                     / f"habit-repair-{habit_repair_number}"
                     / "habit-limit-normalizations.json",
-                    {"changes": normalizations},
+                    {"changes": [*reservation_changes, *normalizations]},
                 )
                 _validate_daily_proposal(
                     planning_case,

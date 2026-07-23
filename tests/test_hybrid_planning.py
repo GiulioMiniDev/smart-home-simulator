@@ -37,6 +37,7 @@ from smart_home_sim.hybrid_planning.service import (
     _canonicalize_daily_anchors,
     _canonicalize_weekly_goals,
     _read_models,
+    _reserve_future_weekly_goals,
     _updated_memory,
     _validate_daily_proposal,
     _weekly_schema,
@@ -332,6 +333,40 @@ def test_daily_proposal_must_realize_goals_assigned_to_its_date() -> None:
             daily,
             required_intents={"short_evening_walk"},
         )
+
+
+def test_future_weekly_habit_goal_is_reserved_from_earlier_extra() -> None:
+    profile = valid_profile()
+    brief = weekly_brief()
+    reserved_date = date(2026, 8, 11)
+    brief = brief.model_copy(
+        update={
+            "days": [
+                item.model_copy(
+                    update={
+                        "goal_intents": (
+                            ["evening_walk"] if item.date == reserved_date else ["read"]
+                        )
+                    }
+                )
+                for item in brief.days
+            ]
+        }
+    )
+    earlier = proposal(date(2026, 8, 10), "evening_walk")
+
+    normalized, changes = _reserve_future_weekly_goals(profile, brief, earlier)
+
+    assert "evening_walk" not in {item.intent for item in normalized.activities}
+    assert changes == [
+        {
+            "date": "2026-08-10",
+            "habitId": "evening_walk",
+            "intent": "evening_walk",
+            "reason": "future_weekly_goal_reserved",
+            "reservedFor": "2026-08-11",
+        }
+    ]
 
 
 def test_hybrid_plan_includes_prior_memory_in_weekly_and_daily_prompts(
