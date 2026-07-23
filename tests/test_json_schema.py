@@ -19,6 +19,11 @@ from smart_home_sim.domain.authoring import (
     SimulationAuthoringBundle,
 )
 from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchReport
+from smart_home_sim.domain.longitudinal import (
+    LONGITUDINAL_ISSUE_CODES,
+    LongitudinalSimulationManifest,
+    LongitudinalSimulationReport,
+)
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
     ActivityCatalog,
@@ -88,6 +93,10 @@ APPLICATION_SCHEMAS = {
     "application-export-manifest-1.0.0.schema.json": ExportManifest,
     "application-replay-1.0.0.schema.json": ReplayVerification,
 }
+LONGITUDINAL_SCHEMAS = {
+    "longitudinal-simulation-manifest-1.0.0.schema.json": LongitudinalSimulationManifest,
+    "longitudinal-simulation-report-1.0.0.schema.json": LongitudinalSimulationReport,
+}
 
 
 def load_schema() -> dict[str, object]:
@@ -124,12 +133,27 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in SENSOR_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in APPLICATION_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in LONGITUDINAL_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]
         assert b"\r\n" not in schema_path.read_bytes()
         assert sha256(schema_path.read_bytes()).hexdigest() == expected
+
+
+def test_longitudinal_schemas_match_models_and_are_valid() -> None:
+    for filename, model in LONGITUDINAL_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / filename).read_text(encoding="utf-8"))
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+    report_schema = json.loads(
+        (PROJECT_ROOT / "schemas/longitudinal-simulation-report-1.0.0.schema.json").read_text(encoding="utf-8")
+    )
+    assert (
+        set(report_schema["$defs"]["LongitudinalSimulationIssue"]["properties"]["code"]["enum"])
+        == LONGITUDINAL_ISSUE_CODES
+    )
 
 
 def test_application_schemas_match_models_and_are_valid() -> None:

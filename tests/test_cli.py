@@ -74,6 +74,8 @@ def test_schema_command_can_emit_validation_report_contract() -> None:
     [
         ("canonical-plan", "planVersion"),
         ("compilation-report", "compilerVersion"),
+        ("longitudinal-simulation-manifest", "schemaVersion"),
+        ("longitudinal-simulation-report", "reportVersion"),
     ],
 )
 def test_schema_command_emits_compiler_contracts(

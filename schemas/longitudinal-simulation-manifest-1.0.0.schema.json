@@ -1,0 +1,73 @@
+{
+  "$id": "urn:smart-home-simulator:schema:longitudinal-simulation-manifest:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "longitudinal_simulation_manifest",
+      "default": "longitudinal_simulation_manifest",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "runId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Runid",
+      "type": "string"
+    },
+    "scenarioPaths": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Scenariopaths",
+      "type": "array"
+    },
+    "personalProcessPackagePath": {
+      "minLength": 1,
+      "title": "Personalprocesspackagepath",
+      "type": "string"
+    },
+    "homePolicyPath": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homepolicypath"
+    },
+    "sensorPolicyPath": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sensorpolicypath"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "runId",
+    "scenarioPaths",
+    "personalProcessPackagePath",
+    "seed"
+  ],
+  "title": "Smart Home Longitudinal Simulation Manifest 1.0.0",
+  "type": "object"
+}

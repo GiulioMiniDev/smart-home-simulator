@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "LongitudinalChunkRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "chunkIndex": {
+          "minimum": 1,
+          "title": "Chunkindex",
+          "type": "integer"
+        },
+        "scenarioPath": {
+          "minLength": 1,
+          "title": "Scenariopath",
+          "type": "string"
+        },
+        "scenarioSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Scenariosha256",
+          "type": "string"
+        },
+        "inputStateSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inputstatesha256"
+        },
+        "artifactPath": {
+          "minLength": 1,
+          "title": "Artifactpath",
+          "type": "string"
+        },
+        "bundleSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Bundlesha256",
+          "type": "string"
+        },
+        "traceSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Tracesha256",
+          "type": "string"
+        },
+        "terminalStateSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Terminalstatesha256",
+          "type": "string"
+        },
+        "sensorLogSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sensorlogsha256",
+          "type": "string"
+        },
+        "oracleMappingSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Oraclemappingsha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chunkIndex",
+        "scenarioPath",
+        "scenarioSha256",
+        "artifactPath",
+        "bundleSha256",
+        "traceSha256",
+        "terminalStateSha256",
+        "sensorLogSha256",
+        "oracleMappingSha256"
+      ],
+      "title": "LongitudinalChunkRecord",
+      "type": "object"
+    },
+    "LongitudinalSimulationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "ACTION_EXECUTION_FAILED",
+            "BUNDLE_INVALID",
+            "DAY_REPAIR_FAILED",
+            "FILE_ENCODING_ERROR",
+            "FILE_NOT_FOUND",
+            "FILE_READ_ERROR",
+            "FILE_TOO_LARGE",
+            "HANDOFF_INVALID",
+            "INITIAL_WORLD_STATE_INVALID",
+            "JSON_NESTING_TOO_DEEP",
+            "JSON_SYNTAX",
+            "LONGITUDINAL_MANIFEST_INVALID",
+            "LONGITUDINAL_SEQUENCE_INVALID",
+            "LONGITUDINAL_WORKER_FAILED",
+            "OUTPUT_CONFLICT",
+            "OUTPUT_WRITE_ERROR",
+            "PRECONDITION_FAILED",
+            "PROCESS_EXECUTION_FAILED",
+            "RESOURCE_DEADLOCK",
+            "RESUME_INVALID",
+            "SIMULATION_FAILED",
+            "STRUCTURE_INVALID",
+            "TRACE_INVARIANT_FAILED",
+            "UNSUPPORTED_SCHEMA_VERSION"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "default": "error",
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "preflight",
+            "execution",
+            "invariant",
+            "output"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "stage",
+        "path",
+        "message"
+      ],
+      "title": "LongitudinalSimulationIssue",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:longitudinal-simulation-report:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Reportversion",
+      "type": "string"
+    },
+    "success": {
+      "title": "Success",
+      "type": "boolean"
+    },
+    "runId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Runid",
+      "type": "string"
+    },
+    "manifestSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifestsha256",
+      "type": "string"
+    },
+    "startedAt": {
+      "format": "date-time",
+      "title": "Startedat",
+      "type": "string"
+    },
+    "endedAt": {
+      "format": "date-time",
+      "title": "Endedat",
+      "type": "string"
+    },
+    "chunks": {
+      "items": {
+        "$ref": "#/$defs/LongitudinalChunkRecord"
+      },
+      "title": "Chunks",
+      "type": "array"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/LongitudinalSimulationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    }
+  },
+  "required": [
+    "success",
+    "runId",
+    "manifestSha256",
+    "startedAt",
+    "endedAt"
+  ],
+  "title": "Smart Home Longitudinal Simulation Report 1.0.0",
+  "type": "object"
+}

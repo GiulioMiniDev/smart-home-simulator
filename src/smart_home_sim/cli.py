@@ -24,6 +24,10 @@ from smart_home_sim.domain.authoring import (
     SimulationAuthoringBundle,
 )
 from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchReport
+from smart_home_sim.domain.longitudinal import (
+    LongitudinalSimulationManifest,
+    LongitudinalSimulationReport,
+)
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
     ActivityCatalog,
@@ -128,6 +132,8 @@ class SchemaContract(StrEnum):
     application_job = "application-job"
     application_export_manifest = "application-export-manifest"
     application_replay = "application-replay"
+    longitudinal_simulation_manifest = "longitudinal-simulation-manifest"
+    longitudinal_simulation_report = "longitudinal-simulation-report"
 
 
 app = typer.Typer(
@@ -818,6 +824,8 @@ def schema(
         SchemaContract.application_job: JobRecord,
         SchemaContract.application_export_manifest: ExportManifest,
         SchemaContract.application_replay: ReplayVerification,
+        SchemaContract.longitudinal_simulation_manifest: LongitudinalSimulationManifest,
+        SchemaContract.longitudinal_simulation_report: LongitudinalSimulationReport,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)
