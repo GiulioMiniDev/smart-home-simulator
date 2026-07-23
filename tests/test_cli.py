@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
+from smart_home_sim.hybrid_planning import HybridPlanningError
 
 EXAMPLES = Path(__file__).parents[1] / "examples"
 runner = CliRunner()
@@ -381,3 +383,71 @@ def test_compile_invalid_input_returns_report_and_exit_one() -> None:
 
     assert result.exit_code == 1
     assert json.loads(result.stdout)["issues"][0]["code"] == "INPUT_SCENARIO_INVALID"
+
+
+def test_generate_hybrid_month_reports_completed_plan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "month"
+    checkpoint = SimpleNamespace(chunks=[object()] * 5)
+    quality = SimpleNamespace(day_count=31)
+    received: dict[str, object] = {}
+
+    def fake_generate(*args: object, **kwargs: object) -> SimpleNamespace:
+        received["args"] = args
+        received.update(kwargs)
+        return SimpleNamespace(
+            output_dir=output,
+            checkpoint=checkpoint,
+            quality=quality,
+        )
+
+    monkeypatch.setattr(
+        "smart_home_sim.cli.generate_one_month_plan",
+        fake_generate,
+    )
+    result = runner.invoke(
+        app,
+        [
+            "generate-hybrid-month",
+            "case.json",
+            "--behavioral-profile",
+            "profile.json",
+            "--output-dir",
+            str(output),
+            "--model",
+            "local-model",
+            "--chunk-days",
+            "7",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "31 days accepted in 5 chunks" in result.stdout
+    assert "simulation was not executed" in result.stdout
+    assert received["chunk_days"] == 7
+
+
+def test_generate_hybrid_month_reports_explicit_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise HybridPlanningError("checkpoint identity mismatch")
+
+    monkeypatch.setattr("smart_home_sim.cli.generate_one_month_plan", fail)
+    result = runner.invoke(
+        app,
+        [
+            "generate-hybrid-month",
+            "case.json",
+            "--behavioral-profile",
+            "profile.json",
+            "--output-dir",
+            str(tmp_path / "month"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "checkpoint identity mismatch" in result.stderr

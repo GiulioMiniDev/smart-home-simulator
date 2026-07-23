@@ -66,6 +66,7 @@ from smart_home_sim.hybrid_planning import (
     HybridPlanningError,
     generate_behavioral_profile,
     generate_hybrid_plan,
+    generate_one_month_plan,
 )
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
@@ -206,6 +207,42 @@ def generate_hybrid_plan_command(
     if result.comparison is not None:
         comparison_path = (result.output_dir / "comparison/report.json").resolve()
         typer.echo(f"Comparison written to: {comparison_path}")
+
+
+@app.command("generate-hybrid-month")
+def generate_hybrid_month_command(
+    case_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir")],
+    behavioral_profile: Annotated[Path, typer.Option("--behavioral-profile")],
+    model: Annotated[str, typer.Option("--model")] = "qwen2.5-coder-7b-instruct",
+    base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.65,
+    chunk_days: Annotated[int, typer.Option("--chunk-days", min=1, max=7)] = 7,
+    resume: Annotated[bool, typer.Option("--resume")] = False,
+) -> None:
+    """Generate one month of validated plans without simulation execution."""
+    try:
+        result = generate_one_month_plan(
+            case_path,
+            behavioral_profile,
+            output_dir,
+            HybridPlanningConfig(
+                model=model,
+                base_url=base_url,
+                temperature=temperature,
+            ),
+            chunk_days=chunk_days,
+            resume=resume,
+        )
+    except (HybridPlanningError, ValueError) as error:
+        typer.echo(f"Hybrid month generation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(
+        f"{result.quality.day_count} days accepted in "
+        f"{len(result.checkpoint.chunks)} chunks"
+    )
+    typer.echo(f"Longitudinal plan written to: {result.output_dir.resolve()}")
+    typer.echo("Planning and compilation completed; simulation was not executed")
 
 
 @app.command()
