@@ -316,6 +316,7 @@ function HomePage() {
   const [scenarioFile, setScenarioFile] = useState<File>();
   const [behaviorFile, setBehaviorFile] = useState<File>();
   const [manifestFile, setManifestFile] = useState<File>();
+  const [manifestSourcePath, setManifestSourcePath] = useState("");
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
   const [homeDraft, setHomeDraft] = useState<HomeModel>();
@@ -366,7 +367,7 @@ function HomePage() {
       const manifest = await readJson(manifestFile);
       const imported = await api<{ valid: boolean; manifestArtifactId?: string; issues?: ImportIssue[]; runId?: string; chunkCount?: number }>(`/homes/${homeId}/longitudinal`, {
         method: "POST",
-        body: JSON.stringify({ manifest }),
+        body: JSON.stringify({ manifest, manifest_source_path: manifestSourcePath || undefined }),
       });
       if (!imported.valid) {
         setNotice({ kind: "error", text: summarizeIssues(imported.issues ?? []) });
@@ -495,6 +496,7 @@ function HomePage() {
               <div>
                 <p>Upload a longitudinal simulation manifest JSON defining sequence chunks and package inputs.</p>
                 <label className="file-picker"><FileJson size={20} /><span><strong>Longitudinal manifest JSON</strong><small>{manifestFile?.name ?? "Choose manifest.json"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setManifestFile(event.target.files?.[0])} /></label>
+                <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.5rem" }}><small style={{ opacity: 0.7 }}>Manifest path on disk (for auto-resolving relative scenario files):</small><input type="text" placeholder="e.g. C:\path\to\manifest.json" value={manifestSourcePath} onChange={(event) => setManifestSourcePath(event.target.value)} style={{ padding: "0.35rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-card)", color: "inherit", fontSize: "0.85rem" }} /></label>
                 <button className="button primary" disabled={!manifestFile || working} onClick={() => void importLongitudinalManifest()}><Upload size={16} /> Validate and launch longitudinal run</button>
               </div>
             </details>

@@ -60,11 +60,12 @@ def _make_minimal_scenario(
 
     if data.get("days"):
         data["days"][0]["date"] = start.split("T")[0]
-        for act in data["days"][0]["activities"]:
+        for act_idx, act in enumerate(data["days"][0]["activities"]):
             act["activityId"] = f"{activity_prefix}{act['activityId']}"
-            act["startWindow"]["earliest"] = start.replace("00:00:00", "08:00:00")
-            act["startWindow"]["preferred"] = start.replace("00:00:00", "08:00:00")
-            act["startWindow"]["latest"] = start.replace("00:00:00", "08:00:00")
+            t_str = "08:00:00" if act_idx == 0 else "08:30:00"
+            act["startWindow"]["earliest"] = start.replace("00:00:00", t_str)
+            act["startWindow"]["preferred"] = start.replace("00:00:00", t_str)
+            act["startWindow"]["latest"] = start.replace("00:00:00", t_str)
             if "dependencyGroups" in act:
                 for grp in act["dependencyGroups"]:
                     grp["activityIds"] = [f"{activity_prefix}{aid}" for aid in grp["activityIds"]]

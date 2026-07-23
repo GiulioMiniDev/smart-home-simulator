@@ -200,11 +200,19 @@ class ApplicationService:
         manifest_payload: dict[str, Any],
         scenarios_payload: dict[str, dict[str, Any]] | None = None,
         behavior_payload: dict[str, Any] | None = None,
+        manifest_source_path: str | None = None,
     ) -> dict[str, Any]:
         """Validate and publish a longitudinal multi-scenario simulation manifest package."""
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
         scenarios_payload = dict(scenarios_payload or {})
+
+        # If a source path is provided, resolve files relative to its parent directory first.
+        source_dir: Path | None = None
+        if manifest_source_path:
+            source_dir = Path(manifest_source_path).parent
+            if not source_dir.is_dir():
+                source_dir = None
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -220,16 +228,17 @@ class ApplicationService:
                 pkg_file.parent.mkdir(parents=True, exist_ok=True)
                 pkg_file.write_text(json.dumps(behavior_payload), encoding="utf-8")
 
-            # Resolve missing referenced files from workspace or local disk search
+            # Resolve missing referenced files from source directory, workspace, or cwd
             pkg_path_str = manifest_payload.get("personalProcessPackagePath", "personal-process-package.json")
             pkg_file = tmp_path / pkg_path_str
             if not pkg_file.is_file():
-                candidates = [
+                candidates: list[Path] = []
+                if source_dir:
+                    candidates.append(source_dir / pkg_path_str)
+                candidates.extend([
                     self.workspace.root / pkg_path_str,
                     Path.cwd() / pkg_path_str,
-                    *list(self.workspace.root.rglob(Path(pkg_path_str).name)),
-                    *list(Path.cwd().rglob(Path(pkg_path_str).name)),
-                ]
+                ])
                 for cand in candidates:
                     if cand.is_file():
                         pkg_file.parent.mkdir(parents=True, exist_ok=True)
@@ -240,12 +249,13 @@ class ApplicationService:
             for sc_path_str in scenario_paths:
                 sc_file = tmp_path / sc_path_str
                 if not sc_file.is_file():
-                    candidates = [
+                    candidates = []
+                    if source_dir:
+                        candidates.append(source_dir / sc_path_str)
+                    candidates.extend([
                         self.workspace.root / sc_path_str,
                         Path.cwd() / sc_path_str,
-                        *list(self.workspace.root.rglob(Path(sc_path_str).name)),
-                        *list(Path.cwd().rglob(Path(sc_path_str).name)),
-                    ]
+                    ])
                     for cand in candidates:
                         if cand.is_file():
                             sc_file.parent.mkdir(parents=True, exist_ok=True)

@@ -507,9 +507,9 @@ def test_run_longitudinal_and_verify_longitudinal_cli_commands(tmp_path: Path) -
     sc1_data["days"][0]["activities"][0]["startWindow"]["earliest"] = "2026-10-12T08:00:00+02:00"
     sc1_data["days"][0]["activities"][0]["startWindow"]["preferred"] = "2026-10-12T08:00:00+02:00"
     sc1_data["days"][0]["activities"][0]["startWindow"]["latest"] = "2026-10-12T08:00:00+02:00"
-    sc1_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-12T08:00:00+02:00"
-    sc1_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-12T08:00:00+02:00"
-    sc1_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-12T08:00:00+02:00"
+    sc1_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-12T08:30:00+02:00"
+    sc1_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-12T08:30:00+02:00"
+    sc1_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-12T08:30:00+02:00"
     if sc1_data.get("commitments"):
         for com in sc1_data["commitments"]:
             com["start"] = "2026-10-12T08:00:00+02:00"
@@ -523,9 +523,9 @@ def test_run_longitudinal_and_verify_longitudinal_cli_commands(tmp_path: Path) -
     sc2_data["days"][0]["activities"][0]["startWindow"]["earliest"] = "2026-10-13T08:00:00+02:00"
     sc2_data["days"][0]["activities"][0]["startWindow"]["preferred"] = "2026-10-13T08:00:00+02:00"
     sc2_data["days"][0]["activities"][0]["startWindow"]["latest"] = "2026-10-13T08:00:00+02:00"
-    sc2_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-13T08:00:00+02:00"
-    sc2_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-13T08:00:00+02:00"
-    sc2_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-13T08:30:00+02:00"
+    sc2_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-13T08:30:00+02:00"
+    sc2_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-13T08:30:00+02:00"
     if sc2_data.get("commitments"):
         for com in sc2_data["commitments"]:
             com["start"] = "2026-10-13T08:00:00+02:00"

@@ -50,6 +50,7 @@ class LongitudinalImport(ApiModel):
     manifest: dict[str, Any]
     scenarios: dict[str, dict[str, Any]] = Field(default_factory=dict)
     personal_process_package: dict[str, Any] | None = None
+    manifest_source_path: str | None = None
 
 
 class LongitudinalRunStart(ApiModel):
@@ -261,6 +262,7 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             request.manifest,
             scenarios_payload=request.scenarios,
             behavior_payload=request.personal_process_package,
+            manifest_source_path=request.manifest_source_path,
         )
 
     @app.post("/api/homes/{home_id}/longitudinal-runs", status_code=202, dependencies=[secured])
