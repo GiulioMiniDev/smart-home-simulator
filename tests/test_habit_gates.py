@@ -122,7 +122,7 @@ def test_daily_constraint_removes_non_anchor_cooldown_repetition() -> None:
     intents = [item.intent for item in constrained.activities]
     assert "visit_mother_and_have_dinner" not in intents
     assert "take_morning_medication" in intents
-    assert any(item["reason"] == "maximum_occurrences" for item in changes)
+    assert any(item["reason"] == "target_occurrences" for item in changes)
 
     compact = DailyProposal(
         date=date(2026, 8, 16),
@@ -145,6 +145,58 @@ def test_daily_constraint_removes_non_anchor_cooldown_repetition() -> None:
         "take_morning_medication",
         "sleep",
     ]
+
+
+def test_daily_constraint_uses_target_as_non_anchor_cap() -> None:
+    profile, _, ledger, budget = context()
+    groceries = activity(
+        "buy_groceries",
+        "supermarket_barcelona",
+        TimeBand.afternoon,
+    )
+    days = proposals()
+    first = days[0].model_copy(
+        update={"activities": [*days[0].activities, groceries]}
+    )
+    second = days[1].model_copy(
+        update={"activities": [*days[1].activities, groceries]}
+    )
+
+    constrained, changes = constrain_daily_habit_limits(
+        profile,
+        ledger,
+        budget,
+        [first],
+        second,
+    )
+
+    assert "buy_groceries" not in {item.intent for item in constrained.activities}
+    assert changes[-1]["reason"] == "target_occurrences"
+
+
+def test_daily_constraint_forbids_zero_target_habit() -> None:
+    profile, _, ledger, budget = context()
+    refill = activity(
+        "collect_medication_refill",
+        "pharmacy_barcelona",
+        TimeBand.afternoon,
+    )
+    day = proposals()[0].model_copy(
+        update={"activities": [*proposals()[0].activities, refill]}
+    )
+
+    constrained, changes = constrain_daily_habit_limits(
+        profile,
+        ledger,
+        budget,
+        [],
+        day,
+    )
+
+    assert "collect_medication_refill" not in {
+        item.intent for item in constrained.activities
+    }
+    assert changes[-1]["reason"] == "target_occurrences"
 
 
 def context():
@@ -224,6 +276,43 @@ def test_gate_reports_missing_anchor_chain_cooldown_and_goal() -> None:
         "HABIT_COOLDOWN_VIOLATION",
         "WEEKLY_GOAL_UNREALIZED",
     }
+
+
+def test_gate_rejects_non_anchor_count_below_target() -> None:
+    profile, _, ledger, budget = context()
+
+    report = evaluate_habit_plan(
+        profile,
+        ledger,
+        budget,
+        weekly_brief(),
+        proposals(),
+    )
+
+    assert "HABIT_TARGET_MISSING" in {item.code for item in report.violations}
+
+
+def test_gate_rejects_non_anchor_count_above_target() -> None:
+    profile, _, ledger, budget = context()
+    groceries = activity(
+        "buy_groceries",
+        "supermarket_barcelona",
+        TimeBand.afternoon,
+    )
+    days = proposals()
+    days[5] = days[5].model_copy(
+        update={"activities": [*days[5].activities, groceries, groceries]}
+    )
+
+    report = evaluate_habit_plan(
+        profile,
+        ledger,
+        budget,
+        weekly_brief(),
+        days,
+    )
+
+    assert "HABIT_TARGET_EXCEEDED" in {item.code for item in report.violations}
 
 
 def test_trace_and_ledger_record_planned_occurrences() -> None:

@@ -26,6 +26,8 @@ from smart_home_sim.hybrid_planning.models import DailyProposal, WeeklyBrief
 GATE_CODES = (
     "HABIT_REQUIRED_MISSING",
     "HABIT_FREQUENCY_EXCEEDED",
+    "HABIT_TARGET_MISSING",
+    "HABIT_TARGET_EXCEEDED",
     "HABIT_DAILY_ANCHOR_MISSING",
     "HABIT_DAILY_ANCHOR_EXCEEDED",
     "HABIT_COOLDOWN_VIOLATION",
@@ -76,11 +78,12 @@ def constrain_daily_habit_limits(
             continue
         item = budget_by_habit[habit.habit_id]
         previous = last_seen[habit.habit_id]
+        target_cap = min(item.target_occurrences, item.maximum_occurrences)
         reason = None
         if item.forbidden_until is not None and proposal.date <= item.forbidden_until:
             reason = "forbidden_until"
-        elif counts[habit.habit_id] >= item.maximum_occurrences:
-            reason = "maximum_occurrences"
+        elif counts[habit.habit_id] >= target_cap:
+            reason = "target_occurrences"
         elif (
             previous is not None
             and habit.cooldown_days
@@ -257,6 +260,32 @@ def evaluate_habit_plan(
                     code="HABIT_FREQUENCY_EXCEEDED",
                     message=(
                         f"{habit.intent} allows {item.maximum_occurrences}; found {len(dates)}"
+                    ),
+                    date=dates[-1],
+                    habit_id=habit.habit_id,
+                    intent=habit.intent,
+                )
+            )
+        if habit.kind is not HabitKind.anchor and len(dates) < item.target_occurrences:
+            violations.append(
+                HabitViolation(
+                    code="HABIT_TARGET_MISSING",
+                    message=(
+                        f"{habit.intent} targets {item.target_occurrences}; "
+                        f"found {len(dates)}"
+                    ),
+                    date=_repair_date(habit, proposals, day_types),
+                    habit_id=habit.habit_id,
+                    intent=habit.intent,
+                )
+            )
+        if habit.kind is not HabitKind.anchor and len(dates) > item.target_occurrences:
+            violations.append(
+                HabitViolation(
+                    code="HABIT_TARGET_EXCEEDED",
+                    message=(
+                        f"{habit.intent} targets {item.target_occurrences}; "
+                        f"found {len(dates)}"
                     ),
                     date=dates[-1],
                     habit_id=habit.habit_id,
