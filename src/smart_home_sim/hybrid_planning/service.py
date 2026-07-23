@@ -706,6 +706,7 @@ def _finalize_repaired_day(
             protected_intents=_protected_intents(
                 planning_case, behavioral_profile, required, day_type
             ),
+            required_goal_intents=frozenset(required),
             enforce_simulatable=True,
         )
     _validate_daily_proposal(
@@ -1044,6 +1045,7 @@ def generate_hybrid_plan(
                                 set(day_brief.goal_intents),
                                 planning_case.calendar_day(proposal.date).day_type,
                             ),
+                            required_goal_intents=frozenset(day_brief.goal_intents),
                             enforce_simulatable=process_package is not None,
                         )
                         _write_json(
@@ -1187,6 +1189,12 @@ def generate_hybrid_plan(
                             )
                         ),
                         planning_case.calendar_day(replacement.date).day_type,
+                    ),
+                    required_goal_intents=frozenset(
+                        next(
+                            (d.goal_intents for d in brief.days if d.date == replacement.date),
+                            [],
+                        )
                     ),
                     enforce_simulatable=process_package is not None,
                 )
@@ -1335,6 +1343,12 @@ def generate_hybrid_plan(
                             )
                         ),
                         planning_case.calendar_day(replacement.date).day_type,
+                    ),
+                    required_goal_intents=frozenset(
+                        next(
+                            (d.goal_intents for d in brief.days if d.date == replacement.date),
+                            [],
+                        )
                     ),
                     enforce_simulatable=process_package is not None,
                 )

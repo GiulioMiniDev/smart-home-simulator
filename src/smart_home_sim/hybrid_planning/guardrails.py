@@ -33,6 +33,22 @@ HOME_RETURN_INTENTS = frozenset(
 # room location makes their enter_home step fail (the resident is already home).
 PURE_RETURN_INTENTS = frozenset({"commute_home", "enter_home", "travel_home"})
 
+# Home locations for scaffolding a missing indoor goal intent, by activity-catalog category.
+# External categories (errand, exercise, social_visit, travel, work) are intentionally absent:
+# they need travel chains, are rarely goal-assigned, and are left to the model to realize.
+_GOAL_CATEGORY_LOCATIONS: dict[str, tuple[str, ...]] = {
+    "leisure": ("living_room_01",),
+    "housekeeping": ("living_room_01", "kitchen_01"),
+    "laundry": ("hallway_01", "bathroom_01"),
+    "communication": ("living_room_01",),
+    "dressing": ("bedroom_01",),
+    "eating": ("kitchen_01",),
+    "hygiene": ("bathroom_01",),
+    "meal_preparation": ("kitchen_01",),
+    "medication": ("bedroom_01",),
+    "sleep": ("bedroom_01",),
+}
+
 NOURISHMENT_INTENTS = frozenset(
     {
         "cook_dinner",
@@ -347,6 +363,7 @@ def normalize_daily_guardrails(
     *,
     final_date: object | None = None,
     protected_intents: frozenset[str] = frozenset(),
+    required_goal_intents: frozenset[str] = frozenset(),
     enforce_simulatable: bool = False,
 ) -> tuple[DailyProposal, list[dict[str, object]]]:
     known_intents = {item.intent for item in catalog.activities}
@@ -567,6 +584,35 @@ def normalize_daily_guardrails(
                 ),
             )
             record("travel_home", "mother_visit_chain")
+
+    # Realize any assigned goal intent the model dropped: placing an indoor variety activity
+    # is mechanical (the model already chose the goal in the weekly brief), so the machine
+    # scaffolds it deterministically rather than bouncing the day back to the model.
+    if enforce_simulatable and required_goal_intents:
+        present = {item.intent for item in activities}
+        category_by_intent = {item.intent: item.category for item in catalog.activities}
+        for intent in sorted(required_goal_intents - present):
+            preferred = _GOAL_CATEGORY_LOCATIONS.get(category_by_intent.get(intent, ""))
+            if not preferred:
+                continue
+            location = next((loc for loc in preferred if loc in known_locations), None)
+            if location is None:
+                continue
+            insert_at = next(
+                (index for index, item in enumerate(activities) if item.intent == "sleep"),
+                len(activities),
+            )
+            activities.insert(
+                insert_at,
+                _scaffold_activity(
+                    intent,
+                    location,
+                    TimeBand.evening,
+                    DurationClass.short,
+                    "Deterministic goal-intent realization scaffold.",
+                ),
+            )
+            record(intent, "goal_intent")
 
     normalized = proposal.model_copy(update={"activities": activities})
     if enforce_simulatable and final_date is not None:
