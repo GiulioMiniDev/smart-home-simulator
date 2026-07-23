@@ -34,6 +34,7 @@ from smart_home_sim.hybrid_planning.prompts import structural_repair_prompt
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
     _canonicalize_daily_anchors,
+    _canonicalize_weekly_goals,
     _read_models,
     _weekly_schema,
     generate_hybrid_plan,
@@ -144,6 +145,46 @@ def test_daily_anchor_canonicalization_adds_sleep_and_removes_weekend_work() -> 
     assert "work_shift" not in [item.intent for item in normalized_sunday.activities]
     assert any(item["action"] == "insert" and item["intent"] == "sleep" for item in monday_changes)
     assert any(item["action"] == "remove" for item in sunday_changes)
+
+
+def test_weekly_goal_canonicalization_respects_targets_and_preserves_solo_days() -> None:
+    planning_case, _catalog = _read_models(CASE)
+    profile = valid_profile()
+    digest = behavioral_profile_digest(profile)
+    ledger = initial_habit_ledger(digest, profile)
+    dates = planning_case.dates()
+    budget = derive_habit_budget(
+        profile,
+        ledger,
+        dates,
+        {value: planning_case.calendar_day(value).day_type for value in dates},
+    )
+    brief = weekly_brief()
+    brief = brief.model_copy(
+        update={
+            "days": [
+                day.model_copy(
+                    update={
+                        "goal_intents": (
+                            ["work_shift", "read"]
+                            if day.day_type == "workday"
+                            else ["read"]
+                        )
+                    }
+                )
+                for day in brief.days
+            ]
+        }
+    )
+
+    normalized, changes = _canonicalize_weekly_goals(profile, budget, brief)
+    read_target = next(item.target_occurrences for item in budget.items if item.intent == "read")
+    read_days = [day for day in normalized.days if "read" in day.goal_intents]
+
+    assert len(read_days) == read_target
+    assert all(day.goal_intents for day in normalized.days)
+    assert {date(2026, 8, 15), date(2026, 8, 16)} <= {day.date for day in read_days}
+    assert changes
 
 
 def proposal(value: date, distinctive_intent: str) -> DailyProposal:

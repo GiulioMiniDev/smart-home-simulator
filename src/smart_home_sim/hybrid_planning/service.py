@@ -19,6 +19,7 @@ from smart_home_sim.hybrid_planning.behavioral_models import (
     BehavioralProfile,
     HabitBudget,
     HabitGateReport,
+    HabitKind,
     HabitLedger,
 )
 from smart_home_sim.hybrid_planning.behavioral_validation import (
@@ -386,6 +387,71 @@ def _weekly_schema(
     return schema
 
 
+def _canonicalize_weekly_goals(
+    profile: BehavioralProfile,
+    budget: HabitBudget,
+    brief: WeeklyBrief,
+) -> tuple[WeeklyBrief, list[dict[str, object]]]:
+    """Allocate non-anchor habit goals within target and cooldown constraints."""
+    goals = [list(day.goal_intents) for day in brief.days]
+    budget_by_habit = {item.habit_id: item for item in budget.items}
+    changes: list[dict[str, object]] = []
+    for habit in profile.habits:
+        if habit.kind is HabitKind.anchor:
+            continue
+        item = budget_by_habit[habit.habit_id]
+        uses = [index for index, day_goals in enumerate(goals) if habit.intent in day_goals]
+        candidates = [
+            index
+            for index in uses
+            if (
+                (
+                    not habit.applicable_day_types
+                    or brief.days[index].day_type in habit.applicable_day_types
+                )
+                and (
+                    item.forbidden_until is None
+                    or brief.days[index].date > item.forbidden_until
+                )
+            )
+        ]
+        candidates.sort(key=lambda index: (len(goals[index]) != 1, brief.days[index].date))
+        selected: list[int] = []
+        for index in candidates:
+            value = brief.days[index].date
+            if any(
+                abs((value - brief.days[other].date).days) <= habit.cooldown_days
+                for other in selected
+            ):
+                continue
+            selected.append(index)
+            if len(selected) >= item.target_occurrences:
+                break
+        selected_indexes = set(selected)
+        for index in uses:
+            if index in selected_indexes:
+                continue
+            goals[index] = [intent for intent in goals[index] if intent != habit.intent]
+            changes.append(
+                {
+                    "date": brief.days[index].date.isoformat(),
+                    "intent": habit.intent,
+                    "action": "remove",
+                    "reason": "habit_goal_budget_or_cooldown",
+                }
+            )
+    days = [
+        day.model_copy(update={"goal_intents": day_goals})
+        for day, day_goals in zip(brief.days, goals, strict=True)
+    ]
+    empty_dates = [day.date.isoformat() for day in days if not day.goal_intents]
+    if empty_dates:
+        raise HybridPlanningError(
+            f"weekly goal normalization left days without goals: {empty_dates}"
+        )
+    return brief.model_copy(update={"days": days}), changes
+
+
 def _updated_memory(memory: PlanningMemory, proposal: DailyProposal) -> PlanningMemory:
     frequencies = dict(memory.intent_frequency)
     last_seen = dict(memory.intent_last_seen)
@@ -542,6 +608,22 @@ def generate_hybrid_plan(
             catalog,
             require_goal_intents=behavioral_profile is not None,
         )
+        if behavioral_profile is not None and budget is not None:
+            brief, goal_normalizations = _canonicalize_weekly_goals(
+                behavioral_profile,
+                budget,
+                brief,
+            )
+            _write_json(
+                output_dir / "weekly-brief" / "goal-normalizations.json",
+                {"changes": goal_normalizations},
+            )
+            _validate_weekly_brief(
+                planning_case,
+                brief,
+                catalog,
+                require_goal_intents=True,
+            )
 
         proposals: list[DailyProposal] = []
         memory = PlanningMemory()
