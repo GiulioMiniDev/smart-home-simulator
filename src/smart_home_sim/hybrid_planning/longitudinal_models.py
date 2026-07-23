@@ -10,11 +10,14 @@ from smart_home_sim.hybrid_planning.behavioral_models import HabitLedger
 from smart_home_sim.hybrid_planning.models import PlanningMemory
 
 
-class CausalViolation(ContractModel):
+class QualityViolation(ContractModel):
     code: str = Field(min_length=1)
     date: date
     intent: str = Field(min_length=1)
     message: str = Field(min_length=1)
+
+
+CausalViolation = QualityViolation
 
 
 class LongitudinalQualityReport(ContractModel):
@@ -26,7 +29,7 @@ class LongitudinalQualityReport(ContractModel):
     day_count: int = Field(ge=0)
     maximum_consecutive_identical_days: int = Field(ge=0)
     optional_windows_without_variation: list[date] = Field(default_factory=list)
-    causal_violations: list[CausalViolation] = Field(default_factory=list)
+    causal_violations: list[QualityViolation] = Field(default_factory=list)
     reasons: list[str] = Field(default_factory=list)
 
 
