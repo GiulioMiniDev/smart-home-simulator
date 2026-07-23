@@ -27,6 +27,11 @@ from smart_home_sim.hybrid_planning.behavioral_validation import (
     validate_behavioral_profile,
 )
 from smart_home_sim.hybrid_planning.comparison import compare_scenarios
+from smart_home_sim.hybrid_planning.guardrails import (
+    daily_life_violations,
+    normalize_habit_preferences,
+    semantic_violations,
+)
 from smart_home_sim.hybrid_planning.habit_gates import (
     constrain_daily_habit_limits,
     derive_habit_budget,
@@ -39,9 +44,6 @@ from smart_home_sim.hybrid_planning.lmstudio import (
     LMStudioClient,
     LMStudioError,
     LMStudioExchange,
-)
-from smart_home_sim.hybrid_planning.longitudinal_quality import (
-    evaluate_longitudinal_quality,
 )
 from smart_home_sim.hybrid_planning.materialization import (
     materialize_day_activities,
@@ -223,14 +225,16 @@ def _validate_daily_proposal(
                 f"'{requirement.time_band.value}' on {day_type}"
             )
     if behavioral_profile is not None:
-        causal_violations = evaluate_longitudinal_quality(
-            behavioral_profile,
-            [proposal],
-        ).causal_violations
-        if causal_violations:
+        guardrail_violations = [
+            *daily_life_violations(day_type, proposal),
+            *semantic_violations(behavioral_profile, proposal),
+        ]
+        if guardrail_violations:
+            details = "; ".join(
+                f"{item.code}: {item.message}" for item in guardrail_violations
+            )
             raise HybridPlanningError(
-                "daily proposal violates causal order: "
-                + "; ".join(item.message for item in causal_violations)
+                f"daily proposal violates guardrails: {details}"
             )
     try:
         materialize_day_activities(
@@ -763,6 +767,19 @@ def generate_hybrid_plan(
                             / "habit-limit-normalizations.json",
                             {"changes": [*reservation_changes, *normalizations]},
                         )
+                    if behavioral_profile is not None:
+                        proposal, preference_changes = normalize_habit_preferences(
+                            behavioral_profile,
+                            proposal,
+                        )
+                        _write_json(
+                            output_dir
+                            / "days"
+                            / day_brief.date.isoformat()
+                            / f"attempt-{attempt}"
+                            / "habit-preference-normalizations.json",
+                            {"changes": preference_changes},
+                        )
                     _validate_daily_proposal(
                         planning_case,
                         catalog,
@@ -863,6 +880,19 @@ def generate_hybrid_plan(
                     / f"diversity-repair-{repair_number}"
                     / "habit-limit-normalizations.json",
                     {"changes": [*reservation_changes, *normalizations]},
+                )
+            if behavioral_profile is not None:
+                replacement, preference_changes = normalize_habit_preferences(
+                    behavioral_profile,
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target.date.isoformat()
+                    / f"diversity-repair-{repair_number}"
+                    / "habit-preference-normalizations.json",
+                    {"changes": preference_changes},
                 )
             target_brief = next(item for item in brief.days if item.date == target.date)
             _validate_daily_proposal(
@@ -969,6 +999,18 @@ def generate_hybrid_plan(
                     / f"habit-repair-{habit_repair_number}"
                     / "habit-limit-normalizations.json",
                     {"changes": [*reservation_changes, *normalizations]},
+                )
+                replacement, preference_changes = normalize_habit_preferences(
+                    behavioral_profile,
+                    replacement,
+                )
+                _write_json(
+                    output_dir
+                    / "days"
+                    / target_date.isoformat()
+                    / f"habit-repair-{habit_repair_number}"
+                    / "habit-preference-normalizations.json",
+                    {"changes": preference_changes},
                 )
                 _validate_daily_proposal(
                     planning_case,

@@ -31,7 +31,7 @@ from smart_home_sim.hybrid_planning.models import (
     WeeklyBrief,
     WeeklyDayBrief,
 )
-from smart_home_sim.hybrid_planning.prompts import structural_repair_prompt
+from smart_home_sim.hybrid_planning.prompts import daily_prompt, structural_repair_prompt
 from smart_home_sim.hybrid_planning.service import (
     HybridPlanningError,
     _canonicalize_daily_anchors,
@@ -84,6 +84,80 @@ def test_overflow_repair_prompt_gives_capacity_instructions() -> None:
 
     assert "remove or defer optional activities" in prompt
     assert "at most four evening activities" in prompt
+
+
+def test_daily_prompt_contains_guardrail_policy() -> None:
+    planning_case, catalog = _read_models(CASE)
+    brief = weekly_brief()
+    profile = valid_profile()
+    prompt = daily_prompt(
+        planning_case,
+        catalog,
+        brief,
+        brief.days[0],
+        PlanningMemory(),
+        profile,
+        derive_habit_budget(
+            profile,
+            initial_habit_ledger(
+                behavioral_profile_digest(profile),
+                profile,
+            ),
+            planning_case.dates(),
+            {
+                value: planning_case.calendar_day(value).day_type
+                for value in planning_case.dates()
+            },
+        ),
+    )
+
+    assert '"dailyGuardrails"' in prompt
+    assert '"minimumActivities"' in prompt
+    assert "post_walk_shower requires an earlier walking intent" in prompt
+
+
+def test_daily_validator_rejects_missing_daily_life_categories() -> None:
+    planning_case, catalog = _read_models(CASE)
+    sparse = DailyProposal(
+        date=date(2026, 8, 16),
+        narrative_intent="Sparse Sunday",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", "early_morning"),
+            activity("watch_television", "living_room_01", "evening"),
+            activity("read_and_rest", "living_room_01", "afternoon"),
+            activity("sleep", "bedroom_01", "night"),
+        ],
+    )
+
+    with pytest.raises(HybridPlanningError, match="MISSING_NOURISHMENT"):
+        _validate_daily_proposal(
+            planning_case,
+            catalog,
+            sparse.date,
+            sparse,
+            behavioral_profile=valid_profile(),
+        )
+
+
+def test_daily_validator_rejects_semantic_chain_error() -> None:
+    planning_case, catalog = _read_models(CASE)
+    daily = proposal(date(2026, 8, 10), "read")
+    daily = daily.model_copy(
+        update={
+            "activities": [
+                item for item in daily.activities if item.intent != "commute_home"
+            ]
+        }
+    )
+
+    with pytest.raises(HybridPlanningError, match="WORK_SHIFT_CHAIN_INCOMPLETE"):
+        _validate_daily_proposal(
+            planning_case,
+            catalog,
+            daily.date,
+            daily,
+            behavioral_profile=valid_profile(),
+        )
 
 
 def test_weekly_schema_excludes_zero_target_habits() -> None:
@@ -208,7 +282,13 @@ def proposal(value: date, distinctive_intent: str) -> DailyProposal:
         activity("prepare_and_eat_breakfast", "kitchen_01", "morning", "medium"),
     ]
     if value.weekday() < 5:
-        activities.append(activity("work_shift", "garden_workplace", "morning", "extended"))
+        activities.extend(
+            [
+                activity("commute_to_work", "garden_workplace", "morning"),
+                activity("work_shift", "garden_workplace", "morning", "extended"),
+                activity("commute_home", "living_room_01", "afternoon"),
+            ]
+        )
     activities.extend(
         [
             activity(
@@ -269,6 +349,27 @@ def profile_aware_week() -> tuple[WeeklyBrief, list[DailyProposal], list[DailyPr
         proposal(item.date, intent)
         for item, intent in zip(brief.days, distinct, strict=True)
     ]
+    for index, extra_intent in ((2, "read"), (4, "read"), (5, "evening_walk")):
+        current = accepted[index]
+        accepted[index] = current.model_copy(
+            update={
+                "activities": [
+                    *current.activities[:-2],
+                    activity(
+                        extra_intent,
+                        (
+                            "living_room_01"
+                            if extra_intent == "read"
+                            else "neighborhood_park"
+                        ),
+                        "evening",
+                        "medium",
+                        mandatory=False,
+                    ),
+                    *current.activities[-2:],
+                ]
+            }
+        )
     broken = list(accepted)
     for index in (5, 6):
         current = broken[index]
@@ -463,6 +564,63 @@ def test_hybrid_plan_includes_prior_memory_in_weekly_and_daily_prompts(
     assert result.memory.through_date == date(2026, 8, 16)
     assert result.memory.intent_frequency["read"] >= 3
     assert result.habit_ledger is not None
+
+
+def test_hybrid_plan_normalizes_habit_preferences_and_writes_artifact(
+    tmp_path: Path,
+) -> None:
+    brief, generated, _ = profile_aware_week()
+    groceries_day = generated[3]
+    generated[3] = groceries_day.model_copy(
+        update={
+            "activities": [
+                item.model_copy(
+                    update={
+                        "time_band": TimeBand.morning,
+                        "location_id": "living_room_01",
+                    }
+                )
+                if item.intent == "buy_groceries"
+                else item
+                for item in groceries_day.activities
+            ]
+        }
+    )
+    profile_path = tmp_path / "behavioral-profile.json"
+    profile_path.write_text(
+        valid_profile().model_dump_json(by_alias=True),
+        encoding="utf-8",
+    )
+    output = tmp_path / "run"
+
+    generate_hybrid_plan(
+        CASE,
+        output,
+        HybridPlanningConfig(model="fake", max_diversity_repairs=0),
+        behavioral_profile_path=profile_path,
+        client=FakeClient([brief, *generated]),
+    )
+
+    accepted = DailyProposal.model_validate_json(
+        (output / "days/2026-08-13/accepted-proposal.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    groceries = next(
+        item for item in accepted.activities if item.intent == "buy_groceries"
+    )
+    assert groceries.time_band is TimeBand.afternoon
+    assert groceries.location_id == "supermarket_barcelona"
+    artifact = json.loads(
+        (
+            output
+            / "days/2026-08-13/attempt-1/habit-preference-normalizations.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert {item["field"] for item in artifact["changes"]} == {
+        "timeBand",
+        "locationId",
+    }
 
 
 def test_hybrid_plan_generates_compiles_and_compares_without_exposing_baseline(

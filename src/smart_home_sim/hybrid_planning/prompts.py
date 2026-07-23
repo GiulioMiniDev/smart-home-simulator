@@ -9,6 +9,7 @@ from smart_home_sim.hybrid_planning.behavioral_models import (
     HabitViolation,
 )
 from smart_home_sim.hybrid_planning.behavioral_validation import ProfileIssue
+from smart_home_sim.hybrid_planning.guardrails import guardrail_prompt_payload
 from smart_home_sim.hybrid_planning.models import (
     DailyProposal,
     PlanningCase,
@@ -215,6 +216,7 @@ def daily_prompt(
         "dayBrief": day_brief.model_dump(mode="json", by_alias=True),
         "planningMemory": memory.model_dump(mode="json", by_alias=True),
         "allowedActivities": _catalog_payload(catalog),
+        "dailyGuardrails": guardrail_prompt_payload(catalog),
         "durationClasses": {
             "brief": "about 15 minutes",
             "short": "about 30 minutes",
@@ -226,8 +228,9 @@ def daily_prompt(
     }
     return f"""Propose one day for {day_brief.date.isoformat()}.
 
-Return 6 to 12 activities in meaningful daily order. Include basic daily continuity where
-appropriate, but do not copy the recent-day sequence. Use rough time bands and duration classes;
+Meet the supplied daily guardrails without turning the day into a fixed template. Use the
+minimum as a floor, not as a target, and preserve meaningful optional variation. Do not copy the
+recent-day sequence. Use rough time bands and duration classes;
 the deterministic simulator will assign exact times. Long activities consume later bands, so keep
 the day feasible. Use the exact requested date and only supplied identifiers. The deterministic
 materializer assigns the authoritative duration of sleep and work shifts; do not use `extended`
@@ -256,6 +259,7 @@ def diversity_repair_prompt(
         "otherAcceptedDays": [item.model_dump(mode="json", by_alias=True) for item in other_days],
         "diversityFailures": reasons,
         "allowedActivities": _catalog_payload(catalog),
+        "dailyGuardrails": guardrail_prompt_payload(catalog),
         **_behavioral_payload(profile, budget),
     }
     return f"""Revise only the proposed day below because the week is too repetitive.
@@ -290,6 +294,7 @@ def structural_repair_prompt(
         "rejectedProposal": proposal.model_dump(mode="json", by_alias=True),
         "validationError": error,
         "allowedActivities": _catalog_payload(catalog),
+        "dailyGuardrails": guardrail_prompt_payload(catalog),
         **_behavioral_payload(profile, budget),
     }
     return f"""Repair the rejected daily proposal below.
@@ -323,6 +328,7 @@ def habit_repair_prompt(
         "otherAcceptedDays": [item.model_dump(mode="json", by_alias=True) for item in other_days],
         "habitViolations": [item.model_dump(mode="json", by_alias=True) for item in violations],
         "allowedActivities": _catalog_payload(catalog),
+        "dailyGuardrails": guardrail_prompt_payload(catalog),
     }
     return f"""Repair only the rejected day so the complete week respects its behavioral truth.
 
