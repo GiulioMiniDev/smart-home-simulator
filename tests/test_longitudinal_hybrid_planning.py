@@ -151,6 +151,29 @@ def test_slice_planning_case_covers_month_without_gaps() -> None:
     assert all(chunk.initial_state.at == chunk.planning_window.start for chunk in chunks)
 
 
+@pytest.mark.parametrize(
+    ("chunk_days", "end_exclusive", "message"),
+    [
+        (0, date(2026, 9, 10), "chunk_days"),
+        (8, date(2026, 9, 10), "chunk_days"),
+        (7, date(2026, 8, 10), "end_exclusive"),
+    ],
+)
+def test_slice_planning_case_rejects_invalid_bounds(
+    chunk_days: int,
+    end_exclusive: date,
+    message: str,
+) -> None:
+    planning_case, _ = _read_models(CASE)
+
+    with pytest.raises(ValueError, match=message):
+        slice_planning_case(
+            planning_case,
+            end_exclusive=end_exclusive,
+            chunk_days=chunk_days,
+        )
+
+
 def test_longitudinal_quality_rejects_four_identical_consecutive_days() -> None:
     days = [
         proposal(
@@ -214,6 +237,45 @@ def test_longitudinal_quality_accepts_habit_skeleton_with_variable_shell() -> No
 
     assert report.valid
     assert report.optional_windows_without_variation == []
+
+
+def test_longitudinal_quality_reports_incomplete_habit_chain() -> None:
+    day = proposal(date(2026, 8, 16), "read")
+    incomplete = day.model_copy(
+        update={
+            "activities": [
+                *day.activities[:-2],
+                activity(
+                    "visit_mother_and_have_dinner",
+                    "mother_house_barcelona",
+                    "evening",
+                ),
+                *day.activities[-2:],
+            ]
+        }
+    )
+
+    report = evaluate_longitudinal_quality(valid_profile(), [incomplete])
+
+    assert {item.code for item in report.causal_violations} == {
+        "MISSING_HABIT_PREDECESSOR",
+        "MISSING_HABIT_SUCCESSOR",
+    }
+
+
+def test_longitudinal_quality_reports_week_without_variable_shell() -> None:
+    days = [
+        proposal(
+            date.fromordinal(date(2026, 8, 10).toordinal() + offset),
+            "clean_kitchen",
+        )
+        for offset in range(7)
+    ]
+
+    report = evaluate_longitudinal_quality(valid_profile(), days)
+
+    assert report.optional_windows_without_variation == [date(2026, 8, 10)]
+    assert "MISSING_WEEKLY_VARIABLE_SHELL" in report.reasons
 
 
 def test_one_month_orchestrator_accepts_five_chunks_and_completes(
@@ -345,5 +407,37 @@ def test_resume_rejects_configuration_change(
             tmp_path / "month",
             HybridPlanningConfig(model="fake", temperature=0.3),
             resume=True,
+            chunk_generator=fake_chunk_generator,
+        )
+
+
+def test_resume_requires_existing_checkpoint(
+    tmp_path: Path,
+    fake_chunk_generator: FakeChunkGenerator,
+) -> None:
+    with pytest.raises(HybridPlanningError, match="checkpoint.json"):
+        generate_one_month_plan(
+            CASE,
+            tmp_path / "profile.json",
+            tmp_path / "missing-run",
+            HybridPlanningConfig(model="fake"),
+            resume=True,
+            chunk_generator=fake_chunk_generator,
+        )
+
+
+def test_new_run_rejects_existing_output_directory(
+    tmp_path: Path,
+    fake_chunk_generator: FakeChunkGenerator,
+) -> None:
+    output = tmp_path / "existing"
+    output.mkdir()
+
+    with pytest.raises(HybridPlanningError, match="already exists"):
+        generate_one_month_plan(
+            CASE,
+            tmp_path / "profile.json",
+            output,
+            HybridPlanningConfig(model="fake"),
             chunk_generator=fake_chunk_generator,
         )
