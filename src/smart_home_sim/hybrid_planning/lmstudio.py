@@ -17,6 +17,47 @@ class LMStudioError(RuntimeError):
     pass
 
 
+def _extract_json_object(content: str) -> str:
+    """Extract the first balanced JSON object from a free-form completion.
+
+    Tolerates Markdown code fences and surrounding prose by scanning for the first
+    ``{`` and returning up to its matching ``}`` (ignoring braces inside strings).
+    """
+
+    text = content.strip()
+    if text.startswith("```"):
+        newline = text.find("\n")
+        if newline != -1:
+            text = text[newline + 1 :]
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    start = text.find("{")
+    if start == -1:
+        raise LMStudioError("no JSON object found in completion")
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    raise LMStudioError("unterminated JSON object in completion")
+
+
 @dataclass(frozen=True, slots=True)
 class LMStudioExchange:
     request: dict[str, Any]
@@ -37,6 +78,7 @@ class LMStudioClient:
         user_prompt: str,
         seed: int,
         schema_override: dict[str, Any] | None = None,
+        enforce_schema: bool = True,
     ) -> tuple[ModelT, LMStudioExchange]:
         request_body: dict[str, Any] = {
             "model": self.config.model,
@@ -49,15 +91,19 @@ class LMStudioClient:
             "seed": seed,
             "max_tokens": self.config.max_tokens,
             "stream": False,
-            "response_format": {
+        }
+        if enforce_schema:
+            # Constrained decoding against the full JSON schema. Reliable but slow for
+            # large nested schemas; callers with big models may disable it and rely on
+            # free-form JSON extraction plus deterministic validation instead.
+            request_body["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": schema_name,
                     "strict": True,
                     "schema": schema_override or output_model.model_json_schema(by_alias=True),
                 },
-            },
-        }
+            }
         endpoint = f"{self.config.base_url.rstrip('/')}/v1/chat/completions"
         request = urllib.request.Request(
             endpoint,
@@ -78,7 +124,8 @@ class LMStudioClient:
                     f"(finishReason={choice.get('finish_reason')}, "
                     f"usage={api_response.get('usage')})"
                 )
-            parsed = output_model.model_validate_json(content)
+            payload = content if enforce_schema else _extract_json_object(content)
+            parsed = output_model.model_validate_json(payload)
         except urllib.error.URLError as error:
             raise LMStudioError(f"LM Studio is unavailable: {error}") from error
         except TimeoutError as error:

@@ -136,17 +136,26 @@ def run_longitudinal_file(
         if compilation.plan is None:
             raise ValueError(f"failed to compile scenario chunk {idx + 1}")
 
-        # Truncation gate check
-        # Only enforce truncation check on the final chunk of the longitudinal sequence,
-        # as intermediate chunks end at midnight boundaries where state handoff carries over.
-        if idx == len(resolved.scenarios) - 1:
-            for day in compilation.plan.days:
-                for act in day.activities:
-                    if act.truncated_at_simulation_end:
-                        raise ValueError(
-                            f"Scenario chunk {idx + 1} activity '{act.source_activity_id}' "
-                            "is truncated at simulation end, which is not permitted."
-                        )
+        # Boundary-truncation handling.
+        #
+        # An activity can only be marked ``truncated_at_simulation_end`` when its
+        # source activity opted into ``allowBoundaryTruncation`` (the compiler forces
+        # every other activity to end within the window). Such truncation is always
+        # the terminal activity of the chunk's last day (e.g. an overnight sleep).
+        #
+        # Intermediate chunks end at midnight and hand their authoritative terminal
+        # state (resident asleep in bed, environment/resource state) to the next
+        # chunk, so the cut activity's continuation is carried by state handoff.
+        #
+        # The final chunk has no successor: its terminal truncation is simply the
+        # observation boundary where the whole longitudinal run stops. Rejecting it
+        # would make it impossible to end a run on any natural day, since every
+        # authored day ends with an overnight sleep crossing midnight. It is
+        # therefore permitted and recorded as-is.
+        #
+        # This deliberately supersedes the vertical-slice rule in
+        # docs/plans/2026-07-23-longitudinal-multi-scenario-simulation-design.md,
+        # which blanket-rejected truncation before state handoff existed.
 
         canonical_plans.append(compilation.plan)
 

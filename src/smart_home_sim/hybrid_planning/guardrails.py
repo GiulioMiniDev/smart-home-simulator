@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from smart_home_sim.domain.behavior import ActivityCatalog
+from smart_home_sim.domain.models import LocationKind
 from smart_home_sim.hybrid_planning.behavioral_models import BehavioralProfile
 from smart_home_sim.hybrid_planning.longitudinal_models import QualityViolation
 from smart_home_sim.hybrid_planning.models import (
@@ -9,6 +10,15 @@ from smart_home_sim.hybrid_planning.models import (
     PlanningCase,
     ProposedActivity,
     TimeBand,
+)
+
+HOME_RETURN_INTENTS = frozenset(
+    {
+        "commute_home",
+        "enter_home",
+        "return_home_and_store_purchases",
+        "travel_home",
+    }
 )
 
 NOURISHMENT_INTENTS = frozenset(
@@ -194,6 +204,44 @@ def semantic_violations(
         key = (item.code, item.date, item.intent, item.message)
         unique[key] = item
     return list(unique.values())
+
+
+def spatial_coherence_violations(
+    planning_case: PlanningCase,
+    proposal: DailyProposal,
+) -> list[QualityViolation]:
+    """Flag activities that would require teleporting the resident.
+
+    Walks the day's activities in order, tracking whether the resident is currently away
+    from home. The resident is away while at an ``external`` location and comes back on an
+    explicit home-return intent. A home-interior activity that happens while away (with no
+    return in between) is a spatial impossibility that the simulator rejects at runtime —
+    e.g. ``prepare_and_eat_breakfast`` in the kitchen scheduled during the work shift.
+    """
+
+    away = False
+    violations: list[QualityViolation] = []
+    location_kind = {
+        location.location_id: location.kind for location in planning_case.locations
+    }
+    for activity in proposal.activities:
+        at_home = location_kind.get(activity.location_id) is not LocationKind.external
+        if activity.intent in HOME_RETURN_INTENTS:
+            away = False
+            continue
+        if away and at_home:
+            violations.append(
+                _violation(
+                    proposal,
+                    "HOME_ACTIVITY_WHILE_AWAY",
+                    activity.intent,
+                    f"{activity.intent} happens at home location "
+                    f"'{activity.location_id}' while the resident is away from home; "
+                    "add a return home before it or move it outside the time away",
+                )
+            )
+        away = not at_home
+    return violations
 
 
 def _scaffold_activity(

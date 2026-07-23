@@ -75,7 +75,13 @@ from smart_home_sim.hybrid_planning import (
 from smart_home_sim.hybrid_planning.longitudinal_analysis import (
     compare_longitudinal_runs,
 )
+from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig
+from smart_home_sim.hybrid_planning.persona_authoring import generate_persona
+from smart_home_sim.hybrid_planning.process_authoring import (
+    ProcessAuthoringError,
+    author_process_package,
+)
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
     load_home_policy,
@@ -144,6 +150,54 @@ app = typer.Typer(
 )
 
 
+@app.command("generate-persona")
+def generate_persona_command(
+    template_case: Path,
+    output_path: Annotated[Path, typer.Option("--output", "-o")],
+    brief: Annotated[str | None, typer.Option("--brief")] = None,
+    resident_id: Annotated[str | None, typer.Option("--resident-id")] = None,
+    model: Annotated[str, typer.Option("--model")] = "qwen2.5-coder-7b-instruct",
+    base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.8,
+) -> None:
+    """Invent a realistic resident and emit a planning case ready for Stage 0.
+
+    The home structure comes from the template planning case; only the person (age,
+    occupation, city, condition) and their routine anchors are invented by the LLM. Use
+    --brief to steer the persona (e.g. "elderly woman living alone with arthritis").
+    """
+    if not template_case.is_file():
+        typer.echo(f"Template planning case not found: {template_case}", err=True)
+        raise typer.Exit(code=2)
+    config = HybridPlanningConfig(model=model, base_url=base_url, temperature=temperature)
+    try:
+        result = generate_persona(
+            template_case,
+            config=config,
+            brief=brief,
+            resident_id=resident_id,
+            client=LMStudioClient(config),
+        )
+    except (HybridPlanningError, ValueError) as error:
+        typer.echo(f"Persona generation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        result.planning_case.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    persona = result.proposal
+    typer.echo(
+        f"Persona '{persona.display_name}' ({persona.age}, {persona.occupation}, "
+        f"{persona.city}, condition: {persona.condition}) written to: "
+        f"{output_path.resolve()}"
+    )
+    typer.echo(
+        f"Resident id: {result.resident_id} | {len(persona.routine_requirements)} "
+        "routine anchors. Next: generate-behavioral-profile on this file."
+    )
+
+
 @app.command("generate-behavioral-profile")
 def generate_behavioral_profile_command(
     case_path: Path,
@@ -172,6 +226,72 @@ def generate_behavioral_profile_command(
     typer.echo(f"Frozen behavioral profile written to: {profile_path}")
     typer.echo(f"Profile digest written to: {digest_path}")
     typer.echo(f"{len(result.profile.habits)} intended habits frozen")
+
+
+@app.command("author-process-package")
+def author_process_package_command(
+    scenario_path: Path,
+    reference_package: Annotated[Path, typer.Option("--reference-package")],
+    output_path: Annotated[Path, typer.Option("--output", "-o")],
+    model: Annotated[str, typer.Option("--model")] = "qwen2.5-coder-7b-instruct",
+    base_url: Annotated[str, typer.Option("--base-url")] = "http://127.0.0.1:1234",
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.3,
+    no_llm: Annotated[bool, typer.Option("--no-llm")] = False,
+    report_output: Annotated[Path | None, typer.Option("--report-output")] = None,
+) -> None:
+    """Author a resident process package for a scenario (M3 authoring phase, offline LLM).
+
+    Each intent used by the scenario is authored as a personal process model, grounded on
+    the same-intent model in the reference package, then the assembled package is gated by
+    the deterministic behavior validator. Use --no-llm for a deterministic adaptation of
+    the reference package only.
+    """
+    if not scenario_path.is_file():
+        typer.echo(f"Scenario file not found: {scenario_path}", err=True)
+        raise typer.Exit(code=2)
+    if not reference_package.is_file():
+        typer.echo(f"Reference package not found: {reference_package}", err=True)
+        raise typer.Exit(code=2)
+    config = HybridPlanningConfig(model=model, base_url=base_url, temperature=temperature)
+    client = None if no_llm else LMStudioClient(config)
+    try:
+        result = author_process_package(
+            scenario_path, reference_package, config=config, client=client
+        )
+    except (ProcessAuthoringError, ValueError) as error:
+        typer.echo(f"Process package authoring failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        result.package.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8"
+    )
+    if report_output is not None:
+        report_output.parent.mkdir(parents=True, exist_ok=True)
+        report_output.write_text(
+            json.dumps(
+                {
+                    "models": len(result.package.process_models),
+                    "llmModels": result.llm_count,
+                    "fallbackModels": result.fallback_count,
+                    "records": [
+                        {
+                            "intent": record.intent,
+                            "source": record.source,
+                            "repairs": record.repairs,
+                            "fallbackReason": record.fallback_reason,
+                        }
+                        for record in result.records
+                    ],
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    typer.echo(
+        f"Authored process package written to: {output_path.resolve()} "
+        f"({result.llm_count} LLM, {result.fallback_count} fallback models)"
+    )
 
 
 @app.command("generate-hybrid-plan")

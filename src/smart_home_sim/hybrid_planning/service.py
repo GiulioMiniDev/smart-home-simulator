@@ -32,6 +32,7 @@ from smart_home_sim.hybrid_planning.guardrails import (
     normalize_daily_guardrails,
     normalize_habit_preferences,
     semantic_violations,
+    spatial_coherence_violations,
 )
 from smart_home_sim.hybrid_planning.habit_gates import (
     constrain_daily_habit_limits,
@@ -225,6 +226,10 @@ def _validate_daily_proposal(
                 f"routine '{requirement.intent}' must use timeBand "
                 f"'{requirement.time_band.value}' on {day_type}"
             )
+    spatial_violations = spatial_coherence_violations(planning_case, proposal)
+    if spatial_violations:
+        details = "; ".join(f"{item.code}: {item.message}" for item in spatial_violations)
+        raise HybridPlanningError(f"daily proposal is spatially incoherent: {details}")
     if behavioral_profile is not None:
         guardrail_violations = [
             *daily_life_violations(day_type, proposal),

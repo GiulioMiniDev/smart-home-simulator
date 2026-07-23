@@ -9,6 +9,7 @@ from smart_home_sim.hybrid_planning.guardrails import (
     normalize_daily_guardrails,
     normalize_habit_preferences,
     semantic_violations,
+    spatial_coherence_violations,
 )
 from smart_home_sim.hybrid_planning.longitudinal_models import QualityViolation
 from smart_home_sim.hybrid_planning.models import (
@@ -94,6 +95,45 @@ def test_daily_guardrail_normalization_supplies_safe_structural_scaffolding() ->
         "missing_nourishment",
         "work_shift_chain",
     }
+
+
+def test_spatial_coherence_flags_home_activity_while_away() -> None:
+    planning_case, _catalog = _read_models(CASE)
+    teleporting = DailyProposal(
+        date=date(2026, 8, 10),
+        narrative_intent="Workday with breakfast wrongly scheduled during the shift",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", "early_morning"),
+            activity("commute_to_work", "garden_workplace", "morning"),
+            activity("work_shift", "garden_workplace", "morning"),
+            activity("prepare_and_eat_breakfast", "kitchen_01", "afternoon"),
+            activity("commute_home", "garden_workplace", "evening"),
+            activity("sleep", "bedroom_01", "night"),
+        ],
+    )
+
+    violations = spatial_coherence_violations(planning_case, teleporting)
+    assert [item.code for item in violations] == ["HOME_ACTIVITY_WHILE_AWAY"]
+    assert violations[0].intent == "prepare_and_eat_breakfast"
+
+
+def test_spatial_coherence_accepts_breakfast_before_commute() -> None:
+    planning_case, _catalog = _read_models(CASE)
+    coherent = DailyProposal(
+        date=date(2026, 8, 10),
+        narrative_intent="Workday with breakfast at home before leaving",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", "early_morning"),
+            activity("prepare_and_eat_breakfast", "kitchen_01", "morning"),
+            activity("commute_to_work", "garden_workplace", "morning"),
+            activity("work_shift", "garden_workplace", "morning"),
+            activity("commute_home", "garden_workplace", "evening"),
+            activity("prepare_light_dinner", "kitchen_01", "evening"),
+            activity("sleep", "bedroom_01", "night"),
+        ],
+    )
+
+    assert spatial_coherence_violations(planning_case, coherent) == []
 
 
 def test_daily_guardrail_normalization_relabels_orphan_post_walk_shower() -> None:
