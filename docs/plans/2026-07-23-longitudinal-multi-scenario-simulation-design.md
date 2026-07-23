@@ -74,7 +74,9 @@ The whole sequence is rejected before execution unless all scenarios have:
 - the same resident identity;
 - the same home-model reference and timezone;
 - compatible activity and behavior references;
-- unique scenario and activity identifiers after namespacing;
+- the same logical scenario identity (the current hybrid chunks intentionally
+  retain one `scenarioId`);
+- globally unique activity identifiers across chunks;
 - chronological ordering;
 - contiguous windows with no gaps or overlaps;
 - matching end/start boundaries;
@@ -110,6 +112,14 @@ State transferred across boundaries includes:
 - deterministic random-stream position where required.
 
 Planned activities do not override observed terminal state.
+
+The current compiler can mark an activity as truncated at the simulation
+boundary, but the execution engine does not yet expose a resumable mid-process
+state. The first vertical slice therefore rejects a chunk whose canonical plan
+contains `truncatedAtSimulationEnd: true`. This preserves scientific correctness
+instead of silently completing or restarting an activity across a checkpoint.
+Explicit mid-activity continuation is a later milestone with its own versioned
+state contract.
 
 ## Home and sensor continuity
 
@@ -210,4 +220,3 @@ Tests cover:
 
 The acceptance criterion is semantic equality between an uninterrupted run and
 the same run resumed after the first chunk.
-
