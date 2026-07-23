@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 import smart_home_sim.simulation.service as sim_service
 from smart_home_sim.compiler import compile_scenario
+from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.environment import Point2D
 from smart_home_sim.domain.execution import FinalWorldState, ResidentFinalState
 from smart_home_sim.domain.longitudinal import (
@@ -20,8 +21,14 @@ from smart_home_sim.domain.longitudinal import (
 )
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.environment import build_bundle_files
-from smart_home_sim.materialization import generate_home
+from smart_home_sim.materialization import deploy_sensors, generate_home
+from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle
+from smart_home_sim.simulation.longitudinal_aggregate import (
+    aggregate_execution_traces,
+    aggregate_oracle_mappings,
+    aggregate_sensor_logs,
+)
 from smart_home_sim.simulation.longitudinal_state import validate_handoff
 from smart_home_sim.simulation.longitudinal_validation import (
     load_and_validate_longitudinal_manifest,
@@ -322,8 +329,8 @@ def test_longitudinal_state_handoff_and_validation(tmp_path: Path) -> None:
     sc2_file.write_text(json.dumps(sc2_dict), encoding="utf-8")
     ppp_file.write_text(json.dumps(ppp_dict), encoding="utf-8")
 
-    sc2_obj = Scenario.model_validate(sc2_dict)
-    ppp_obj = PersonalProcessPackage.model_validate(ppp_dict)
+    sc2_obj = Scenario.model_validate_json(json.dumps(sc2_dict))
+    ppp_obj = PersonalProcessPackage.model_validate_json(json.dumps(ppp_dict))
 
     compilation = compile_scenario(sc2_obj)
     plan_file = tmp_path / "plan.json"
@@ -383,4 +390,72 @@ def test_longitudinal_state_handoff_and_validation(tmp_path: Path) -> None:
     bad_res_cap = handoff_state.model_copy(update={"resource_available_units": {"kettle_1": 0}})
     issues_cap = validate_handoff(bundle, bad_res_cap)
     assert any("capacity" in i.message.lower() for i in issues_cap)
+
+
+def test_longitudinal_aggregation(tmp_path: Path) -> None:
+    # Build 2 consecutive chunks and run simulation + projection
+    sc1_dict = _make_minimal_scenario(
+        start="2026-10-12T00:00:00+02:00",
+        end="2026-10-13T00:00:00+02:00",
+        initial_at="2026-10-12T00:00:00+02:00",
+        activity_prefix="c1_",
+        seed=1,
+    )
+    sc2_dict = _make_minimal_scenario(
+        start="2026-10-13T00:00:00+02:00",
+        end="2026-10-14T00:00:00+02:00",
+        initial_at="2026-10-13T00:00:00+02:00",
+        activity_prefix="c2_",
+        seed=1,
+    )
+    ppp_dict = _make_ppp()
+
+    sc1_file, sc2_file, ppp_file = tmp_path / "sc1.json", tmp_path / "sc2.json", tmp_path / "ppp.json"
+    sc1_file.write_text(json.dumps(sc1_dict), encoding="utf-8")
+    sc2_file.write_text(json.dumps(sc2_dict), encoding="utf-8")
+    ppp_file.write_text(json.dumps(ppp_dict), encoding="utf-8")
+
+    sc1_obj = Scenario.model_validate_json(json.dumps(sc1_dict))
+    sc2_obj = Scenario.model_validate_json(json.dumps(sc2_dict))
+    ppp_obj = PersonalProcessPackage.model_validate_json(json.dumps(ppp_dict))
+
+    plan1 = tmp_path / "p1.json"
+    plan1.write_text(compile_scenario(sc1_obj).plan.model_dump_json(by_alias=True))
+    plan2 = tmp_path / "p2.json"
+    plan2.write_text(compile_scenario(sc2_obj).plan.model_dump_json(by_alias=True))
+
+    home_res = generate_home(sc1_obj, ppp_obj)
+    home_file = tmp_path / "home.json"
+    home_file.write_text(home_res.home.model_dump_json(by_alias=True))
+
+    bundle1 = build_bundle_files(sc1_file, plan1, ppp_file, home_file).bundle
+    bundle2 = build_bundle_files(sc2_file, plan2, ppp_file, home_file).bundle
+
+    sim1 = simulate_bundle(bundle1)
+    sim2 = simulate_bundle(bundle2, initial_world_state=sim1.trace.final_state)
+
+    sensor_model = deploy_sensors(bundle1).sensor_model
+    proj1 = project_sensors(sim1.trace, bundle1, sensor_model)
+    proj2 = project_sensors(sim2.trace, bundle2, sensor_model)
+
+    agg_trace = aggregate_execution_traces("test_run", 1, [sim1.trace, sim2.trace])
+    assert agg_trace.started_at == sim1.trace.started_at
+    assert agg_trace.ended_at == sim2.trace.ended_at
+    assert agg_trace.final_state == sim2.trace.final_state
+    assert len(agg_trace.activity_executions) == len(sim1.trace.activity_executions) + len(sim2.trace.activity_executions)
+
+    agg_log = aggregate_sensor_logs([proj1.observable_log, proj2.observable_log])
+    assert agg_log.started_at == proj1.observable_log.started_at
+    assert agg_log.ended_at == proj2.observable_log.ended_at
+    assert len(agg_log.records) == len(proj1.observable_log.records) + len(proj2.observable_log.records)
+
+    agg_oracle = aggregate_oracle_mappings(agg_trace, agg_log, [proj1.oracle_mapping, proj2.oracle_mapping])
+    assert agg_oracle.observable_log_id == agg_log.log_id
+    assert agg_oracle.source_trace_id == agg_trace.trace_id
+    assert len(agg_oracle.links) == len(proj1.oracle_mapping.links) + len(proj2.oracle_mapping.links)
+
+    # Rejection of non-chronological order
+    with pytest.raises(ValueError, match="is before"):
+        aggregate_execution_traces("test_run", 1, [sim2.trace, sim1.trace])
+
 
