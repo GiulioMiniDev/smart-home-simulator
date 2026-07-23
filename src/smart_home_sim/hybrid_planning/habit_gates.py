@@ -38,6 +38,14 @@ GATE_CODES = (
 )
 
 
+def occurrence_floor(value: float) -> int:
+    return math.floor(value + 1e-9)
+
+
+def occurrence_ceil(value: float) -> int:
+    return math.ceil(value - 1e-9)
+
+
 def initial_habit_ledger(profile_digest: str, profile: BehavioralProfile) -> HabitLedger:
     if profile_digest != behavioral_profile_digest(profile):
         raise ValueError("behavioral profile digest does not match the profile")
@@ -196,7 +204,7 @@ def derive_habit_budget(
         eligible_days = len(_eligible_dates(habit, dates, day_types))
         cadence = effective_habit_cadence(habit, dates[0])
         expected = expected_habit_occurrences(habit, dates, day_types)
-        minimum = math.floor(
+        minimum = occurrence_floor(
             expected_habit_occurrences(
                 habit,
                 dates,
@@ -204,7 +212,7 @@ def derive_habit_budget(
                 cadence_field="minimum_occurrences",
             )
         )
-        maximum = math.ceil(
+        maximum = occurrence_ceil(
             expected_habit_occurrences(
                 habit,
                 dates,
@@ -220,7 +228,7 @@ def derive_habit_budget(
                 for index in range(max(0, elapsed_days))
             ]
             elapsed_day_types = _default_day_types_for_dates(elapsed_dates)
-            cumulative_maximum = math.ceil(
+            cumulative_maximum = occurrence_ceil(
                 expected_habit_occurrences(
                     habit,
                     elapsed_dates,
@@ -231,7 +239,10 @@ def derive_habit_budget(
             remaining_maximum = max(0, cumulative_maximum - entry.total_occurrences)
             maximum = min(maximum, remaining_maximum)
             minimum = min(minimum, maximum)
-        target = max(minimum, math.floor(entry.cadence_carry + expected))
+        target = max(
+            minimum,
+            occurrence_floor(entry.cadence_carry + expected),
+        )
         target = min(target, maximum)
         forbidden_until = None
         if entry.last_seen is not None and habit.cooldown_days:

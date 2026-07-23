@@ -219,6 +219,7 @@ def test_budget_turns_cadence_into_chunk_counts() -> None:
     items = {item.intent: item for item in budget.items}
     assert items["take_morning_medication"].required_occurrences == 7
     assert items["work_shift"].required_occurrences == 5
+    assert items["buy_groceries"].target_occurrences == 1
     assert items["visit_mother_and_have_dinner"].maximum_occurrences == 1
 
 

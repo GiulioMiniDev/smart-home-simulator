@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from datetime import date
 
 from smart_home_sim.hybrid_planning.behavioral_models import (
@@ -14,6 +13,8 @@ from smart_home_sim.hybrid_planning.guardrails import (
 from smart_home_sim.hybrid_planning.habit_gates import (
     effective_habit_time_bands,
     expected_habit_occurrences,
+    occurrence_ceil,
+    occurrence_floor,
 )
 from smart_home_sim.hybrid_planning.longitudinal_models import (
     CausalViolation,
@@ -134,8 +135,8 @@ def _habit_metrics(
     day_types = {value: _day_type(value) for value in dates}
     for habit in profile.habits:
         expected = expected_habit_occurrences(habit, dates, day_types)
-        lower = math.floor(expected)
-        upper = math.ceil(expected)
+        lower = occurrence_floor(expected)
+        upper = occurrence_ceil(expected)
         matched = [
             (proposal, activity)
             for proposal in proposals
