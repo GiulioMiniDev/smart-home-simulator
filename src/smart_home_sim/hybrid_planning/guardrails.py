@@ -12,6 +12,14 @@ from smart_home_sim.hybrid_planning.models import (
     TimeBand,
 )
 
+HOME_DEPARTURE_INTENTS = frozenset(
+    {
+        "collect_belongings_and_leave_home",
+        "commute_to_work",
+        "leave_home",
+        "travel_to_mothers_home",
+    }
+)
 HOME_RETURN_INTENTS = frozenset(
     {
         "commute_home",
@@ -212,11 +220,13 @@ def spatial_coherence_violations(
 ) -> list[QualityViolation]:
     """Flag activities that would require teleporting the resident.
 
-    Walks the day's activities in order, tracking whether the resident is currently away
-    from home. The resident is away while at an ``external`` location and comes back on an
-    explicit home-return intent. A home-interior activity that happens while away (with no
-    return in between) is a spatial impossibility that the simulator rejects at runtime —
-    e.g. ``prepare_and_eat_breakfast`` in the kitchen scheduled during the work shift.
+    Walks the day's activities in order, tracking whether the resident is away from home.
+    An *away block* is opened only by an explicit departure intent (e.g. ``commute_to_work``)
+    and closed only by an explicit return intent (e.g. ``commute_home``). Round-trip
+    activities that leave and come back within one intent — a walk, a shopping trip — never
+    open an away block, so a later home activity such as ``sleep`` is not misflagged. A
+    home-interior activity scheduled inside an away block is a spatial impossibility that the
+    simulator rejects at runtime, e.g. breakfast in the kitchen during the work shift.
     """
 
     away = False
@@ -229,6 +239,9 @@ def spatial_coherence_violations(
         if activity.intent in HOME_RETURN_INTENTS:
             away = False
             continue
+        if activity.intent in HOME_DEPARTURE_INTENTS:
+            away = True
+            continue
         if away and at_home:
             violations.append(
                 _violation(
@@ -240,7 +253,6 @@ def spatial_coherence_violations(
                     "add a return home before it or move it outside the time away",
                 )
             )
-        away = not at_home
     return violations
 
 
