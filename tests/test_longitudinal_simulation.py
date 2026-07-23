@@ -8,6 +8,8 @@ import pytest
 from pydantic import ValidationError
 
 import smart_home_sim.simulation.service as sim_service
+from smart_home_sim.domain.environment import Point2D
+from smart_home_sim.domain.execution import FinalWorldState, ResidentFinalState
 from smart_home_sim.domain.longitudinal import (
     LongitudinalCheckpoint,
     LongitudinalChunkRecord,
@@ -15,6 +17,9 @@ from smart_home_sim.domain.longitudinal import (
     LongitudinalSimulationManifest,
     LongitudinalSimulationReport,
 )
+from smart_home_sim.environment import build_bundle_files
+from smart_home_sim.simulation import simulate_bundle
+from smart_home_sim.simulation.longitudinal_state import validate_handoff
 from smart_home_sim.simulation.longitudinal_validation import (
     load_and_validate_longitudinal_manifest,
 )
@@ -297,3 +302,71 @@ def test_sequence_validation_failures(tmp_path: Path) -> None:
     mf_bad_at.write_text(json.dumps(manifest_data), encoding="utf-8")
     with pytest.raises(ValueError, match="initialState.at"):
         load_and_validate_longitudinal_manifest(mf_bad_at)
+
+
+def test_longitudinal_state_handoff_and_validation(tmp_path: Path) -> None:
+    sc2_dict = _make_minimal_scenario(
+        start="2026-10-13T00:00:00+02:00",
+        end="2026-10-14T00:00:00+02:00",
+        initial_at="2026-10-13T00:00:00+02:00",
+        activity_prefix="c2_",
+        seed=1,
+    )
+    ppp_dict = _make_ppp()
+
+    sc2_file = tmp_path / "sc2.json"
+    ppp_file = tmp_path / "ppp.json"
+    sc2_file.write_text(json.dumps(sc2_dict), encoding="utf-8")
+    ppp_file.write_text(json.dumps(ppp_dict), encoding="utf-8")
+
+    bundle_res = build_bundle_files(sc2_file, ppp_file)
+    assert bundle_res.bundle is not None
+    bundle = bundle_res.bundle
+
+    start_dt = bundle.scenario.simulation_window.start
+
+    # Valid handoff state with custom position, posture sitting, facts and entity states
+    handoff_state = FinalWorldState(
+        at=start_dt,
+        residents=[
+            ResidentFinalState(
+                resident_id="resident_1",
+                region_id="bedroom",
+                position=Point2D(x=1.5, y=1.5),
+                posture="sitting",
+                execution_state="idle",
+                facts={"awake": True, "custom_fact": "test_val"},
+                held_resource_ids=[],
+            )
+        ],
+        entity_states={"world": {"ambient_temperature_celsius": 22.5}},
+        environment_facts={"custom_env_fact": True},
+        resource_available_units={"kettle_1": 1},
+    )
+
+    handoff_issues = validate_handoff(bundle, handoff_state)
+    assert len(handoff_issues) == 0
+
+    # Execute simulation with authoritative handoff state
+    sim_res = simulate_bundle(bundle, initial_world_state=handoff_state)
+    assert sim_res.report.success is True
+    assert sim_res.trace is not None
+    assert sim_res.trace.final_state.residents[0].facts.get("custom_fact") == "test_val"
+
+    # Mismatched timestamp validation failure
+    bad_time_state = handoff_state.model_copy(
+        update={"at": datetime(2026, 1, 1, tzinfo=timezone.utc)}
+    )
+    issues_time = validate_handoff(bundle, bad_time_state)
+    assert any(i.code == "INITIAL_WORLD_STATE_INVALID" for i in issues_time)
+
+    # Missing resident validation failure
+    bad_res_state = handoff_state.model_copy(update={"residents": []})
+    issues_res = validate_handoff(bundle, bad_res_state)
+    assert any("missing resident" in i.message.lower() for i in issues_res)
+
+    # Mismatched resource capacity validation failure
+    bad_res_cap = handoff_state.model_copy(update={"resource_available_units": {"kettle_1": 0}})
+    issues_cap = validate_handoff(bundle, bad_res_cap)
+    assert any("capacity" in i.message.lower() for i in issues_cap)
+

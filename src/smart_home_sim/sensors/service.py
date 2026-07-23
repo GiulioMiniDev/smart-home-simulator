@@ -17,7 +17,7 @@ from shapely.ops import nearest_points, unary_union
 
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.environment import SimulationBundle
-from smart_home_sim.domain.execution import ExecutionTrace, StateTransition
+from smart_home_sim.domain.execution import ExecutionTrace, FinalWorldState, StateTransition
 from smart_home_sim.domain.sensors import (
     ContactSensor,
     ObservableSensorLog,
@@ -1016,7 +1016,11 @@ def _failed_result(
 
 
 def project_sensors(
-    trace: ExecutionTrace, bundle: SimulationBundle, model: SensorModel
+    trace: ExecutionTrace,
+    bundle: SimulationBundle,
+    model: SensorModel,
+    *,
+    initial_world_state: FinalWorldState | None = None,
 ) -> SensorProjectionResult:
     issues: list[SensorProjectionIssue] = []
     if (

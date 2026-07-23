@@ -52,6 +52,7 @@ from smart_home_sim.domain.execution import (
     TraceCausality,
     TrajectoryWaypoint,
 )
+from smart_home_sim.simulation.longitudinal_state import validate_handoff
 from smart_home_sim.domain.models import (
     Condition,
     ConditionOperator,
@@ -280,22 +281,43 @@ def _point_for_location(bundle: SimulationBundle, location_id: str) -> tuple[str
     return point.region_id, point.position
 
 
-def _initial_runtime(bundle: SimulationBundle) -> RuntimeState:
+def _initial_runtime(
+    bundle: SimulationBundle,
+    initial_world_state: FinalWorldState | None = None,
+) -> RuntimeState:
     residents: dict[str, ResidentRuntime] = {}
-    for initial in bundle.scenario.initial_state.residents:
-        region_id, position = _point_for_location(bundle, initial.location_id)
-        facts = dict(initial.facts)
-        facts.setdefault("at_home", not initial.location_id.startswith("outside"))
-        residents[initial.resident_id] = ResidentRuntime(
-            resident_id=initial.resident_id,
-            region_id=region_id,
-            position=position,
-            posture="lying" if not bool(facts.get("awake", True)) else "standing",
-            facts=facts,
-        )
-    entity_states = {
-        entity.entity_id: dict(entity.initial_state) for entity in bundle.home_model.entities
-    }
+    if initial_world_state is not None:
+        for res_final in initial_world_state.residents:
+            residents[res_final.resident_id] = ResidentRuntime(
+                resident_id=res_final.resident_id,
+                region_id=res_final.region_id,
+                position=res_final.position,
+                posture=res_final.posture,
+                execution_state=res_final.execution_state,
+                facts=dict(res_final.facts),
+                held_resources=set(res_final.held_resource_ids),
+            )
+        entity_states = {
+            k: dict(v) for k, v in initial_world_state.entity_states.items()
+        }
+        env_facts = dict(initial_world_state.environment_facts)
+    else:
+        for initial in bundle.scenario.initial_state.residents:
+            region_id, position = _point_for_location(bundle, initial.location_id)
+            facts = dict(initial.facts)
+            facts.setdefault("at_home", not initial.location_id.startswith("outside"))
+            residents[initial.resident_id] = ResidentRuntime(
+                resident_id=initial.resident_id,
+                region_id=region_id,
+                position=position,
+                posture="lying" if not bool(facts.get("awake", True)) else "standing",
+                facts=facts,
+            )
+        entity_states = {
+            entity.entity_id: dict(entity.initial_state) for entity in bundle.home_model.entities
+        }
+        env_facts = dict(bundle.scenario.initial_state.environment_facts)
+
     capabilities: dict[str, JsonValue] = {}
     for entity in bundle.home_model.entities:
         for capability in entity.capabilities:
@@ -305,7 +327,7 @@ def _initial_runtime(bundle: SimulationBundle) -> RuntimeState:
     return RuntimeState(
         residents=residents,
         entity_states=entity_states,
-        environment_facts=dict(bundle.scenario.initial_state.environment_facts),
+        environment_facts=env_facts,
         capability_facts=capabilities,
     )
 
@@ -579,12 +601,16 @@ def _semantic_digest(payload: dict[str, Any]) -> str:
 
 
 class SimulationEngine:
-    def __init__(self, bundle: SimulationBundle) -> None:
+    def __init__(
+        self,
+        bundle: SimulationBundle,
+        initial_world_state: FinalWorldState | None = None,
+    ) -> None:
         self.bundle = bundle
         self.origin = bundle.scenario.simulation_window.start
         self.env = simpy.Environment(initial_time=0)
         self.streams = NamedRandomStreams(bundle.seed)
-        self.state = _initial_runtime(bundle)
+        self.state = _initial_runtime(bundle, initial_world_state)
         self.trace = TraceCollector()
         self.action_catalog = ActionCatalog.model_validate_json(
             default_action_catalog_path(
@@ -1789,10 +1815,26 @@ def validate_execution_trace(
     ]
 
 
-def simulate_bundle(bundle: SimulationBundle) -> SimulationResult:
+def simulate_bundle(
+    bundle: SimulationBundle,
+    *,
+    initial_world_state: FinalWorldState | None = None,
+) -> SimulationResult:
     planned = sum(len(day.activities) for day in bundle.canonical_plan.days)
+    if initial_world_state is not None:
+        handoff_issues = validate_handoff(bundle, initial_world_state)
+        if handoff_issues:
+            return SimulationResult(
+                report=SimulationReport(
+                    success=False,
+                    source_bundle_id=bundle.bundle_id,
+                    source_bundle_sha256=canonical_sha256(bundle),
+                    issues=handoff_issues,
+                    summary=_summary(None, handoff_issues, planned),
+                )
+            )
     try:
-        trace = SimulationEngine(bundle).run()
+        trace = SimulationEngine(bundle, initial_world_state=initial_world_state).run()
     except SimulationFailure as error:
         issues = [
             SimulationIssue(
