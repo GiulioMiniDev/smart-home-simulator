@@ -88,7 +88,9 @@ from smart_home_sim.simulation import (
     BatchManifestError,
     replay_files,
     run_batch_file,
+    run_longitudinal_file,
     simulate_file,
+    verify_longitudinal_run,
 )
 from smart_home_sim.validation.service import validate_file
 
@@ -782,6 +784,55 @@ def prepare_authoring_repair(
         newline="\n",
     )
     typer.echo(f"Authoring repair request written to: {output.resolve()}")
+
+
+@app.command("run-longitudinal")
+def run_longitudinal_command(
+    manifest_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("longitudinal-run"),
+    no_resume: Annotated[bool, typer.Option("--no-resume")] = False,
+    report_output: Annotated[Path | None, typer.Option("--report-output", "-r")] = None,
+) -> None:
+    """Execute a longitudinal multi-scenario simulation run with transactional checkpointing."""
+    if not manifest_path.is_file():
+        typer.echo(f"Manifest file not found: {manifest_path}", err=True)
+        raise typer.Exit(code=2)
+    try:
+        report = run_longitudinal_file(
+            manifest_path,
+            output_directory=output_dir,
+            resume=not no_resume,
+        )
+    except Exception as error:
+        typer.echo(f"Longitudinal simulation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    if report_output is not None:
+        report_output.parent.mkdir(parents=True, exist_ok=True)
+        report_output.write_text(
+            report.model_dump_json(by_alias=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+    if not report.success:
+        typer.echo(report.model_dump_json(by_alias=True, indent=2), err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Longitudinal simulation completed successfully. Outputs written to: {output_dir.resolve()}")
+
+
+@app.command("verify-longitudinal")
+def verify_longitudinal_command(
+    run_directory: Path,
+) -> None:
+    """Verify state continuity and aggregate semantic digests for a completed longitudinal run."""
+    if not run_directory.is_dir():
+        typer.echo(f"Run directory not found: {run_directory}", err=True)
+        raise typer.Exit(code=2)
+    res = verify_longitudinal_run(run_directory)
+    typer.echo(res.model_dump_json(by_alias=True, indent=2))
+    if not res.matches:
+        raise typer.Exit(code=1)
 
 
 @app.command()

@@ -71,7 +71,6 @@ def _make_minimal_scenario(
 
     if data.get("commitments"):
         for com in data["commitments"]:
-            com["activityId"] = f"{activity_prefix}{com['activityId']}"
             com["start"] = start.replace("00:00:00", "08:00:00")
             com["end"] = start.replace("00:00:00", "08:30:00")
 

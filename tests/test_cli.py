@@ -493,3 +493,85 @@ def test_compare_hybrid_months_writes_machine_readable_report(
     assert json.loads(output.read_text(encoding="utf-8"))["documentType"] == (
         "hybrid_longitudinal_comparison"
     )
+
+
+def test_run_longitudinal_and_verify_longitudinal_cli_commands(tmp_path: Path) -> None:
+    minimal_scenario = EXAMPLES / "valid" / "minimal.json"
+    minimal_ppp = EXAMPLES / "behavior" / "minimal_valid_scenario.behavior.json"
+
+    sc1_data = json.loads(minimal_scenario.read_text(encoding="utf-8"))
+    sc1_data["simulationWindow"]["start"] = "2026-10-12T00:00:00+02:00"
+    sc1_data["simulationWindow"]["end"] = "2026-10-13T00:00:00+02:00"
+    sc1_data["initialState"]["at"] = "2026-10-12T00:00:00+02:00"
+    sc1_data["days"][0]["date"] = "2026-10-12"
+    sc1_data["days"][0]["activities"][0]["startWindow"]["earliest"] = "2026-10-12T08:00:00+02:00"
+    sc1_data["days"][0]["activities"][0]["startWindow"]["preferred"] = "2026-10-12T08:00:00+02:00"
+    sc1_data["days"][0]["activities"][0]["startWindow"]["latest"] = "2026-10-12T08:00:00+02:00"
+    sc1_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-12T08:00:00+02:00"
+    sc1_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-12T08:00:00+02:00"
+    sc1_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-12T08:00:00+02:00"
+    if sc1_data.get("commitments"):
+        for com in sc1_data["commitments"]:
+            com["start"] = "2026-10-12T08:00:00+02:00"
+            com["end"] = "2026-10-12T08:30:00+02:00"
+
+    sc2_data = json.loads(minimal_scenario.read_text(encoding="utf-8"))
+    sc2_data["simulationWindow"]["start"] = "2026-10-13T00:00:00+02:00"
+    sc2_data["simulationWindow"]["end"] = "2026-10-14T00:00:00+02:00"
+    sc2_data["initialState"]["at"] = "2026-10-13T00:00:00+02:00"
+    sc2_data["days"][0]["date"] = "2026-10-13"
+    sc2_data["days"][0]["activities"][0]["activityId"] = "c2_act1"
+    sc2_data["days"][0]["activities"][0]["startWindow"]["earliest"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][0]["startWindow"]["preferred"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][0]["startWindow"]["latest"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][1]["activityId"] = "c2_act2"
+    sc2_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-13T08:00:00+02:00"
+    sc2_data["days"][0]["activities"][1]["dependencyGroups"][0]["activityIds"] = ["c2_act1"]
+    if sc2_data.get("commitments"):
+        for com in sc2_data["commitments"]:
+            com["activityId"] = "c2_act1"
+            com["start"] = "2026-10-13T08:00:00+02:00"
+            com["end"] = "2026-10-13T08:30:00+02:00"
+
+    sc1_file, sc2_file, ppp_file = tmp_path / "sc1.json", tmp_path / "sc2.json", tmp_path / "ppp.json"
+    sc1_file.write_text(json.dumps(sc1_data), encoding="utf-8")
+    sc2_file.write_text(json.dumps(sc2_data), encoding="utf-8")
+    ppp_file.write_text(minimal_ppp.read_text(encoding="utf-8"), encoding="utf-8")
+
+    manifest_data = {
+        "schemaVersion": "1.0.0",
+        "documentType": "longitudinal_simulation_manifest",
+        "runId": "cli_test_run",
+        "scenarioPaths": ["sc1.json", "sc2.json"],
+        "personalProcessPackagePath": "ppp.json",
+        "seed": 1,
+    }
+    manifest_file = tmp_path / "manifest.json"
+    manifest_file.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    output_dir = tmp_path / "long_out"
+
+    res_run = runner.invoke(
+        app,
+        [
+            "run-longitudinal",
+            str(manifest_file),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    assert res_run.exit_code == 0, res_run.output
+
+    res_verify = runner.invoke(
+        app,
+        [
+            "verify-longitudinal",
+            str(output_dir),
+        ],
+    )
+    assert res_verify.exit_code == 0, res_verify.output
+    verify_data = json.loads(res_verify.stdout)
+    assert verify_data["matches"] is True
+

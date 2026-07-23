@@ -62,7 +62,6 @@ from smart_home_sim.domain.sensors import (
 )
 from smart_home_sim.environment import build_bundle_files, validate_home_model
 from smart_home_sim.sensors import project_sensors
-from smart_home_sim.simulation.service import simulate_bundle
 
 
 class MaterializationFailure(RuntimeError):
@@ -891,6 +890,8 @@ def materialize_workspace(
         )
 
         emit("simulation", 52, "Started deterministic execution")
+        from smart_home_sim.simulation.service import simulate_bundle
+
         simulation = simulate_bundle(bundle_result.bundle)
         _json(staging / "simulation-report.json", simulation.report)
         if simulation.trace is None:
