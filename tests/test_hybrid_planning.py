@@ -82,8 +82,33 @@ def test_overflow_repair_prompt_gives_capacity_instructions() -> None:
         "activities overflow day 2026-08-10",
     )
 
-    assert "remove or defer optional activities" in prompt
-    assert "at most four evening activities" in prompt
+    assert "DOES NOT FIT IN 24 HOURS" in prompt
+    assert "OPTIONAL" in prompt
+    assert "sleep as the LAST activity" in prompt
+
+
+def test_repair_prompt_restates_specific_constraint_violations() -> None:
+    planning_case, catalog = _read_models(CASE)
+    brief = weekly_brief()
+    rejected = proposal(date(2026, 8, 10), "read")
+
+    def build(error: str) -> str:
+        return structural_repair_prompt(planning_case, catalog, brief, rejected, error)
+
+    goal = build("daily proposal does not realize assigned goal intents: ['read']")
+    assert "MISSING REQUIRED GOAL INTENTS" in goal
+    assert "['read']" in goal
+
+    band = build("routine 'work_shift' must use timeBand 'morning' on workday")
+    assert "FIX THE ROUTINE TIME BAND" in band
+    assert "morning" in band
+
+    spatial = build(
+        "daily proposal is spatially incoherent: HOME_ACTIVITY_WHILE_AWAY: "
+        "prepare_and_eat_breakfast happens at home location 'kitchen_01' while away"
+    )
+    assert "AWAY" in spatial
+    assert "commute_home" in spatial
 
 
 def test_daily_prompt_contains_guardrail_policy() -> None:

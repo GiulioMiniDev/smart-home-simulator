@@ -28,6 +28,9 @@ HOME_RETURN_INTENTS = frozenset(
         "travel_home",
     }
 )
+# Pure return-travel intents: they represent the trip home and must start OUTSIDE, so a home
+# room location makes their enter_home step fail (the resident is already home).
+PURE_RETURN_INTENTS = frozenset({"commute_home", "enter_home", "travel_home"})
 
 NOURISHMENT_INTENTS = frozenset(
     {
@@ -237,6 +240,17 @@ def spatial_coherence_violations(
     for activity in proposal.activities:
         at_home = location_kind.get(activity.location_id) is not LocationKind.external
         if activity.intent in HOME_RETURN_INTENTS:
+            if activity.intent in PURE_RETURN_INTENTS and at_home:
+                violations.append(
+                    _violation(
+                        proposal,
+                        "RETURN_AT_HOME_LOCATION",
+                        activity.intent,
+                        f"{activity.intent} is located at home '{activity.location_id}'; a "
+                        "return-home trip must start at the outside location it returns from "
+                        "(e.g. the workplace), not a home room",
+                    )
+                )
             away = False
             continue
         if activity.intent in HOME_DEPARTURE_INTENTS:
@@ -413,12 +427,38 @@ def normalize_daily_guardrails(
                 ),
             )
             record("commute_to_work", "work_shift_chain")
+        # commute_to_work only travels; the resident must be marked as having left home first
+        # (leave_home) or the later commute_home enter_home step fails. Scaffold the explicit
+        # departure before the outbound commute when the day does not already provide one.
+        intents = [item.intent for item in activities]
+        commute_out_index = intents.index("commute_to_work")
+        if (
+            "collect_belongings_and_leave_home" in known_intents
+            and "collect_belongings_and_leave_home" not in intents[:commute_out_index]
+            and "leave_home" not in intents[:commute_out_index]
+        ):
+            leave_location = (
+                "hallway_01"
+                if "hallway_01" in known_locations
+                else activities[commute_out_index].location_id
+            )
+            activities.insert(
+                commute_out_index,
+                _scaffold_activity(
+                    "collect_belongings_and_leave_home",
+                    leave_location,
+                    TimeBand.morning,
+                    DurationClass.short,
+                    "Deterministic leave-home scaffold before the outbound commute.",
+                ),
+            )
+            record("collect_belongings_and_leave_home", "work_shift_chain")
         intents = [item.intent for item in activities]
         work_index = intents.index("work_shift")
         if "commute_home" not in intents[work_index + 1 :]:
             location = (
-                "hallway_01"
-                if "hallway_01" in known_locations
+                "garden_workplace"
+                if "garden_workplace" in known_locations
                 else activities[work_index].location_id
             )
             activities.insert(

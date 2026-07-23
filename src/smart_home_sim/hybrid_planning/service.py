@@ -362,6 +362,7 @@ def _daily_schema(
     planning_case: PlanningCase,
     catalog: ActivityCatalog,
     expected_date: object,
+    allowed_intents: set[str] | None = None,
 ) -> dict[str, object]:
     schema = deepcopy(DailyProposal.model_json_schema(by_alias=True))
     properties = schema["properties"]
@@ -373,9 +374,12 @@ def _daily_schema(
     assert isinstance(activity_definition, dict)
     activity_properties = activity_definition["properties"]
     assert isinstance(activity_properties, dict)
+    daily_intents = [item.intent for item in catalog.activities]
+    if allowed_intents is not None:
+        daily_intents = [intent for intent in daily_intents if intent in allowed_intents]
     activity_properties["intent"] = {
         "type": "string",
-        "enum": [item.intent for item in catalog.activities],
+        "enum": daily_intents,
     }
     activity_properties["locationId"] = {
         "type": "string",
@@ -396,6 +400,7 @@ def _daily_schema(
 def _weekly_schema(
     catalog: ActivityCatalog,
     budget: HabitBudget | None = None,
+    allowed_intents: set[str] | None = None,
 ) -> dict[str, object]:
     schema = deepcopy(WeeklyBrief.model_json_schema(by_alias=True))
     zero_target_intents = {
@@ -407,17 +412,19 @@ def _weekly_schema(
     assert isinstance(day_definition, dict)
     properties = day_definition["properties"]
     assert isinstance(properties, dict)
+    goal_intents = [
+        item.intent
+        for item in catalog.activities
+        if item.intent not in zero_target_intents
+        and (allowed_intents is None or item.intent in allowed_intents)
+    ]
     properties["goalIntents"] = {
         "type": "array",
         "minItems": 1,
         "maxItems": 5,
         "items": {
             "type": "string",
-            "enum": [
-                item.intent
-                for item in catalog.activities
-                if item.intent not in zero_target_intents
-            ],
+            "enum": goal_intents,
         },
     }
     required = day_definition["required"]
@@ -763,7 +770,12 @@ def _enforce_simulation_gate(
                     budget,
                 ),
                 seed=planning_case.seed + 300 + sim_repairs,
-                schema_override=_daily_schema(planning_case, catalog, target_date),
+                schema_override=_daily_schema(
+                    planning_case,
+                    catalog,
+                    target_date,
+                    {binding.intent for binding in process_package.bindings},
+                ),
             )
             _persist_exchange(
                 output_dir / "days" / target_date.isoformat() / f"simulation-repair-{sim_repairs}",
@@ -858,6 +870,13 @@ def generate_hybrid_plan(
                 raise HybridPlanningError(
                     f"cannot load process package for simulation gate: {error}"
                 ) from error
+        # When a package is supplied the plan vocabulary is restricted to the intents it can
+        # execute, so every generated day is simulatable by construction.
+        package_intents: set[str] | None = (
+            {binding.intent for binding in process_package.bindings}
+            if process_package is not None
+            else None
+        )
         memory = initial_memory or PlanningMemory()
         brief, brief_exchange = active_client.complete_json(
             schema_name="weekly_brief",
@@ -872,7 +891,9 @@ def generate_hybrid_plan(
             ),
             seed=planning_case.seed,
             schema_override=(
-                _weekly_schema(catalog, budget) if behavioral_profile is not None else None
+                _weekly_schema(catalog, budget, package_intents)
+                if behavioral_profile is not None
+                else None
             ),
         )
         _persist_exchange(output_dir / "weekly-brief" / "attempt-1", brief_exchange, brief)
@@ -918,7 +939,9 @@ def generate_hybrid_plan(
                 behavioral_profile,
                 budget,
             )
-            response_schema = _daily_schema(planning_case, catalog, day_brief.date)
+            response_schema = _daily_schema(
+                planning_case, catalog, day_brief.date, package_intents
+            )
             while True:
                 proposal, exchange = active_client.complete_json(
                     schema_name="daily_proposal",
@@ -1053,7 +1076,9 @@ def generate_hybrid_plan(
                     budget,
                 ),
                 seed=planning_case.seed + 100 + repair_number,
-                schema_override=_daily_schema(planning_case, catalog, target.date),
+                schema_override=_daily_schema(
+                    planning_case, catalog, target.date, package_intents
+                ),
             )
             _persist_exchange(
                 output_dir
@@ -1191,7 +1216,9 @@ def generate_hybrid_plan(
                         target_violations,
                     ),
                     seed=planning_case.seed + 200 + habit_repair_number,
-                    schema_override=_daily_schema(planning_case, catalog, target_date),
+                    schema_override=_daily_schema(
+                        planning_case, catalog, target_date, package_intents
+                    ),
                 )
                 _persist_exchange(
                     output_dir

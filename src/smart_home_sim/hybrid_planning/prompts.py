@@ -272,6 +272,66 @@ Revision input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""
 
 
+def _repair_directive(error: str, proposal: DailyProposal) -> str:
+    """Turn a validation error into an explicit, imperative fix instruction.
+
+    Small local models follow a short, concrete directive stated up front far more
+    reliably than a generic "resolve the error". Each branch restates exactly what must
+    change, with numbers where they help.
+    """
+
+    mandatory = sum(1 for item in proposal.activities if item.mandatory)
+    optional = len(proposal.activities) - mandatory
+    if "overflow day" in error:
+        remove = max(2, optional // 2)
+        return (
+            f"YOUR DAY DOES NOT FIT IN 24 HOURS. It has {len(proposal.activities)} activities "
+            f"({mandatory} mandatory, {optional} optional). Remove at least {remove} OPTIONAL "
+            "(mandatory=false) activities and DO NOT add replacements. Keep every routine "
+            "anchor, keep sleep as the LAST activity of the day."
+        )
+    if "does not realize assigned goal intents" in error:
+        missing = error.split(":", 1)[1].strip()
+        return (
+            f"YOUR DAY IS MISSING REQUIRED GOAL INTENTS: {missing}. Add each of them exactly "
+            "once, at a plausible time, without removing any mandatory routine."
+        )
+    if "must use timeBand" in error:
+        return (
+            f"FIX THE ROUTINE TIME BAND. {error.split(':', 1)[-1].strip() or error} Change only "
+            "that activity's timeBand to the required value; leave everything else unchanged."
+        )
+    if "requires between" in error:
+        return f"FIX THE ROUTINE OCCURRENCE COUNT. {error} Adjust only that intent's count."
+    if "RETURN_AT_HOME_LOCATION" in error or "enter_home" in error or "at_home" in error:
+        return (
+            "A RETURN-HOME ACTIVITY IS PLACED WRONGLY. 'commute_home' (and any return trip) "
+            "must be located at the OUTSIDE place it returns from — the workplace — not a home "
+            "room like the bedroom or kitchen, and it must come only AFTER a 'commute_to_work' "
+            "or leaving home. Never place two returns without a departure between them, and do "
+            "not schedule home activities during the work block."
+        )
+    if "spatially incoherent" in error or "HOME_ACTIVITY_WHILE_AWAY" in error:
+        return (
+            "YOU SCHEDULED A HOME ACTIVITY WHILE THE RESIDENT IS AWAY. Between leaving home "
+            "(commute_to_work / leave_home) and returning (commute_home / enter_home) the "
+            "resident is OUT: no activity in a home room may occur there. Either move that "
+            "activity before leaving or after returning, or add the missing return-home step "
+            "before it."
+        )
+    if "unknown intents" in error or "unknown locations" in error:
+        return (
+            f"YOU USED IDENTIFIERS THAT ARE NOT ALLOWED. {error} Replace them with identifiers "
+            "from the allowed intent and location lists only."
+        )
+    if "extended duration" in error:
+        return (
+            f"FIX AN INVALID DURATION CLASS. {error} Only sleep and work_shift may use "
+            "'extended'; give the other activities a shorter durationClass."
+        )
+    return f"Resolve this validation error exactly: {error}"
+
+
 def structural_repair_prompt(
     planning_case: PlanningCase,
     catalog: ActivityCatalog,
@@ -281,13 +341,7 @@ def structural_repair_prompt(
     profile: BehavioralProfile | None = None,
     budget: HabitBudget | None = None,
 ) -> str:
-    capacity_guidance = ""
-    if "overflow day" in error:
-        capacity_guidance = (
-            "Keep every required routine anchor, but remove or defer optional activities "
-            "until the day fits. On a workday use at most four evening activities, place sleep "
-            "last, and do not add replacements for removed optional items."
-        )
+    directive = _repair_directive(error, proposal)
     payload = {
         "case": _case_payload(planning_case),
         "weeklyBrief": weekly_brief.model_dump(mode="json", by_alias=True),
@@ -299,10 +353,11 @@ def structural_repair_prompt(
     }
     return f"""Repair the rejected daily proposal below.
 
-Resolve the validation error using only exact supplied intent and location identifiers.
-{capacity_guidance}
-Preserve the date, narrative and every unrelated valid choice. Return the complete replacement
-day, not a patch or explanation. Do not silently reinterpret the error.
+MUST FIX: {directive}
+
+Use only exact supplied intent and location identifiers. Preserve the date, narrative and
+every unrelated valid choice. Return the complete replacement day, not a patch or
+explanation. Do not silently reinterpret the error.
 
 Repair input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}"""

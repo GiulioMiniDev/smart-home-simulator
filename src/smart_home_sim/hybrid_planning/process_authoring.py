@@ -406,6 +406,7 @@ def author_process_package(
     *,
     config: HybridPlanningConfig,
     client: LMStudioClient | None = None,
+    cover_all_reference_intents: bool = False,
 ) -> ProcessAuthoringResult:
     """Author a resident process package grounded on a reference package and gate it.
 
@@ -413,6 +414,10 @@ def author_process_package(
     behavior compatibility with the scenario) and ``build_bundle_files`` (M4 home
     binding). A ``ProcessAuthoringError`` is raised if the assembled package does not
     pass, after re-authoring the models implicated by the reported errors.
+
+    With ``cover_all_reference_intents`` the package covers every intent the reference
+    package defines (a complete daily vocabulary), not only the intents the sample scenario
+    happens to use — so a generator constrained to this package still has enough variety.
     """
 
     scenario = Scenario.model_validate_json(scenario_path.read_bytes())
@@ -429,7 +434,12 @@ def author_process_package(
     vocabulary = _load_action_vocabulary(reference.catalogs.action_catalog.version)
     references = _reference_models(reference)
 
-    intents = _used_intents(scenario)
+    if cover_all_reference_intents:
+        # Deterministic order: scenario-used intents first, then the rest of the reference.
+        used = _used_intents(scenario)
+        intents = used + [i for i in references if i not in set(used)]
+    else:
+        intents = _used_intents(scenario)
     missing_component = [i for i in intents if i not in intent_components]
     if missing_component:
         raise ProcessAuthoringError(
