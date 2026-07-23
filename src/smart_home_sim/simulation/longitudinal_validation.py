@@ -123,16 +123,16 @@ def load_and_validate_longitudinal_manifest(
             f"does not match scenario scenarioId '{first_scenario.scenario_id}'"
         )
 
-    # Global activity ID uniqueness check across chunks
-    seen_activity_ids: set[str] = set()
+    # Activity ID uniqueness check within each chunk
     for chunk_idx, scenario in enumerate(scenarios):
+        seen_chunk_activity_ids: set[str] = set()
         for day in scenario.days:
             for activity in day.activities:
-                if activity.activity_id in seen_activity_ids:
+                if activity.activity_id in seen_chunk_activity_ids:
                     raise ValueError(
                         f"duplicate activityId '{activity.activity_id}' found in scenario chunk {chunk_idx + 1}"
                     )
-                seen_activity_ids.add(activity.activity_id)
+                seen_chunk_activity_ids.add(activity.activity_id)
 
     # First scenario seed check against manifest
     if first_scenario.seed != manifest.seed:

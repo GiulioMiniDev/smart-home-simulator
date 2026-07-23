@@ -162,8 +162,9 @@ def run_longitudinal_file(
             plan_file.write_text(
                 compilation.plan.model_dump_json(by_alias=True), encoding="utf-8"
             )
+            chunk_pkg = resolved.package.model_copy(update={"source_scenario_id": sc.scenario_id})
             pkg_file.write_text(
-                resolved.package.model_dump_json(by_alias=True), encoding="utf-8"
+                chunk_pkg.model_dump_json(by_alias=True), encoding="utf-8"
             )
             home_file.write_text(
                 home_res.home.model_dump_json(by_alias=True), encoding="utf-8"
