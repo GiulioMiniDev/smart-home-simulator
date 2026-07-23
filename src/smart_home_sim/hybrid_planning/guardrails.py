@@ -586,6 +586,23 @@ def normalize_daily_guardrails(
             )
             record("travel_home", "mother_visit_chain")
 
+    # A day without a work shift must not contain work-commute activities: the model
+    # sometimes emits a stray commute_home on a rest day, which is a spatial/semantic
+    # impossibility (return-from-work with no work). Drop the whole work-commute chain.
+    if enforce_simulatable and "work_shift" not in {item.intent for item in activities}:
+        work_chain = {"commute_to_work", "commute_home", "collect_belongings_and_leave_home"}
+        for item in activities:
+            if item.intent in work_chain:
+                changes.append(
+                    {
+                        "date": proposal.date.isoformat(),
+                        "action": "remove",
+                        "intent": item.intent,
+                        "reason": "work_commute_without_shift",
+                    }
+                )
+        activities = [item for item in activities if item.intent not in work_chain]
+
     # Drop exact duplicate activities (same intent, location and time band): the model
     # sometimes emits a routine twice, which wastes a slot and inflates day-to-day similarity.
     if enforce_simulatable:
