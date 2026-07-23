@@ -335,6 +335,34 @@ def test_daily_proposal_must_realize_goals_assigned_to_its_date() -> None:
         )
 
 
+def test_daily_proposal_rejects_outbound_work_travel_without_shift() -> None:
+    planning_case, catalog = _read_models(CASE)
+    daily = proposal(date(2026, 8, 16), "read")
+    daily = daily.model_copy(
+        update={
+            "activities": [
+                *daily.activities[:-2],
+                activity(
+                    "commute_to_work",
+                    "garden_workplace",
+                    "afternoon",
+                    mandatory=False,
+                ),
+                *daily.activities[-2:],
+            ]
+        }
+    )
+
+    with pytest.raises(HybridPlanningError, match="outbound work travel requires"):
+        _validate_daily_proposal(
+            planning_case,
+            catalog,
+            daily.date,
+            daily,
+            behavioral_profile=valid_profile(),
+        )
+
+
 def test_future_weekly_habit_goal_is_reserved_from_earlier_extra() -> None:
     profile = valid_profile()
     brief = weekly_brief()

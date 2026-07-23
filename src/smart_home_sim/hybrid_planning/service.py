@@ -40,6 +40,9 @@ from smart_home_sim.hybrid_planning.lmstudio import (
     LMStudioError,
     LMStudioExchange,
 )
+from smart_home_sim.hybrid_planning.longitudinal_quality import (
+    evaluate_longitudinal_quality,
+)
 from smart_home_sim.hybrid_planning.materialization import (
     materialize_day_activities,
     materialize_scenario,
@@ -170,6 +173,7 @@ def _validate_daily_proposal(
     proposal: DailyProposal,
     *,
     required_intents: set[str] | None = None,
+    behavioral_profile: BehavioralProfile | None = None,
 ) -> None:
     if proposal.date != expected_date:
         raise HybridPlanningError(f"daily proposal returned unexpected date {proposal.date}")
@@ -217,6 +221,16 @@ def _validate_daily_proposal(
             raise HybridPlanningError(
                 f"routine '{requirement.intent}' must use timeBand "
                 f"'{requirement.time_band.value}' on {day_type}"
+            )
+    if behavioral_profile is not None:
+        causal_violations = evaluate_longitudinal_quality(
+            behavioral_profile,
+            [proposal],
+        ).causal_violations
+        if causal_violations:
+            raise HybridPlanningError(
+                "daily proposal violates causal order: "
+                + "; ".join(item.message for item in causal_violations)
             )
     try:
         materialize_day_activities(
@@ -755,6 +769,7 @@ def generate_hybrid_plan(
                         day_brief.date,
                         proposal,
                         required_intents=set(day_brief.goal_intents),
+                        behavioral_profile=behavioral_profile,
                     )
                     break
                 except HybridPlanningError as validation_error:
@@ -856,6 +871,7 @@ def generate_hybrid_plan(
                 target.date,
                 replacement,
                 required_intents=set(target_brief.goal_intents),
+                behavioral_profile=behavioral_profile,
             )
             proposals[target_index] = replacement
             diversity = diversity_metrics(proposals)
@@ -966,6 +982,7 @@ def generate_hybrid_plan(
                             if item.date == target_date
                         )
                     ),
+                    behavioral_profile=behavioral_profile,
                 )
                 proposals[target_index] = replacement
                 habit_gate = evaluate_habit_plan(
