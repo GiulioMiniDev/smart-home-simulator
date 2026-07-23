@@ -170,6 +170,43 @@ def test_budget_turns_cadence_into_chunk_counts() -> None:
     assert items["visit_mother_and_have_dinner"].maximum_occurrences == 1
 
 
+def test_rare_habit_maximum_is_consumed_across_weekly_chunks() -> None:
+    profile = valid_profile()
+    rare = profile.habits[-1].model_copy(
+        update={
+            "cadence": profile.habits[-1].cadence.model_copy(
+                update={"maximum_occurrences": 1, "period_days": 365}
+            )
+        }
+    )
+    profile = profile.model_copy(update={"habits": [*profile.habits[:-1], rare]})
+    digest = behavioral_profile_digest(profile)
+    ledger = initial_habit_ledger(digest, profile)
+    first_week = proposals()
+    first_week[0] = first_week[0].model_copy(
+        update={
+            "activities": [
+                *first_week[0].activities,
+                activity("collect_medication_refill", "pharmacy_barcelona", TimeBand.afternoon),
+            ]
+        }
+    )
+    ledger = update_habit_ledger(profile, digest, ledger, first_week)
+    next_dates = [date(2026, 8, 17) + timedelta(days=index) for index in range(7)]
+    budget = derive_habit_budget(
+        profile,
+        ledger,
+        next_dates,
+        {
+            value: "workday" if value.weekday() < 5 else "weekend"
+            for value in next_dates
+        },
+    )
+
+    rare_budget = next(item for item in budget.items if item.habit_id == rare.habit_id)
+    assert rare_budget.maximum_occurrences == 0
+
+
 def test_gate_reports_missing_anchor_chain_cooldown_and_goal() -> None:
     profile, _, ledger, budget = context()
     report = evaluate_habit_plan(

@@ -143,6 +143,7 @@ def derive_habit_budget(
     entries = _ledger_entries(profile, ledger)
     items: list[HabitBudgetItem] = []
     for habit in profile.habits:
+        entry = entries[habit.habit_id]
         cadence = _effective_cadence(habit, dates[0])
         eligible_days = len(_eligible_dates(habit, dates, day_types))
         expected = cadence.typical_occurrences * eligible_days / cadence.period_days
@@ -150,10 +151,24 @@ def derive_habit_budget(
         maximum = math.ceil(cadence.maximum_occurrences * eligible_days / cadence.period_days)
         if habit.kind is not HabitKind.anchor and cadence.maximum_occurrences and eligible_days:
             maximum = max(1, maximum)
-        target = max(minimum, math.floor(entries[habit.habit_id].cadence_carry + expected))
+            elapsed_days = (dates[-1] - profile.effective_from).days + 1
+            elapsed_dates = [
+                profile.effective_from + timedelta(days=index)
+                for index in range(max(0, elapsed_days))
+            ]
+            elapsed_day_types = _default_day_types_for_dates(elapsed_dates)
+            cumulative_eligible = len(
+                _eligible_dates(habit, elapsed_dates, elapsed_day_types)
+            )
+            cumulative_maximum = math.ceil(
+                cadence.maximum_occurrences * cumulative_eligible / cadence.period_days
+            )
+            remaining_maximum = max(0, cumulative_maximum - entry.total_occurrences)
+            maximum = min(maximum, remaining_maximum)
+            minimum = min(minimum, maximum)
+        target = max(minimum, math.floor(entry.cadence_carry + expected))
         target = min(target, maximum)
         forbidden_until = None
-        entry = entries[habit.habit_id]
         if entry.last_seen is not None and habit.cooldown_days:
             candidate = entry.last_seen + timedelta(days=habit.cooldown_days)
             if candidate >= dates[0]:
@@ -181,8 +196,12 @@ def _proposal_map(proposals: list[DailyProposal]) -> dict[date, DailyProposal]:
 
 
 def _default_day_types(proposals: list[DailyProposal]) -> dict[date, str]:
+    return _default_day_types_for_dates([item.date for item in proposals])
+
+
+def _default_day_types_for_dates(dates: list[date]) -> dict[date, str]:
     return {
-        item.date: "workday" if item.date.weekday() < 5 else "weekend" for item in proposals
+        value: "workday" if value.weekday() < 5 else "weekend" for value in dates
     }
 
 
