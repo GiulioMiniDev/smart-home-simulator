@@ -38,6 +38,7 @@ from smart_home_sim.hybrid_planning.service import (
     _canonicalize_weekly_goals,
     _read_models,
     _updated_memory,
+    _validate_daily_proposal,
     _weekly_schema,
     generate_hybrid_plan,
 )
@@ -317,6 +318,20 @@ def test_planning_memory_keeps_only_thirty_day_signatures() -> None:
 
     assert len(updated.day_signatures) == 30
     assert updated.day_signatures[0] == "signature-1"
+
+
+def test_daily_proposal_must_realize_goals_assigned_to_its_date() -> None:
+    planning_case, catalog = _read_models(CASE)
+    daily = proposal(date(2026, 8, 10), "read")
+
+    with pytest.raises(HybridPlanningError, match="short_evening_walk"):
+        _validate_daily_proposal(
+            planning_case,
+            catalog,
+            daily.date,
+            daily,
+            required_intents={"short_evening_walk"},
+        )
 
 
 def test_hybrid_plan_includes_prior_memory_in_weekly_and_daily_prompts(
@@ -661,7 +676,9 @@ def test_profile_aware_plan_rejects_ledger_digest_before_calling_llm(tmp_path: P
     assert not (output / "weekly-brief").exists()
 
 
-def test_profile_aware_plan_fails_after_exhausting_habit_repairs(tmp_path: Path) -> None:
+def test_profile_aware_plan_fails_after_exhausting_daily_goal_repairs(
+    tmp_path: Path,
+) -> None:
     brief, broken, _ = profile_aware_week()
     broken[-1] = broken[-1].model_copy(
         update={
@@ -677,7 +694,7 @@ def test_profile_aware_plan_fails_after_exhausting_habit_repairs(tmp_path: Path)
     client = FakeClient([brief, *broken, broken[-1], broken[-1]])
     output = tmp_path / "habit-failure"
 
-    with pytest.raises(HybridPlanningError, match="habit gate"):
+    with pytest.raises(HybridPlanningError, match="assigned goal intents"):
         generate_hybrid_plan(
             CASE,
             output,
@@ -688,7 +705,6 @@ def test_profile_aware_plan_fails_after_exhausting_habit_repairs(tmp_path: Path)
 
     manifest = json.loads((output / "run.json").read_text(encoding="utf-8"))
     assert manifest["status"] == "failed"
-    assert manifest["habitGatePassed"] is False
     assert len(client.prompts) == 10
     assert not (output / "scenario.json").exists()
 

@@ -168,6 +168,8 @@ def _validate_daily_proposal(
     catalog: ActivityCatalog,
     expected_date: object,
     proposal: DailyProposal,
+    *,
+    required_intents: set[str] | None = None,
 ) -> None:
     if proposal.date != expected_date:
         raise HybridPlanningError(f"daily proposal returned unexpected date {proposal.date}")
@@ -179,6 +181,12 @@ def _validate_daily_proposal(
         raise HybridPlanningError(f"daily proposal contains unknown intents: {unknown_intents}")
     if unknown_locations:
         raise HybridPlanningError(f"daily proposal contains unknown locations: {unknown_locations}")
+    realized_intents = {item.intent for item in proposal.activities}
+    missing_goals = sorted((required_intents or set()) - realized_intents)
+    if missing_goals:
+        raise HybridPlanningError(
+            f"daily proposal does not realize assigned goal intents: {missing_goals}"
+        )
     invalid_extended = sorted(
         {
             item.intent
@@ -698,6 +706,7 @@ def generate_hybrid_plan(
                         catalog,
                         day_brief.date,
                         proposal,
+                        required_intents=set(day_brief.goal_intents),
                     )
                     break
                 except HybridPlanningError as validation_error:
@@ -785,7 +794,14 @@ def generate_hybrid_plan(
                     / "habit-limit-normalizations.json",
                     {"changes": normalizations},
                 )
-            _validate_daily_proposal(planning_case, catalog, target.date, replacement)
+            target_brief = next(item for item in brief.days if item.date == target.date)
+            _validate_daily_proposal(
+                planning_case,
+                catalog,
+                target.date,
+                replacement,
+                required_intents=set(target_brief.goal_intents),
+            )
             proposals[target_index] = replacement
             diversity = diversity_metrics(proposals)
         _write_json(output_dir / "diversity-report.json", diversity)
@@ -883,6 +899,13 @@ def generate_hybrid_plan(
                     catalog,
                     target_date,
                     replacement,
+                    required_intents=set(
+                        next(
+                            item.goal_intents
+                            for item in brief.days
+                            if item.date == target_date
+                        )
+                    ),
                 )
                 proposals[target_index] = replacement
                 habit_gate = evaluate_habit_plan(
