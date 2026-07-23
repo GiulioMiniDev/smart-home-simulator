@@ -633,14 +633,19 @@ def normalize_daily_guardrails(
                 (index for index, item in enumerate(activities) if item.intent == "sleep"),
                 len(activities),
             )
+            # Goal intents are best-effort variety, not structural requirements: keep them
+            # non-mandatory with a high-ish priority so the time-budget trim preserves them
+            # over generic optionals but can still drop them when the day is genuinely full.
             activities.insert(
                 insert_at,
-                _scaffold_activity(
-                    intent,
-                    location,
-                    band,
-                    DurationClass.short,
-                    "Deterministic goal-intent realization scaffold.",
+                ProposedActivity(
+                    intent=intent,
+                    location_id=location,
+                    time_band=band,
+                    duration_class=DurationClass.short,
+                    mandatory=False,
+                    priority=60,
+                    rationale="Deterministic goal-intent realization scaffold.",
                 ),
             )
             record(intent, "goal_intent")

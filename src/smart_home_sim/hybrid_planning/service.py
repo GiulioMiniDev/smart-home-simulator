@@ -194,11 +194,14 @@ def _validate_daily_proposal(
     if unknown_locations:
         raise HybridPlanningError(f"daily proposal contains unknown locations: {unknown_locations}")
     realized_intents = {item.intent for item in proposal.activities}
-    missing_goals = sorted((required_intents or set()) - realized_intents)
-    if missing_goals:
-        raise HybridPlanningError(
-            f"daily proposal does not realize assigned goal intents: {missing_goals}"
-        )
+    # On the simulatable path goal intents are best-effort: the deterministic scaffold adds
+    # them and the time-budget trim may drop them on a full day, so they are not hard-required.
+    if not enforce_spatial:
+        missing_goals = sorted((required_intents or set()) - realized_intents)
+        if missing_goals:
+            raise HybridPlanningError(
+                f"daily proposal does not realize assigned goal intents: {missing_goals}"
+            )
     invalid_extended = sorted(
         {
             item.intent
@@ -676,9 +679,15 @@ def _protected_intents(
     goal_intents: set[str],
     day_type: str,
 ) -> frozenset[str]:
-    """Intents the deterministic time-budget trim must never drop from a day."""
+    """Intents the deterministic time-budget trim must never drop from a day.
 
-    protected = set(goal_intents)
+    Goal intents are deliberately excluded: they are best-effort variety, so on a tight day
+    the trim may drop them (after generic optionals) to keep the day feasible. Routines and
+    habit anchors are structural and always kept.
+    """
+
+    del goal_intents
+    protected: set[str] = set()
     for requirement in planning_case.routine_requirements:
         if not requirement.day_types or day_type in requirement.day_types:
             protected.add(requirement.intent)
