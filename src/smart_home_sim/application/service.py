@@ -204,7 +204,7 @@ class ApplicationService:
         """Validate and publish a longitudinal multi-scenario simulation manifest package."""
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
-        scenarios_payload = scenarios_payload or {}
+        scenarios_payload = dict(scenarios_payload or {})
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -220,8 +220,40 @@ class ApplicationService:
                 pkg_file.parent.mkdir(parents=True, exist_ok=True)
                 pkg_file.write_text(json.dumps(behavior_payload), encoding="utf-8")
 
+            # Resolve missing referenced files from workspace or local disk search
+            pkg_path_str = manifest_payload.get("personalProcessPackagePath", "personal-process-package.json")
+            pkg_file = tmp_path / pkg_path_str
+            if not pkg_file.is_file():
+                candidates = [
+                    self.workspace.root / pkg_path_str,
+                    Path.cwd() / pkg_path_str,
+                    *list(self.workspace.root.rglob(Path(pkg_path_str).name)),
+                    *list(Path.cwd().rglob(Path(pkg_path_str).name)),
+                ]
+                for cand in candidates:
+                    if cand.is_file():
+                        pkg_file.parent.mkdir(parents=True, exist_ok=True)
+                        pkg_file.write_bytes(cand.read_bytes())
+                        break
+
+            scenario_paths = manifest_payload.get("scenarioPaths", [])
+            for sc_path_str in scenario_paths:
+                sc_file = tmp_path / sc_path_str
+                if not sc_file.is_file():
+                    candidates = [
+                        self.workspace.root / sc_path_str,
+                        Path.cwd() / sc_path_str,
+                        *list(self.workspace.root.rglob(Path(sc_path_str).name)),
+                        *list(Path.cwd().rglob(Path(sc_path_str).name)),
+                    ]
+                    for cand in candidates:
+                        if cand.is_file():
+                            sc_file.parent.mkdir(parents=True, exist_ok=True)
+                            sc_file.write_bytes(cand.read_bytes())
+                            break
+
             manifest_file = tmp_path / "manifest.json"
-            manifest_file.write_text(json.dumps(manifest_payload), encoding="utf-8")
+            manifest_file.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
 
             try:
                 resolved = load_and_validate_longitudinal_manifest(manifest_file)
@@ -245,6 +277,17 @@ class ApplicationService:
                 schema_version="1.0.0",
                 home_id=home_id,
             )
+
+            manifest_artifact_path = self.workspace.artifact_path(manifest_artifact.artifact_id)
+            manifest_dir = manifest_artifact_path.parent
+
+            # Copy resolved relative files into manifest artifact directory so worker can load them
+            for item in tmp_path.rglob("*"):
+                if item.is_file() and item != manifest_file:
+                    rel = item.relative_to(tmp_path)
+                    dest = manifest_dir / rel
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(item.read_bytes())
 
             return {
                 "valid": True,

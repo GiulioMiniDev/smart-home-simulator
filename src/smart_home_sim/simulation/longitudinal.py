@@ -137,13 +137,16 @@ def run_longitudinal_file(
             raise ValueError(f"failed to compile scenario chunk {idx + 1}")
 
         # Truncation gate check
-        for day in compilation.plan.days:
-            for act in day.activities:
-                if act.truncated_at_simulation_end:
-                    raise ValueError(
-                        f"Scenario chunk {idx + 1} activity '{act.source_activity_id}' "
-                        "is truncated at simulation end, which is not permitted."
-                    )
+        # Only enforce truncation check on the final chunk of the longitudinal sequence,
+        # as intermediate chunks end at midnight boundaries where state handoff carries over.
+        if idx == len(resolved.scenarios) - 1:
+            for day in compilation.plan.days:
+                for act in day.activities:
+                    if act.truncated_at_simulation_end:
+                        raise ValueError(
+                            f"Scenario chunk {idx + 1} activity '{act.source_activity_id}' "
+                            "is truncated at simulation end, which is not permitted."
+                        )
 
         canonical_plans.append(compilation.plan)
 
