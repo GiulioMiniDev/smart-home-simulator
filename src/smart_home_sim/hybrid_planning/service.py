@@ -421,6 +421,8 @@ def _canonicalize_weekly_goals(
     profile: BehavioralProfile,
     budget: HabitBudget,
     brief: WeeklyBrief,
+    *,
+    fallback_intents: list[str] | None = None,
 ) -> tuple[WeeklyBrief, list[dict[str, object]]]:
     """Allocate non-anchor habit goals within target and cooldown constraints."""
     goals = [list(day.goal_intents) for day in brief.days]
@@ -474,6 +476,26 @@ def _canonicalize_weekly_goals(
         day.model_copy(update={"goal_intents": day_goals})
         for day, day_goals in zip(brief.days, goals, strict=True)
     ]
+    available_fallbacks = list(dict.fromkeys(fallback_intents or []))
+    if available_fallbacks:
+        repaired_days = []
+        for index, day in enumerate(days):
+            if day.goal_intents:
+                repaired_days.append(day)
+                continue
+            intent = available_fallbacks[index % len(available_fallbacks)]
+            repaired_days.append(
+                day.model_copy(update={"goal_intents": [intent]})
+            )
+            changes.append(
+                {
+                    "date": day.date.isoformat(),
+                    "intent": intent,
+                    "action": "insert",
+                    "reason": "fallback_variable_goal",
+                }
+            )
+        days = repaired_days
     empty_dates = [day.date.isoformat() for day in days if not day.goal_intents]
     if empty_dates:
         raise HybridPlanningError(
@@ -691,6 +713,13 @@ def generate_hybrid_plan(
                 behavioral_profile,
                 budget,
                 brief,
+                fallback_intents=sorted(
+                    item.intent
+                    for item in catalog.activities
+                    if item.category in {"leisure", "housekeeping", "laundry"}
+                    and item.intent
+                    not in {habit.intent for habit in behavioral_profile.habits}
+                ),
             )
             _write_json(
                 output_dir / "weekly-brief" / "goal-normalizations.json",

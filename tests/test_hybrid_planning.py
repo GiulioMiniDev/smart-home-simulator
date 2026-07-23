@@ -265,6 +265,49 @@ def test_weekly_goal_canonicalization_respects_targets_and_preserves_solo_days()
     assert changes
 
 
+def test_weekly_goal_canonicalization_fills_days_emptied_by_target_limits() -> None:
+    planning_case, _catalog = _read_models(CASE)
+    profile = valid_profile()
+    digest = behavioral_profile_digest(profile)
+    ledger = initial_habit_ledger(digest, profile)
+    dates = planning_case.dates()
+    budget = derive_habit_budget(
+        profile,
+        ledger,
+        dates,
+        {value: planning_case.calendar_day(value).day_type for value in dates},
+    )
+    brief = weekly_brief().model_copy(
+        update={
+            "days": [
+                item.model_copy(update={"goal_intents": ["buy_groceries"]})
+                for item in weekly_brief().days
+            ]
+        }
+    )
+
+    normalized, changes = _canonicalize_weekly_goals(
+        profile,
+        budget,
+        brief,
+        fallback_intents=["read_and_rest", "clean_kitchen"],
+    )
+
+    assert all(item.goal_intents for item in normalized.days)
+    assert sum(
+        "buy_groceries" in item.goal_intents for item in normalized.days
+    ) == 1
+    assert {
+        intent
+        for item in normalized.days
+        for intent in item.goal_intents
+        if intent != "buy_groceries"
+    } <= {"read_and_rest", "clean_kitchen"}
+    assert any(
+        item["reason"] == "fallback_variable_goal" for item in changes
+    )
+
+
 def proposal(value: date, distinctive_intent: str) -> DailyProposal:
     distinctive_locations = {
         "read": "living_room_01",
