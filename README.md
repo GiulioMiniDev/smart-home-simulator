@@ -90,18 +90,20 @@ start.cmd
 .\start.cmd
 ```
 
-Il bootstrap rileva piattaforma e architettura, verifica `uv`, Node.js 20+ e npm, installa
-le dipendenze soltanto quando mancano o il lockfile cambia, costruisce il frontend quando
+Il bootstrap rileva piattaforma e architettura, verifica `uv` quando è disponibile,
+altrimenti usa `pip` come fallback locale, controlla Node.js 20+ e npm, installa le
+dipendenze soltanto quando mancano o il lockfile cambia, costruisce il frontend quando
 le sorgenti cambiano e installa il backend in `~/.smart-home-simulator/venv`. Lo stato
 applicativo resta in `~/.smart-home-simulator/workspace`, fuori dal repository. Alle
 esecuzioni successive, se nulla è cambiato, passa direttamente all'avvio. `./start
 --reconfigure` forza una configurazione completa; `./start --configure-only` prepara
 l'ambiente senza avviare il server. Su Windows le stesse opzioni si passano a `start.cmd`.
 
-I soli prerequisiti di sistema sono Python 3, [uv](https://docs.astral.sh/uv/) e
-[Node.js](https://nodejs.org/) 20 o successivo. Se `uv` o Node.js non sono disponibili,
-il bootstrap si ferma con un messaggio e il collegamento ufficiale, senza eseguire script
-remoti o installazioni di sistema implicite.
+I soli prerequisiti di sistema sono Python 3 e [Node.js](https://nodejs.org/) 20 o
+successivo. [uv](https://docs.astral.sh/uv/) resta il percorso preferito per la
+configurazione, ma non è obbligatorio. Se Node.js non è disponibile, il bootstrap si ferma
+con un messaggio e il collegamento ufficiale, senza eseguire script remoti o installazioni
+di sistema implicite.
 
 Il launcher ascolta soltanto su loopback, apre il browser per default e crea o riapre il
 workspace indicato. Se `--workspace` non viene specificato usa la directory locale

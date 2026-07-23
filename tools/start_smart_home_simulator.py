@@ -129,6 +129,12 @@ def _application_executable(venv: Path) -> Path:
     return venv / "bin" / "smart-home-sim-app"
 
 
+def _venv_python(venv: Path) -> Path:
+    if platform.system() == "Windows":
+        return venv / "Scripts" / "python.exe"
+    return venv / "bin" / "python"
+
+
 def _frontend_fingerprint() -> str:
     inputs = [
         FRONTEND_ROOT / "index.html",
@@ -174,26 +180,49 @@ def _configure_frontend(
 
 
 def _configure_python(
-    state: dict[str, Any], *, uv: str, venv: Path, force: bool
+    state: dict[str, Any], *, uv: str | None, venv: Path, force: bool
 ) -> None:
     source_digest = _python_fingerprint()
     application = _application_executable(venv)
-    if force or not application.is_file() or state.get("pythonSource") != source_digest:
-        _status(f"Configuro l'ambiente Python in {venv}.")
-        environment = os.environ.copy()
-        environment["UV_PROJECT_ENVIRONMENT"] = str(venv)
-        environment["UV_NO_EDITABLE"] = "1"
-        _run(
-            [
-                uv,
-                "sync",
-                "--locked",
-                "--reinstall-package",
-                PACKAGE_NAME,
-            ],
-            environment=environment,
-        )
+    installer = "uv" if uv is not None else "pip"
+    if (
+        force
+        or not application.is_file()
+        or state.get("pythonSource") != source_digest
+        or state.get("pythonInstaller") != installer
+    ):
+        if uv is not None:
+            _status(f"Configuro l'ambiente Python in {venv} con uv.")
+            environment = os.environ.copy()
+            environment["UV_PROJECT_ENVIRONMENT"] = str(venv)
+            environment["UV_NO_EDITABLE"] = "1"
+            _run(
+                [
+                    uv,
+                    "sync",
+                    "--locked",
+                    "--reinstall-package",
+                    PACKAGE_NAME,
+                ],
+                environment=environment,
+            )
+        else:
+            _status(f"Configuro l'ambiente Python in {venv} con pip.")
+            if not _venv_python(venv).is_file():
+                _run([sys.executable, "-m", "venv", str(venv)])
+            _run(
+                [
+                    str(_venv_python(venv)),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--upgrade",
+                    "--force-reinstall",
+                    ".",
+                ]
+            )
     state["pythonSource"] = source_digest
+    state["pythonInstaller"] = installer
 
 
 def _tcp_port_open(port: int) -> bool:
@@ -293,10 +322,9 @@ def main() -> int:
 
     try:
         uv = _executable("uv")
-    except BootstrapError as error:
-        raise BootstrapError(
-            f"{error}. Installa uv da https://docs.astral.sh/uv/getting-started/installation/"
-        ) from error
+    except BootstrapError:
+        uv = None
+        _status("Comando uv non trovato: userò pip come fallback per configurare Python.")
     try:
         _, npm = _node_tools()
     except BootstrapError as error:
