@@ -520,18 +520,14 @@ def test_run_longitudinal_and_verify_longitudinal_cli_commands(tmp_path: Path) -
     sc2_data["simulationWindow"]["end"] = "2026-10-14T00:00:00+02:00"
     sc2_data["initialState"]["at"] = "2026-10-13T00:00:00+02:00"
     sc2_data["days"][0]["date"] = "2026-10-13"
-    sc2_data["days"][0]["activities"][0]["activityId"] = "c2_act1"
     sc2_data["days"][0]["activities"][0]["startWindow"]["earliest"] = "2026-10-13T08:00:00+02:00"
     sc2_data["days"][0]["activities"][0]["startWindow"]["preferred"] = "2026-10-13T08:00:00+02:00"
     sc2_data["days"][0]["activities"][0]["startWindow"]["latest"] = "2026-10-13T08:00:00+02:00"
-    sc2_data["days"][0]["activities"][1]["activityId"] = "c2_act2"
     sc2_data["days"][0]["activities"][1]["startWindow"]["earliest"] = "2026-10-13T08:00:00+02:00"
     sc2_data["days"][0]["activities"][1]["startWindow"]["preferred"] = "2026-10-13T08:00:00+02:00"
     sc2_data["days"][0]["activities"][1]["startWindow"]["latest"] = "2026-10-13T08:00:00+02:00"
-    sc2_data["days"][0]["activities"][1]["dependencyGroups"][0]["activityIds"] = ["c2_act1"]
     if sc2_data.get("commitments"):
         for com in sc2_data["commitments"]:
-            com["activityId"] = "c2_act1"
             com["start"] = "2026-10-13T08:00:00+02:00"
             com["end"] = "2026-10-13T08:30:00+02:00"
 

@@ -48,7 +48,7 @@ def _make_minimal_scenario(
     start: str = "2026-10-12T00:00:00+02:00",
     end: str = "2026-10-13T00:00:00+02:00",
     initial_at: str = "2026-10-12T00:00:00+02:00",
-    activity_prefix: str = "chunk1_",
+    activity_prefix: str = "",
     seed: int = 1,
 ) -> dict[str, object]:
     data = json.loads(MINIMAL_SCENARIO_PATH.read_text(encoding="utf-8"))
