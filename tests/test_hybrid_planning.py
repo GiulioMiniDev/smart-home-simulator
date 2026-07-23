@@ -369,6 +369,30 @@ def test_future_weekly_habit_goal_is_reserved_from_earlier_extra() -> None:
     ]
 
 
+def test_daily_habit_is_not_reserved_for_a_future_weekly_goal() -> None:
+    profile = valid_profile()
+    brief = weekly_brief()
+    reserved_date = date(2026, 8, 15)
+    brief = brief.model_copy(
+        update={
+            "days": [
+                item.model_copy(
+                    update={
+                        "goal_intents": ["sleep"] if item.date == reserved_date else ["read"]
+                    }
+                )
+                for item in brief.days
+            ]
+        }
+    )
+    earlier = proposal(date(2026, 8, 10), "read")
+
+    normalized, changes = _reserve_future_weekly_goals(profile, brief, earlier)
+
+    assert "sleep" in {item.intent for item in normalized.activities}
+    assert changes == []
+
+
 def test_hybrid_plan_includes_prior_memory_in_weekly_and_daily_prompts(
     tmp_path: Path,
 ) -> None:

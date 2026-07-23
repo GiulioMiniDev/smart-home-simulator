@@ -507,7 +507,12 @@ def _reserve_future_weekly_goals(
         if day.date <= proposal.date:
             continue
         for intent in day.goal_intents:
-            if intent in habits and intent not in future_reservations:
+            habit = habits.get(intent)
+            if (
+                habit is not None
+                and habit.cadence.period_days > 1
+                and intent not in future_reservations
+            ):
                 future_reservations[intent] = day.date
     activities: list[ProposedActivity] = []
     changes: list[dict[str, str]] = []
