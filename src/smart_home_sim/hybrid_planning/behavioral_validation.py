@@ -58,7 +58,7 @@ def validate_behavioral_profile(
     issues: list[ProfileIssue] = []
     known_intents = {item.intent for item in catalog.activities}
     known_locations = {item.location_id for item in planning_case.locations}
-    expected_effective_date = planning_case.dates()[0]
+    chunk_start = planning_case.dates()[0]
     if profile.source_case_id != planning_case.case_id:
         issues.append(_issue("PROFILE_CASE_MISMATCH", "sourceCaseId differs from planning case"))
     if profile.resident_id != planning_case.resident.resident_id:
@@ -67,11 +67,12 @@ def validate_behavioral_profile(
         issues.append(
             _issue("PROFILE_FACTS_MISMATCH", "immutableFacts differ from resident profile")
         )
-    if profile.effective_from != expected_effective_date:
+    if profile.effective_from > chunk_start:
         issues.append(
             _issue(
                 "PROFILE_EFFECTIVE_DATE_MISMATCH",
-                f"effectiveFrom must be {expected_effective_date.isoformat()}",
+                "effectiveFrom must not be later than chunk start "
+                f"{chunk_start.isoformat()}",
             )
         )
     for habit in profile.habits:

@@ -391,6 +391,30 @@ def test_profile_validator_rejects_routine_cadence_mismatch() -> None:
     assert "PROFILE_ROUTINE_CADENCE_MISMATCH" in {item.code for item in report.issues}
 
 
+def test_frozen_profile_is_valid_for_later_chunk_of_same_case() -> None:
+    planning_case, catalog = _read_models(CASE)
+    later_start = planning_case.planning_window.start.replace(day=17)
+    later_end = planning_case.planning_window.end.replace(day=24)
+    later_case = planning_case.model_copy(
+        update={
+            "planning_window": planning_case.planning_window.model_copy(
+                update={"start": later_start, "end": later_end}
+            ),
+            "initial_state": planning_case.initial_state.model_copy(
+                update={"at": later_start}
+            ),
+            "calendar": [],
+        }
+    )
+
+    report = validate_behavioral_profile(later_case, catalog, valid_profile())
+
+    assert report.valid
+    assert "PROFILE_EFFECTIVE_DATE_MISMATCH" not in {
+        issue.code for issue in report.issues
+    }
+
+
 def test_profile_schema_requires_named_behavioral_traits() -> None:
     planning_case, catalog = _read_models(CASE)
 
