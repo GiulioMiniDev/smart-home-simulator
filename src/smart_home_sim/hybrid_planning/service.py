@@ -653,6 +653,23 @@ def _read_behavioral_context(
     return profile, digest, ledger, budget
 
 
+def _habit_placements(
+    behavioral_profile: BehavioralProfile | None,
+) -> dict[str, tuple[str, str]]:
+    """Map each habit intent to a (location, timeBand) for deterministic goal scaffolding."""
+
+    if behavioral_profile is None:
+        return {}
+    placements: dict[str, tuple[str, str]] = {}
+    for habit in behavioral_profile.habits:
+        if habit.location_ids and habit.preferred_time_bands:
+            placements[habit.intent] = (
+                habit.location_ids[0],
+                habit.preferred_time_bands[0].value,
+            )
+    return placements
+
+
 def _protected_intents(
     planning_case: PlanningCase,
     behavioral_profile: BehavioralProfile | None,
@@ -707,6 +724,7 @@ def _finalize_repaired_day(
                 planning_case, behavioral_profile, required, day_type
             ),
             required_goal_intents=frozenset(required),
+            habit_placements=_habit_placements(behavioral_profile),
             enforce_simulatable=True,
         )
     _validate_daily_proposal(
@@ -1046,6 +1064,7 @@ def generate_hybrid_plan(
                                 planning_case.calendar_day(proposal.date).day_type,
                             ),
                             required_goal_intents=frozenset(day_brief.goal_intents),
+                            habit_placements=_habit_placements(behavioral_profile),
                             enforce_simulatable=process_package is not None,
                         )
                         _write_json(
@@ -1196,6 +1215,7 @@ def generate_hybrid_plan(
                             [],
                         )
                     ),
+                    habit_placements=_habit_placements(behavioral_profile),
                     enforce_simulatable=process_package is not None,
                 )
                 _write_json(
@@ -1350,6 +1370,7 @@ def generate_hybrid_plan(
                             [],
                         )
                     ),
+                    habit_placements=_habit_placements(behavioral_profile),
                     enforce_simulatable=process_package is not None,
                 )
                 _write_json(

@@ -364,6 +364,7 @@ def normalize_daily_guardrails(
     final_date: object | None = None,
     protected_intents: frozenset[str] = frozenset(),
     required_goal_intents: frozenset[str] = frozenset(),
+    habit_placements: dict[str, tuple[str, str]] | None = None,
     enforce_simulatable: bool = False,
 ) -> tuple[DailyProposal, list[dict[str, object]]]:
     known_intents = {item.intent for item in catalog.activities}
@@ -611,12 +612,21 @@ def normalize_daily_guardrails(
     # scaffolds it deterministically rather than bouncing the day back to the model.
     if enforce_simulatable and required_goal_intents:
         present = {item.intent for item in activities}
+        placements = habit_placements or {}
         category_by_intent = {item.intent: item.category for item in catalog.activities}
         for intent in sorted(required_goal_intents - present):
-            preferred = _GOAL_CATEGORY_LOCATIONS.get(category_by_intent.get(intent, ""))
-            if not preferred:
-                continue
-            location = next((loc for loc in preferred if loc in known_locations), None)
+            # Prefer the resident's own habit placement (covers external round-trip habits
+            # such as short_evening_walk); otherwise fall back to the indoor category map.
+            location: str | None = None
+            band = TimeBand.evening
+            placement = placements.get(intent)
+            if placement is not None and placement[0] in known_locations:
+                location = placement[0]
+                band = TimeBand(placement[1])
+            else:
+                preferred = _GOAL_CATEGORY_LOCATIONS.get(category_by_intent.get(intent, ""))
+                if preferred:
+                    location = next((loc for loc in preferred if loc in known_locations), None)
             if location is None:
                 continue
             insert_at = next(
@@ -628,7 +638,7 @@ def normalize_daily_guardrails(
                 _scaffold_activity(
                     intent,
                     location,
-                    TimeBand.evening,
+                    band,
                     DurationClass.short,
                     "Deterministic goal-intent realization scaffold.",
                 ),
