@@ -236,6 +236,33 @@ def normalize_daily_guardrails(
         )
 
     intents = [item.intent for item in activities]
+    for position, intent in enumerate(intents):
+        if (
+            intent == "post_walk_shower"
+            and not WALK_INTENTS.intersection(intents[:position])
+            and "evening_hygiene" in known_intents
+        ):
+            original = activities[position]
+            activities[position] = original.model_copy(
+                update={
+                    "intent": "evening_hygiene",
+                    "rationale": (
+                        "Deterministic ordinary hygiene replacement because "
+                        "no walk occurred."
+                    ),
+                }
+            )
+            changes.append(
+                {
+                    "date": proposal.date.isoformat(),
+                    "action": "replace",
+                    "intent": "evening_hygiene",
+                    "reason": "orphan_post_walk_shower",
+                    "replaces": "post_walk_shower",
+                }
+            )
+
+    intents = [item.intent for item in activities]
     if not HYGIENE_INTENTS.intersection(intents):
         candidates = [
             ("morning_toilet_and_shower", "bathroom_01"),

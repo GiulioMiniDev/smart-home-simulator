@@ -96,6 +96,42 @@ def test_daily_guardrail_normalization_supplies_safe_structural_scaffolding() ->
     }
 
 
+def test_daily_guardrail_normalization_relabels_orphan_post_walk_shower() -> None:
+    planning_case, catalog = _read_models(CASE)
+    orphan = DailyProposal(
+        date=date(2026, 8, 16),
+        narrative_intent="Quiet Sunday without a walk",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", "early_morning"),
+            activity("prepare_weekend_breakfast", "kitchen_01", "morning"),
+            activity("watch_television", "living_room_01", "afternoon"),
+            activity("post_walk_shower", "bathroom_01", "evening"),
+            activity("sleep", "bedroom_01", "night"),
+        ],
+    )
+
+    normalized, changes = normalize_daily_guardrails(
+        planning_case,
+        catalog,
+        "weekend",
+        orphan,
+    )
+
+    assert "post_walk_shower" not in {
+        item.intent for item in normalized.activities
+    }
+    assert semantic_violations(valid_profile(), normalized) == []
+    assert changes == [
+        {
+            "date": "2026-08-16",
+            "action": "replace",
+            "intent": "evening_hygiene",
+            "reason": "orphan_post_walk_shower",
+            "replaces": "post_walk_shower",
+        }
+    ]
+
+
 @pytest.mark.parametrize(
     ("activities", "code"),
     [
