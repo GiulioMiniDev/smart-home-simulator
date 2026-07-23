@@ -68,6 +68,9 @@ from smart_home_sim.hybrid_planning import (
     generate_hybrid_plan,
     generate_one_month_plan,
 )
+from smart_home_sim.hybrid_planning.longitudinal_analysis import (
+    compare_longitudinal_runs,
+)
 from smart_home_sim.hybrid_planning.models import HybridPlanningConfig
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
@@ -243,6 +246,32 @@ def generate_hybrid_month_command(
     )
     typer.echo(f"Longitudinal plan written to: {result.output_dir.resolve()}")
     typer.echo("Planning and compilation completed; simulation was not executed")
+
+
+@app.command("compare-hybrid-months")
+def compare_hybrid_months_command(
+    before_dir: Path,
+    after_dir: Path,
+    output: Annotated[Path, typer.Option("--output")],
+    baseline: Annotated[Path | None, typer.Option("--baseline")] = None,
+) -> None:
+    """Compare two accepted hybrid months without executing either plan."""
+    try:
+        report = compare_longitudinal_runs(
+            before_dir,
+            after_dir,
+            baseline_path=baseline,
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+    except (HybridPlanningError, OSError, ValueError) as error:
+        typer.echo(f"Hybrid month comparison failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"Comparison written to: {output.resolve()}")
 
 
 @app.command()

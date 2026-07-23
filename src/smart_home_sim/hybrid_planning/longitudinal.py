@@ -166,7 +166,7 @@ def _configuration_digest(
     )
 
 
-def _load_accepted_proposals(
+def load_accepted_proposals(
     output_dir: Path,
     records: list[LongitudinalChunkRecord],
 ) -> list[DailyProposal]:
@@ -329,7 +329,7 @@ def generate_one_month_plan(
     }
     _atomic_json(output_dir / "run.json", manifest)
     try:
-        accepted = _load_accepted_proposals(output_dir, checkpoint.chunks)
+        accepted = load_accepted_proposals(output_dir, checkpoint.chunks)
         for index, chunk in enumerate(chunks, start=1):
             chunk_start = chunk.dates()[0]
             if chunk_start < checkpoint.next_date:

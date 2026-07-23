@@ -25,6 +25,7 @@ from smart_home_sim.hybrid_planning.habit_gates import (
 )
 from smart_home_sim.hybrid_planning.longitudinal import (
     generate_one_month_plan,
+    load_accepted_proposals,
     one_month_end,
     slice_planning_case,
 )
@@ -561,6 +562,9 @@ def test_resume_rejects_modified_accepted_artifact(
         tmp_path / "month" / first.artifact_path / "accepted-proposals.json"
     )
     proposals_path.write_text("[]\n", encoding="utf-8")
+
+    with pytest.raises(HybridPlanningError, match="digest mismatch"):
+        load_accepted_proposals(tmp_path / "month", [first])
 
     with pytest.raises(HybridPlanningError, match="digest mismatch"):
         generate_one_month_plan(

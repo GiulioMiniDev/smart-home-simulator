@@ -451,3 +451,43 @@ def test_generate_hybrid_month_reports_explicit_failure(
 
     assert result.exit_code == 1
     assert "checkpoint identity mismatch" in result.stderr
+
+
+def test_compare_hybrid_months_writes_machine_readable_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before = tmp_path / "before"
+    after = tmp_path / "after"
+    baseline = tmp_path / "baseline.json"
+    output = tmp_path / "comparison.json"
+    expected = {
+        "documentType": "hybrid_longitudinal_comparison",
+        "before": {},
+        "after": {},
+        "delta": {},
+        "baseline": {},
+    }
+
+    monkeypatch.setattr(
+        "smart_home_sim.cli.compare_longitudinal_runs",
+        lambda *_args, **_kwargs: expected,
+        raising=False,
+    )
+    result = runner.invoke(
+        app,
+        [
+            "compare-hybrid-months",
+            str(before),
+            str(after),
+            "--output",
+            str(output),
+            "--baseline",
+            str(baseline),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(output.read_text(encoding="utf-8"))["documentType"] == (
+        "hybrid_longitudinal_comparison"
+    )
