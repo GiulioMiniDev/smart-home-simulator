@@ -6,6 +6,7 @@ from test_hybrid_planning import CASE, _read_models, activity
 
 from smart_home_sim.hybrid_planning.guardrails import (
     daily_life_violations,
+    fit_day_to_time_budget,
     normalize_daily_guardrails,
     normalize_habit_preferences,
     semantic_violations,
@@ -14,6 +15,7 @@ from smart_home_sim.hybrid_planning.guardrails import (
 from smart_home_sim.hybrid_planning.longitudinal_models import QualityViolation
 from smart_home_sim.hybrid_planning.models import (
     DailyProposal,
+    DurationClass,
     ProposedActivity,
     TimeBand,
 )
@@ -95,6 +97,52 @@ def test_daily_guardrail_normalization_supplies_safe_structural_scaffolding() ->
         "missing_nourishment",
         "work_shift_chain",
     }
+
+
+def test_time_budget_trim_drops_low_priority_optionals_and_keeps_essentials() -> None:
+    planning_case, catalog = _read_models(CASE)
+
+    def act(intent: str, location: str, band: str, *, dur: str = "medium",
+            mandatory: bool = False, priority: int = 30) -> ProposedActivity:
+        return ProposedActivity(
+            intent=intent, location_id=location, time_band=TimeBand(band),
+            duration_class=DurationClass(dur), mandatory=mandatory, priority=priority,
+            rationale="x",
+        )
+
+    over_dense = DailyProposal(
+        date=date(2026, 8, 10),
+        narrative_intent="An overfull workday",
+        activities=[
+            act("take_morning_medication", "bedroom_01", "early_morning", mandatory=True, priority=100),
+            act("morning_toilet_and_shower", "bathroom_01", "early_morning"),
+            act("eat_breakfast_and_read_news", "kitchen_01", "morning"),
+            act("check_calendar_and_household_supplies", "living_room_01", "morning"),
+            act("commute_to_work", "garden_workplace", "morning", mandatory=True, priority=90),
+            act("work_shift", "garden_workplace", "morning", dur="extended", mandatory=True, priority=100),
+            act("eat_lunch", "garden_workplace", "midday"),
+            act("commute_home", "garden_workplace", "afternoon", mandatory=True, priority=90),
+            act("tidy_living_room_and_hallway", "living_room_01", "afternoon"),
+            act("short_evening_walk", "neighborhood_park", "evening"),
+            act("eat_dinner", "kitchen_01", "evening"),
+            act("watch_documentary", "living_room_01", "evening"),
+            act("read_and_rest", "living_room_01", "evening"),
+            act("evening_hygiene", "bathroom_01", "evening"),
+            act("sleep", "bedroom_01", "night", dur="extended", mandatory=True, priority=100),
+        ],
+    )
+
+    fitted, removed = fit_day_to_time_budget(
+        planning_case, over_dense, frozenset({"work_shift"}), date(2026, 8, 12)
+    )
+
+    assert removed, "an over-dense day should have activities trimmed"
+    kept = {item.intent for item in fitted.activities}
+    # Mandatory and protected intents are never dropped.
+    for essential in ("work_shift", "take_morning_medication", "sleep", "commute_to_work", "commute_home"):
+        assert essential in kept
+    # The daily-life guardrail (nourishment + hygiene + density) still holds after trimming.
+    assert daily_life_violations("workday", fitted) == []
 
 
 def test_spatial_coherence_flags_home_activity_while_away() -> None:

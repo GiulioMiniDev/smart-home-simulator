@@ -653,6 +653,25 @@ def _read_behavioral_context(
     return profile, digest, ledger, budget
 
 
+def _protected_intents(
+    planning_case: PlanningCase,
+    behavioral_profile: BehavioralProfile | None,
+    goal_intents: set[str],
+    day_type: str,
+) -> frozenset[str]:
+    """Intents the deterministic time-budget trim must never drop from a day."""
+
+    protected = set(goal_intents)
+    for requirement in planning_case.routine_requirements:
+        if not requirement.day_types or day_type in requirement.day_types:
+            protected.add(requirement.intent)
+    if behavioral_profile is not None:
+        for habit in behavioral_profile.habits:
+            if habit.kind is HabitKind.anchor:
+                protected.add(habit.intent)
+    return frozenset(protected)
+
+
 def _finalize_repaired_day(
     planning_case: PlanningCase,
     catalog: ActivityCatalog,
@@ -666,7 +685,11 @@ def _finalize_repaired_day(
 ) -> DailyProposal:
     """Run the normalization pipeline and validation on a regenerated day proposal."""
 
+    required = set(
+        next((item.goal_intents for item in brief.days if item.date == target_date), [])
+    )
     if behavioral_profile is not None:
+        day_type = planning_case.calendar_day(replacement.date).day_type
         replacement, _ = _canonicalize_daily_anchors(planning_case, behavioral_profile, replacement)
         replacement, _ = _reserve_future_weekly_goals(behavioral_profile, brief, replacement)
         if ledger is not None and budget is not None:
@@ -677,12 +700,14 @@ def _finalize_repaired_day(
         replacement, _ = normalize_daily_guardrails(
             planning_case,
             catalog,
-            planning_case.calendar_day(replacement.date).day_type,
+            day_type,
             replacement,
+            final_date=planning_case.dates()[-1],
+            protected_intents=_protected_intents(
+                planning_case, behavioral_profile, required, day_type
+            ),
+            enforce_simulatable=True,
         )
-    required = set(
-        next((item.goal_intents for item in brief.days if item.date == target_date), [])
-    )
     _validate_daily_proposal(
         planning_case,
         catalog,
@@ -1012,6 +1037,14 @@ def generate_hybrid_plan(
                             catalog,
                             planning_case.calendar_day(proposal.date).day_type,
                             proposal,
+                            final_date=planning_case.dates()[-1],
+                            protected_intents=_protected_intents(
+                                planning_case,
+                                behavioral_profile,
+                                set(day_brief.goal_intents),
+                                planning_case.calendar_day(proposal.date).day_type,
+                            ),
+                            enforce_simulatable=process_package is not None,
                         )
                         _write_json(
                             output_dir
@@ -1143,6 +1176,19 @@ def generate_hybrid_plan(
                     catalog,
                     planning_case.calendar_day(replacement.date).day_type,
                     replacement,
+                    final_date=planning_case.dates()[-1],
+                    protected_intents=_protected_intents(
+                        planning_case,
+                        behavioral_profile,
+                        set(
+                            next(
+                                (d.goal_intents for d in brief.days if d.date == target.date),
+                                [],
+                            )
+                        ),
+                        planning_case.calendar_day(replacement.date).day_type,
+                    ),
+                    enforce_simulatable=process_package is not None,
                 )
                 _write_json(
                     output_dir
@@ -1278,6 +1324,19 @@ def generate_hybrid_plan(
                     catalog,
                     planning_case.calendar_day(replacement.date).day_type,
                     replacement,
+                    final_date=planning_case.dates()[-1],
+                    protected_intents=_protected_intents(
+                        planning_case,
+                        behavioral_profile,
+                        set(
+                            next(
+                                (d.goal_intents for d in brief.days if d.date == target_date),
+                                [],
+                            )
+                        ),
+                        planning_case.calendar_day(replacement.date).day_type,
+                    ),
+                    enforce_simulatable=process_package is not None,
                 )
                 _write_json(
                     output_dir

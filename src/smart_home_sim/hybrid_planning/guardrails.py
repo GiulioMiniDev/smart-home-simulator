@@ -4,6 +4,7 @@ from smart_home_sim.domain.behavior import ActivityCatalog
 from smart_home_sim.domain.models import LocationKind
 from smart_home_sim.hybrid_planning.behavioral_models import BehavioralProfile
 from smart_home_sim.hybrid_planning.longitudinal_models import QualityViolation
+from smart_home_sim.hybrid_planning.materialization import materialize_day_activities
 from smart_home_sim.hybrid_planning.models import (
     DailyProposal,
     DurationClass,
@@ -288,11 +289,65 @@ def _scaffold_activity(
     )
 
 
+def fit_day_to_time_budget(
+    planning_case: PlanningCase,
+    proposal: DailyProposal,
+    protected_intents: frozenset[str],
+    final_date: object,
+) -> tuple[DailyProposal, list[str]]:
+    """Deterministically drop optional activities until the day fits in 24 hours.
+
+    The model chooses intents and coarse duration classes but cannot do the minute-level
+    packing, so it cannot tell whether a day overflows. Rather than bounce an overflow back
+    to the model, the machine trims the lowest-priority removable activity — one that is not
+    mandatory and whose intent is not protected (routine, goal or habit anchor) — until the
+    day is feasible. This keeps feasibility a deterministic property and reserves the model
+    for creative choices. If nothing removable remains the proposal is returned unchanged and
+    the downstream validator surfaces the (genuine) infeasibility.
+    """
+
+    activities = list(proposal.activities)
+    # Keep the highest-priority nourishment and hygiene activity so the trim never violates
+    # the daily-life guardrail (every day needs at least one of each).
+    keep_ids: set[int] = set()
+    for category in (NOURISHMENT_INTENTS, HYGIENE_INTENTS):
+        members = [activity for activity in activities if activity.intent in category]
+        if members:
+            keep_ids.add(id(max(members, key=lambda activity: activity.priority)))
+    removed: list[str] = []
+    while True:
+        candidate = proposal.model_copy(update={"activities": activities})
+        try:
+            materialize_day_activities(planning_case, candidate, final_date=final_date)
+            return candidate, removed
+        except ValueError as error:
+            if "overflow" not in str(error):
+                return candidate, removed
+            removable = [
+                activity
+                for activity in activities
+                if not activity.mandatory
+                and activity.intent not in protected_intents
+                and id(activity) not in keep_ids
+            ]
+            if not removable:
+                return candidate, removed
+            victim = min(
+                removable, key=lambda activity: (activity.priority, activities.index(activity))
+            )
+            activities.remove(victim)
+            removed.append(victim.intent)
+
+
 def normalize_daily_guardrails(
     planning_case: PlanningCase,
     catalog: ActivityCatalog,
     day_type: str,
     proposal: DailyProposal,
+    *,
+    final_date: object | None = None,
+    protected_intents: frozenset[str] = frozenset(),
+    enforce_simulatable: bool = False,
 ) -> tuple[DailyProposal, list[dict[str, object]]]:
     known_intents = {item.intent for item in catalog.activities}
     known_locations = {item.location_id for item in planning_case.locations}
@@ -430,10 +485,12 @@ def normalize_daily_guardrails(
         # commute_to_work only travels; the resident must be marked as having left home first
         # (leave_home) or the later commute_home enter_home step fails. Scaffold the explicit
         # departure before the outbound commute when the day does not already provide one.
+        # This matters only when the plan is simulated, so it is gated behind a package.
         intents = [item.intent for item in activities]
         commute_out_index = intents.index("commute_to_work")
         if (
-            "collect_belongings_and_leave_home" in known_intents
+            enforce_simulatable
+            and "collect_belongings_and_leave_home" in known_intents
             and "collect_belongings_and_leave_home" not in intents[:commute_out_index]
             and "leave_home" not in intents[:commute_out_index]
         ):
@@ -456,9 +513,12 @@ def normalize_daily_guardrails(
         intents = [item.intent for item in activities]
         work_index = intents.index("work_shift")
         if "commute_home" not in intents[work_index + 1 :]:
+            # The return trip starts at the workplace; only relocate there when the plan is
+            # simulated (otherwise keep the historical hallway placement for compatibility).
+            preferred_return = "garden_workplace" if enforce_simulatable else "hallway_01"
             location = (
-                "garden_workplace"
-                if "garden_workplace" in known_locations
+                preferred_return
+                if preferred_return in known_locations
                 else activities[work_index].location_id
             )
             activities.insert(
@@ -508,7 +568,21 @@ def normalize_daily_guardrails(
             )
             record("travel_home", "mother_visit_chain")
 
-    return proposal.model_copy(update={"activities": activities}), changes
+    normalized = proposal.model_copy(update={"activities": activities})
+    if enforce_simulatable and final_date is not None:
+        normalized, removed = fit_day_to_time_budget(
+            planning_case, normalized, protected_intents, final_date
+        )
+        for intent in removed:
+            changes.append(
+                {
+                    "date": proposal.date.isoformat(),
+                    "action": "remove",
+                    "intent": intent,
+                    "reason": "time_budget_trim",
+                }
+            )
+    return normalized, changes
 
 
 def normalize_habit_preferences(
