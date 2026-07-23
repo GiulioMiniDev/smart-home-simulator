@@ -707,6 +707,10 @@ def generate_hybrid_plan(
             proposals.append(proposal)
             memory = _updated_memory(memory, proposal)
             _write_json(
+                output_dir / "days" / day_brief.date.isoformat() / "accepted-proposal.json",
+                proposal,
+            )
+            _write_json(
                 output_dir / "days" / day_brief.date.isoformat() / "memory-after.json",
                 memory,
             )

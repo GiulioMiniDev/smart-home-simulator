@@ -69,7 +69,6 @@ def constrain_daily_habit_limits(
 
     kept = []
     changes: list[dict[str, object]] = []
-    removal_capacity = max(0, len(proposal.activities) - 4)
     for activity in proposal.activities:
         habit = habits_by_intent.get(activity.intent)
         if habit is None or habit.kind is HabitKind.anchor:
@@ -88,8 +87,7 @@ def constrain_daily_habit_limits(
             and proposal.date <= previous + timedelta(days=habit.cooldown_days)
         ):
             reason = "cooldown"
-        if reason is not None and removal_capacity:
-            removal_capacity -= 1
+        if reason is not None:
             changes.append(
                 {
                     "date": proposal.date.isoformat(),

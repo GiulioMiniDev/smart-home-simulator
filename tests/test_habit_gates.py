@@ -124,6 +124,28 @@ def test_daily_constraint_removes_non_anchor_cooldown_repetition() -> None:
     assert "take_morning_medication" in intents
     assert any(item["reason"] == "maximum_occurrences" for item in changes)
 
+    compact = DailyProposal(
+        date=date(2026, 8, 16),
+        narrative_intent="A sparse day after invalid repetitions are removed",
+        activities=[
+            activity("take_morning_medication", "bedroom_01", TimeBand.early_morning),
+            mother,
+            mother,
+            activity("sleep", "bedroom_01", TimeBand.night),
+        ],
+    )
+    compact, _ = constrain_daily_habit_limits(
+        profile,
+        ledger,
+        budget,
+        [saturday],
+        compact,
+    )
+    assert [item.intent for item in compact.activities] == [
+        "take_morning_medication",
+        "sleep",
+    ]
+
 
 def context():
     profile = valid_profile()
