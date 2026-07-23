@@ -25,3 +25,4 @@ smart-home-workspace*/
 *.sqlite3-shm
 *.sqlite3-wal
 *.shw
+generated/hybrid-planning/
