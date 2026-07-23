@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "longitudinal_simulation_manifest",
+  "runId": "tommaso_one_month_simulation",
+  "scenarioPaths": [
+    "chunks/2026-08-10/attempt-004/planning/scenario.json",
+    "chunks/2026-08-17/attempt-001/planning/scenario.json",
+    "chunks/2026-08-24/attempt-002/planning/scenario.json",
+    "chunks/2026-08-31/attempt-001/planning/scenario.json",
+    "chunks/2026-09-07/attempt-001/planning/scenario.json"
+  ],
+  "personalProcessPackagePath": "personal-process-package.json",
+  "homePolicyPath": null,
+  "sensorPolicyPath": null,
+  "seed": 42
+}

@@ -1,0 +1,19 @@
+{
+  "reportVersion": "1.0.0",
+  "success": false,
+  "runId": "tommaso_one_month_simulation",
+  "manifestSha256": "ae09689c41dc3476f463b9ba82dcebb514ca8c6abddb3b3b1b01e4926354c46f",
+  "startedAt": "2026-07-23T13:28:36.926008Z",
+  "endedAt": "2026-07-23T13:29:32.039002Z",
+  "chunks": [],
+  "issues": [
+    {
+      "code": "LONGITUDINAL_WORKER_FAILED",
+      "severity": "error",
+      "stage": "execution",
+      "path": "$.chunks[0]",
+      "message": "Simulation failed for chunk 1: [SimulationIssue(code='PRECONDITION_FAILED', severity='error', stage='execution', path='$.actionBindings[hybrid_20260810_05:step_4]', message=\"Action 'enter_home' failed precondition 'resident.at_home'.\", details={'activityId': 'hybrid_20260810_05', 'residentId': 'tommaso_bianchi', 'processModelId': 'tommaso_bianchi__commute_home', 'nodeId': 'step_4', 'actionType': 'enter_home', 'fact': 'resident.at_home', 'operator': 'eq', 'expected': False, 'actual': True})]",
+      "details": {}
+    }
+  ]
+}

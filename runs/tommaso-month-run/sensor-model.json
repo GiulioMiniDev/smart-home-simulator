@@ -1,0 +1,490 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "sensor_model",
+  "sensorModelId": "barcelona_apartment_tommaso__room_coverage__sensors",
+  "sensorModelVersion": "1.2.0",
+  "sourceBundleId": "hybrid_tommaso_bianchi_2026_08_10__barcelona_apartment_tommaso__behavior_1.1.0__1.0.0",
+  "sourceBundleSha256": "a5f87cb522a8815e5bb475b3e6f9c7fdfb283e617c1cbf8da0e74d4a679fa496",
+  "seed": 42,
+  "regionIds": [
+    "bathroom_01",
+    "bedroom_01",
+    "garden_workplace",
+    "hallway_01",
+    "kitchen_01",
+    "living_room_01",
+    "mother_house_barcelona",
+    "neighborhood_park",
+    "pharmacy_barcelona",
+    "supermarket_barcelona"
+  ],
+  "entityIds": [
+    "bed_01",
+    "entrance_door",
+    "fridge_01",
+    "insulin_pen_01",
+    "service_bathroom_01",
+    "service_bedroom_01",
+    "service_garden_workplace",
+    "service_hallway_01",
+    "service_kitchen_01",
+    "service_living_room_01",
+    "service_mother_house_barcelona",
+    "service_neighborhood_park",
+    "service_pharmacy_barcelona",
+    "service_supermarket_barcelona"
+  ],
+  "sensors": [
+    {
+      "sensorId": "pir_bedroom_01",
+      "position": {
+        "x": 3.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 80.0,
+        "clockJitterMilliseconds": 250.0,
+        "cooldownMilliseconds": 750.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "pir",
+      "regionIds": [
+        "bedroom_01"
+      ],
+      "coverage": {
+        "vertices": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 6.0,
+            "y": 0.0
+          },
+          {
+            "x": 6.0,
+            "y": 6.0
+          },
+          {
+            "x": 0.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "holdMilliseconds": 3500.0,
+      "holdLogSigma": 0.45
+    },
+    {
+      "sensorId": "pir_bathroom_01",
+      "position": {
+        "x": 9.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 80.0,
+        "clockJitterMilliseconds": 250.0,
+        "cooldownMilliseconds": 750.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "pir",
+      "regionIds": [
+        "bathroom_01"
+      ],
+      "coverage": {
+        "vertices": [
+          {
+            "x": 6.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 0.0
+          },
+          {
+            "x": 12.0,
+            "y": 6.0
+          },
+          {
+            "x": 6.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "holdMilliseconds": 3500.0,
+      "holdLogSigma": 0.45
+    },
+    {
+      "sensorId": "pir_kitchen_01",
+      "position": {
+        "x": 15.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 80.0,
+        "clockJitterMilliseconds": 250.0,
+        "cooldownMilliseconds": 750.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "pir",
+      "regionIds": [
+        "kitchen_01"
+      ],
+      "coverage": {
+        "vertices": [
+          {
+            "x": 12.0,
+            "y": 0.0
+          },
+          {
+            "x": 18.0,
+            "y": 0.0
+          },
+          {
+            "x": 18.0,
+            "y": 6.0
+          },
+          {
+            "x": 12.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "holdMilliseconds": 3500.0,
+      "holdLogSigma": 0.45
+    },
+    {
+      "sensorId": "pir_living_room_01",
+      "position": {
+        "x": 21.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 80.0,
+        "clockJitterMilliseconds": 250.0,
+        "cooldownMilliseconds": 750.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "pir",
+      "regionIds": [
+        "living_room_01"
+      ],
+      "coverage": {
+        "vertices": [
+          {
+            "x": 18.0,
+            "y": 0.0
+          },
+          {
+            "x": 24.0,
+            "y": 0.0
+          },
+          {
+            "x": 24.0,
+            "y": 6.0
+          },
+          {
+            "x": 18.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "holdMilliseconds": 3500.0,
+      "holdLogSigma": 0.45
+    },
+    {
+      "sensorId": "pir_hallway_01",
+      "position": {
+        "x": 27.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 80.0,
+        "clockJitterMilliseconds": 250.0,
+        "cooldownMilliseconds": 750.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "pir",
+      "regionIds": [
+        "hallway_01"
+      ],
+      "coverage": {
+        "vertices": [
+          {
+            "x": 24.0,
+            "y": 0.0
+          },
+          {
+            "x": 30.0,
+            "y": 0.0
+          },
+          {
+            "x": 30.0,
+            "y": 6.0
+          },
+          {
+            "x": 24.0,
+            "y": 6.0
+          }
+        ]
+      },
+      "holdMilliseconds": 3500.0,
+      "holdLogSigma": 0.45
+    },
+    {
+      "sensorId": "contact_entrance_door",
+      "position": {
+        "x": 0.75,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 80.0,
+        "clockJitterMilliseconds": 250.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "contact",
+      "entityId": "entrance_door",
+      "fact": null,
+      "actionTypes": [
+        "enter_home",
+        "leave_home"
+      ],
+      "actionTrigger": "ended",
+      "pulseMilliseconds": 5500.0,
+      "pulseLogSigma": 0.65,
+      "openValue": true,
+      "closedValue": false
+    },
+    {
+      "sensorId": "temperature_bedroom_01",
+      "position": {
+        "x": 3.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.12
+      },
+      "failureWindows": [],
+      "sensorType": "temperature",
+      "regionId": "bedroom_01",
+      "baselineCelsius": 22.0,
+      "climateProfile": "city_seasonal",
+      "roomOffsetCelsius": -0.395307,
+      "thermalTimeConstantHours": 4.0,
+      "quantizationCelsius": 0.1,
+      "samplePhaseSeconds": 195.874136,
+      "sources": [
+        {
+          "entityId": "service_bedroom_01",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.7,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
+        }
+      ]
+    },
+    {
+      "sensorId": "temperature_bathroom_01",
+      "position": {
+        "x": 9.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.12
+      },
+      "failureWindows": [],
+      "sensorType": "temperature",
+      "regionId": "bathroom_01",
+      "baselineCelsius": 22.0,
+      "climateProfile": "city_seasonal",
+      "roomOffsetCelsius": 0.643405,
+      "thermalTimeConstantHours": 4.0,
+      "quantizationCelsius": 0.1,
+      "samplePhaseSeconds": 863.617819,
+      "sources": [
+        {
+          "entityId": "service_bathroom_01",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.7,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
+        }
+      ]
+    },
+    {
+      "sensorId": "temperature_kitchen_01",
+      "position": {
+        "x": 15.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.12
+      },
+      "failureWindows": [],
+      "sensorType": "temperature",
+      "regionId": "kitchen_01",
+      "baselineCelsius": 22.0,
+      "climateProfile": "city_seasonal",
+      "roomOffsetCelsius": -0.522772,
+      "thermalTimeConstantHours": 4.0,
+      "quantizationCelsius": 0.1,
+      "samplePhaseSeconds": 113.932109,
+      "sources": [
+        {
+          "entityId": "service_kitchen_01",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.7,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
+        }
+      ]
+    },
+    {
+      "sensorId": "temperature_living_room_01",
+      "position": {
+        "x": 21.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.12
+      },
+      "failureWindows": [],
+      "sensorType": "temperature",
+      "regionId": "living_room_01",
+      "baselineCelsius": 22.0,
+      "climateProfile": "city_seasonal",
+      "roomOffsetCelsius": 0.555636,
+      "thermalTimeConstantHours": 4.0,
+      "quantizationCelsius": 0.1,
+      "samplePhaseSeconds": 807.194312,
+      "sources": [
+        {
+          "entityId": "service_living_room_01",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.7,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
+        }
+      ]
+    },
+    {
+      "sensorId": "temperature_hallway_01",
+      "position": {
+        "x": 27.0,
+        "y": 3.0
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.005,
+        "falseNegativeProbability": 0.02,
+        "falsePositiveProbabilityPerDay": 0.15,
+        "measurementNoiseStandardDeviation": 0.12
+      },
+      "failureWindows": [],
+      "sensorType": "temperature",
+      "regionId": "hallway_01",
+      "baselineCelsius": 22.0,
+      "climateProfile": "city_seasonal",
+      "roomOffsetCelsius": -0.441877,
+      "thermalTimeConstantHours": 4.0,
+      "quantizationCelsius": 0.1,
+      "samplePhaseSeconds": 165.936469,
+      "sources": [
+        {
+          "entityId": "service_hallway_01",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.7,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
+        }
+      ]
+    }
+  ]
+}

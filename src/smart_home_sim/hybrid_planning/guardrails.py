@@ -234,6 +234,47 @@ def semantic_violations(
     return list(unique.values())
 
 
+def relocate_away_block_home_activities(
+    planning_case: PlanningCase,
+    proposal: DailyProposal,
+) -> tuple[DailyProposal, list[str]]:
+    """Move home-room activities scheduled while the resident is away to the away location.
+
+    The model sometimes places a home activity (e.g. eat_lunch in the kitchen) inside the
+    work block, which the simulator rejects as a teleport. On a workday the natural fix is to
+    relocate it to where the resident actually is (the workplace) — realistic and executable
+    on the permissive materialised home. Departure/return intents delimit the away block.
+    """
+
+    location_kind = {
+        location.location_id: location.kind for location in planning_case.locations
+    }
+    away = False
+    away_location: str | None = None
+    relocated: list[str] = []
+    activities: list[ProposedActivity] = []
+    for activity in proposal.activities:
+        at_home = location_kind.get(activity.location_id) is not LocationKind.external
+        if activity.intent in HOME_RETURN_INTENTS:
+            away = False
+            activities.append(activity)
+            continue
+        if activity.intent in HOME_DEPARTURE_INTENTS:
+            away = True
+            activities.append(activity)
+            continue
+        if not at_home:
+            away_location = activity.location_id
+            activities.append(activity)
+            continue
+        if away and away_location is not None:
+            activities.append(activity.model_copy(update={"location_id": away_location}))
+            relocated.append(activity.intent)
+        else:
+            activities.append(activity)
+    return proposal.model_copy(update={"activities": activities}), relocated
+
+
 def spatial_coherence_violations(
     planning_case: PlanningCase,
     proposal: DailyProposal,
