@@ -301,6 +301,19 @@ def _canonicalize_daily_anchors(
                     "reason": "duplicate_routine_anchor",
                 }
             )
+    sleep_index = next(
+        (index for index, activity in enumerate(activities) if activity.intent == "sleep"),
+        None,
+    )
+    if sleep_index is not None and sleep_index != len(activities) - 1:
+        activities.append(activities.pop(sleep_index))
+        changes.append(
+            {
+                "action": "move",
+                "intent": "sleep",
+                "reason": "sleep_must_be_last",
+            }
+        )
     return proposal.model_copy(update={"activities": activities}), changes
 
 

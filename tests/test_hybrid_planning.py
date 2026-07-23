@@ -128,6 +128,19 @@ def test_daily_anchor_canonicalization_adds_sleep_and_removes_weekend_work() -> 
     )
 
     assert [item.intent for item in normalized_monday.activities].count("sleep") == 1
+    sleep_first = normalized_monday.model_copy(
+        update={
+            "activities": [
+                normalized_monday.activities[-1],
+                *normalized_monday.activities[:-1],
+            ]
+        }
+    )
+    sleep_last, sleep_changes = _canonicalize_daily_anchors(
+        planning_case, profile, sleep_first
+    )
+    assert sleep_last.activities[-1].intent == "sleep"
+    assert any(item["reason"] == "sleep_must_be_last" for item in sleep_changes)
     assert "work_shift" not in [item.intent for item in normalized_sunday.activities]
     assert any(item["action"] == "insert" and item["intent"] == "sleep" for item in monday_changes)
     assert any(item["action"] == "remove" for item in sunday_changes)
