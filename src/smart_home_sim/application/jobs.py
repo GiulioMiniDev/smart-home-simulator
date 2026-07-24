@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from smart_home_sim.application.generation_job import _generation_worker
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobRecord, JobStatus
 from smart_home_sim.domain.materialization import HomeGenerationPolicy, SensorDeploymentPolicy
@@ -202,6 +203,48 @@ class JobManager:
             )
             process = self._context.Process(
                 target=_materialization_worker,
+                args=(str(self.workspace.root), job.job_id),
+                name=f"smart-home-sim-{job.job_id}",
+            )
+            process.start()
+            self._processes[job.job_id] = process
+        return self.workspace.get_job(job.job_id)
+
+    def start_generation(
+        self,
+        brief: str,
+        *,
+        start_date: str,
+        months: int = 1,
+        use_llm_days: bool = False,
+        use_llm_package: bool = False,
+        model: str | None = None,
+        base_url: str | None = None,
+        temperature: float = 0.6,
+        seed: int | None = None,
+    ) -> JobRecord:
+        with self._lock:
+            self._prune()
+            running = sum(process.is_alive() for process in self._processes.values())
+            if running >= self.max_workers:
+                raise WorkspaceError("all local workers are busy")
+            job = self.workspace.create_job(
+                "generation",
+                seed=seed,
+                request={
+                    "brief": brief,
+                    "startDate": start_date,
+                    "months": months,
+                    "useLlmDays": use_llm_days,
+                    "useLlmPackage": use_llm_package,
+                    "model": model,
+                    "baseUrl": base_url,
+                    "temperature": temperature,
+                    "seed": seed,
+                },
+            )
+            process = self._context.Process(
+                target=_generation_worker,
                 args=(str(self.workspace.root), job.job_id),
                 name=f"smart-home-sim-{job.job_id}",
             )

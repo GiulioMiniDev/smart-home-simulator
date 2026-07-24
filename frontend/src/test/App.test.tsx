@@ -53,12 +53,54 @@ describe("complete application routes", () => {
 
   it.each([
     ["/", "Good evidence starts"], ["/homes", "Workspace catalogue"], ["/residents", "People and provenance"],
-    ["/simulations", "Execution centre"], ["/exports", "Portable datasets"], ["/help", "Generate one authoring bundle"], ["/missing", "does not exist"],
+    ["/simulations", "Execution centre"], ["/exports", "Portable datasets"], ["/help", "Generate one authoring bundle"],
+    ["/generate", "Generate a dataset from a brief"], ["/missing", "does not exist"],
   ])("renders %s", async (path, text) => {
     mount(path); expect(await screen.findByText(new RegExp(text))).toBeInTheDocument();
   });
 
+  it("runs local generation and shows the review", async () => {
+    const sources: FakeEventSource[] = [];
+    class FakeEventSource {
+      listeners: Record<string, () => void> = {};
+      closed = false;
+      constructor(public url: string) { sources.push(this); }
+      addEventListener(type: string, cb: () => void) { this.listeners[type] = cb; }
+      close() { this.closed = true; }
+    }
+    vi.stubGlobal("EventSource", FakeEventSource);
+    let status = "running";
+    const record = () => ({
+      jobId: "gen_1", kind: "generation", status,
+      progress: { phase: status === "completed" ? "horizon" : "persona", percent: status === "completed" ? 100 : 12, completedUnits: 0, message: "working" },
+      requestedAt: now,
+    });
+    overrides["/generation"] = () => response(record(), { status: 202 });
+    overrides["/jobs/gen_1"] = () => response({ job: record() });
+    overrides["/generation/gen_1/artifact/persona.json"] = { name: "Elena", age: 72, city: "Bologna" };
+    overrides["/generation/gen_1/artifact/behavioral-profile.json"] = { habits: [1, 2, 3] };
+    overrides["/generation/gen_1/artifact/batch-manifest.json"] = { runs: [1, 2] };
+    overrides["/generation/gen_1/artifact/planned-habit-trace.json"] = { entries: [1, 2, 3, 4] };
+    mount("/generate");
+    fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "an elderly woman" } });
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+    await waitFor(() => expect(sources.length).toBeGreaterThan(0));
+    status = "completed";
+    sources[0].listeners.done();
+    expect(await screen.findByText("Elena")).toBeInTheDocument();
+    expect(sources[0].closed).toBe(true);
+  });
+
+  it("surfaces a generation start error", async () => {
+    overrides["/generation"] = () => response({ error: { message: "endpoint down" } }, { status: 500 });
+    mount("/generate");
+    fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "brief" } });
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+    expect(await screen.findByText(/endpoint down/)).toBeInTheDocument();
+  });
+
   it("provides personalized simplified and Advanced prompts in the integrated guide", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
     const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     mount("/help");

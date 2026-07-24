@@ -24,6 +24,7 @@ import {
   Route as RouteIcon,
   Save,
   ShieldCheck,
+  Sparkles,
   Square,
   Trash2,
   Upload,
@@ -148,6 +149,7 @@ export function App() {
     >
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/generate" element={<GeneratePage />} />
         <Route path="/homes" element={<HomesPage />} />
         <Route path="/homes/:homeId" element={<HomePage />} />
         <Route path="/residents" element={<ResidentsPage />} />
@@ -305,6 +307,176 @@ function useJobRefresh(jobs: JobRecord[], reload: () => Promise<void>) {
     }
     return () => { disposed = true; sources.forEach((source) => source.close()); };
   }, [activeIds, reload]);
+}
+
+interface GenerationReview {
+  name: string;
+  age: number;
+  city: string;
+  habits: number;
+  days: number;
+  traceEntries: number;
+}
+
+async function loadGenerationReview(jobId: string): Promise<GenerationReview> {
+  const base = `/generation/${encodeURIComponent(jobId)}/artifact`;
+  const persona = await api<{ name: string; age: number; city: string }>(`${base}/persona.json`);
+  const profile = await api<{ habits: unknown[] }>(`${base}/behavioral-profile.json`);
+  const manifest = await api<{ runs: unknown[] }>(`${base}/batch-manifest.json`);
+  const trace = await api<{ entries: unknown[] }>(`${base}/planned-habit-trace.json`);
+  return {
+    name: persona.name,
+    age: persona.age,
+    city: persona.city,
+    habits: profile.habits.length,
+    days: manifest.runs.length,
+    traceEntries: trace.entries.length,
+  };
+}
+
+function GeneratePage() {
+  const [brief, setBrief] = useState("");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [months, setMonths] = useState(1);
+  const [useLlmDays, setUseLlmDays] = useState(true);
+  const [useLlmPackage, setUseLlmPackage] = useState(false);
+  const [jobId, setJobId] = useState<string>();
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string>();
+  const [review, setReview] = useState<GenerationReview>();
+  const detail = useResource<{ job: JobRecord }>(jobId ? `/jobs/${jobId}` : undefined);
+  const job = detail.data?.job;
+  const active = job ? !terminal.has(job.status) : false;
+  const reload = detail.reload;
+
+  useEffect(() => {
+    if (!jobId || !active) return;
+    let disposed = false;
+    let source: EventSource | undefined;
+    void eventSourceUrl(jobId).then((url) => {
+      if (disposed) return;
+      source = new EventSource(url);
+      const refresh = () => void reload();
+      source.addEventListener("progress", refresh);
+      source.addEventListener("status", refresh);
+      source.addEventListener("done", () => {
+        refresh();
+        source?.close();
+      });
+    });
+    return () => {
+      disposed = true;
+      source?.close();
+    };
+  }, [jobId, active, reload]);
+
+  useEffect(() => {
+    if (job?.status !== "completed" || !jobId) return;
+    void loadGenerationReview(jobId).then(setReview).catch(() => setReview(undefined));
+  }, [job?.status, jobId]);
+
+  const start = async () => {
+    setStarting(true);
+    setError(undefined);
+    setReview(undefined);
+    try {
+      const created = await api<JobRecord>("/generation", {
+        method: "POST",
+        body: JSON.stringify({
+          brief,
+          start_date: startDate,
+          months,
+          use_llm_days: useLlmDays,
+          use_llm_package: useLlmPackage,
+        }),
+      });
+      setJobId(created.jobId);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  return (
+    <div className="page">
+      <PageHeader
+        eyebrow="Local generation"
+        title="Generate a dataset from a brief"
+        description="Invent a person, their habits and a horizon of simulatable days — entirely on your machine. Generation stops at a batch manifest; you run the simulation when satisfied."
+      />
+      <div className="generate-grid">
+        <section className="panel generate-form">
+          <label className="case-description">
+            <span>Person and case brief</span>
+            <textarea
+              aria-label="Person and case brief"
+              value={brief}
+              onChange={(event) => setBrief(event.target.value)}
+              placeholder="Example: an elderly woman living alone in Bologna, a former teacher with arthritis."
+            />
+          </label>
+          <div className="generate-fields">
+            <label>
+              <span>Start date</span>
+              <input type="date" aria-label="Start date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            </label>
+            <label>
+              <span>Horizon</span>
+              <select aria-label="Horizon" value={months} onChange={(event) => setMonths(Number(event.target.value))}>
+                {[1, 3, 6, 12].map((value) => (
+                  <option key={value} value={value}>{value} month{value > 1 ? "s" : ""}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="generate-toggle">
+            <input type="checkbox" checked={useLlmDays} onChange={(event) => setUseLlmDays(event.target.checked)} />
+            <span>Arrange days with the local LLM — varied and richer, but slower.</span>
+          </label>
+          <label className="generate-toggle">
+            <input type="checkbox" checked={useLlmPackage} onChange={(event) => setUseLlmPackage(event.target.checked)} />
+            <span>Author the process package with the LLM (optional; low mining value).</span>
+          </label>
+          <button className="button primary" disabled={!brief.trim() || starting || active} onClick={() => void start()}>
+            <Sparkles size={16} /> {active ? "Generating…" : "Generate"}
+          </button>
+          {error && <ErrorPanel message={error} />}
+        </section>
+        <section className="panel">
+          {!job && (
+            <EmptyState title="No generation yet" icon={<Sparkles size={25} />}>
+              <p>Describe a person and start. Each stage runs locally with live progress; nothing is simulated until you choose to.</p>
+            </EmptyState>
+          )}
+          {job && (
+            <div className="generate-status">
+              <div className="section-heading">
+                <div><p className="eyebrow">Generation job</p><h2>{job.progress.phase.replaceAll("_", " ")}</h2></div>
+                <StatusBadge status={job.status} />
+              </div>
+              <ProgressBar value={job.progress.percent} label={job.progress.message} />
+              {job.status === "failed" && <ErrorPanel message={job.errorMessage ?? job.progress.message} />}
+              {review && (
+                <div className="generate-review">
+                  <div className="metric-row">
+                    <Metric label="Resident" value={review.name} detail={`${review.age} · ${review.city}`} />
+                    <Metric label="Habits" value={review.habits} detail="ground truth" />
+                    <Metric label="Days" value={review.days} detail="simulatable" />
+                    <Metric label="Trace entries" value={review.traceEntries} detail="planned" />
+                  </div>
+                  <div className="guide-callout">
+                    <ShieldCheck size={19} />
+                    <p><strong>Generation complete.</strong> Review the artifacts, then run <code>simulate-batch</code> on the batch manifest to produce the sensor dataset.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
 }
 
 function HomePage() {

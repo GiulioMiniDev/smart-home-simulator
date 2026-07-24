@@ -86,7 +86,8 @@
         "materialization",
         "simulation",
         "export",
-        "integrity"
+        "integrity",
+        "generation"
       ],
       "title": "Kind",
       "type": "string"

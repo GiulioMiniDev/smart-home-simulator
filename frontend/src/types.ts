@@ -54,7 +54,7 @@ export interface JobProgress {
 export interface JobRecord {
   jobId: string;
   homeId?: string;
-  kind: "materialization" | "simulation" | "export" | "integrity";
+  kind: "materialization" | "simulation" | "export" | "integrity" | "generation";
   status: JobStatus;
   progress: JobProgress;
   requestedAt: string;

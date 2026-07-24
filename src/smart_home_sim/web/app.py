@@ -7,16 +7,18 @@ import secrets
 import tempfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import date as _date
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, field_validator
 from starlette.background import BackgroundTask
 
 from smart_home_sim.application.export import ExportService
+from smart_home_sim.application.generation_job import GENERATION_ARTIFACTS, generation_run_dir
 from smart_home_sim.application.jobs import JobManager
 from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.service import ApplicationService
@@ -44,6 +46,27 @@ class MaterializationStart(ApiModel):
     seed: int | None = None
     home_policy: dict[str, Any] = Field(default_factory=dict)
     sensor_policy: dict[str, Any] = Field(default_factory=dict)
+
+
+class GenerationStart(ApiModel):
+    brief: str = Field(min_length=1, max_length=2000)
+    start_date: str = Field(min_length=1)
+    months: int = Field(default=1, ge=1)
+    use_llm_days: bool = False
+    use_llm_package: bool = False
+    model: str | None = None
+    base_url: str | None = None
+    temperature: float = Field(default=0.6, ge=0)
+    seed: int | None = None
+
+    @field_validator("start_date")
+    @classmethod
+    def check_start_date(cls, value: str) -> str:
+        try:
+            _date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("startDate must be YYYY-MM-DD") from error
+        return value
 
 
 class ModelPublish(ApiModel):
@@ -242,6 +265,30 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             home_policy=request.home_policy,
             sensor_policy=request.sensor_policy,
         ).model_dump(mode="json", by_alias=True)
+
+    @app.post("/api/generation", status_code=202, dependencies=[secured])
+    def start_generation(request: GenerationStart) -> dict[str, Any]:
+        return jobs.start_generation(
+            request.brief,
+            start_date=request.start_date,
+            months=request.months,
+            use_llm_days=request.use_llm_days,
+            use_llm_package=request.use_llm_package,
+            model=request.model,
+            base_url=request.base_url,
+            temperature=request.temperature,
+            seed=request.seed,
+        ).model_dump(mode="json", by_alias=True)
+
+    @app.get("/api/generation/{job_id}/artifact/{name}", dependencies=[secured])
+    def generation_artifact(job_id: str, name: str) -> FileResponse:
+        if name not in GENERATION_ARTIFACTS:
+            raise HTTPException(status_code=404, detail="Unknown generation artifact")
+        run_dir = generation_run_dir(workspace, job_id).resolve()
+        path = (run_dir / name).resolve()
+        if run_dir not in path.parents or not path.is_file():
+            raise HTTPException(status_code=404, detail="Generation artifact not found")
+        return FileResponse(path, media_type="application/json", filename=name)
 
     @app.get("/api/jobs", dependencies=[secured])
     def list_jobs(home_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:

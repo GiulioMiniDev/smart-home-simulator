@@ -11,6 +11,7 @@ import {
   Menu,
   Moon,
   Search,
+  Sparkles,
   Sun,
   Users,
   X,
@@ -22,6 +23,7 @@ import type { HomeModel, JobStatus, Point, Polygon, SensorModel, TimelineEvent }
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Activity },
+  { to: "/generate", label: "Generate", icon: Sparkles },
   { to: "/homes", label: "Homes", icon: Home },
   { to: "/residents", label: "Residents", icon: Users },
   { to: "/simulations", label: "Simulations", icon: FlaskConical },

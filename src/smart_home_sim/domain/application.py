@@ -136,7 +136,7 @@ class JobRecord(ContractModel):
 
     job_id: str = Field(min_length=1)
     home_id: str | None = None
-    kind: Literal["materialization", "simulation", "export", "integrity"]
+    kind: Literal["materialization", "simulation", "export", "integrity", "generation"]
     status: JobStatus
     progress: JobProgress
     requested_at: AwareDatetime

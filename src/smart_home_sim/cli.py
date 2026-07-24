@@ -83,6 +83,7 @@ from smart_home_sim.hybrid_planning import (
     generate_habits,
     generate_llm_day_plans,
     generate_persona,
+    run_generation,
 )
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
 from smart_home_sim.hybrid_planning.lmstudio import DEFAULT_BASE_URL, DEFAULT_MODEL
@@ -838,6 +839,61 @@ def author_process_package_command(
         f"Personal process package written to: {output.resolve()} "
         f"({len(result.package.process_models)} process models, "
         f"{result.llm_authored_count} LLM-authored, {result.fallback_count} reference)"
+    )
+
+
+@app.command("generate-dataset")
+def generate_dataset_command(
+    brief: str,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")],
+    start: Annotated[str, typer.Option("--start")],
+    months: Annotated[int, typer.Option("--months", min=1)] = 1,
+    use_llm_days: Annotated[bool, typer.Option("--use-llm-days/--no-use-llm-days")] = False,
+    use_llm_package: Annotated[
+        bool, typer.Option("--use-llm-package/--no-use-llm-package")
+    ] = False,
+    model: Annotated[str, typer.Option("--model")] = DEFAULT_MODEL,
+    base_url: Annotated[str, typer.Option("--base-url")] = DEFAULT_BASE_URL,
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.6,
+    seed: Annotated[int | None, typer.Option("--seed")] = None,
+) -> None:
+    """Generate a whole horizon from one brief (persona to batch manifest; does not simulate)."""
+    try:
+        start_date = date.fromisoformat(start)
+    except ValueError as error:
+        raise typer.BadParameter(
+            f"Start date must be YYYY-MM-DD: {error}", param_hint="--start"
+        ) from error
+    client = LMStudioClient(
+        LMStudioConfig(base_url=base_url, model=model, temperature=temperature, seed=seed)
+    )
+
+    def progress(stage: str, percent: float, message: str) -> None:
+        typer.echo(f"[{percent:5.1f}%] {stage}: {message}")
+
+    try:
+        result = run_generation(
+            brief,
+            output_dir,
+            client,
+            start_date=start_date,
+            months=months,
+            use_llm_package=use_llm_package,
+            use_llm_days=use_llm_days,
+            seed=seed,
+            progress=progress,
+        )
+    except (LMStudioError, PersonaGenerationError, HabitsGenerationError, PackageAuthoringError,
+            CadenceError, HorizonError) as error:
+        typer.echo(f"Generation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(
+        f"Batch manifest written to: {result.manifest_path.resolve()} "
+        f"({result.day_count} days bundled)"
+    )
+    typer.echo(
+        "Generation complete. To simulate, run: "
+        f"smart-home-sim simulate-batch {result.manifest_path} --output-dir <dir>"
     )
 
 

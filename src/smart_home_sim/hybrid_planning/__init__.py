@@ -66,6 +66,7 @@ from smart_home_sim.hybrid_planning.persona import (
     PersonaGenerationResult,
     generate_persona,
 )
+from smart_home_sim.hybrid_planning.pipeline import STAGES, run_generation
 from smart_home_sim.hybrid_planning.world import (
     PlanningWorld,
     assemble_scenario,
@@ -103,6 +104,7 @@ __all__ = [
     "PersonaGenerationError",
     "PersonaGenerationResult",
     "PackageAuthoringError",
+    "STAGES",
     "PlanningWorld",
     "ProcessPackageResult",
     "assemble_scenario",
@@ -116,5 +118,6 @@ __all__ = [
     "extract_json_value",
     "generate_habits",
     "generate_persona",
+    "run_generation",
     "validate_portfolio",
 ]
