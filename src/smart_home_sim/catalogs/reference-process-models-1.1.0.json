@@ -1,0 +1,3937 @@
+{
+  "schemaVersion": "1.1.0",
+  "documentType": "reference_process_models",
+  "sourcePackage": "mario_rossi 1.1.0",
+  "models": {
+    "wake_up": {
+      "processModelId": "reference__wake_up",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi wake up process",
+      "description": "Resident-specific executable decomposition: wake_up. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "wake_up"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "morning_toilet_and_wash": {
+      "processModelId": "reference__morning_toilet_and_wash",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi morning toilet and wash process",
+      "description": "Resident-specific executable decomposition: use_toilet, wash_face. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "use_toilet",
+        "wash_face"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "toilet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "use_toilet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "sink",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "sink_faucet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "wash_face",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "sink_faucet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "morning_toilet_and_shower": {
+      "processModelId": "reference__morning_toilet_and_shower",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi morning toilet and shower process",
+      "description": "Resident-specific executable decomposition: use_toilet, shower. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "use_toilet",
+        "shower"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "toilet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "use_toilet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "shower",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "shower_water",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "shower",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "shower_water",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "take_morning_medication": {
+      "processModelId": "reference__take_morning_medication",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi take morning medication process",
+      "description": "After breakfast Mario calmly retrieves his usual medication, takes one dose with a glass of water, and puts the glass and medication container away.",
+      "implementedComponents": [
+        "take_medication"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "medication_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.8,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "medication_cabinet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "medication_dose_container",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "medication_cabinet",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "drinking_water_source",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.8,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "drinking_glass",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_7",
+          "kind": "action",
+          "actionType": "manage_medication",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "take",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [
+            {
+              "fact": "resident.medicationAvailableDoses",
+              "operation": "decrement",
+              "value": 1
+            }
+          ],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_8",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "drinking_water",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_9",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "drinking_glass",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_10",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "medication_dose_container",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "step_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_7",
+          "targetNodeId": "step_8",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_8",
+          "targetNodeId": "step_9",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_9",
+          "targetNodeId": "step_10",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_10",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "eat_breakfast": {
+      "processModelId": "reference__eat_breakfast",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi eat dinner process",
+      "description": "Resident-specific executable decomposition: consume_meal. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "consumption_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "eat_lunch": {
+      "processModelId": "reference__eat_lunch",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi eat lunch process",
+      "description": "Resident-specific executable decomposition: consume_meal. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "consumption_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "eat_dinner": {
+      "processModelId": "reference__eat_dinner",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi eat dinner process",
+      "description": "Resident-specific executable decomposition: consume_meal. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "consume_meal"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "consumption_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "consume",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "prepare_simple_lunch": {
+      "processModelId": "reference__prepare_simple_lunch",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi prepare simple lunch process",
+      "description": "Resident-specific executable decomposition: prepare_food. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "prepare_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "food_preparation_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "ingredients",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            },
+            "outputRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_7",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_8",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "step_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_7",
+          "targetNodeId": "step_8",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_8",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "prepare_light_dinner": {
+      "processModelId": "reference__prepare_light_dinner",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi prepare light dinner process",
+      "description": "Resident-specific executable decomposition: prepare_food. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "prepare_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "food_preparation_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "ingredients",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            },
+            "outputRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_7",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_8",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "step_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_7",
+          "targetNodeId": "step_8",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_8",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "weekly_meal_preparation": {
+      "processModelId": "reference__weekly_meal_preparation",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi weekly meal preparation process",
+      "description": "Resident-specific executable decomposition: prepare_food, portion_food, store_food. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "prepare_food",
+        "portion_food",
+        "store_food"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "food_preparation_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "ingredients",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            },
+            "outputRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_7",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_8",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_9",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "food_preparation_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_10",
+          "kind": "action",
+          "actionType": "organize",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "prepared_food_portions",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [
+            {
+              "fact": "resident.carrying.prepared_food_portions",
+              "operation": "set",
+              "value": true
+            }
+          ],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_11",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_12",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_13",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_food_portions",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_14",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "food_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "step_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_7",
+          "targetNodeId": "step_8",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_8",
+          "targetNodeId": "step_9",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_9",
+          "targetNodeId": "step_10",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_10",
+          "targetNodeId": "step_11",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_11",
+          "targetNodeId": "step_12",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_12",
+          "targetNodeId": "step_13",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_13",
+          "targetNodeId": "step_14",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_14",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "clean_kitchen": {
+      "processModelId": "reference__clean_kitchen",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi clean kitchen process",
+      "description": "Mario retrieves the cleaning tool from the cabinet, walks to the kitchen, cleans the surfaces without abrupt movements, and returns the tool to storage.",
+      "implementedComponents": [
+        "clean_surface"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "cleaning_product_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.8,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "cleaning_tool",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.8,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "clean",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "kitchen_surfaces",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "cleaning_product_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.8,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "cleaning_tool",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "tidy_living_room_and_hallway": {
+      "processModelId": "reference__tidy_living_room_and_hallway",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi tidy living room and hallway process",
+      "description": "Resident-specific executable decomposition: tidy_area. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "tidy_area"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "tidying_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "organize",
+          "arguments": {
+            "targetRole": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "start_laundry": {
+      "processModelId": "reference__start_laundry",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi start laundry process",
+      "description": "Resident-specific executable decomposition: collect_laundry, load_laundry, start_laundry. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "collect_laundry",
+        "load_laundry",
+        "start_laundry"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "laundry_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "collect",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "washing_machine",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "load",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "washing_machine",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "start",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "hang_laundry": {
+      "processModelId": "reference__hang_laundry",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi hang laundry process",
+      "description": "Resident-specific executable decomposition: hang_laundry. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "hang_laundry"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "drying_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "laundry_step",
+          "arguments": {
+            "operation": {
+              "source": "literal",
+              "value": "hang",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "indoor_light_exercise": {
+      "processModelId": "reference__indoor_light_exercise",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi indoor light exercise process",
+      "description": "Resident-specific executable decomposition: exercise. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "exercise"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "exercise_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "exercise",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "indoor_light_exercise",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "evening_walk": {
+      "processModelId": "reference__evening_walk",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi evening walk process",
+      "description": "Resident-specific executable decomposition: walk. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "walk"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "walking_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "exercise",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "walking",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "buy_groceries": {
+      "processModelId": "reference__buy_groceries",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi buy fresh food and household supplies process",
+      "description": "Resident-specific executable decomposition: shop, carry_purchases. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "shop",
+        "carry_purchases"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "retail_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "shop",
+          "arguments": {
+            "purpose": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "purchases",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "purchases",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "put_groceries_away": {
+      "processModelId": "reference__put_groceries_away",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi put groceries away process",
+      "description": "Resident-specific executable decomposition: store_purchases. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "store_purchases"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "household_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "household_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "purchases",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "household_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "watch_television": {
+      "processModelId": "reference__watch_television",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi watch evening television process",
+      "description": "Resident-specific executable decomposition: watch_media. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "watch_media"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "television",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "television",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "television",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "read_and_rest": {
+      "processModelId": "reference__read_and_rest",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi rest and read process",
+      "description": "Resident-specific executable decomposition: rest, read. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "read",
+        "rest"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "rest",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "leisure",
+          "arguments": {
+            "kind": {
+              "source": "literal",
+              "value": "read",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "rest_or_nap": {
+      "processModelId": "reference__rest_or_nap",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi rest or nap process",
+      "description": "Resident-specific executable decomposition: rest, nap. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "rest",
+        "nap"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "move_to_activity",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "rest_or_nap",
+          "kind": "choice",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "rest_posture",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "rest",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "rest",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "nap_posture",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "lying",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "nap",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "nap",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "move_to_activity",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "move_to_activity",
+          "targetNodeId": "rest_or_nap",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "rest_or_nap",
+          "targetNodeId": "nap_posture",
+          "condition": {
+            "variableId": "resident.fatigue",
+            "operator": "gte",
+            "value": 0.6
+          },
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "rest_or_nap",
+          "targetNodeId": "rest_posture",
+          "condition": null,
+          "isDefault": true
+        },
+        {
+          "sourceNodeId": "rest_posture",
+          "targetNodeId": "rest",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "rest",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "nap_posture",
+          "targetNodeId": "nap",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "nap",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "call_mother": {
+      "processModelId": "reference__call_mother",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi call mother process",
+      "description": "Resident-specific executable decomposition: phone_call. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "phone_call"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "communication_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "sitting",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "communicate",
+          "arguments": {
+            "channel": {
+              "source": "literal",
+              "value": "phone",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "standing",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "evening_hygiene": {
+      "processModelId": "reference__evening_hygiene",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi evening hygiene process",
+      "description": "Resident-specific executable decomposition: personal_hygiene. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "personal_hygiene"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "personal_care_fixture",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "personal_care",
+          "arguments": {
+            "procedure": {
+              "source": "literal",
+              "value": "evening_hygiene",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
+    "sleep": {
+      "processModelId": "reference__sleep",
+      "processModelVersion": "1.1.0",
+      "residentId": "reference_resident",
+      "title": "resident_mario_rossi sleep process",
+      "description": "Resident-specific executable decomposition: sleep. Mario performs movements calmly, without aids, avoiding abrupt changes because of mild right-knee osteoarthritis.",
+      "implementedComponents": [
+        "sleep"
+      ],
+      "nodes": [
+        {
+          "nodeId": "start",
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "change_posture",
+          "arguments": {
+            "posture": {
+              "source": "literal",
+              "value": "lying",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "wait",
+          "arguments": {
+            "purpose": {
+              "source": "literal",
+              "value": "sleep",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 5.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "end",
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    }
+  }
+}

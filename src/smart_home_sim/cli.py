@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -62,6 +63,24 @@ from smart_home_sim.formatting import (
     format_environment_text_report,
     format_text_report,
 )
+from smart_home_sim.hybrid_planning import (
+    BehavioralProfile,
+    CadenceError,
+    HabitsGenerationError,
+    LMStudioClient,
+    LMStudioConfig,
+    LMStudioError,
+    PackageAuthoringError,
+    Persona,
+    PersonaGenerationError,
+    PlanningWorld,
+    author_process_package,
+    build_cadence_calendar,
+    build_planning_world,
+    generate_habits,
+    generate_persona,
+)
+from smart_home_sim.hybrid_planning.lmstudio import DEFAULT_BASE_URL, DEFAULT_MODEL
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
     load_home_policy,
@@ -628,6 +647,209 @@ def prepare_authoring_repair(
         newline="\n",
     )
     typer.echo(f"Authoring repair request written to: {output.resolve()}")
+
+
+@app.command("generate-persona")
+def generate_persona_command(
+    brief: str,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    model: Annotated[str, typer.Option("--model")] = DEFAULT_MODEL,
+    base_url: Annotated[str, typer.Option("--base-url")] = DEFAULT_BASE_URL,
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.3,
+    timezone: Annotated[str, typer.Option("--timezone")] = "Europe/Rome",
+    seed: Annotated[int | None, typer.Option("--seed")] = None,
+    exchange_output: Annotated[Path | None, typer.Option("--exchange-output")] = None,
+) -> None:
+    """Invent one frozen resident persona locally through LM Studio."""
+    if exchange_output is not None and exchange_output.resolve() == output.resolve():
+        raise typer.BadParameter(
+            "Exchange output must differ from the persona output.",
+            param_hint="--exchange-output",
+        )
+    client = LMStudioClient(
+        LMStudioConfig(base_url=base_url, model=model, temperature=temperature, seed=seed)
+    )
+    try:
+        result = generate_persona(brief, client, timezone=timezone, seed=seed)
+    except LMStudioError as error:
+        typer.echo(f"LM Studio generation failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    except PersonaGenerationError as error:
+        typer.echo(f"Persona generation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    _atomic_write(output, result.persona.model_dump_json(by_alias=True, indent=2))
+    typer.echo(f"Persona written to: {output.resolve()}")
+    if exchange_output is not None:
+        exchange = {
+            "request": result.completion.request,
+            "response": result.completion.response,
+            "content": result.completion.content,
+            "durationSeconds": result.completion.duration_seconds,
+            "finishReason": result.completion.finish_reason,
+            "usage": result.completion.usage,
+        }
+        _atomic_write(exchange_output, json.dumps(exchange, ensure_ascii=False, indent=2))
+        typer.echo(f"Generation exchange written to: {exchange_output.resolve()}")
+
+
+@app.command("generate-habits")
+def generate_habits_command(
+    persona_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    model: Annotated[str, typer.Option("--model")] = DEFAULT_MODEL,
+    base_url: Annotated[str, typer.Option("--base-url")] = DEFAULT_BASE_URL,
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.3,
+    seed: Annotated[int | None, typer.Option("--seed")] = None,
+    max_repairs: Annotated[int, typer.Option("--max-repairs", min=0)] = 2,
+    exchange_output: Annotated[Path | None, typer.Option("--exchange-output")] = None,
+) -> None:
+    """Generate a frozen behavioural profile (habit ground truth) from a persona via LM Studio."""
+    outputs = {output.resolve()}
+    if exchange_output is not None:
+        if exchange_output.resolve() in {output.resolve(), persona_path.resolve()}:
+            raise typer.BadParameter(
+                "Exchange output must differ from the persona and profile outputs.",
+                param_hint="--exchange-output",
+            )
+        outputs.add(exchange_output.resolve())
+    if persona_path.resolve() in outputs:
+        raise typer.BadParameter(
+            "Profile output must not overwrite the persona input.", param_hint="--output"
+        )
+    try:
+        persona = Persona.model_validate_json(persona_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot load persona: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    client = LMStudioClient(
+        LMStudioConfig(base_url=base_url, model=model, temperature=temperature, seed=seed)
+    )
+    try:
+        result = generate_habits(persona, client, max_repairs=max_repairs, seed=seed)
+    except LMStudioError as error:
+        typer.echo(f"LM Studio generation failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    except HabitsGenerationError as error:
+        typer.echo(f"Habit generation failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    _atomic_write(output, result.profile.model_dump_json(by_alias=True, indent=2))
+    typer.echo(
+        f"Behavioural profile written to: {output.resolve()} "
+        f"({len(result.profile.habits)} habits, {result.repair_attempts} repair attempt(s))"
+    )
+    if exchange_output is not None:
+        exchange = {
+            "request": result.completion.request,
+            "response": result.completion.response,
+            "content": result.completion.content,
+            "durationSeconds": result.completion.duration_seconds,
+            "finishReason": result.completion.finish_reason,
+            "usage": result.completion.usage,
+        }
+        _atomic_write(exchange_output, json.dumps(exchange, ensure_ascii=False, indent=2))
+        typer.echo(f"Generation exchange written to: {exchange_output.resolve()}")
+
+
+@app.command("build-planning-world")
+def build_planning_world_command(
+    persona_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    seed: Annotated[int, typer.Option("--seed")] = 1,
+    activity_catalog_version: Annotated[str, typer.Option("--activity-catalog-version")] = "1.0.0",
+    home_model_version: Annotated[str, typer.Option("--home-model-version")] = "1.0.0",
+) -> None:
+    """Deterministically build a persona's standard-apartment planning world (no LLM)."""
+    if persona_path.resolve() == output.resolve():
+        raise typer.BadParameter(
+            "World output must not overwrite the persona input.", param_hint="--output"
+        )
+    try:
+        persona = Persona.model_validate_json(persona_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot load persona: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    world = build_planning_world(
+        persona,
+        seed=seed,
+        activity_catalog_version=activity_catalog_version,
+        home_model_version=home_model_version,
+    )
+    _atomic_write(output, world.model_dump_json(by_alias=True, indent=2))
+    typer.echo(
+        f"Planning world written to: {output.resolve()} "
+        f"({len(world.locations)} locations, {len(world.resources)} resources)"
+    )
+
+
+@app.command("author-process-package")
+def author_process_package_command(
+    persona_path: Path,
+    world_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+) -> None:
+    """Author and gate a persona's personal process package from its planning world."""
+    inputs = {persona_path.resolve(), world_path.resolve()}
+    if output.resolve() in inputs:
+        raise typer.BadParameter(
+            "Package output must not overwrite an input.", param_hint="--output"
+        )
+    try:
+        persona = Persona.model_validate_json(persona_path.read_text(encoding="utf-8"))
+        world = PlanningWorld.model_validate_json(world_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot load inputs: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    try:
+        result = author_process_package(persona, world)
+    except PackageAuthoringError as error:
+        typer.echo(f"Package authoring failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    _atomic_write(output, result.package.model_dump_json(by_alias=True, indent=2))
+    typer.echo(
+        f"Personal process package written to: {output.resolve()} "
+        f"({len(result.package.process_models)} process models)"
+    )
+
+
+@app.command("build-cadence-calendar")
+def build_cadence_calendar_command(
+    profile_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    start: Annotated[str, typer.Option("--start")],
+    months: Annotated[int, typer.Option("--months", min=1)] = 1,
+    seed: Annotated[int, typer.Option("--seed")] = 0,
+    timezone: Annotated[str, typer.Option("--timezone")] = "Europe/Rome",
+) -> None:
+    """Deterministically expand a behavioural profile into a per-day cadence calendar."""
+    if profile_path.resolve() == output.resolve():
+        raise typer.BadParameter(
+            "Calendar output must not overwrite the profile input.", param_hint="--output"
+        )
+    try:
+        start_date = date.fromisoformat(start)
+    except ValueError as error:
+        raise typer.BadParameter(
+            f"Start date must be YYYY-MM-DD: {error}", param_hint="--start"
+        ) from error
+    try:
+        profile = BehavioralProfile.model_validate_json(profile_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot load behavioural profile: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    try:
+        result = build_cadence_calendar(
+            profile, start_date=start_date, months=months, seed=seed, timezone=timezone
+        )
+    except CadenceError as error:
+        typer.echo(f"Cadence calendar failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    _atomic_write(output, result.calendar.model_dump_json(by_alias=True, indent=2))
+    typer.echo(
+        f"Cadence calendar written to: {output.resolve()} "
+        f"({len(result.calendar.days)} days, {result.total_occurrences} habit occurrences)"
+    )
 
 
 @app.command()
