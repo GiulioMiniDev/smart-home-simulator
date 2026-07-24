@@ -15,6 +15,12 @@ from smart_home_sim.hybrid_planning.cadence import (
     HabitOccurrence,
     build_cadence_calendar,
 )
+from smart_home_sim.hybrid_planning.day_generation import (
+    build_day_plan,
+    build_day_scenario,
+    build_day_scenarios,
+    habit_to_intent,
+)
 from smart_home_sim.hybrid_planning.habits import (
     BehavioralProfile,
     Habit,
@@ -22,6 +28,11 @@ from smart_home_sim.hybrid_planning.habits import (
     HabitsGenerationResult,
     generate_habits,
     validate_portfolio,
+)
+from smart_home_sim.hybrid_planning.horizon import (
+    HorizonError,
+    HorizonResult,
+    build_horizon,
 )
 from smart_home_sim.hybrid_planning.lmstudio import (
     ChatMessage,
@@ -64,6 +75,9 @@ __all__ = [
     "HabitOccurrence",
     "HabitsGenerationError",
     "HabitsGenerationResult",
+    "HorizonError",
+    "HorizonResult",
+    "build_horizon",
     "build_cadence_calendar",
     "LMStudioClient",
     "LMStudioConfig",
@@ -79,8 +93,12 @@ __all__ = [
     "ProcessPackageResult",
     "assemble_scenario",
     "author_process_package",
+    "build_day_plan",
+    "build_day_scenario",
+    "build_day_scenarios",
     "build_planning_world",
     "build_reference_package",
+    "habit_to_intent",
     "extract_json_value",
     "generate_habits",
     "generate_persona",

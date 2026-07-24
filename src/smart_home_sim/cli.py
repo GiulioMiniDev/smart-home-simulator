@@ -67,6 +67,7 @@ from smart_home_sim.hybrid_planning import (
     BehavioralProfile,
     CadenceError,
     HabitsGenerationError,
+    HorizonError,
     LMStudioClient,
     LMStudioConfig,
     LMStudioError,
@@ -76,10 +77,13 @@ from smart_home_sim.hybrid_planning import (
     PlanningWorld,
     author_process_package,
     build_cadence_calendar,
+    build_day_scenarios,
+    build_horizon,
     build_planning_world,
     generate_habits,
     generate_persona,
 )
+from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
 from smart_home_sim.hybrid_planning.lmstudio import DEFAULT_BASE_URL, DEFAULT_MODEL
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
@@ -788,8 +792,18 @@ def author_process_package_command(
     persona_path: Path,
     world_path: Path,
     output: Annotated[Path, typer.Option("--output", "-o")],
+    use_llm: Annotated[bool, typer.Option("--use-llm/--no-use-llm")] = False,
+    model: Annotated[str, typer.Option("--model")] = DEFAULT_MODEL,
+    base_url: Annotated[str, typer.Option("--base-url")] = DEFAULT_BASE_URL,
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.3,
+    seed: Annotated[int | None, typer.Option("--seed")] = None,
+    max_repairs: Annotated[int, typer.Option("--max-repairs", min=0)] = 1,
 ) -> None:
-    """Author and gate a persona's personal process package from its planning world."""
+    """Author and gate a persona's personal process package from its planning world.
+
+    Deterministic by default (retargets reference models); pass --use-llm to author each model
+    with LM Studio, keeping a proposal only when it still passes the gate.
+    """
     inputs = {persona_path.resolve(), world_path.resolve()}
     if output.resolve() in inputs:
         raise typer.BadParameter(
@@ -801,16 +815,94 @@ def author_process_package_command(
     except (OSError, UnicodeDecodeError, ValueError) as error:
         typer.echo(f"Cannot load inputs: {error}", err=True)
         raise typer.Exit(code=2) from error
+    client = (
+        LMStudioClient(
+            LMStudioConfig(base_url=base_url, model=model, temperature=temperature, seed=seed)
+        )
+        if use_llm
+        else None
+    )
     try:
-        result = author_process_package(persona, world)
+        result = author_process_package(
+            persona, world, client=client, seed=seed, max_repairs=max_repairs
+        )
+    except LMStudioError as error:
+        typer.echo(f"LM Studio authoring failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
     except PackageAuthoringError as error:
         typer.echo(f"Package authoring failed: {error}", err=True)
         raise typer.Exit(code=1) from error
     _atomic_write(output, result.package.model_dump_json(by_alias=True, indent=2))
     typer.echo(
         f"Personal process package written to: {output.resolve()} "
-        f"({len(result.package.process_models)} process models)"
+        f"({len(result.package.process_models)} process models, "
+        f"{result.llm_authored_count} LLM-authored, {result.fallback_count} reference)"
     )
+
+
+@app.command("generate-horizon")
+def generate_horizon_command(
+    world_path: Path,
+    package_path: Path,
+    calendar_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")],
+    start_index: Annotated[int, typer.Option("--start-index", min=0)] = 0,
+    days: Annotated[int | None, typer.Option("--days", min=1)] = None,
+) -> None:
+    """Merge the horizon into one simulatable batch manifest (deterministic; does not simulate)."""
+    try:
+        world = PlanningWorld.model_validate_json(world_path.read_text(encoding="utf-8"))
+        package = PersonalProcessPackage.model_validate_json(
+            package_path.read_text(encoding="utf-8")
+        )
+        calendar = CadenceCalendar.model_validate_json(calendar_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot load inputs: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    try:
+        result = build_horizon(
+            world, package, calendar, output_dir, start_index=start_index, days=days
+        )
+    except HorizonError as error:
+        typer.echo(f"Horizon merge failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(
+        f"Batch manifest written to: {result.manifest_path.resolve()} "
+        f"({result.day_count} days bundled, {len(result.failed_days)} skipped)"
+    )
+    typer.echo(
+        "Generation complete. To simulate, run: "
+        f"smart-home-sim simulate-batch {result.manifest_path} --output-dir <dir>"
+    )
+
+
+@app.command("generate-days")
+def generate_days_command(
+    world_path: Path,
+    calendar_path: Path,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")],
+    start_index: Annotated[int, typer.Option("--start-index", min=0)] = 0,
+    days: Annotated[int | None, typer.Option("--days", min=1)] = None,
+) -> None:
+    """Build one simulatable one-day scenario per calendar day (deterministic substrate)."""
+    try:
+        world = PlanningWorld.model_validate_json(world_path.read_text(encoding="utf-8"))
+        calendar = CadenceCalendar.model_validate_json(calendar_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as error:
+        typer.echo(f"Cannot load inputs: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    try:
+        scenarios = build_day_scenarios(world, calendar, start_index=start_index, days=days)
+    except ValueError as error:
+        typer.echo(f"Cannot generate days: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    for scenario in scenarios:
+        day = scenario.days[0].date.isoformat()
+        _atomic_write(
+            output_dir / f"day-{day}.scenario.json",
+            scenario.model_dump_json(by_alias=True, indent=2),
+        )
+    typer.echo(f"Wrote {len(scenarios)} day scenarios to: {output_dir.resolve()}")
 
 
 @app.command("build-cadence-calendar")
