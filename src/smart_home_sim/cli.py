@@ -81,6 +81,7 @@ from smart_home_sim.hybrid_planning import (
     build_horizon,
     build_planning_world,
     generate_habits,
+    generate_llm_day_plans,
     generate_persona,
 )
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
@@ -848,8 +849,17 @@ def generate_horizon_command(
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")],
     start_index: Annotated[int, typer.Option("--start-index", min=0)] = 0,
     days: Annotated[int | None, typer.Option("--days", min=1)] = None,
+    use_llm: Annotated[bool, typer.Option("--use-llm/--no-use-llm")] = False,
+    model: Annotated[str, typer.Option("--model")] = DEFAULT_MODEL,
+    base_url: Annotated[str, typer.Option("--base-url")] = DEFAULT_BASE_URL,
+    temperature: Annotated[float, typer.Option("--temperature")] = 0.6,
+    seed: Annotated[int | None, typer.Option("--seed")] = None,
 ) -> None:
-    """Merge the horizon into one simulatable batch manifest (deterministic; does not simulate)."""
+    """Merge the horizon into one simulatable batch manifest (deterministic; does not simulate).
+
+    Days are the deterministic substrate by default; pass --use-llm to arrange each week with LM
+    Studio, keeping a generated day only when it still compiles (else the substrate day is used).
+    """
     try:
         world = PlanningWorld.model_validate_json(world_path.read_text(encoding="utf-8"))
         package = PersonalProcessPackage.model_validate_json(
@@ -859,17 +869,43 @@ def generate_horizon_command(
     except (OSError, UnicodeDecodeError, ValueError) as error:
         typer.echo(f"Cannot load inputs: {error}", err=True)
         raise typer.Exit(code=2) from error
+    day_plans = None
+    llm_note = ""
+    if use_llm:
+        client = LMStudioClient(
+            LMStudioConfig(base_url=base_url, model=model, temperature=temperature, seed=seed)
+        )
+        try:
+            llm_result = generate_llm_day_plans(
+                world, calendar, client, start_index=start_index, days=days, seed=seed
+            )
+        except LMStudioError as error:
+            typer.echo(f"LM Studio day generation failed: {error}", err=True)
+            raise typer.Exit(code=2) from error
+        day_plans = llm_result.day_plans
+        llm_note = (
+            f" ({llm_result.llm_authored_count} LLM-authored, "
+            f"{llm_result.fallback_count} substrate)"
+        )
     try:
         result = build_horizon(
-            world, package, calendar, output_dir, start_index=start_index, days=days
+            world,
+            package,
+            calendar,
+            output_dir,
+            start_index=start_index,
+            days=days,
+            day_plans=day_plans,
         )
     except HorizonError as error:
         typer.echo(f"Horizon merge failed: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(
         f"Batch manifest written to: {result.manifest_path.resolve()} "
-        f"({result.day_count} days bundled, {len(result.failed_days)} skipped)"
+        f"({result.day_count} days bundled, {len(result.failed_days)} skipped){llm_note}"
     )
+    if result.trace_path is not None:
+        typer.echo(f"Planned habit ground-truth written to: {result.trace_path.resolve()}")
     typer.echo(
         "Generation complete. To simulate, run: "
         f"smart-home-sim simulate-batch {result.manifest_path} --output-dir <dir>"

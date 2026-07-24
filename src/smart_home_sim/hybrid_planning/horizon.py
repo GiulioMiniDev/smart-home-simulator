@@ -16,9 +16,14 @@ from smart_home_sim.compiler import compile_scenario
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchRun
 from smart_home_sim.domain.behavior import PersonalProcessPackage
+from smart_home_sim.domain.models import DayPlan
 from smart_home_sim.environment import build_bundle_files
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
-from smart_home_sim.hybrid_planning.day_generation import build_day_scenario
+from smart_home_sim.hybrid_planning.day_generation import (
+    build_day_scenario,
+    build_scenario_from_day_plan,
+)
+from smart_home_sim.hybrid_planning.habit_trace import build_planned_trace
 from smart_home_sim.hybrid_planning.package_authoring import build_probe_scenario
 from smart_home_sim.hybrid_planning.world import PlanningWorld
 from smart_home_sim.materialization import generate_home
@@ -32,6 +37,7 @@ class HorizonError(ValueError):
 class HorizonResult:
     manifest_path: Path
     day_count: int
+    trace_path: Path | None = None
     failed_days: list[str] = field(default_factory=list)
 
 
@@ -48,8 +54,13 @@ def build_horizon(
     *,
     start_index: int = 0,
     days: int | None = None,
+    day_plans: dict[str, DayPlan] | None = None,
 ) -> HorizonResult:
-    """Compile and bundle each calendar day, then write one batch manifest over them."""
+    """Compile and bundle each calendar day, then write one batch manifest over them.
+
+    When ``day_plans`` maps a date to a DayPlan (e.g. from the LLM layer), that plan is used for the
+    date; otherwise the deterministic substrate day is built.
+    """
     limit = len(calendar.days) if days is None else start_index + days
     day_slice = calendar.days[start_index:limit]
     if not day_slice:
@@ -67,7 +78,10 @@ def build_horizon(
     runs: list[SimulationBatchRun] = []
     failed: list[str] = []
     for day in day_slice:
-        scenario = build_day_scenario(world, day)
+        if day_plans is not None and day.date in day_plans:
+            scenario = build_scenario_from_day_plan(world, day_plans[day.date])
+        else:
+            scenario = build_day_scenario(world, day)
         scenario_path = output_dir / "scenarios" / f"day-{day.date}.scenario.json"
         _write(scenario_path, scenario)
 
@@ -94,6 +108,13 @@ def build_horizon(
     manifest = SimulationBatchManifest(experiment_id=f"{world.persona_id}_horizon", runs=runs)
     manifest_path = output_dir / "batch-manifest.json"
     _write(manifest_path, manifest)
+
+    trace_path = output_dir / "planned-habit-trace.json"
+    _write(trace_path, build_planned_trace(calendar, start_index=start_index, days=days))
+
     return HorizonResult(
-        manifest_path=manifest_path, day_count=len(runs), failed_days=failed
+        manifest_path=manifest_path,
+        day_count=len(runs),
+        trace_path=trace_path,
+        failed_days=failed,
     )

@@ -88,6 +88,10 @@ def test_build_horizon_writes_manifest_and_bundles(tmp_path) -> None:
     assert result.failed_days == []
     assert (tmp_path / "home.json").exists()
     assert (tmp_path / "package.json").exists()
+    assert result.trace_path is not None and result.trace_path.exists()
+    trace = json.loads((tmp_path / "planned-habit-trace.json").read_text(encoding="utf-8"))
+    assert trace["documentType"] == "planned_habit_trace"
+    assert len(trace["entries"]) == 3
     manifest = json.loads((tmp_path / "batch-manifest.json").read_text(encoding="utf-8"))
     assert [run["runId"] for run in manifest["runs"]] == ["day-2026-08-03", "day-2026-08-04"]
     for run in manifest["runs"]:

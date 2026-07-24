@@ -9,6 +9,7 @@ valid, simulatable day always exists and is the fallback.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -84,42 +85,67 @@ def habit_to_intent(label: str, kind: str | None = None) -> str:
     return DEFAULT_INTENT
 
 
-def build_day_plan(day: CalendarDay, *, timezone: str, actor_id: str) -> DayPlan:
-    """Build a simulatable DayPlan: wake, the due habits mapped to intents, then sleep."""
+@dataclass(frozen=True)
+class TimelineEntry:
+    intent_id: str
+    hhmm: str
+    habit_id: str | None = None
+    truncatable: bool = False
+
+
+def plan_from_entries(
+    day_date: date,
+    day_type: str,
+    entries: list[TimelineEntry],
+    *,
+    timezone: str,
+    actor_id: str,
+) -> DayPlan:
+    """Assemble a DayPlan from ordered intent entries (shared by deterministic and LLM sources)."""
     tz = ZoneInfo(timezone)
-    day_date = date.fromisoformat(day.date)
-    activities: list[Activity] = [
-        _activity("wake_up", day_date, WAKE_TIME, tz, actor_id, index=0)
+    activities = [
+        _activity(
+            entry.intent_id,
+            day_date,
+            entry.hhmm,
+            tz,
+            actor_id,
+            index=index,
+            habit_id=entry.habit_id,
+            truncatable=entry.truncatable,
+        )
+        for index, entry in enumerate(entries)
     ]
-    for position, occurrence in enumerate(day.occurrences, start=1):
-        intent_id = habit_to_intent(occurrence.label, occurrence.kind.value)
-        activities.append(
-            _activity(
-                intent_id,
-                day_date,
+    return DayPlan(date=day_date, context=DayContext(day_type=day_type), activities=activities)
+
+
+def build_day_plan(day: CalendarDay, *, timezone: str, actor_id: str) -> DayPlan:
+    """Deterministic DayPlan: wake, the due habits mapped to intents, then a terminal sleep."""
+    entries = [TimelineEntry("wake_up", WAKE_TIME)]
+    for occurrence in day.occurrences:
+        entries.append(
+            TimelineEntry(
+                habit_to_intent(occurrence.label, occurrence.kind.value),
                 occurrence.target_time,
-                tz,
-                actor_id,
-                index=position,
                 habit_id=occurrence.habit_id,
             )
         )
-    activities.append(
-        _activity(
-            "sleep",
-            day_date,
-            SLEEP_TIME,
-            tz,
-            actor_id,
-            index=len(activities),
-            truncatable=True,
-        )
+    entries.append(TimelineEntry("sleep", SLEEP_TIME, truncatable=True))
+    return plan_from_entries(
+        date.fromisoformat(day.date),
+        day.weekday.value,
+        entries,
+        timezone=timezone,
+        actor_id=actor_id,
     )
-    return DayPlan(
-        date=day_date,
-        context=DayContext(day_type=day.weekday.value),
-        activities=activities,
-    )
+
+
+def build_scenario_from_day_plan(world: PlanningWorld, day_plan: DayPlan) -> Scenario:
+    """Wrap a single DayPlan in a one-day scenario."""
+    tz = ZoneInfo(world.time_zone)
+    start = datetime.combine(day_plan.date, time(0, 0), tzinfo=tz)
+    end = datetime.combine(day_plan.date + timedelta(days=1), time(0, 0), tzinfo=tz)
+    return assemble_scenario(world, days=[day_plan], window=SimulationWindow(start=start, end=end))
 
 
 def build_day_scenario(world: PlanningWorld, day: CalendarDay) -> Scenario:
@@ -127,12 +153,9 @@ def build_day_scenario(world: PlanningWorld, day: CalendarDay) -> Scenario:
     horizon scales; the dataset is the concatenation of per-day sensor logs (absolute timestamps).
     """
     actor_id = world.residents[0].resident_id
-    day_plan = build_day_plan(day, timezone=world.time_zone, actor_id=actor_id)
-    tz = ZoneInfo(world.time_zone)
-    day_date = date.fromisoformat(day.date)
-    start = datetime.combine(day_date, time(0, 0), tzinfo=tz)
-    end = datetime.combine(day_date + timedelta(days=1), time(0, 0), tzinfo=tz)
-    return assemble_scenario(world, days=[day_plan], window=SimulationWindow(start=start, end=end))
+    return build_scenario_from_day_plan(
+        world, build_day_plan(day, timezone=world.time_zone, actor_id=actor_id)
+    )
 
 
 def build_day_scenarios(
