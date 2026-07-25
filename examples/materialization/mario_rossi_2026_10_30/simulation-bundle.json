@@ -12745,19 +12745,19 @@
           "vertices": [
             {
               "x": 0.0,
-              "y": 4.7212
+              "y": 4.3268
             },
             {
-              "x": 4.6598,
-              "y": 4.7212
+              "x": 6.0091,
+              "y": 4.3268
             },
             {
-              "x": 4.6598,
-              "y": 7.9403
+              "x": 6.0091,
+              "y": 7.5719
             },
             {
               "x": 0.0,
-              "y": 7.9403
+              "y": 7.5719
             }
           ]
         },
@@ -12769,20 +12769,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 4.6598,
-              "y": 4.8947
+              "x": 6.0091,
+              "y": 3.3653
             },
             {
-              "x": 6.6955,
-              "y": 4.8947
+              "x": 8.0297,
+              "y": 3.3653
             },
             {
-              "x": 6.6955,
-              "y": 7.9403
+              "x": 8.0297,
+              "y": 7.5719
             },
             {
-              "x": 4.6598,
-              "y": 7.9403
+              "x": 6.0091,
+              "y": 7.5719
             }
           ]
         },
@@ -12794,20 +12794,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 4.6598,
+              "x": 6.0091,
               "y": 0.0
             },
             {
-              "x": 8.3373,
+              "x": 11.3578,
               "y": 0.0
             },
             {
-              "x": 8.3373,
-              "y": 3.1272
+              "x": 11.3578,
+              "y": 3.3653
             },
             {
-              "x": 4.6598,
-              "y": 3.1272
+              "x": 6.0091,
+              "y": 3.3653
             }
           ]
         },
@@ -12823,16 +12823,16 @@
               "y": 0.0
             },
             {
-              "x": 4.6598,
+              "x": 6.0091,
               "y": 0.0
             },
             {
-              "x": 4.6598,
-              "y": 4.7212
+              "x": 6.0091,
+              "y": 4.3268
             },
             {
               "x": 0.0,
-              "y": 4.7212
+              "y": 4.3268
             }
           ]
         },
@@ -12844,20 +12844,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 4.6598,
-              "y": 3.1272
+              "x": 8.0297,
+              "y": 3.3653
             },
             {
-              "x": 8.3373,
-              "y": 3.1272
+              "x": 11.3578,
+              "y": 3.3653
             },
             {
-              "x": 8.3373,
-              "y": 4.8947
+              "x": 11.3578,
+              "y": 5.769
             },
             {
-              "x": 4.6598,
-              "y": 4.8947
+              "x": 8.0297,
+              "y": 5.769
             }
           ]
         },
@@ -12869,20 +12869,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 6.6955,
-              "y": 4.8947
+              "x": 8.0297,
+              "y": 5.769
             },
             {
-              "x": 8.3373,
-              "y": 4.8947
+              "x": 11.3578,
+              "y": 5.769
             },
             {
-              "x": 8.3373,
-              "y": 7.9403
+              "x": 11.3578,
+              "y": 7.5719
             },
             {
-              "x": 6.6955,
-              "y": 7.9403
+              "x": 8.0297,
+              "y": 7.5719
             }
           ]
         },
@@ -12895,19 +12895,19 @@
           "vertices": [
             {
               "x": 0.0,
-              "y": 19.94025308460751
+              "y": 19.571877794400365
             },
             {
               "x": 6.0,
-              "y": 19.94025308460751
+              "y": 19.571877794400365
             },
             {
               "x": 6.0,
-              "y": 25.94025308460751
+              "y": 25.571877794400365
             },
             {
               "x": 0.0,
-              "y": 25.94025308460751
+              "y": 25.571877794400365
             }
           ]
         },
@@ -12920,19 +12920,19 @@
           "vertices": [
             {
               "x": 6.0,
-              "y": 19.94025308460751
+              "y": 19.571877794400365
             },
             {
               "x": 12.0,
-              "y": 19.94025308460751
+              "y": 19.571877794400365
             },
             {
               "x": 12.0,
-              "y": 25.94025308460751
+              "y": 25.571877794400365
             },
             {
               "x": 6.0,
-              "y": 25.94025308460751
+              "y": 25.571877794400365
             }
           ]
         },
@@ -12945,19 +12945,19 @@
           "vertices": [
             {
               "x": 12.0,
-              "y": 19.94025308460751
+              "y": 19.571877794400365
             },
             {
               "x": 18.0,
-              "y": 19.94025308460751
+              "y": 19.571877794400365
             },
             {
               "x": 18.0,
-              "y": 25.94025308460751
+              "y": 25.571877794400365
             },
             {
               "x": 12.0,
-              "y": 25.94025308460751
+              "y": 25.571877794400365
             }
           ]
         },
@@ -12966,17 +12966,17 @@
     ],
     "connections": [
       {
-        "connectionId": "door_hallway_kitchen",
+        "connectionId": "door_kitchen_living_room",
         "kind": "doorway",
-        "regionAId": "hallway",
-        "regionBId": "kitchen",
+        "regionAId": "kitchen",
+        "regionBId": "living_room",
         "portalA": {
-          "x": 6.4985,
-          "y": 3.5272
+          "x": 6.4091,
+          "y": 1.6826
         },
         "portalB": {
-          "x": 6.4985,
-          "y": 2.7272
+          "x": 5.6091,
+          "y": 1.6826
         },
         "widthMeters": 1.0,
         "traversalMode": "walking",
@@ -12985,17 +12985,17 @@
         "allowedMobilityProfiles": []
       },
       {
-        "connectionId": "door_kitchen_living_room",
+        "connectionId": "door_hallway_kitchen",
         "kind": "doorway",
-        "regionAId": "kitchen",
-        "regionBId": "living_room",
+        "regionAId": "hallway",
+        "regionBId": "kitchen",
         "portalA": {
-          "x": 5.0598,
-          "y": 1.5636
+          "x": 9.6938,
+          "y": 3.7653
         },
         "portalB": {
-          "x": 4.2598,
-          "y": 1.5636
+          "x": 9.6938,
+          "y": 2.9653
         },
         "widthMeters": 1.0,
         "traversalMode": "walking",
@@ -13009,31 +13009,12 @@
         "regionAId": "bedroom",
         "regionBId": "living_room",
         "portalA": {
-          "x": 2.3299,
-          "y": 5.1212
+          "x": 3.0045,
+          "y": 4.7268
         },
         "portalB": {
-          "x": 2.3299,
-          "y": 4.3212
-        },
-        "widthMeters": 1.0,
-        "traversalMode": "walking",
-        "distanceMeters": null,
-        "bidirectional": true,
-        "allowedMobilityProfiles": []
-      },
-      {
-        "connectionId": "door_bathroom_hallway",
-        "kind": "doorway",
-        "regionAId": "bathroom",
-        "regionBId": "hallway",
-        "portalA": {
-          "x": 5.6777,
-          "y": 5.2947
-        },
-        "portalB": {
-          "x": 5.6777,
-          "y": 4.4947
+          "x": 3.0045,
+          "y": 3.9268
         },
         "widthMeters": 1.0,
         "traversalMode": "walking",
@@ -13047,12 +13028,12 @@
         "regionAId": "balcony",
         "regionBId": "hallway",
         "portalA": {
-          "x": 7.5164,
-          "y": 5.2947
+          "x": 9.6938,
+          "y": 6.169
         },
         "portalB": {
-          "x": 7.5164,
-          "y": 4.4947
+          "x": 9.6938,
+          "y": 5.369
         },
         "widthMeters": 1.0,
         "traversalMode": "walking",
@@ -13061,17 +13042,17 @@
         "allowedMobilityProfiles": []
       },
       {
-        "connectionId": "door_hallway_living_room",
+        "connectionId": "door_bathroom_hallway",
         "kind": "doorway",
-        "regionAId": "hallway",
-        "regionBId": "living_room",
+        "regionAId": "bathroom",
+        "regionBId": "hallway",
         "portalA": {
-          "x": 5.0598,
-          "y": 3.9242
+          "x": 7.6297,
+          "y": 4.5672
         },
         "portalB": {
-          "x": 4.2598,
-          "y": 3.9242
+          "x": 8.4297,
+          "y": 4.5672
         },
         "widthMeters": 1.0,
         "traversalMode": "walking",
@@ -13085,12 +13066,12 @@
         "regionAId": "bedroom",
         "regionBId": "outside",
         "portalA": {
-          "x": 2.3299,
-          "y": 6.33075
+          "x": 3.00455,
+          "y": 5.949350000000001
         },
         "portalB": {
           "x": 3.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "widthMeters": 1.0,
         "traversalMode": "transport",
@@ -13104,12 +13085,12 @@
         "regionAId": "bedroom",
         "regionBId": "supermarket",
         "portalA": {
-          "x": 2.3299,
-          "y": 6.33075
+          "x": 3.00455,
+          "y": 5.949350000000001
         },
         "portalB": {
           "x": 9.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "widthMeters": 1.0,
         "traversalMode": "transport",
@@ -13123,12 +13104,12 @@
         "regionAId": "bedroom",
         "regionBId": "neighborhood_bar",
         "portalA": {
-          "x": 2.3299,
-          "y": 6.33075
+          "x": 3.00455,
+          "y": 5.949350000000001
         },
         "portalB": {
           "x": 15.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "widthMeters": 1.0,
         "traversalMode": "transport",
@@ -13144,20 +13125,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 5.7955,
-              "y": 7.0403
+              "x": 6.0091,
+              "y": 3.3653
             },
             {
-              "x": 6.6955,
-              "y": 7.0403
+              "x": 6.8091,
+              "y": 3.3653
             },
             {
-              "x": 6.6955,
-              "y": 7.9403
+              "x": 6.8091,
+              "y": 4.1653
             },
             {
-              "x": 5.7955,
-              "y": 7.9403
+              "x": 6.0091,
+              "y": 4.1653
             }
           ]
         }
@@ -13168,20 +13149,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 5.2455,
-              "y": 7.2403
+              "x": 7.3297,
+              "y": 7.1219
             },
             {
-              "x": 5.6955,
-              "y": 7.2403
+              "x": 8.0297,
+              "y": 7.1219
             },
             {
-              "x": 5.6955,
-              "y": 7.9403
+              "x": 8.0297,
+              "y": 7.5719
             },
             {
-              "x": 5.2455,
-              "y": 7.9403
+              "x": 7.3297,
+              "y": 7.5719
             }
           ]
         }
@@ -13192,20 +13173,44 @@
         "boundary": {
           "vertices": [
             {
-              "x": 4.6598,
-              "y": 6.3653
+              "x": 6.6297,
+              "y": 7.1219
             },
             {
-              "x": 5.1098,
-              "y": 6.3653
+              "x": 7.2297,
+              "y": 7.1219
             },
             {
-              "x": 5.1098,
-              "y": 6.9653
+              "x": 7.2297,
+              "y": 7.5719
             },
             {
-              "x": 4.6598,
-              "y": 6.9653
+              "x": 6.6297,
+              "y": 7.5719
+            }
+          ]
+        }
+      },
+      {
+        "obstacleId": "obstacle_washing_machine",
+        "regionId": "bathroom",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 6.0091,
+              "y": 6.2219
+            },
+            {
+              "x": 6.5591,
+              "y": 6.2219
+            },
+            {
+              "x": 6.5591,
+              "y": 6.8219
+            },
+            {
+              "x": 6.0091,
+              "y": 6.8219
             }
           ]
         }
@@ -13216,20 +13221,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 3.0598,
-              "y": 5.9403
+              "x": 0.0,
+              "y": 4.3268
             },
             {
-              "x": 4.6598,
-              "y": 5.9403
+              "x": 1.6,
+              "y": 4.3268
             },
             {
-              "x": 4.6598,
-              "y": 7.9403
+              "x": 1.6,
+              "y": 6.3268
             },
             {
-              "x": 3.0598,
-              "y": 7.9403
+              "x": 0.0,
+              "y": 6.3268
             }
           ]
         }
@@ -13240,20 +13245,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 2.3598,
-              "y": 7.4403
+              "x": 1.7,
+              "y": 4.3268
             },
             {
-              "x": 2.9598,
-              "y": 7.4403
+              "x": 2.2,
+              "y": 4.3268
             },
             {
-              "x": 2.9598,
-              "y": 7.9403
+              "x": 2.2,
+              "y": 4.9268
             },
             {
-              "x": 2.3598,
-              "y": 7.9403
+              "x": 1.7,
+              "y": 4.9268
             }
           ]
         }
@@ -13264,20 +13269,44 @@
         "boundary": {
           "vertices": [
             {
-              "x": 1.0598,
-              "y": 7.3403
+              "x": 5.4091,
+              "y": 4.3268
             },
             {
-              "x": 2.2598,
-              "y": 7.3403
+              "x": 6.0091,
+              "y": 4.3268
             },
             {
-              "x": 2.2598,
-              "y": 7.9403
+              "x": 6.0091,
+              "y": 5.5268
             },
             {
-              "x": 1.0598,
-              "y": 7.9403
+              "x": 5.4091,
+              "y": 5.5268
+            }
+          ]
+        }
+      },
+      {
+        "obstacleId": "obstacle_medication_cleaning_cabinet",
+        "regionId": "hallway",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 8.0297,
+              "y": 3.3653
+            },
+            {
+              "x": 8.8297,
+              "y": 3.3653
+            },
+            {
+              "x": 8.8297,
+              "y": 3.7653
+            },
+            {
+              "x": 8.0297,
+              "y": 3.7653
             }
           ]
         }
@@ -13288,20 +13317,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 7.5373,
+              "x": 6.0091,
               "y": 0.0
             },
             {
-              "x": 8.3373,
+              "x": 7.2091,
               "y": 0.0
             },
             {
-              "x": 8.3373,
-              "y": 1.2
+              "x": 7.2091,
+              "y": 0.8
             },
             {
-              "x": 7.5373,
-              "y": 1.2
+              "x": 6.0091,
+              "y": 0.8
             }
           ]
         }
@@ -13312,20 +13341,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 7.8873,
-              "y": 1.3
+              "x": 7.3091,
+              "y": 0.0
             },
             {
-              "x": 8.3373,
-              "y": 1.3
+              "x": 7.7591,
+              "y": 0.0
             },
             {
-              "x": 8.3373,
-              "y": 1.75
+              "x": 7.7591,
+              "y": 0.45
             },
             {
-              "x": 7.8873,
-              "y": 1.75
+              "x": 7.3091,
+              "y": 0.45
             }
           ]
         }
@@ -13336,20 +13365,20 @@
         "boundary": {
           "vertices": [
             {
-              "x": 7.7873,
-              "y": 1.85
+              "x": 7.8591,
+              "y": 0.0
             },
             {
-              "x": 8.3373,
-              "y": 1.85
+              "x": 8.4591,
+              "y": 0.0
             },
             {
-              "x": 8.3373,
-              "y": 2.45
+              "x": 8.4591,
+              "y": 0.55
             },
             {
-              "x": 7.7873,
-              "y": 2.45
+              "x": 7.8591,
+              "y": 0.55
             }
           ]
         }
@@ -13360,19 +13389,19 @@
         "boundary": {
           "vertices": [
             {
-              "x": 5.1598,
+              "x": 8.7591,
               "y": 0.0
             },
             {
-              "x": 5.3598,
+              "x": 8.9591,
               "y": 0.0
             },
             {
-              "x": 5.3598,
+              "x": 8.9591,
               "y": 0.2
             },
             {
-              "x": 5.1598,
+              "x": 8.7591,
               "y": 0.2
             }
           ]
@@ -13384,19 +13413,19 @@
         "boundary": {
           "vertices": [
             {
-              "x": 5.4598,
+              "x": 9.0591,
               "y": 0.0
             },
             {
-              "x": 5.8098,
+              "x": 9.4091,
               "y": 0.0
             },
             {
-              "x": 5.8098,
+              "x": 9.4091,
               "y": 0.25
             },
             {
-              "x": 5.4598,
+              "x": 9.0591,
               "y": 0.25
             }
           ]
@@ -13408,20 +13437,44 @@
         "boundary": {
           "vertices": [
             {
-              "x": 5.9098,
+              "x": 9.5091,
               "y": 0.0
             },
             {
-              "x": 6.6098,
+              "x": 10.2091,
               "y": 0.0
             },
             {
-              "x": 6.6098,
+              "x": 10.2091,
               "y": 0.7
             },
             {
-              "x": 5.9098,
+              "x": 9.5091,
               "y": 0.7
+            }
+          ]
+        }
+      },
+      {
+        "obstacleId": "obstacle_stove",
+        "regionId": "kitchen",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 10.3091,
+              "y": 0.0
+            },
+            {
+              "x": 10.9091,
+              "y": 0.0
+            },
+            {
+              "x": 10.9091,
+              "y": 0.6
+            },
+            {
+              "x": 10.3091,
+              "y": 0.6
             }
           ]
         }
@@ -13480,8 +13533,8 @@
         "interactionPointId": "anchor_bedroom",
         "regionId": "bedroom",
         "position": {
-          "x": 1.5299,
-          "y": 6.3703
+          "x": 3.8045,
+          "y": 6.1968
         },
         "approachRadiusMeters": 0.25
       },
@@ -13489,8 +13542,8 @@
         "interactionPointId": "anchor_bathroom",
         "regionId": "bathroom",
         "position": {
-          "x": 5.6777,
-          "y": 5.63
+          "x": 7.0194,
+          "y": 5.1936
         },
         "approachRadiusMeters": 0.25
       },
@@ -13498,8 +13551,8 @@
         "interactionPointId": "anchor_kitchen",
         "regionId": "kitchen",
         "position": {
-          "x": 6.2735,
-          "y": 1.525
+          "x": 8.6834,
+          "y": 2.0826
         },
         "approachRadiusMeters": 0.25
       },
@@ -13507,8 +13560,8 @@
         "interactionPointId": "anchor_living_room",
         "regionId": "living_room",
         "position": {
-          "x": 2.3299,
-          "y": 2.7856
+          "x": 3.0045,
+          "y": 2.5884
         },
         "approachRadiusMeters": 0.25
       },
@@ -13516,8 +13569,8 @@
         "interactionPointId": "anchor_hallway",
         "regionId": "hallway",
         "position": {
-          "x": 6.4985,
-          "y": 4.0109
+          "x": 9.6938,
+          "y": 4.7672
         },
         "approachRadiusMeters": 0.25
       },
@@ -13525,8 +13578,8 @@
         "interactionPointId": "anchor_balcony",
         "regionId": "balcony",
         "position": {
-          "x": 7.5164,
-          "y": 6.4175
+          "x": 9.6938,
+          "y": 6.6705
         },
         "approachRadiusMeters": 0.25
       },
@@ -13535,7 +13588,7 @@
         "regionId": "outside",
         "position": {
           "x": 3.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "approachRadiusMeters": 0.25
       },
@@ -13544,7 +13597,7 @@
         "regionId": "supermarket",
         "position": {
           "x": 9.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "approachRadiusMeters": 0.25
       },
@@ -13553,7 +13606,7 @@
         "regionId": "neighborhood_bar",
         "position": {
           "x": 15.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "approachRadiusMeters": 0.25
       },
@@ -13561,8 +13614,8 @@
         "interactionPointId": "point_bed",
         "regionId": "bedroom",
         "position": {
-          "x": 3.8598,
-          "y": 5.5703
+          "x": 0.8,
+          "y": 6.6968
         },
         "approachRadiusMeters": 0.25
       },
@@ -13570,8 +13623,8 @@
         "interactionPointId": "point_bedside_table",
         "regionId": "bedroom",
         "position": {
-          "x": 2.6598,
-          "y": 7.0703
+          "x": 1.95,
+          "y": 5.2968
         },
         "approachRadiusMeters": 0.25
       },
@@ -13579,8 +13632,8 @@
         "interactionPointId": "point_wardrobe",
         "regionId": "bedroom",
         "position": {
-          "x": 1.6598,
-          "y": 6.9703
+          "x": 5.0391,
+          "y": 4.9268
         },
         "approachRadiusMeters": 0.25
       },
@@ -13588,8 +13641,8 @@
         "interactionPointId": "point_toilet",
         "regionId": "bathroom",
         "position": {
-          "x": 5.4705,
-          "y": 6.8703
+          "x": 7.6797,
+          "y": 6.7519
         },
         "approachRadiusMeters": 0.25
       },
@@ -13597,8 +13650,8 @@
         "interactionPointId": "point_washbasin",
         "regionId": "bathroom",
         "position": {
-          "x": 5.4798,
-          "y": 6.6653
+          "x": 6.9297,
+          "y": 6.7519
         },
         "approachRadiusMeters": 0.25
       },
@@ -13606,8 +13659,8 @@
         "interactionPointId": "point_shower",
         "regionId": "bathroom",
         "position": {
-          "x": 6.2455,
-          "y": 6.6703
+          "x": 6.4091,
+          "y": 4.5353
         },
         "approachRadiusMeters": 0.25
       },
@@ -13615,8 +13668,8 @@
         "interactionPointId": "point_washing_machine",
         "regionId": "bathroom",
         "position": {
-          "x": 5.2289,
-          "y": 5.5258
+          "x": 6.9291,
+          "y": 6.5219
         },
         "approachRadiusMeters": 0.25
       },
@@ -13624,7 +13677,7 @@
         "interactionPointId": "point_refrigerator",
         "regionId": "kitchen",
         "position": {
-          "x": 6.2598,
+          "x": 9.8591,
           "y": 1.07
         },
         "approachRadiusMeters": 0.25
@@ -13633,8 +13686,8 @@
         "interactionPointId": "point_stove",
         "regionId": "kitchen",
         "position": {
-          "x": 5.5573,
-          "y": 0.7874
+          "x": 10.6091,
+          "y": 0.97
         },
         "approachRadiusMeters": 0.25
       },
@@ -13642,7 +13695,7 @@
         "interactionPointId": "point_moka",
         "regionId": "kitchen",
         "position": {
-          "x": 5.2598,
+          "x": 8.8591,
           "y": 0.57
         },
         "approachRadiusMeters": 0.25
@@ -13651,8 +13704,8 @@
         "interactionPointId": "point_kitchen_sink",
         "regionId": "kitchen",
         "position": {
-          "x": 7.4173,
-          "y": 2.15
+          "x": 8.1591,
+          "y": 0.92
         },
         "approachRadiusMeters": 0.25
       },
@@ -13660,8 +13713,8 @@
         "interactionPointId": "point_dining_table",
         "regionId": "kitchen",
         "position": {
-          "x": 7.1673,
-          "y": 0.6
+          "x": 6.6091,
+          "y": 1.17
         },
         "approachRadiusMeters": 0.25
       },
@@ -13669,8 +13722,8 @@
         "interactionPointId": "point_kitchen_chair",
         "regionId": "kitchen",
         "position": {
-          "x": 7.5173,
-          "y": 1.525
+          "x": 7.5341,
+          "y": 0.82
         },
         "approachRadiusMeters": 0.25
       },
@@ -13678,7 +13731,7 @@
         "interactionPointId": "point_radio",
         "regionId": "kitchen",
         "position": {
-          "x": 5.6348,
+          "x": 9.2341,
           "y": 0.62
         },
         "approachRadiusMeters": 0.25
@@ -13705,8 +13758,8 @@
         "interactionPointId": "point_medication_cleaning_cabinet",
         "regionId": "hallway",
         "position": {
-          "x": 5.5573,
-          "y": 3.6427
+          "x": 8.4297,
+          "y": 4.1353
         },
         "approachRadiusMeters": 0.25
       },
@@ -13714,8 +13767,8 @@
         "interactionPointId": "point_entrance_door",
         "regionId": "hallway",
         "position": {
-          "x": 6.4985,
-          "y": 4.0109
+          "x": 9.6938,
+          "y": 4.7672
         },
         "approachRadiusMeters": 0.25
       },
@@ -13723,8 +13776,8 @@
         "interactionPointId": "point_service_bedroom",
         "regionId": "bedroom",
         "position": {
-          "x": 1.5299,
-          "y": 6.3703
+          "x": 3.8045,
+          "y": 6.1968
         },
         "approachRadiusMeters": 0.25
       },
@@ -13732,8 +13785,8 @@
         "interactionPointId": "point_service_bathroom",
         "regionId": "bathroom",
         "position": {
-          "x": 5.6777,
-          "y": 5.63
+          "x": 7.0194,
+          "y": 5.1936
         },
         "approachRadiusMeters": 0.25
       },
@@ -13741,8 +13794,8 @@
         "interactionPointId": "point_service_kitchen",
         "regionId": "kitchen",
         "position": {
-          "x": 6.2735,
-          "y": 1.525
+          "x": 8.6834,
+          "y": 2.0826
         },
         "approachRadiusMeters": 0.25
       },
@@ -13750,8 +13803,8 @@
         "interactionPointId": "point_service_living_room",
         "regionId": "living_room",
         "position": {
-          "x": 2.3299,
-          "y": 2.7856
+          "x": 3.0045,
+          "y": 2.5884
         },
         "approachRadiusMeters": 0.25
       },
@@ -13759,8 +13812,8 @@
         "interactionPointId": "point_service_hallway",
         "regionId": "hallway",
         "position": {
-          "x": 6.4985,
-          "y": 4.0109
+          "x": 9.6938,
+          "y": 4.7672
         },
         "approachRadiusMeters": 0.25
       },
@@ -13768,8 +13821,8 @@
         "interactionPointId": "point_service_balcony",
         "regionId": "balcony",
         "position": {
-          "x": 7.5164,
-          "y": 6.4175
+          "x": 9.6938,
+          "y": 6.6705
         },
         "approachRadiusMeters": 0.25
       },
@@ -13778,7 +13831,7 @@
         "regionId": "outside",
         "position": {
           "x": 3.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "approachRadiusMeters": 0.25
       },
@@ -13787,7 +13840,7 @@
         "regionId": "supermarket",
         "position": {
           "x": 9.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "approachRadiusMeters": 0.25
       },
@@ -13796,7 +13849,7 @@
         "regionId": "neighborhood_bar",
         "position": {
           "x": 15.0,
-          "y": 22.94025308460751
+          "y": 22.571877794400365
         },
         "approachRadiusMeters": 0.25
       }
@@ -36244,7 +36297,7 @@
     {
       "artifactId": "synthetic_mario_rome_apartment_logical_v1",
       "version": "1.0.0",
-      "sha256": "d5abf4680a6e67a7e26e3e9e2d720962665f92e449f1f2b02890144ec40beb27"
+      "sha256": "9818977cf5d0efaebae09829568c818cbdece8e08bc6eef595ebcac3666cfc08"
     }
   ],
   "residentKinematics": [

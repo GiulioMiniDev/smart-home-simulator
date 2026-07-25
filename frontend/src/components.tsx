@@ -19,6 +19,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, PropsWithChildren, ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { furnitureSymbol } from "./furniture";
+import { FurnitureSymbols } from "./furniture-symbols";
 import type { HomeModel, JobStatus, Point, Polygon, SensorModel, TimelineEvent } from "./types";
 
 const nav = [
@@ -225,6 +227,16 @@ function polygonPoints(points: Point[]): string {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
 }
 
+function bounds(points: Point[]): { minX: number; minY: number; maxX: number; maxY: number } | undefined {
+  if (points.length === 0) return undefined;
+  return {
+    minX: Math.min(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)),
+    maxX: Math.max(...points.map((point) => point.x)),
+    maxY: Math.max(...points.map((point) => point.y)),
+  };
+}
+
 function center(points: Point[]): Point {
   return {
     x: points.reduce((sum, point) => sum + point.x, 0) / Math.max(points.length, 1),
@@ -259,6 +271,8 @@ export function PlanCanvas({
   const viewY = minY + (maxY - minY - height) / 2 + (viewport?.y ?? 0);
   const regions = new Map(home.regions.map((region) => [region.regionId, region]));
   const interactionPoints = new Map(home.interactionPoints.map((point) => [point.interactionPointId, point]));
+  // Obstacles carry no type of their own; the generator names them after the entity they belong to.
+  const entityByObstacle = new Map(home.entities.map((entity) => [`obstacle_${entity.entityId}`, entity]));
   const activate = (id: string) => onSelect?.(id);
   const keyboard = (event: React.KeyboardEvent<SVGGElement>, id: string) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -277,6 +291,7 @@ export function PlanCanvas({
         <defs>
           <pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M 1 0 L 0 0 0 1" /></pattern>
           <pattern id="obstacle" width=".55" height=".55" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2=".55" /></pattern>
+          <FurnitureSymbols />
         </defs>
         <rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill="url(#grid)" className="plan-grid" />
         <g aria-label="Regions">
@@ -297,27 +312,44 @@ export function PlanCanvas({
         </g>
         <g aria-label="Connections" className="connections">
           {home.connections.map((connection) => {
-            const from = regions.get(connection.regionAId);
-            const to = regions.get(connection.regionBId);
-            if (!from || !to) return null;
-            const a = center(from.boundary.vertices);
-            const b = center(to.boundary.vertices);
+            // Doorways know where they are: drawing them centre-to-centre drew diagonals straight
+            // through the rooms and told you nothing about where you can actually walk.
+            const a = connection.portalA ?? center(regions.get(connection.regionAId)?.boundary.vertices ?? []);
+            const b = connection.portalB ?? center(regions.get(connection.regionBId)?.boundary.vertices ?? []);
+            if (!a || !b) return null;
             return <line key={connection.connectionId} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`connection connection-${connection.kind}`} />;
           })}
         </g>
         <g aria-label="Obstacles">
-          {home.obstacles.map((obstacle) => (
-            <polygon
-              key={obstacle.obstacleId}
-              role="button"
-              tabIndex={0}
-              aria-label={`Obstacle ${obstacle.obstacleId}`}
-              points={polygonPoints(obstacle.boundary.vertices)}
-              className={`obstacle ${selectedId === obstacle.obstacleId ? "is-selected" : ""}`}
-              onClick={() => activate(obstacle.obstacleId)}
-              onKeyDown={(event) => keyboard(event, obstacle.obstacleId)}
-            />
-          ))}
+          {home.obstacles.map((obstacle) => {
+            const entity = entityByObstacle.get(obstacle.obstacleId);
+            const symbol = furnitureSymbol(entity?.entityType);
+            const box = bounds(obstacle.boundary.vertices);
+            return (
+              <g
+                key={obstacle.obstacleId}
+                role="button"
+                tabIndex={0}
+                aria-label={`Obstacle ${obstacle.obstacleId}${entity ? ` (${entity.entityType})` : ""}`}
+                className={selectedId === obstacle.obstacleId ? "is-selected" : ""}
+                onClick={() => activate(obstacle.obstacleId)}
+                onKeyDown={(event) => keyboard(event, obstacle.obstacleId)}
+              >
+                <polygon points={polygonPoints(obstacle.boundary.vertices)} className="obstacle" />
+                {symbol && box && (
+                  <use
+                    href={`#furn-${symbol}`}
+                    x={box.minX}
+                    y={box.minY}
+                    width={box.maxX - box.minX}
+                    height={box.maxY - box.minY}
+                    className="furniture-glyph"
+                    preserveAspectRatio="xMidYMid meet"
+                  />
+                )}
+              </g>
+            );
+          })}
         </g>
         <g aria-label="Interaction points">
           {home.interactionPoints.map((point) => (

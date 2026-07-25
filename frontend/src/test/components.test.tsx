@@ -53,4 +53,28 @@ describe("application components", () => {
     view.rerender(<PlanCanvas home={{ ...home, connections: [{ connectionId: "broken", regionAId: "kitchen", regionBId: "missing", kind: "doorway", bidirectional: true, widthMeters: 1 }], entities: [...home.entities, { ...home.entities[0], entityId: "orphan", interactionPointId: "missing" }] }} />);
     expect(screen.queryByLabelText("oven orphan")).not.toBeInTheDocument();
   });
+
+  it("draws a furniture glyph over a typed obstacle and a doorway at its portals", () => {
+    const furnished: HomeModel = {
+      ...home,
+      connections: [{ connectionId: "door", regionAId: "kitchen", regionBId: "kitchen", kind: "doorway", bidirectional: true, widthMeters: 1, portalA: { x: 1, y: 0.4 }, portalB: { x: 1, y: -0.4 } }],
+      obstacles: [
+        { obstacleId: "obstacle_fridge_01", regionId: "kitchen", boundary: { vertices: [{ x: 0, y: 0 }, { x: 0.7, y: 0 }, { x: 0.7, y: 0.7 }, { x: 0, y: 0.7 }] } },
+        { obstacleId: "obstacle_mystery_01", regionId: "kitchen", boundary: { vertices: [{ x: 2, y: 2 }, { x: 3, y: 2 }, { x: 3, y: 3 }, { x: 2, y: 3 }] } },
+      ],
+      entities: [
+        { entityId: "fridge_01", entityType: "refrigerator", regionId: "kitchen", interactionPointId: "point", capabilities: [], initialState: {} },
+        { entityId: "mystery_01", entityType: "unmapped_thing", regionId: "kitchen", interactionPointId: "point", capabilities: [], initialState: {} },
+      ],
+    };
+    const { container } = render(<PlanCanvas home={furnished} />);
+    const glyphs = container.querySelectorAll("use.furniture-glyph");
+    // The known type gets its symbol; the unmapped one falls back to the bare footprint.
+    expect(glyphs).toHaveLength(1);
+    expect(glyphs[0].getAttribute("href")).toBe("#furn-refrigerator");
+    expect(screen.getByLabelText("Obstacle obstacle_fridge_01 (refrigerator)")).toBeInTheDocument();
+    const door = container.querySelector("line.connection-doorway");
+    expect(door?.getAttribute("y1")).toBe("0.4");
+    expect(door?.getAttribute("y2")).toBe("-0.4");
+  });
 });

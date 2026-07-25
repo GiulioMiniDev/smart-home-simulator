@@ -107,6 +107,8 @@ export interface HomeConnection {
   kind: "doorway" | "passage" | "transit";
   bidirectional: boolean;
   widthMeters: number;
+  portalA?: Point;
+  portalB?: Point;
 }
 
 export interface HomeObstacle {

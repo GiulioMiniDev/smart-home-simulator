@@ -28,23 +28,26 @@ from smart_home_sim.domain.environment import Point2D, Polygon2D
 
 # Target floor area and preferred aspect (width : height) per known room kind. Unknown rooms fall
 # back to _DEFAULT_PROFILE, so the generator stays generic for arbitrary scenario locations.
+# Sized so the standard resource set actually fits with walking room around it: at the previous
+# areas a bathroom could not hold a washing machine next to a shower without sealing itself off,
+# and the placer (correctly) refused the piece.
 _ROOM_PROFILES: dict[str, tuple[float, float]] = {
-    "living_room": (22.0, 1.20),
-    "bedroom": (15.0, 1.15),
-    "second_bedroom": (12.0, 1.15),
-    "kitchen": (11.5, 1.10),
-    "dining_room": (12.0, 1.15),
-    "study": (9.0, 1.10),
-    "hallway": (6.5, 2.60),
-    "corridor": (6.0, 3.00),
-    "bathroom": (6.2, 1.15),
-    "second_bathroom": (4.0, 1.10),
-    "balcony": (5.0, 2.60),
-    "terrace": (8.0, 2.20),
-    "storage": (3.5, 1.00),
-    "laundry_room": (4.5, 1.10),
+    "living_room": (26.0, 1.20),
+    "bedroom": (19.5, 1.15),
+    "second_bedroom": (14.0, 1.15),
+    "kitchen": (18.0, 1.10),
+    "dining_room": (14.0, 1.15),
+    "study": (11.0, 1.10),
+    "hallway": (8.0, 2.60),
+    "corridor": (7.0, 3.00),
+    "bathroom": (8.5, 1.25),
+    "second_bathroom": (5.0, 1.10),
+    "balcony": (6.0, 2.60),
+    "terrace": (9.5, 2.20),
+    "storage": (4.5, 1.00),
+    "laundry_room": (5.5, 1.10),
 }
-_DEFAULT_PROFILE = (10.0, 1.15)
+_DEFAULT_PROFILE = (12.0, 1.15)
 # Rooms that read as appendages of the flat and belong on its edge rather than in the middle.
 _EDGE_ROOMS = frozenset({"balcony", "terrace", "storage"})
 # Rooms that in a real flat open onto exactly one other space.
@@ -104,6 +107,11 @@ def room_area(region_id: str) -> float:
     return _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[0]
 
 
+def preferred_aspect(region_id: str) -> float:
+    """The shape this kind of room wants. A balcony is meant to be a strip; a bedroom is not."""
+    return _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[1]
+
+
 def layout_rooms(region_ids: list[str]) -> dict[str, Rect]:
     """Tile the flat's footprint over the rooms by recursive area-weighted bisection.
 
@@ -130,10 +138,32 @@ def layout_rooms(region_ids: list[str]) -> dict[str, Rect]:
             _aspect(rect) / _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[1]
             for region_id, rect in placed.items()
         )
+        # A plan where the only way into the balcony is through the bathroom is geometrically fine
+        # and architecturally absurd. Door selection cannot repair it — connectivity forces its
+        # hand — so the layout has to avoid creating it.
+        score += 10.0 * _stranded_private_rooms(placed)
         if best_score is None or score < best_score:
             best, best_score = placed, score
     assert best is not None
     return best
+
+
+def _stranded_private_rooms(placed: dict[str, Rect]) -> int:
+    """Count private rooms that touch no circulation space at all.
+
+    Such a room can only be entered through another private one — the balcony you reach through
+    the bathroom. Door selection cannot fix it, because connectivity leaves it no other edge to
+    pick, so the layout is where it has to be avoided.
+    """
+    private = [region_id for region_id in placed if region_id in _SINGLE_DOOR_ROOMS]
+    circulation = {region_id for region_id in placed if region_id in _CIRCULATION_ROOMS}
+    if not private or not circulation:
+        return 0
+    neighbours: dict[str, set[str]] = {region_id: set() for region_id in placed}
+    for wall in shared_walls(placed, minimum_overlap=0.9):
+        neighbours[wall.region_a_id].add(wall.region_b_id)
+        neighbours[wall.region_b_id].add(wall.region_a_id)
+    return sum(1 for region_id in private if not neighbours[region_id] & circulation)
 
 
 def _order_for_layout(region_ids: list[str]) -> list[str]:
@@ -278,6 +308,9 @@ def _door_priority(wall: SharedWall) -> float:
             score += 4.0
         if region_id in _SINGLE_DOOR_ROOMS:
             score -= 1.5
+    # A door straight from the bathroom onto the balcony is worse than a longer way round.
+    if wall.region_a_id in _SINGLE_DOOR_ROOMS and wall.region_b_id in _SINGLE_DOOR_ROOMS:
+        score -= 6.0
     return score
 
 
@@ -381,9 +414,9 @@ _FURNITURE_FOOTPRINTS: dict[str, tuple[float, float]] = {
     "washbasin": (0.60, 0.45),
     "storage_cabinet": (0.80, 0.40),
     "moka_coffee_maker": (0.20, 0.20),
-    "shower": (0.90, 0.90),
+    "shower": (0.80, 0.80),
     "toilet": (0.45, 0.70),
-    "washing_machine": (0.60, 0.60),
+    "washing_machine": (0.60, 0.55),
     "garden_planter": (0.50, 0.40),
 }
 _DEFAULT_FOOTPRINT = (0.60, 0.50)
@@ -635,6 +668,7 @@ __all__ = [
     "prune_implausible_doors",
     "select_doors",
     "layout_rooms",
+    "preferred_aspect",
     "room_area",
     "shared_walls",
 ]

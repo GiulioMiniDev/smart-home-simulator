@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "758ccb0daf666c95e53342565fcfb527544a1867575e38407b10872dfb5192e5",
+  "sourceBundleSha256": "60cc960fab53d720029059471d5ba2122d6959eb237a1cf863e96c4c25de0fd6",
   "seed": 42,
   "regionIds": [
     "balcony",
@@ -50,8 +50,8 @@
     {
       "sensorId": "pir_bedroom",
       "position": {
-        "x": 2.3299,
-        "y": 6.33075
+        "x": 3.00455,
+        "y": 5.949350000000001
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -74,19 +74,19 @@
         "vertices": [
           {
             "x": 0.0,
-            "y": 4.7212
+            "y": 4.3268
           },
           {
-            "x": 4.6598,
-            "y": 4.7212
+            "x": 6.0091,
+            "y": 4.3268
           },
           {
-            "x": 4.6598,
-            "y": 7.9403
+            "x": 6.0091,
+            "y": 7.5719
           },
           {
             "x": 0.0,
-            "y": 7.9403
+            "y": 7.5719
           }
         ]
       },
@@ -96,8 +96,8 @@
     {
       "sensorId": "pir_bathroom",
       "position": {
-        "x": 5.67765,
-        "y": 6.4175
+        "x": 7.0194,
+        "y": 5.4686
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -119,20 +119,20 @@
       "coverage": {
         "vertices": [
           {
-            "x": 4.6598,
-            "y": 4.8947
+            "x": 6.0091,
+            "y": 3.3653
           },
           {
-            "x": 6.6955,
-            "y": 4.8947
+            "x": 8.0297,
+            "y": 3.3653
           },
           {
-            "x": 6.6955,
-            "y": 7.9403
+            "x": 8.0297,
+            "y": 7.5719
           },
           {
-            "x": 4.6598,
-            "y": 7.9403
+            "x": 6.0091,
+            "y": 7.5719
           }
         ]
       },
@@ -142,8 +142,8 @@
     {
       "sensorId": "pir_kitchen",
       "position": {
-        "x": 6.49855,
-        "y": 1.5636
+        "x": 8.68345,
+        "y": 1.68265
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -165,20 +165,20 @@
       "coverage": {
         "vertices": [
           {
-            "x": 4.6598,
+            "x": 6.0091,
             "y": 0.0
           },
           {
-            "x": 8.3373,
+            "x": 11.3578,
             "y": 0.0
           },
           {
-            "x": 8.3373,
-            "y": 3.1272
+            "x": 11.3578,
+            "y": 3.3653
           },
           {
-            "x": 4.6598,
-            "y": 3.1272
+            "x": 6.0091,
+            "y": 3.3653
           }
         ]
       },
@@ -188,8 +188,8 @@
     {
       "sensorId": "pir_living_room",
       "position": {
-        "x": 2.3299,
-        "y": 2.3606
+        "x": 3.00455,
+        "y": 2.1634
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -215,16 +215,16 @@
             "y": 0.0
           },
           {
-            "x": 4.6598,
+            "x": 6.0091,
             "y": 0.0
           },
           {
-            "x": 4.6598,
-            "y": 4.7212
+            "x": 6.0091,
+            "y": 4.3268
           },
           {
             "x": 0.0,
-            "y": 4.7212
+            "y": 4.3268
           }
         ]
       },
@@ -234,8 +234,8 @@
     {
       "sensorId": "pir_hallway",
       "position": {
-        "x": 6.49855,
-        "y": 4.01095
+        "x": 9.69375,
+        "y": 4.56715
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -257,20 +257,20 @@
       "coverage": {
         "vertices": [
           {
-            "x": 4.6598,
-            "y": 3.1272
+            "x": 8.0297,
+            "y": 3.3653
           },
           {
-            "x": 8.3373,
-            "y": 3.1272
+            "x": 11.3578,
+            "y": 3.3653
           },
           {
-            "x": 8.3373,
-            "y": 4.8947
+            "x": 11.3578,
+            "y": 5.769
           },
           {
-            "x": 4.6598,
-            "y": 4.8947
+            "x": 8.0297,
+            "y": 5.769
           }
         ]
       },
@@ -280,8 +280,8 @@
     {
       "sensorId": "pir_balcony",
       "position": {
-        "x": 7.516400000000001,
-        "y": 6.4175
+        "x": 9.69375,
+        "y": 6.670450000000001
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -303,20 +303,20 @@
       "coverage": {
         "vertices": [
           {
-            "x": 6.6955,
-            "y": 4.8947
+            "x": 8.0297,
+            "y": 5.769
           },
           {
-            "x": 8.3373,
-            "y": 4.8947
+            "x": 11.3578,
+            "y": 5.769
           },
           {
-            "x": 8.3373,
-            "y": 7.9403
+            "x": 11.3578,
+            "y": 7.5719
           },
           {
-            "x": 6.6955,
-            "y": 7.9403
+            "x": 8.0297,
+            "y": 7.5719
           }
         ]
       },
@@ -326,8 +326,8 @@
     {
       "sensorId": "contact_entrance_door",
       "position": {
-        "x": 6.4985,
-        "y": 4.0109
+        "x": 9.6938,
+        "y": 4.7672
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -358,8 +358,8 @@
     {
       "sensorId": "contact_medication_cleaning_cabinet",
       "position": {
-        "x": 5.5573,
-        "y": 3.6427
+        "x": 8.4297,
+        "y": 4.1353
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -387,7 +387,7 @@
     {
       "sensorId": "contact_refrigerator",
       "position": {
-        "x": 6.2598,
+        "x": 9.8591,
         "y": 1.07
       },
       "timing": {
@@ -416,8 +416,8 @@
     {
       "sensorId": "temperature_bedroom",
       "position": {
-        "x": 2.3299,
-        "y": 6.33075
+        "x": 3.00455,
+        "y": 5.949350000000001
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -460,8 +460,8 @@
     {
       "sensorId": "temperature_bathroom",
       "position": {
-        "x": 5.67765,
-        "y": 6.4175
+        "x": 7.0194,
+        "y": 5.4686
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -504,8 +504,8 @@
     {
       "sensorId": "temperature_kitchen",
       "position": {
-        "x": 6.49855,
-        "y": 1.5636
+        "x": 8.68345,
+        "y": 1.68265
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -558,8 +558,8 @@
     {
       "sensorId": "temperature_living_room",
       "position": {
-        "x": 2.3299,
-        "y": 2.3606
+        "x": 3.00455,
+        "y": 2.1634
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -602,8 +602,8 @@
     {
       "sensorId": "temperature_hallway",
       "position": {
-        "x": 6.49855,
-        "y": 4.01095
+        "x": 9.69375,
+        "y": 4.56715
       },
       "timing": {
         "latencyMilliseconds": 0.0,
@@ -646,8 +646,8 @@
     {
       "sensorId": "temperature_balcony",
       "position": {
-        "x": 7.516400000000001,
-        "y": 6.4175
+        "x": 9.69375,
+        "y": 6.670450000000001
       },
       "timing": {
         "latencyMilliseconds": 0.0,

@@ -10,6 +10,7 @@ from smart_home_sim.materialization.floorplan import (
     layout_rooms,
     navigable_point,
     place_furniture,
+    preferred_aspect,
     select_doors,
     shared_walls,
 )
@@ -75,7 +76,9 @@ def test_rooms_get_their_own_size_instead_of_one_shared_square() -> None:
     assert areas["living_room"] > areas["bedroom"] > areas["kitchen"] > areas["bathroom"]
     for name, rect in rects.items():
         aspect = max(rect.width, rect.height) / min(rect.width, rect.height)
-        assert aspect < 2.0, f"{name} came out as a corridor: {aspect:.2f}"
+        # Judged against the shape the room kind wants: a balcony is meant to be a strip, a
+        # bedroom that comes out as one cannot hold a bed.
+        assert aspect < preferred_aspect(name) + 0.7, f"{name} is the wrong shape: {aspect:.2f}"
 
 
 def test_doors_follow_shared_walls_and_keep_the_plan_connected() -> None:
@@ -164,3 +167,51 @@ def test_connect_all_bridges_a_room_the_walls_left_isolated() -> None:
     assert all("storage" not in (item.region_a_id, item.region_b_id) for item in walls)
     repaired = connect_all(list(rects), rects, walls)
     assert any("storage" in (item.region_a_id, item.region_b_id) for item in repaired)
+
+
+def test_the_standard_apartment_resource_set_is_fully_furnished() -> None:
+    """Every scenario resource must get a real footprint, not a refusal and a fallback point.
+
+    The placer is allowed to refuse a piece that would seal a room, so a silent regression in the
+    room profiles or the footprint table shows up as furniture quietly disappearing from the plan.
+    """
+    standard = {
+        "bedroom": [("bed_01", "bed"), ("wardrobe_01", "wardrobe")],
+        "kitchen": [
+            ("kitchen_chair_01", "chair"),
+            ("kitchen_table_01", "table"),
+            ("medication_cabinet_01", "storage_cabinet"),
+            ("moka_01", "moka_coffee_maker"),
+            ("refrigerator_01", "refrigerator"),
+            ("sink_01", "sink"),
+            ("stove_01", "stove"),
+        ],
+        "bathroom": [
+            ("shower_01", "shower"),
+            ("toilet_01", "toilet"),
+            ("washbasin_01", "washbasin"),
+            ("washing_machine_01", "washing_machine"),
+        ],
+        "living_room": [
+            ("radio_01", "radio"),
+            ("sofa_01", "sofa"),
+            ("television_01", "television"),
+        ],
+        "balcony": [("planter_01", "garden_planter")],
+    }
+    rooms = list(standard)
+    rects = layout_rooms(rooms)
+    walls = select_doors(rooms, rects, shared_walls(rects, minimum_overlap=1.2))
+
+    refused: list[str] = []
+    for region_id, entities in standard.items():
+        placed = place_furniture(
+            rects[region_id],
+            entities,
+            _portals(walls, rects, region_id),
+            body_radius=0.27,
+            doorway_width=1.0,
+        )
+        settled = {item.entity_id for item in placed}
+        refused.extend(entity_id for entity_id, _ in entities if entity_id not in settled)
+    assert refused == [], f"furniture silently dropped from the plan: {refused}"

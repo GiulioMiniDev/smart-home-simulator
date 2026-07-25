@@ -263,6 +263,9 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .connection-doorway { stroke: var(--teal); stroke-width: 2.2px; }
 .obstacle { fill: url(#obstacle); vector-effect: non-scaling-stroke; stroke: var(--amber); stroke-width: 1.2px; cursor: pointer; }
 .obstacle:hover, .obstacle.is-selected { stroke: var(--red); stroke-width: 2.3px; }
+/* The glyph is decoration over its footprint: the polygon underneath stays the hit target. */
+.furniture-glyph { color: var(--amber); opacity: .9; pointer-events: none; }
+g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .interaction-point { fill: var(--teal); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 1px; }
 .entity-node circle { fill: var(--indigo-soft); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; }
 .entity-node path { fill: none; vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.2px; }
