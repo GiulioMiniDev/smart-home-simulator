@@ -201,6 +201,9 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
             client.get(f"/api/exports/{export_id}/files/missing.jsonl", headers=headers).status_code
             == 404
         )
+        zip_res = client.get(f"/api/exports/{export_id}/zip", headers=headers)
+        assert zip_res.status_code == 200
+        assert zip_res.headers["Content-Type"] == "application/zip"
         with client.stream(
             "GET", f"/api/jobs/{job.job_id}/events?token={token}&after=0"
         ) as response:

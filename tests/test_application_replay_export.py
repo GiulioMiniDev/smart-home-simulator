@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import zipfile
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
@@ -233,4 +234,26 @@ def test_export_creates_missing_exports_directory(
     )
     assert workspace.exports_path.exists()
     assert (workspace.exports_path / manifest.export_id / "manifest.json").is_file()
+
+
+def test_archive_export_creates_valid_zip(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+    manifest = service.export(
+        ExportRequest(
+            run_id=run_id,
+            formats=[ExportFormat.jsonl],
+            roles=["observable"],
+        )
+    )
+    zip_path = service.archive_export(manifest.export_id)
+    assert zip_path.is_file()
+    assert zip_path.name == f"{manifest.export_id}.zip"
+    with zipfile.ZipFile(zip_path, "r") as archive:
+        names = archive.namelist()
+        assert f"{manifest.export_id}/manifest.json" in names
+        assert f"{manifest.export_id}/observable.jsonl" in names
+
 

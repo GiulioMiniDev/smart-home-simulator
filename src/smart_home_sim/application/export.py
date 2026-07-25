@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import tempfile
+import zipfile
 from collections.abc import Iterable, Iterator
 from datetime import datetime
 from pathlib import Path
@@ -317,3 +318,17 @@ class ExportService:
             ):
                 raise WorkspaceError(f"export file '{item.relative_path}' failed integrity checks")
         return manifest
+
+    def archive_export(self, export_id: str) -> Path:
+        self.verify_manifest(export_id)
+        export_dir = (self.workspace.exports_path / export_id).resolve()
+        zip_path = (self.workspace.exports_path / f"{export_id}.zip").resolve()
+        if not zip_path.is_file():
+            temporary = zip_path.with_name(f".{zip_path.name}.{uuid4().hex}.tmp")
+            with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
+                for entry in sorted(export_dir.rglob("*")):
+                    if entry.is_file():
+                        archive.write(entry, arcname=f"{export_id}/{entry.relative_to(export_dir)}")
+            temporary.replace(zip_path)
+        return zip_path
+
