@@ -18,7 +18,13 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, fie
 from starlette.background import BackgroundTask
 
 from smart_home_sim.application.export import ExportService
-from smart_home_sim.application.generation_job import GENERATION_ARTIFACTS, generation_run_dir
+from smart_home_sim.application.generation_ingest import (
+    GenerationIngestError,
+    generation_job_for_home,
+    horizon_revision,
+    ingest_generation,
+)
+from smart_home_sim.application.generation_paths import GENERATION_ARTIFACTS, generation_run_dir
 from smart_home_sim.application.jobs import JobManager
 from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.service import ApplicationService
@@ -235,6 +241,7 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
                 item.model_dump(mode="json", by_alias=True)
                 for item in workspace.list_jobs(home_id=home_id)
             ],
+            "generation": horizon_revision(workspace, home_id),
         }
 
     @app.post("/api/homes/{home_id}/authoring", dependencies=[secured])
@@ -257,6 +264,10 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
 
     @app.post("/api/homes/{home_id}/runs", status_code=202, dependencies=[secured])
     def start_run(home_id: str, request: MaterializationStart) -> dict[str, Any]:
+        # A home created from a local generation carries a horizon of independently compiled days;
+        # running it merges those days into one run instead of materializing a single scenario.
+        if generation_job_for_home(workspace, home_id) is not None:
+            return jobs.start_horizon_run(home_id).model_dump(mode="json", by_alias=True)
         return jobs.start_materialization(
             home_id,
             request.scenario_artifact_id,
@@ -279,6 +290,31 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             temperature=request.temperature,
             seed=request.seed,
         ).model_dump(mode="json", by_alias=True)
+
+    @app.get("/api/generations", dependencies=[secured])
+    def list_generations(limit: int = 100) -> list[dict[str, Any]]:
+        return [
+            item.model_dump(mode="json", by_alias=True)
+            for item in workspace.list_jobs(limit=limit)
+            if item.kind == "generation"
+        ]
+
+    @app.post("/api/generation/{job_id}/publish", status_code=201, dependencies=[secured])
+    def publish_generation(job_id: str) -> dict[str, Any]:
+        """Publish an earlier generation as a home input (generations now do this themselves)."""
+        workspace.get_job(job_id)
+        try:
+            result = ingest_generation(workspace, job_id)
+        except GenerationIngestError as error:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "GENERATION_NOT_PUBLISHABLE", "message": str(error)},
+            ) from error
+        return {
+            "homeId": result.home_id,
+            "residentDisplayName": result.resident_display_name,
+            "dayCount": result.day_count,
+        }
 
     @app.get("/api/generation/{job_id}/artifact/{name}", dependencies=[secured])
     def generation_artifact(job_id: str, name: str) -> FileResponse:

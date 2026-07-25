@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from smart_home_sim.application.horizon_run import verify_horizon
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import (
     DiaryAction,
@@ -48,15 +49,25 @@ class ReplayService:
         return self.workspace.artifact_path(artifact.artifact_id), artifact.sha256
 
     def verify(self, run_id: str) -> ReplayVerification:
-        bundle_path, _ = self._artifact(run_id, "simulation_bundle")
         trace_path, _ = self._artifact(run_id, "execution_trace")
-        report = replay_files(bundle_path, trace_path)
+        artifacts = self.workspace.run_artifacts(run_id)
+        if "simulation_bundle" in artifacts:
+            report = replay_files(self._artifact(run_id, "simulation_bundle")[0], trace_path)
+            matches = report.matches
+            expected = report.expected_semantic_digest
+            actual = report.actual_semantic_digest
+        else:
+            # A merged horizon run cannot be re-executed from one bundle; its published content is
+            # verified against its own authoritative digest and its per-day source digests.
+            matches, expected, actual = verify_horizon(
+                trace_path, self._artifact(run_id, "horizon_manifest")[0]
+            )
         verification = ReplayVerification(
             run_id=run_id,
             verified_at=utc_now(),
-            matches=report.matches,
-            expected_semantic_digest=report.expected_semantic_digest,
-            actual_semantic_digest=report.actual_semantic_digest,
+            matches=matches,
+            expected_semantic_digest=expected,
+            actual_semantic_digest=actual,
         )
         if verification.matches and not self.workspace.diagnostic_mode:
             self.workspace.save_replay_session(

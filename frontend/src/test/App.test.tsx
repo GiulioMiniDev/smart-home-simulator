@@ -54,7 +54,7 @@ describe("complete application routes", () => {
   it.each([
     ["/", "Good evidence starts"], ["/homes", "Workspace catalogue"], ["/residents", "People and provenance"],
     ["/simulations", "Execution centre"], ["/exports", "Portable datasets"], ["/help", "Generate one authoring bundle"],
-    ["/generate", "Generate a dataset from a brief"], ["/missing", "does not exist"],
+    ["/generate", "Generate a home input from a brief"], ["/missing", "does not exist"],
   ])("renders %s", async (path, text) => {
     mount(path); expect(await screen.findByText(new RegExp(text))).toBeInTheDocument();
   });
@@ -472,5 +472,115 @@ describe("complete application routes", () => {
     overrides["/runs/run_1/diary?limit=500"] = { total: 1, items: [{ activityExecutionId: "long", sourceActivityId: "source", actorId: "mario", intent: "long_activity", processModelId: "process", plannedStart: now, plannedEnd: longEnd, actualStart: now, actualEnd: longEnd, status: "completed", actions: [], movementIds: [], deviationIds: [], traceId: "trace", traceSemanticDigest: "b".repeat(64) }] };
     mount("/simulations/run_1"); await screen.findByText("Persistent state"); fireEvent.click(screen.getByRole("tab", { name: "diary" }));
     expect(await screen.findByText(/2 h 5 min/)).toBeInTheDocument();
+  });
+
+  it("generates, reviews, lists past generations and hands over to the published home", async () => {
+    const progress = { phase: "completed", percent: 100, completedUnits: 2, totalUnits: 2, message: "done" };
+    const genJob = { jobId: "gen_1", homeId: "home_1", kind: "generation", status: "completed", progress, requestedAt: now, finishedAt: now, resultReference: "home_1" };
+    overrides = {
+      "/generations": [genJob],
+      "/generation": () => response(genJob, { status: 202 }),
+      "/jobs/gen_1": { job: genJob },
+      "/generation/gen_1/artifact/persona.json": { name: "Elena", age: 72, city: "Bologna" },
+      "/generation/gen_1/artifact/behavioral-profile.json": { habits: [1, 2, 3, 4, 5, 6, 7, 8] },
+      "/generation/gen_1/artifact/batch-manifest.json": { runs: [1, 2] },
+      "/generation/gen_1/artifact/planned-habit-trace.json": { entries: [1, 2, 3] },
+    };
+    mount("/generate");
+    await screen.findByText("No generation selected");
+    fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "an elderly woman" } });
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+    await screen.findByText("Elena");
+    fireEvent.click(screen.getByText("gen_1"));
+    expect(await screen.findByText(/Published as a home input/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Open the home and run the simulation/ })).toHaveAttribute("href", "/homes/home_1");
+  });
+
+  it("publishes an earlier generation that has no home yet", async () => {
+    const progress = { phase: "completed", percent: 100, completedUnits: 1, totalUnits: 1, message: "done" };
+    const legacy = { jobId: "gen_old", kind: "generation", status: "completed", progress, requestedAt: now };
+    const artifacts = {
+      "/generations": [legacy],
+      "/jobs/gen_old": { job: legacy },
+      "/generation/gen_old/artifact/persona.json": { name: "Ada", age: 80, city: "Milan" },
+      "/generation/gen_old/artifact/behavioral-profile.json": { habits: [1] },
+      "/generation/gen_old/artifact/batch-manifest.json": { runs: [1] },
+      "/generation/gen_old/artifact/planned-habit-trace.json": { entries: [1] },
+    };
+    overrides = { ...artifacts, "/generation/gen_old/publish": () => response({ error: { message: "artifacts are gone" } }, { status: 409 }) };
+    mount("/generate");
+    fireEvent.click(await screen.findByText("gen_old"));
+    expect(await screen.findByText(/published no home yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Open the home/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Publish as a home/ }));
+    expect(await screen.findByText("artifacts are gone")).toBeInTheDocument();
+
+    cleanup();
+    overrides = { ...artifacts, "/generation/gen_old/publish": () => response({ homeId: "home_1" }, { status: 201 }) };
+    mount("/generate");
+    fireEvent.click(await screen.findByText("gen_old"));
+    fireEvent.click(await screen.findByRole("button", { name: /Publish as a home/ }));
+    expect(await screen.findByRole("heading", { name: "Golden home" })).toBeInTheDocument();
+  });
+
+  it("runs a generated home as one merged horizon run", async () => {
+    const generation = { generationJobId: "gen_1", dayCount: 31, experimentId: "elena_horizon" };
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [], generation };
+    mount("/homes/home_1");
+    await screen.findByRole("heading", { name: "Golden home" });
+    expect(screen.getByText(/31 days, each compiled and bundled separately/)).toBeInTheDocument();
+    expect(screen.getByText(/single trace, one observable sensor log/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run simulation" }));
+    expect(await screen.findByText(/queued in an isolated/)).toBeInTheDocument();
+  });
+
+  it("surfaces a generation start error", async () => {
+    overrides = {
+      "/generations": [],
+      "/generation": () => response({ error: { message: "LM Studio down" } }, { status: 502 }),
+    };
+    mount("/generate");
+    fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+    expect(await screen.findByText(/LM Studio down/)).toBeInTheDocument();
+  });
+
+  it("shows a failed generation job", async () => {
+    const failed = { jobId: "gen_x", kind: "generation", status: "failed", progress: { phase: "failed", percent: 40, completedUnits: 0, message: "phase failed" }, errorMessage: "LM Studio timeout", requestedAt: now };
+    overrides = {
+      "/generations": [],
+      "/generation": () => response(failed, { status: 202 }),
+      "/jobs/gen_x": { job: failed },
+    };
+    mount("/generate");
+    fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+    expect(await screen.findByText("LM Studio timeout")).toBeInTheDocument();
+  });
+
+  it("streams live generation progress", async () => {
+    const running = { jobId: "gen_r", kind: "generation", status: "running", progress: { phase: "authoring_habits", percent: 30, completedUnits: 2, totalUnits: 7, message: "Authoring habits" }, requestedAt: now };
+    overrides = {
+      "/generations": [],
+      "/generation": () => response(running, { status: 202 }),
+      "/jobs/gen_r": { job: running },
+    };
+    mount("/generate");
+    fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+    expect(await screen.findByText("authoring habits")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generating/ })).toBeDisabled();
+  });
+
+  it("shows the live horizon run of a generated home", async () => {
+    const generation = { generationJobId: "gen_1", dayCount: 2 };
+    const running = { ...job, jobId: "run_h", status: "running" as const, finishedAt: undefined, progress: { phase: "simulating", percent: 50, completedUnits: 1, totalUnits: 2, message: "Day 1 of 2 · 640 observations" } };
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [running], generation };
+    class Source { onmessage = vi.fn(); addEventListener = vi.fn(); close = vi.fn(); constructor(public url: string) { void url; } }
+    vi.stubGlobal("EventSource", Source);
+    mount("/homes/home_1");
+    await screen.findByRole("heading", { name: "Golden home" });
+    expect(screen.getByText(/Day 1 of 2 · 640 observations/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run simulation" })).toBeDisabled();
   });
 });

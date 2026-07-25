@@ -195,9 +195,11 @@ class ExportService:
 
     def export(self, request: ExportRequest) -> ExportManifest:
         artifacts = self.workspace.run_artifacts(request.run_id)
-        bundle = artifacts.get("simulation_bundle")
+        # A merged horizon run has no single bundle — its days were bundled and executed
+        # independently — so its horizon manifest carries the equivalent source provenance.
+        source = artifacts.get("simulation_bundle") or artifacts.get("horizon_manifest")
         trace = artifacts.get("execution_trace")
-        if bundle is None or trace is None:
+        if source is None or trace is None:
             raise WorkspaceError("a reproducible export requires bundle and execution trace")
         trace_path = self.workspace.artifact_path(trace.artifact_id)
         source_bundle_sha256 = _metadata(trace_path, "sourceBundleSha256")

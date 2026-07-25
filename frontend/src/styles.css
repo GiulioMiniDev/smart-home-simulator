@@ -517,3 +517,9 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .generate-review { display: flex; flex-direction: column; gap: 1rem; }
 .metric-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 @media (max-width: 900px) { .generate-grid { grid-template-columns: 1fr; } }
+.past-generations { margin-top: 0.5rem; }
+.past-generations ul { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.ghost-row { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--border, #ddd); border-radius: 8px; background: transparent; cursor: pointer; text-align: left; }
+.ghost-row.is-active { border-color: var(--accent, #4b3fb0); }
+.ghost-row small { margin-left: auto; opacity: 0.6; }
+.generate-status .hint { opacity: 0.75; font-size: 0.92rem; }

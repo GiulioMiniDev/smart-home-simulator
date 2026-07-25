@@ -63,6 +63,21 @@ class WorkspaceService:
         self.staging_path = self.root / "staging"
         self.diagnostic_mode = False
 
+    def _ensure_layout(self) -> None:
+        """Create the workspace's content directories if they are absent.
+
+        Empty directories do not survive an archive round-trip (a zip stores no empty entries), so
+        a restored or hand-copied workspace can be missing ``exports/`` or ``staging/`` until the
+        first write needs them.
+        """
+        for directory in (
+            self.objects_path,
+            self.runs_path,
+            self.exports_path,
+            self.staging_path,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+
     @classmethod
     def create(cls, root: Path, name: str) -> WorkspaceService:
         root = root.resolve()
@@ -70,13 +85,7 @@ class WorkspaceService:
         service = cls(root)
         if service.database_path.exists():
             raise WorkspaceError(f"workspace already exists at '{root}'")
-        for directory in (
-            service.objects_path,
-            service.runs_path,
-            service.exports_path,
-            service.staging_path,
-        ):
-            directory.mkdir(parents=True, exist_ok=True)
+        service._ensure_layout()
         service._migrate(name=name)
         return service
 
@@ -770,6 +779,34 @@ class WorkspaceService:
                     (artifact_id, _iso(), home_id),
                 )
         return revision_id
+
+    def latest_revision(self, home_id: str, kind: str) -> dict[str, Any] | None:
+        """The most recent revision of one kind for a home, with its decoded provenance."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM revisions WHERE home_id=? AND kind=? "
+                "ORDER BY created_at DESC, revision_id DESC LIMIT 1",
+                (home_id, kind),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "revisionId": row["revision_id"],
+            "kind": row["kind"],
+            "status": row["status"],
+            "artifactId": row["artifact_id"],
+            "provenance": json.loads(row["provenance_json"]),
+            "createdAt": row["created_at"],
+        }
+
+    def attach_job_home(self, job_id: str, home_id: str) -> JobRecord:
+        """Associate an already-created job with a home created after it started."""
+        self.ensure_writable()
+        self.get_job(job_id)
+        self.get_home(home_id)
+        with self.transaction() as connection:
+            connection.execute("UPDATE jobs SET home_id=? WHERE job_id=?", (home_id, job_id))
+        return self.get_job(job_id)
 
     def create_job(
         self,

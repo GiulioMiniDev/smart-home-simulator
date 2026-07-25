@@ -3,8 +3,10 @@
 The job lifecycle (progress, cancellation, failure) lives in ``run_generation_job``, which runs
 in-process and accepts an injectable LM Studio client so it is fully testable without a live model.
 ``_generation_worker`` is the thin subprocess entry point spawned by the JobManager. Generation
-never simulates; it writes every artifact (batch manifest and planned ground truth included) under
-the job's run directory for the researcher to review before running ``simulate-batch`` separately.
+never simulates: it writes every artifact (batch manifest and planned ground truth included) under
+the job's run directory and then publishes them as the INPUT of a new home (see
+``generation_ingest``). Simulating that horizon is the researcher's separate, explicit step, taken
+from the home like any other run.
 """
 
 from __future__ import annotations
@@ -13,6 +15,8 @@ import os
 from datetime import date
 from pathlib import Path
 
+from smart_home_sim.application.generation_ingest import ingest_generation
+from smart_home_sim.application.generation_paths import GENERATION_ARTIFACTS, generation_run_dir
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobStatus
 from smart_home_sim.hybrid_planning.lmstudio import (
@@ -23,28 +27,7 @@ from smart_home_sim.hybrid_planning.lmstudio import (
 )
 from smart_home_sim.hybrid_planning.pipeline import run_generation
 
-# Files the pipeline writes into the job run directory; the API serves these for review.
-GENERATION_ARTIFACTS: frozenset[str] = frozenset(
-    {
-        "persona.json",
-        "behavioral-profile.json",
-        "planning-world.json",
-        "personal-process-package.json",
-        "cadence-calendar.json",
-        "batch-manifest.json",
-        "planned-habit-trace.json",
-    }
-)
-
-
-def generation_run_dir(workspace: WorkspaceService, job_id: str) -> Path:
-    """Where a generation job writes its artifacts.
-
-    Deliberately NOT under ``runs/`` (which ``reconcile`` guards as catalogued run artifacts); a
-    generation produces many uncatalogued files, so it uses its own ``generations/`` area that the
-    integrity check ignores. The batch manifest and its bundles live here for ``simulate-batch``.
-    """
-    return workspace.root / "generations" / job_id
+__all__ = ["GENERATION_ARTIFACTS", "generation_run_dir", "run_generation_job"]
 
 
 def _client_from_request(request: dict) -> LMStudioClient:
@@ -108,16 +91,21 @@ def run_generation_job(
             days=request.get("days"),
             progress=progress,
         )
+        progress("publishing", 97, "Publishing the generated input into a new home")
+        ingested = ingest_generation(workspace, job_id)
         workspace.update_job(
             job_id,
             JobStatus.completed,
             JobProgress(
                 phase="completed",
                 percent=100,
-                message=f"Generated {result.day_count} simulatable days",
+                message=(
+                    f"Generated {result.day_count} simulatable days for "
+                    f"{ingested.resident_display_name}; the home is ready to simulate"
+                ),
             ),
             process_id=os.getpid(),
-            result_reference=job_id,
+            result_reference=ingested.home_id,
         )
     except InterruptedError:
         current = workspace.get_job(job_id)

@@ -5,7 +5,12 @@ from smart_home_sim.simulation.batch import (
     run_batch_file,
     run_batch_manifest,
 )
-from smart_home_sim.simulation.service import replay_files, simulate_bundle, simulate_file
+from smart_home_sim.simulation.service import (
+    replay_files,
+    simulate_bundle,
+    simulate_file,
+    trace_semantic_digest,
+)
 
 __all__ = [
     "BatchLockedError",
@@ -16,4 +21,5 @@ __all__ = [
     "run_batch_manifest",
     "simulate_bundle",
     "simulate_file",
+    "trace_semantic_digest",
 ]

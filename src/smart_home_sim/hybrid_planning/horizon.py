@@ -10,13 +10,15 @@ simulation (M5) and sensor projection (M6) are a separate, user-triggered step.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, time, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from smart_home_sim.compiler import compile_scenario
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchRun
 from smart_home_sim.domain.behavior import PersonalProcessPackage
-from smart_home_sim.domain.models import DayPlan
+from smart_home_sim.domain.models import DayPlan, Scenario, SimulationWindow
 from smart_home_sim.environment import build_bundle_files
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
 from smart_home_sim.hybrid_planning.day_generation import (
@@ -25,7 +27,7 @@ from smart_home_sim.hybrid_planning.day_generation import (
 )
 from smart_home_sim.hybrid_planning.habit_trace import build_planned_trace
 from smart_home_sim.hybrid_planning.package_authoring import build_probe_scenario
-from smart_home_sim.hybrid_planning.world import PlanningWorld
+from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
 from smart_home_sim.materialization import generate_home
 
 
@@ -39,6 +41,7 @@ class HorizonResult:
     day_count: int
     trace_path: Path | None = None
     failed_days: list[str] = field(default_factory=list)
+    scenario_path: Path | None = None
 
 
 def _write(path: Path, model: ContractModel) -> None:
@@ -77,6 +80,7 @@ def build_horizon(
 
     runs: list[SimulationBatchRun] = []
     failed: list[str] = []
+    simulatable_days: list[DayPlan] = []
     for day in day_slice:
         if day_plans is not None and day.date in day_plans:
             scenario = build_scenario_from_day_plan(world, day_plans[day.date])
@@ -101,6 +105,7 @@ def build_horizon(
         runs.append(
             SimulationBatchRun(run_id=f"day-{day.date}", bundle_path=relative, seed=calendar.seed)
         )
+        simulatable_days.append(scenario.days[0])
 
     if not runs:
         raise HorizonError("no simulatable days were produced")
@@ -112,9 +117,27 @@ def build_horizon(
     trace_path = output_dir / "planned-habit-trace.json"
     _write(trace_path, build_planned_trace(calendar, start_index=start_index, days=days))
 
+    scenario_path = output_dir / "horizon-scenario.json"
+    _write(scenario_path, _horizon_scenario(world, simulatable_days))
+
     return HorizonResult(
         manifest_path=manifest_path,
         day_count=len(runs),
         trace_path=trace_path,
         failed_days=failed,
+        scenario_path=scenario_path,
     )
+
+
+def _horizon_scenario(world: PlanningWorld, days: list[DayPlan]) -> Scenario:
+    """One scenario document covering every simulatable day of the horizon.
+
+    This is the researcher-facing INPUT record of what was generated, imported into the workspace
+    like any other authored scenario. It is deliberately never compiled as a whole — CP-SAT does not
+    scale past a handful of days — so each day keeps its own compiled plan and bundle; the horizon
+    document exists so the home has one inspectable, exportable source of truth for its behaviour.
+    """
+    timezone = ZoneInfo(world.time_zone)
+    start = datetime.combine(days[0].date, time(0, 0), tzinfo=timezone)
+    end = datetime.combine(days[-1].date + timedelta(days=1), time(0, 0), tzinfo=timezone)
+    return assemble_scenario(world, days=days, window=SimulationWindow(start=start, end=end))

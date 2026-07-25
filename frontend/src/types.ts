@@ -183,12 +183,20 @@ export interface SensorModel {
   sensors: SensorBase[];
 }
 
+export interface GenerationProvenance {
+  generationJobId: string;
+  dayCount: number;
+  experimentId?: string;
+  gate?: string;
+}
+
 export interface HomeDetail {
   home: HomeSummary;
   residents: ResidentSummary[];
   models: { homeModel?: HomeModel; sensorModel?: SensorModel };
   jobs: JobRecord[];
   issues?: ApplicationIssue[];
+  generation?: GenerationProvenance | null;
 }
 
 export interface ApplicationIssue {

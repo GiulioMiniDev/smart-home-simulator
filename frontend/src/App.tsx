@@ -168,7 +168,7 @@ function Dashboard() {
   if (resource.loading) return <div className="page"><Skeleton lines={7} /></div>;
   if (resource.error || !resource.data) return <div className="page"><ErrorPanel message={resource.error?.message ?? "Unknown error"} onRetry={() => void resource.reload()} /></div>;
   const { workspace, homes, jobs } = resource.data;
-  const active = jobs.filter((job) => job.status === "queued" || job.status === "running");
+  const active = jobs.filter((job) => Boolean(job.homeId) && (job.status === "queued" || job.status === "running"));
   return (
     <div className="page dashboard-page">
       <PageHeader
@@ -334,21 +334,7 @@ async function loadGenerationReview(jobId: string): Promise<GenerationReview> {
   };
 }
 
-function GeneratePage() {
-  const [brief, setBrief] = useState("");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [months, setMonths] = useState(1);
-  const [useLlmDays, setUseLlmDays] = useState(true);
-  const [useLlmPackage, setUseLlmPackage] = useState(false);
-  const [jobId, setJobId] = useState<string>();
-  const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string>();
-  const [review, setReview] = useState<GenerationReview>();
-  const detail = useResource<{ job: JobRecord }>(jobId ? `/jobs/${jobId}` : undefined);
-  const job = detail.data?.job;
-  const active = job ? !terminal.has(job.status) : false;
-  const reload = detail.reload;
-
+function useJobStream(jobId: string | undefined, active: boolean, reload: () => Promise<void>) {
   useEffect(() => {
     if (!jobId || !active) return;
     let disposed = false;
@@ -369,16 +355,42 @@ function GeneratePage() {
       source?.close();
     };
   }, [jobId, active, reload]);
+}
+
+function GeneratePage() {
+  const [brief, setBrief] = useState("");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [months, setMonths] = useState(1);
+  const [useLlmDays, setUseLlmDays] = useState(true);
+  const [useLlmPackage, setUseLlmPackage] = useState(false);
+  const [focusId, setFocusId] = useState<string>();
+  const [starting, setStarting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState<string>();
+  const [review, setReview] = useState<GenerationReview>();
+  const navigate = useNavigate();
+
+  const generations = useResource<JobRecord[]>("/generations");
+  const genDetail = useResource<{ job: JobRecord }>(focusId ? `/jobs/${focusId}` : undefined);
+  const job = genDetail.data?.job;
+  const genActive = job ? !terminal.has(job.status) : false;
+  // Only homeId identifies the published home: a generation from before the home workflow carries
+  // its own job id in resultReference, which would link to a home that does not exist.
+  const homeId = job?.status === "completed" ? job.homeId : undefined;
+
+  useJobStream(focusId, genActive, genDetail.reload);
 
   useEffect(() => {
-    if (job?.status !== "completed" || !jobId) return;
-    void loadGenerationReview(jobId).then(setReview).catch(() => setReview(undefined));
-  }, [job?.status, jobId]);
+    if (!focusId || job?.status !== "completed") {
+      setReview(undefined);
+      return;
+    }
+    void loadGenerationReview(focusId).then(setReview).catch(() => setReview(undefined));
+  }, [focusId, job?.status]);
 
   const start = async () => {
     setStarting(true);
     setError(undefined);
-    setReview(undefined);
     try {
       const created = await api<JobRecord>("/generation", {
         method: "POST",
@@ -390,7 +402,8 @@ function GeneratePage() {
           use_llm_package: useLlmPackage,
         }),
       });
-      setJobId(created.jobId);
+      setFocusId(created.jobId);
+      await generations.reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -398,12 +411,35 @@ function GeneratePage() {
     }
   };
 
+  const openGeneration = (id: string) => {
+    setFocusId(id);
+    setError(undefined);
+  };
+
+  // Generations made before the home workflow kept their artifacts; publishing them is a
+  // recovery path, not a second way of working.
+  const publish = async () => {
+    if (!focusId) return;
+    setPublishing(true);
+    setError(undefined);
+    try {
+      const result = await api<{ homeId: string }>(`/generation/${focusId}/publish`, { method: "POST" });
+      navigate(`/homes/${result.homeId}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const past = (generations.data ?? []).filter((item) => item.status === "completed");
+
   return (
     <div className="page">
       <PageHeader
         eyebrow="Local generation"
-        title="Generate a dataset from a brief"
-        description="Invent a person, their habits and a horizon of simulatable days — entirely on your machine. Generation stops at a batch manifest; you run the simulation when satisfied."
+        title="Generate a home input from a brief"
+        description="Invent a person, their habits and a horizon of simulatable days — entirely on your machine. Generation never simulates: it publishes a home whose inputs you can review, edit and then run like any other."
       />
       <div className="generate-grid">
         <section className="panel generate-form">
@@ -438,15 +474,35 @@ function GeneratePage() {
             <input type="checkbox" checked={useLlmPackage} onChange={(event) => setUseLlmPackage(event.target.checked)} />
             <span>Author the process package with the LLM (optional; low mining value).</span>
           </label>
-          <button className="button primary" disabled={!brief.trim() || starting || active} onClick={() => void start()}>
-            <Sparkles size={16} /> {active ? "Generating…" : "Generate"}
+          <button className="button primary" disabled={!brief.trim() || starting || genActive} onClick={() => void start()}>
+            <Sparkles size={16} /> {starting || genActive ? "Generating…" : "Generate"}
           </button>
           {error && <ErrorPanel message={error} />}
+          {past.length > 0 && (
+            <div className="past-generations">
+              <p className="eyebrow">Past generations</p>
+              <ul>
+                {past.map((item) => (
+                  <li key={item.jobId}>
+                    <button
+                      type="button"
+                      className={`ghost-row ${item.jobId === focusId ? "is-active" : ""}`}
+                      onClick={() => openGeneration(item.jobId)}
+                    >
+                      <Clock3 size={15} />
+                      <span>{formatDate(item.finishedAt ?? item.requestedAt)}</span>
+                      <small>{item.jobId}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
         <section className="panel">
           {!job && (
-            <EmptyState title="No generation yet" icon={<Sparkles size={25} />}>
-              <p>Describe a person and start. Each stage runs locally with live progress; nothing is simulated until you choose to.</p>
+            <EmptyState title="No generation selected" icon={<Sparkles size={25} />}>
+              <p>Describe a person and start, or open a past generation. Nothing is simulated until you run it from its home.</p>
             </EmptyState>
           )}
           {job && (
@@ -465,10 +521,27 @@ function GeneratePage() {
                     <Metric label="Days" value={review.days} detail="simulatable" />
                     <Metric label="Trace entries" value={review.traceEntries} detail="planned" />
                   </div>
-                  <div className="guide-callout">
-                    <ShieldCheck size={19} />
-                    <p><strong>Generation complete.</strong> Review the artifacts, then run <code>simulate-batch</code> on the batch manifest to produce the sensor dataset.</p>
-                  </div>
+                  {homeId ? (
+                    <>
+                      <div className="guide-callout">
+                        <ShieldCheck size={19} />
+                        <p><strong>Published as a home input.</strong> The persona, its process package and the whole horizon of days are now an ordinary workspace home, with its executable plan and sensor field already validated.</p>
+                      </div>
+                      <Link className="button primary" to={`/homes/${homeId}`}>
+                        <HomeIcon size={16} /> Open the home and run the simulation
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <div className="guide-callout">
+                        <AlertCircle size={19} />
+                        <p><strong>This generation published no home yet.</strong> It was produced before generations became home inputs. Its days are still on disk, so it can be published now without generating again.</p>
+                      </div>
+                      <button className="button primary" disabled={publishing} onClick={() => void publish()}>
+                        <HomeIcon size={16} /> {publishing ? "Publishing…" : "Publish as a home"}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -640,7 +713,8 @@ function HomePage() {
         </section>
         <section className="surface evidence-sheet">
           <div className="section-heading"><div><p className="eyebrow">Environment state</p><h2>Authoritative revisions</h2></div><ShieldCheck size={21} /></div>
-          <dl className="definition-list"><div><dt>Home model</dt><dd>{detail.home.currentHomeArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentHomeArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div><div><dt>Sensor model</dt><dd>{detail.home.currentSensorArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentSensorArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div><div><dt>Runs</dt><dd>{detail.jobs.length}</dd></div></dl>
+          <dl className="definition-list"><div><dt>Home model</dt><dd>{detail.home.currentHomeArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentHomeArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div><div><dt>Sensor model</dt><dd>{detail.home.currentSensorArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentSensorArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div>{detail.generation && <div><dt>Generated horizon</dt><dd><StatusBadge status="valid" /><span>{detail.generation.dayCount} days, each compiled and bundled separately</span></dd></div>}<div><dt>Runs</dt><dd>{detail.jobs.length}</dd></div></dl>
+          {detail.generation && <p className="hint">Running this home simulates every generated day and publishes them as one run: a single trace, one observable sensor log and one oracle mapping to export whole.</p>}
           {!homeDraft && inputResident && <button className="button primary" disabled={working || !!activeJob} onClick={() => void startRun()}><RouteIcon size={16} /> Generate home, sensors and first run</button>}
         </section>
       </div>}
@@ -705,7 +779,7 @@ function ResidentsPage() {
 function SimulationsPage() {
   const resource = useResource<JobRecord[]>("/jobs?limit=500");
   const [filter, setFilter] = useState<string>("all");
-  const jobs = resource.data?.filter((job) => filter === "all" || job.status === filter) ?? [];
+  const jobs = resource.data?.filter((job) => Boolean(job.homeId) && (filter === "all" || job.status === filter)) ?? [];
   return <div className="page"><PageHeader eyebrow="Execution centre" title="Simulations" description="Persistent local jobs, actual backend phases and independently verified artifacts." actions={<div className="select-wrap"><Filter size={15} /><select aria-label="Filter by status" value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">All statuses</option>{["queued", "running", "completed", "failed", "cancelled", "interrupted"].map((status) => <option value={status} key={status}>{status}</option>)}</select><ChevronDown size={14} /></div>} />{resource.loading ? <Skeleton lines={7} /> : resource.error ? <ErrorPanel message={resource.error.message} onRetry={() => void resource.reload()} /> : <RunTable jobs={jobs} empty={filter === "all" ? "Create a home and start its first deterministic simulation." : `No ${filter} runs.`} />}</div>;
 }
 

@@ -7,7 +7,9 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from smart_home_sim.application.generation_ingest import generation_job_for_home
 from smart_home_sim.application.generation_job import _generation_worker
+from smart_home_sim.application.horizon_run import _horizon_worker
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobRecord, JobStatus
 from smart_home_sim.domain.materialization import HomeGenerationPolicy, SensorDeploymentPolicy
@@ -245,6 +247,30 @@ class JobManager:
             )
             process = self._context.Process(
                 target=_generation_worker,
+                args=(str(self.workspace.root), job.job_id),
+                name=f"smart-home-sim-{job.job_id}",
+            )
+            process.start()
+            self._processes[job.job_id] = process
+        return self.workspace.get_job(job.job_id)
+
+    def start_horizon_run(self, home_id: str) -> JobRecord:
+        """Run the whole generated horizon of one home and publish it as a single run."""
+        generation_job_id = generation_job_for_home(self.workspace, home_id)
+        if generation_job_id is None:
+            raise WorkspaceError("this home was not created from a local generation")
+        with self._lock:
+            self._prune()
+            running = sum(process.is_alive() for process in self._processes.values())
+            if running >= self.max_workers:
+                raise WorkspaceError("all local workers are busy")
+            job = self.workspace.create_job(
+                "simulation",
+                home_id=home_id,
+                request={"generationJobId": generation_job_id},
+            )
+            process = self._context.Process(
+                target=_horizon_worker,
                 args=(str(self.workspace.root), job.job_id),
                 name=f"smart-home-sim-{job.job_id}",
             )

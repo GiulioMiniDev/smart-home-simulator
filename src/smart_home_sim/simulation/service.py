@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import json
@@ -558,7 +558,8 @@ def _expand_process(
     return walk(select_edge(starts[0]).target_node_id)
 
 
-def _semantic_digest(payload: dict[str, Any]) -> str:
+def trace_semantic_digest(payload: dict[str, Any]) -> str:
+    """The authoritative semantic digest of an execution trace payload (by-alias JSON shape)."""
     semantic = {
         key: payload[key]
         for key in (
@@ -1653,7 +1654,7 @@ class SimulationEngine:
             plan_deviations=self.trace.deviations,
             daily_summaries=daily,
             final_state=final_state,
-            semantic_digest=_semantic_digest(base),
+            semantic_digest=trace_semantic_digest(base),
         )
 
 
@@ -1776,7 +1777,7 @@ def validate_execution_trace(
     if any(item.held_resource_ids for item in trace.final_state.residents):
         messages.append(("$.finalState", "A resident retains a resource after simulation."))
     payload = trace.model_dump(mode="json", by_alias=True)
-    if trace.semantic_digest != _semantic_digest(payload):
+    if trace.semantic_digest != trace_semantic_digest(payload):
         messages.append(("$.semanticDigest", "Semantic digest does not match trace content."))
     return [
         SimulationIssue(
