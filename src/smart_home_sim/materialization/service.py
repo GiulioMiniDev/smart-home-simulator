@@ -27,6 +27,7 @@ from smart_home_sim.domain.environment import (
     HomeConnection,
     HomeEntity,
     HomeModel,
+    HomeObstacle,
     HomeRegion,
     InteractionPoint,
     LocationBinding,
@@ -61,6 +62,7 @@ from smart_home_sim.domain.sensors import (
     TemperatureSource,
 )
 from smart_home_sim.environment import build_bundle_files, validate_home_model
+from smart_home_sim.materialization import floorplan
 from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle
 
@@ -100,6 +102,50 @@ def _rectangle(x: float, y: float, width: float, height: float) -> Polygon2D:
             Point2D(x=x + width, y=y + height),
             Point2D(x=x, y=y + height),
         ]
+    )
+
+
+_ENTRANCE_PREFERENCE = ("hallway", "corridor", "living_room", "kitchen")
+
+
+def _entrance_region(local: list[Any], regions: list[HomeRegion]) -> str:
+    """Put the front door in a circulation space when the plan has one."""
+    available = {item.location_id for item in local}
+    for candidate in _ENTRANCE_PREFERENCE:
+        if candidate in available:
+            return candidate
+    return local[0].location_id if local else regions[0].region_id
+
+
+def _placement_clearance(policy: HomeGenerationPolicy) -> float:
+    """Clearance every generated point must keep: the wider of the body and approach radii."""
+    return max(policy.body_radius_meters, policy.approach_radius_meters)
+
+
+def _inset_portal(rect: floorplan.Rect, wall: floorplan.SharedWall, offset: float) -> Point2D:
+    """Portals sit *inside* the room, not on the wall: navigable space is the boundary eroded by
+    the body radius, so a point on the wall itself is never covered by it."""
+    center_x, center_y = rect.center
+    if wall.vertical:
+        shift = -offset if center_x < wall.x else offset
+        return Point2D(x=round(wall.x + shift, 4), y=round(wall.y, 4))
+    shift = -offset if center_y < wall.y else offset
+    return Point2D(x=round(wall.x, 4), y=round(wall.y + shift, 4))
+
+
+def _free_anchor(
+    region: Any,
+    room_rects: dict[str, floorplan.Rect],
+    furniture_by_region: dict[str, list[floorplan.PlacedFurniture]],
+    policy: HomeGenerationPolicy,
+) -> Point2D:
+    rect = room_rects.get(region.region_id)
+    if rect is None:
+        return _center(region.boundary)
+    return floorplan.navigable_point(
+        rect,
+        furniture_by_region.get(region.region_id, []),
+        body_radius=_placement_clearance(policy),
     )
 
 
@@ -312,20 +358,37 @@ def generate_home(
     local = [item for item in primitive if item.kind is LocationKind.room]
     remote = [item for item in primitive if item.kind is not LocationKind.room]
     regions: list[HomeRegion] = []
-    for index, location in enumerate(local):
-        regions.append(
-            HomeRegion(
-                region_id=location.location_id,
-                kind=RegionKind.room,
-                boundary=_rectangle(
-                    index * policy.room_width_meters,
-                    0,
-                    policy.room_width_meters,
-                    policy.room_height_meters,
-                ),
+    room_rects: dict[str, floorplan.Rect] = {}
+    if policy.policy_id == "apartment-plan" and local:
+        room_rects = floorplan.layout_rooms([item.location_id for item in local])
+        for location in local:
+            regions.append(
+                HomeRegion(
+                    region_id=location.location_id,
+                    kind=RegionKind.room,
+                    boundary=room_rects[location.location_id].to_polygon(),
+                )
             )
-        )
-    remote_y = policy.room_height_meters + policy.external_spacing_meters
+    else:
+        for index, location in enumerate(local):
+            regions.append(
+                HomeRegion(
+                    region_id=location.location_id,
+                    kind=RegionKind.room,
+                    boundary=_rectangle(
+                        index * policy.room_width_meters,
+                        0,
+                        policy.room_width_meters,
+                        policy.room_height_meters,
+                    ),
+                )
+            )
+    plan_height = (
+        max(rect.max_y for rect in room_rects.values())
+        if room_rects
+        else policy.room_height_meters
+    )
+    remote_y = plan_height + policy.external_spacing_meters
     for index, location in enumerate(remote):
         kind = RegionKind.external if location.kind is LocationKind.external else RegionKind.transit
         regions.append(
@@ -342,26 +405,51 @@ def generate_home(
         )
     regions_by_id = {item.region_id: item for item in regions}
     connections: list[HomeConnection] = []
-    for index, (left, right) in enumerate(zip(local, local[1:], strict=False), start=1):
-        boundary_x = index * policy.room_width_meters
-        portal_offset = min(0.4, policy.doorway_width_meters / 2)
-        connections.append(
-            HomeConnection(
-                connection_id=f"door_{left.location_id}_{right.location_id}",
-                kind=ConnectionKind.doorway,
-                region_a_id=left.location_id,
-                region_b_id=right.location_id,
-                portal_a=Point2D(
-                    x=boundary_x - portal_offset,
-                    y=policy.room_height_meters / 2,
-                ),
-                portal_b=Point2D(
-                    x=boundary_x + portal_offset,
-                    y=policy.room_height_meters / 2,
-                ),
-                width_meters=policy.doorway_width_meters,
-            )
+    portal_offset = min(0.4, policy.doorway_width_meters / 2)
+    room_portals: dict[str, list[Point2D]] = defaultdict(list)
+    if room_rects:
+        # Doors follow the walls the tiling actually produced, chosen so private rooms stay leaves.
+        walls = floorplan.select_doors(
+            [item.location_id for item in local],
+            room_rects,
+            floorplan.shared_walls(room_rects, minimum_overlap=policy.doorway_width_meters + 0.2),
         )
+        for wall in walls:
+            portal_a = _inset_portal(room_rects[wall.region_a_id], wall, portal_offset)
+            portal_b = _inset_portal(room_rects[wall.region_b_id], wall, portal_offset)
+            room_portals[wall.region_a_id].append(portal_a)
+            room_portals[wall.region_b_id].append(portal_b)
+            connections.append(
+                HomeConnection(
+                    connection_id=f"door_{wall.region_a_id}_{wall.region_b_id}",
+                    kind=ConnectionKind.doorway,
+                    region_a_id=wall.region_a_id,
+                    region_b_id=wall.region_b_id,
+                    portal_a=portal_a,
+                    portal_b=portal_b,
+                    width_meters=policy.doorway_width_meters,
+                )
+            )
+    else:
+        for index, (left, right) in enumerate(zip(local, local[1:], strict=False), start=1):
+            boundary_x = index * policy.room_width_meters
+            connections.append(
+                HomeConnection(
+                    connection_id=f"door_{left.location_id}_{right.location_id}",
+                    kind=ConnectionKind.doorway,
+                    region_a_id=left.location_id,
+                    region_b_id=right.location_id,
+                    portal_a=Point2D(
+                        x=boundary_x - portal_offset,
+                        y=policy.room_height_meters / 2,
+                    ),
+                    portal_b=Point2D(
+                        x=boundary_x + portal_offset,
+                        y=policy.room_height_meters / 2,
+                    ),
+                    width_meters=policy.doorway_width_meters,
+                )
+            )
     anchor_id = local[0].location_id if local else remote[0].location_id
     for location in remote:
         if location.location_id == anchor_id:
@@ -380,11 +468,45 @@ def generate_home(
             )
         )
 
+    resources_by_region: dict[str, list[Any]] = defaultdict(list)
+    for resource in scenario.resources:
+        resources_by_region[_expanded_regions(scenario, resource.location_id)[0]].append(resource)
+    for region_resources in resources_by_region.values():
+        region_resources.sort(key=lambda item: item.resource_id)
+
+    # Furniture footprints: entities stop being bare points and become obstacles the visibility
+    # planner has to walk around, which is what `environment/navigation.py` was always written for.
+    # This runs before any interaction point is placed, because every point now has to dodge them.
+    obstacles: list[HomeObstacle] = []
+    furniture: dict[str, floorplan.PlacedFurniture] = {}
+    furniture_by_region: dict[str, list[floorplan.PlacedFurniture]] = defaultdict(list)
+    for region_id, region_resources in sorted(resources_by_region.items()):
+        rect = room_rects.get(region_id)
+        if rect is None:
+            continue
+        for item in floorplan.place_furniture(
+            rect,
+            [(entry.resource_id, entry.resource_type) for entry in region_resources],
+            room_portals[region_id],
+            body_radius=_placement_clearance(policy),
+            doorway_width=policy.doorway_width_meters,
+        ):
+            furniture[item.entity_id] = item
+            furniture_by_region[region_id].append(item)
+            obstacles.append(
+                HomeObstacle(
+                    obstacle_id=f"obstacle_{item.entity_id}",
+                    region_id=region_id,
+                    boundary=item.footprint.to_polygon(),
+                )
+            )
+
     interaction_points = [
         InteractionPoint(
             interaction_point_id=f"anchor_{region.region_id}",
             region_id=region.region_id,
-            position=_center(region.boundary),
+            position=_free_anchor(region, room_rects, furniture_by_region, policy),
+            approach_radius_meters=policy.approach_radius_meters,
         )
         for region in regions
     ]
@@ -408,26 +530,46 @@ def generate_home(
     }
     entities: list[HomeEntity] = []
     resource_bindings: list[ResourceBinding] = []
-    resources_by_region: dict[str, list[Any]] = defaultdict(list)
-    for resource in scenario.resources:
-        region_id = _expanded_regions(scenario, resource.location_id)[0]
-        resources_by_region[region_id].append(resource)
-    for region_resources in resources_by_region.values():
-        region_resources.sort(key=lambda item: item.resource_id)
+
+    # Anything the placer refused (it would have blocked a doorway or sealed the room) still needs
+    # an interaction point for its bindings to resolve, and that point must clear the furniture that
+    # *was* placed.
+    fallbacks: dict[str, Point2D] = {}
+    for region_id, region_resources in sorted(resources_by_region.items()):
+        rect = room_rects.get(region_id)
+        refused = [item for item in region_resources if item.resource_id not in furniture]
+        if rect is None or not refused:
+            continue
+        points = floorplan.free_fallback_points(
+            rect,
+            furniture_by_region.get(region_id, []),
+            body_radius=_placement_clearance(policy),
+            count=len(refused),
+        )
+        for resource, point in zip(refused, points, strict=False):
+            fallbacks[resource.resource_id] = point
+
     for resource in scenario.resources:
         region_id = _expanded_regions(scenario, resource.location_id)[0]
         region_resources = resources_by_region[region_id]
-        position = _distributed_position(
-            regions_by_id[region_id].boundary,
-            region_resources.index(resource),
-            len(region_resources),
-        )
+        placed = furniture.get(resource.resource_id)
+        if placed is not None:
+            position = placed.approach
+        elif resource.resource_id in fallbacks:
+            position = fallbacks[resource.resource_id]
+        else:
+            position = _distributed_position(
+                regions_by_id[region_id].boundary,
+                region_resources.index(resource),
+                len(region_resources),
+            )
         interaction_id = f"point_{resource.resource_id}"
         interaction_points.append(
             InteractionPoint(
                 interaction_point_id=interaction_id,
                 region_id=region_id,
                 position=position,
+                approach_radius_meters=policy.approach_radius_meters,
             )
         )
         state = dict(scenario.initial_state.resource_facts.get(resource.resource_id, {}))
@@ -453,14 +595,26 @@ def generate_home(
                 entity_id=resource.resource_id,
             )
         )
-    entrance_region = local[0].location_id if local else regions[0].region_id
+    # The flat's front door belongs in a circulation space, and its point has to clear the
+    # furniture like any other; the old fixed offset from the left wall now lands inside a wardrobe.
+    entrance_region = _entrance_region(local, regions)
     entrance_boundary = regions_by_id[entrance_region].boundary
     entrance_center = _center(entrance_boundary)
-    entrance_x = min(point.x for point in entrance_boundary.vertices) + 0.75
+    entrance_rect = room_rects.get(entrance_region)
+    if entrance_rect is not None:
+        entrance_position = floorplan.navigable_point(
+            entrance_rect,
+            furniture_by_region.get(entrance_region, []),
+            body_radius=_placement_clearance(policy),
+        )
+    else:
+        entrance_x = min(point.x for point in entrance_boundary.vertices) + 0.75
+        entrance_position = Point2D(x=entrance_x, y=entrance_center.y)
     entrance_point = InteractionPoint(
         interaction_point_id="point_entrance_door",
         region_id=entrance_region,
-        position=Point2D(x=entrance_x, y=entrance_center.y),
+        position=entrance_position,
+        approach_radius_meters=policy.approach_radius_meters,
     )
     interaction_points.append(entrance_point)
     entrance_capabilities = [
@@ -493,7 +647,8 @@ def generate_home(
             InteractionPoint(
                 interaction_point_id=interaction_id,
                 region_id=region.region_id,
-                position=_center(region.boundary),
+                position=_free_anchor(region, room_rects, furniture_by_region, policy),
+                approach_radius_meters=policy.approach_radius_meters,
             )
         )
         entities.append(
@@ -522,6 +677,7 @@ def generate_home(
         entities=entities,
         location_bindings=location_bindings,
         resource_bindings=resource_bindings,
+        obstacles=obstacles,
     )
     validation = validate_home_model(home)
     if not validation.valid:

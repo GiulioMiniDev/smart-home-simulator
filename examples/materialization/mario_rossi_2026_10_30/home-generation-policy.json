@@ -1,8 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "home_generation_policy",
-  "policyId": "compact-grid",
+  "policyId": "apartment-plan",
   "policyVersion": "1.1.0",
+  "bodyRadiusMeters": 0.25,
+  "approachRadiusMeters": 0.25,
   "roomWidthMeters": 6.0,
   "roomHeightMeters": 6.0,
   "externalSpacingMeters": 12.0,

@@ -21,8 +21,16 @@ class HomeGenerationPolicy(ContractModel):
 
     schema_version: Literal["1.0.0"] = "1.0.0"
     document_type: Literal["home_generation_policy"] = "home_generation_policy"
-    policy_id: Literal["compact-grid"] = "compact-grid"
+    # "compact-grid" is the frozen 1.1.0 layout: one row of identical square rooms, chained doors
+    # and no furniture. "apartment-plan" tiles rooms by target area, derives doors from shared
+    # walls and gives every piece of furniture a footprint the path planner must walk around.
+    policy_id: Literal["compact-grid", "apartment-plan"] = "apartment-plan"
     policy_version: Literal["1.1.0"] = "1.1.0"
+    body_radius_meters: float = Field(default=0.25, gt=0, le=1.0)
+    # Stamped on every generated interaction point and used as the placement clearance. It matches
+    # the body radius the navigation planner routes with, rather than the wider contract default,
+    # so "close enough to use" means the same thing to the placer, the validator and the planner.
+    approach_radius_meters: float = Field(default=0.25, gt=0, le=1.0)
     room_width_meters: float = Field(default=6.0, ge=4.0, le=20.0)
     room_height_meters: float = Field(default=6.0, ge=4.0, le=20.0)
     external_spacing_meters: float = Field(default=12.0, ge=8.0, le=1000.0)
