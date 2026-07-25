@@ -713,3 +713,77 @@ per costruzione e quali risultano plausibili rispetto ai dati reali di riferimen
 - configurazione ed esplorazione dei risultati sono disponibili sia via UI sia headless;
 - il rapporto distingue correttezza per costruzione, plausibilità empirica e limiti;
 - dataset, configurazioni, metriche, risultati e provenance sono completi e verificati.
+
+---
+
+## Milestone 10 — Contenenza degli oggetti e sorveglianza dei modelli di processo
+
+### Obiettivo
+
+Rendere impossibile, anziché soltanto sconsigliato, scrivere un modello di processo che raggiunge
+un oggetto senza aprire il contenitore in cui vive.
+
+### Motivazione
+
+`take_item` è vincolato alla disponibilità dell'oggetto, mai all'apertura del contenitore
+(`action-catalog`, precondizione `capability.{itemRole}.available`). Una ricetta che dimentica
+`open`/`close` simula quindi senza errori e semplicemente non emette mai l'evento di contatto. È il
+difetto che ha prodotto un frigorifero aperto 0,81 volte al giorno su 91 giorni di dati, e che si è
+ripresentato in `clean_kitchen`, `start_laundry` e nella riconsegna del contenitore dei farmaci.
+
+Il problema non è la singola ricetta ma l'assenza del fatto elementare *questo oggetto vive dentro
+quel contenitore*: senza quella dichiarazione nessun controllo automatico può sapere cosa cercare, e
+il cancello che valida i modelli autorizzati dall'LLM (`gate_package`, con `use_llm_package=true`)
+non ha alcun criterio per rifiutare una sequenza fisicamente incompleta.
+
+### Contenuto
+
+- dichiarazione della contenenza dei ruoli-oggetto accanto al contratto congelato, non dentro;
+- regola di validazione che rifiuta un modello che preleva o ripone un oggetto contenuto senza
+  `open`/`close` sul contenitore corrispondente;
+- estensione di `gate_package` con quel criterio, così la modalità LLM sui modelli di processo
+  diventa sorvegliata anche sulla completezza fisica e non solo sulla validità strutturale;
+- audit dei ruoli che oggi ricadono sull'entità `generated_environment_service` di stanza: un ruolo
+  privo di mobile reale non ha ingombro né sensore di contatto, e il passo si esegue contro un
+  fornitore fantasma.
+
+### Definition of done
+
+- ogni ruolo-oggetto dichiara il contenitore che lo ospita, oppure è esplicitamente marcato come
+  non contenuto;
+- un modello che viola la contenenza viene rifiutato con un codice diagnostico dedicato;
+- i modelli autorizzati dall'LLM passano lo stesso controllo di quelli di riferimento;
+- nessun ruolo di deposito o sorgente si risolve su un'entità di servizio generata.
+
+---
+
+## Milestone 11 — Ampliamento del vocabolario delle attività
+
+### Obiettivo
+
+Portare la frequenza di interazione con gli oggetti nella banda osservata nelle abitazioni reali.
+
+### Motivazione
+
+Dopo la correzione dei modelli dei pasti il frigorifero viene aperto 4 volte al giorno contro le
+8-15 reali. Il divario residuo non si chiude aggiungendo passi alle attività esistenti: i momenti
+della giornata in cui il residente tocca il cibo sono soltanto tre. Servono intenti separati
+(bevanda, caffè di metà mattina, spuntino pomeridiano), che il catalogo attività congelato già
+prevede (`eat_afternoon_snack`, `prepare_coffee_and_drink_on_balcony`) insieme ai componenti
+`consume_drink`, `consume_snack` e `prepare_drink`.
+
+L'aggiunta non tocca il layer LLM: il prompt di `llm_days` è costruito da `INTENT_CATALOG`, quindi
+un intento nuovo entra automaticamente nel vocabolario del modello.
+
+### Contenuto
+
+- nuovi intenti in `INTENT_CATALOG` con modello di processo eseguibile di riferimento;
+- mappatura delle etichette di abitudine corrispondenti;
+- verifica che il tasso di apertura dei contenitori rientri nella banda di riferimento, misurata
+  con l'harness di M9 e non a occhio.
+
+### Definition of done
+
+- il tasso di interazione con i contenitori è dentro la banda di riferimento dichiarata;
+- i nuovi intenti sono raggiungibili sia dal substrato deterministico sia dal layer LLM;
+- nessuna regressione sulla compilabilità dei giorni.

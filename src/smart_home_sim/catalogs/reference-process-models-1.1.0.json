@@ -501,7 +501,7 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.8,
+     "durationWeight": 1.4,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
@@ -573,7 +573,7 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.8,
+     "durationWeight": 1.2,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
@@ -609,15 +609,9 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.0,
+     "durationWeight": 2.0,
      "preconditions": [],
-     "effects": [
-      {
-       "fact": "resident.medicationAvailableDoses",
-       "operation": "decrement",
-       "value": 1
-      }
-     ],
+     "effects": [],
      "maxIterations": null
     },
     {
@@ -633,7 +627,7 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.0,
+     "durationWeight": 1.5,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
@@ -659,11 +653,65 @@
     {
      "nodeId": "step_10",
      "kind": "action",
+     "actionType": "move_to_capability",
+     "arguments": {
+      "targetRole": {
+       "source": "literal",
+       "value": "medication_storage",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.2,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_11",
+     "kind": "action",
+     "actionType": "open",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "medication_cabinet",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_12",
+     "kind": "action",
      "actionType": "put_item",
      "arguments": {
       "itemRole": {
        "source": "literal",
        "value": "medication_dose_container",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_13",
+     "kind": "action",
+     "actionType": "close",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "medication_cabinet",
        "variableId": null,
        "index": null
       }
@@ -749,6 +797,24 @@
     },
     {
      "sourceNodeId": "step_10",
+     "targetNodeId": "step_11",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_11",
+     "targetNodeId": "step_12",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_12",
+     "targetNodeId": "step_13",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_13",
      "targetNodeId": "end",
      "condition": null,
      "isDefault": false
@@ -2855,13 +2921,31 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.8,
+     "durationWeight": 1.4,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
     },
     {
      "nodeId": "step_2",
+     "kind": "action",
+     "actionType": "open",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "cleaning_product_storage",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_3",
      "kind": "action",
      "actionType": "take_item",
      "arguments": {
@@ -2879,7 +2963,25 @@
      "maxIterations": null
     },
     {
-     "nodeId": "step_3",
+     "nodeId": "step_4",
+     "kind": "action",
+     "actionType": "close",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "cleaning_product_storage",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_5",
      "kind": "action",
      "actionType": "move_to",
      "arguments": {
@@ -2891,13 +2993,13 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.8,
+     "durationWeight": 1.0,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
     },
     {
-     "nodeId": "step_4",
+     "nodeId": "step_6",
      "kind": "action",
      "actionType": "clean",
      "arguments": {
@@ -2915,7 +3017,7 @@
      "maxIterations": null
     },
     {
-     "nodeId": "step_5",
+     "nodeId": "step_7",
      "kind": "action",
      "actionType": "move_to_capability",
      "arguments": {
@@ -2927,19 +3029,55 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.8,
+     "durationWeight": 1.2,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
     },
     {
-     "nodeId": "step_6",
+     "nodeId": "step_8",
+     "kind": "action",
+     "actionType": "open",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "cleaning_product_storage",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_9",
      "kind": "action",
      "actionType": "put_item",
      "arguments": {
       "itemRole": {
        "source": "literal",
        "value": "cleaning_tool",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_10",
+     "kind": "action",
+     "actionType": "close",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "cleaning_product_storage",
        "variableId": null,
        "index": null
       }
@@ -3001,6 +3139,30 @@
     },
     {
      "sourceNodeId": "step_6",
+     "targetNodeId": "step_7",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_7",
+     "targetNodeId": "step_8",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_8",
+     "targetNodeId": "step_9",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_9",
+     "targetNodeId": "step_10",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_10",
      "targetNodeId": "end",
      "condition": null,
      "isDefault": false
@@ -3133,7 +3295,7 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.6,
+     "durationWeight": 1.4,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
@@ -3141,11 +3303,11 @@
     {
      "nodeId": "step_2",
      "kind": "action",
-     "actionType": "laundry_step",
+     "actionType": "open",
      "arguments": {
-      "operation": {
+      "target": {
        "source": "literal",
-       "value": "collect",
+       "value": "laundry_storage",
        "variableId": null,
        "index": null
       }
@@ -3159,17 +3321,17 @@
     {
      "nodeId": "step_3",
      "kind": "action",
-     "actionType": "move_to_capability",
+     "actionType": "laundry_step",
      "arguments": {
-      "targetRole": {
+      "operation": {
        "source": "literal",
-       "value": "washing_machine",
+       "value": "collect",
        "variableId": null,
        "index": null
       }
      },
      "duration": null,
-     "durationWeight": 1.6,
+     "durationWeight": 2.0,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
@@ -3177,11 +3339,11 @@
     {
      "nodeId": "step_4",
      "kind": "action",
-     "actionType": "laundry_step",
+     "actionType": "close",
      "arguments": {
-      "operation": {
+      "target": {
        "source": "literal",
-       "value": "load",
+       "value": "laundry_storage",
        "variableId": null,
        "index": null
       }
@@ -3205,13 +3367,67 @@
       }
      },
      "duration": null,
-     "durationWeight": 1.6,
+     "durationWeight": 1.2,
      "preconditions": [],
      "effects": [],
      "maxIterations": null
     },
     {
      "nodeId": "step_6",
+     "kind": "action",
+     "actionType": "open",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "laundry_equipment",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_7",
+     "kind": "action",
+     "actionType": "laundry_step",
+     "arguments": {
+      "operation": {
+       "source": "literal",
+       "value": "load",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 2.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_8",
+     "kind": "action",
+     "actionType": "close",
+     "arguments": {
+      "target": {
+       "source": "literal",
+       "value": "laundry_equipment",
+       "variableId": null,
+       "index": null
+      }
+     },
+     "duration": null,
+     "durationWeight": 1.0,
+     "preconditions": [],
+     "effects": [],
+     "maxIterations": null
+    },
+    {
+     "nodeId": "step_9",
      "kind": "action",
      "actionType": "laundry_step",
      "arguments": {
@@ -3279,6 +3495,24 @@
     },
     {
      "sourceNodeId": "step_6",
+     "targetNodeId": "step_7",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_7",
+     "targetNodeId": "step_8",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_8",
+     "targetNodeId": "step_9",
+     "condition": null,
+     "isDefault": false
+    },
+    {
+     "sourceNodeId": "step_9",
      "targetNodeId": "end",
      "condition": null,
      "isDefault": false

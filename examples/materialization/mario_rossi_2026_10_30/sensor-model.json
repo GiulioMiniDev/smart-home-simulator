@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "60cc960fab53d720029059471d5ba2122d6959eb237a1cf863e96c4c25de0fd6",
+  "sourceBundleSha256": "f2e88dc93b10edd1beafe8820dbdc2d2700503c263e98c8d15300815bf91bf0b",
   "seed": 42,
   "regionIds": [
     "balcony",
@@ -490,7 +490,7 @@
       "heartbeatSeconds": 0.0,
       "sources": [
         {
-          "entityId": "service_bathroom",
+          "entityId": "shower",
           "fact": "active",
           "activeValue": true,
           "deltaCelsius": 0.5,
@@ -533,6 +533,16 @@
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
       "sources": [
+        {
+          "entityId": "kitchen_sink",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.5,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
+        },
         {
           "entityId": "stove",
           "fact": "active",

@@ -177,6 +177,11 @@ def _stable_fraction(*parts: str) -> float:
     return value / (2**64 - 1)
 
 
+# Roles a process model can ask for, mapped onto the furniture that actually provides them. A role
+# missing here silently falls back to the per-region "generated_environment_service" catch-all: the
+# step still executes, but against a phantom provider with no footprint and no contact sensor. That
+# is how `clean_kitchen` came to fetch a cloth from nowhere and `consumption_area` — where the
+# resident sits to eat — resolved to thin air rather than the table.
 RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
     "refrigerator": frozenset(
         {
@@ -190,23 +195,35 @@ RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
     "storage_cabinet": frozenset(
         {
             "medication_cabinet",
+            "medication_storage",
             "household_storage",
             "household_supplies",
             "cleaning_products",
+            "cleaning_product_storage",
             "medication",
         }
     ),
-    "wardrobe": frozenset({"clothing_storage", "clothes", "used_clothing", "laundry_collection"}),
+    "wardrobe": frozenset(
+        {
+            "clothing_storage",
+            "clothes",
+            "used_clothing",
+            "laundry_collection",
+            "laundry_storage",
+        }
+    ),
     "washing_machine": frozenset({"laundry_equipment", "laundry"}),
     "stove": frozenset({"cooking_appliance", "food_preparation_area"}),
     "moka_coffee_maker": frozenset({"moka_coffee_maker", "coffee_equipment"}),
-    "sink": frozenset({"washing_area", "food_preparation_area"}),
+    "sink": frozenset(
+        {"washing_area", "food_preparation_area", "drinking_water_source", "sink_faucet"}
+    ),
     "washbasin": frozenset({"washing_area", "personal_care_fixture"}),
-    "shower": frozenset({"shower", "personal_care_fixture"}),
+    "shower": frozenset({"shower", "personal_care_fixture", "shower_water"}),
     "toilet": frozenset({"toilet", "personal_care_fixture"}),
     "bed": frozenset({"bed", "sleeping_area"}),
-    "chair": frozenset({"chair", "dining_seat"}),
-    "table": frozenset({"table", "dining_area"}),
+    "chair": frozenset({"chair", "dining_seat", "consumption_area"}),
+    "table": frozenset({"table", "dining_area", "consumption_area"}),
     "sofa": frozenset({"sofa", "seating", "rest_area"}),
     "television": frozenset({"television", "media"}),
     "radio": frozenset({"radio", "media"}),

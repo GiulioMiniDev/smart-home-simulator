@@ -35,12 +35,15 @@ SLEEP_TIME = "22:30"
 _WINDOW_FLEX = timedelta(minutes=15)
 DEFAULT_INTENT = "read_and_rest"
 
-# Substring keywords mapping a free-text habit label to a canonical intent (first match wins).
+# Substring keywords mapping a free-text habit label to a canonical intent. The *longest* matching
+# keyword wins, not the first one listed: with first-match-wins the generic "wash" swallowed "wash
+# up the dishes", and "hygiene" made `evening_hygiene` unreachable outright, so habits were silently
+# recorded in the ground truth as the wrong activity.
 _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("take_morning_medication", ("medication", "medicine", "pill", "tablet", "insulin")),
     ("morning_toilet_and_shower", ("shower",)),
     ("morning_toilet_and_wash", ("wash", "toilet", "hygiene", "brush")),
-    ("evening_hygiene", ("evening hygiene", "bedtime wash")),
+    ("evening_hygiene", ("evening hygiene", "bedtime wash", "evening wash", "night hygiene")),
     ("eat_breakfast", ("breakfast", "coffee", "morning tea")),
     ("eat_lunch", ("lunch",)),
     ("eat_dinner", ("dinner", "supper", "evening meal")),
@@ -51,7 +54,7 @@ _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("clean_kitchen", ("clean", "dishes", "wash up")),
     ("tidy_living_room_and_hallway", ("tidy", "declutter", "housework")),
     ("start_laundry", ("laundry", "washing machine")),
-    ("hang_laundry", ("hang laundry", "dry clothes")),
+    ("hang_laundry", ("hang laundry", "hang the laundry", "hang out the washing", "dry clothes")),
     ("indoor_light_exercise", ("exercise", "stretch", "workout", "yoga", "gym")),
     ("evening_walk", ("walk", "stroll", "outdoors", "outside", "garden")),
     ("watch_television", ("tv", "television", "watch", "documentary", "news")),
@@ -113,12 +116,18 @@ _NAP_WINDOW = (13 * 60, 18 * 60 + 30)
 
 
 def habit_to_intent(label: str, kind: str | None = None) -> str:
-    """Map a free-text habit label to a canonical intent (deterministic, first keyword match)."""
+    """Map a free-text habit label to a canonical intent (deterministic, longest keyword match).
+
+    Ranking by keyword length makes the table order-independent: a specific phrase always beats a
+    generic word contained in it, so adding a keyword can no longer shadow an existing intent.
+    """
     lowered = label.lower()
+    best_intent, best_length = DEFAULT_INTENT, 0
     for intent_id, keywords in _INTENT_KEYWORDS:
-        if any(keyword in lowered for keyword in keywords):
-            return intent_id
-    return DEFAULT_INTENT
+        for keyword in keywords:
+            if keyword in lowered and len(keyword) > best_length:
+                best_intent, best_length = intent_id, len(keyword)
+    return best_intent
 
 
 @dataclass(frozen=True)

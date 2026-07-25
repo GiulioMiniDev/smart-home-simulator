@@ -83,6 +83,24 @@ def test_habit_to_intent_keyword_matches() -> None:
     assert habit_to_intent("something idiosyncratic") == DEFAULT_INTENT
 
 
+def test_specific_habit_labels_are_not_swallowed_by_generic_keywords() -> None:
+    """With first-match-wins the generic word won and the habit was recorded as another activity:
+    "wash up the dishes" became morning hygiene and `evening_hygiene` was unreachable outright."""
+    assert habit_to_intent("wash up the dishes") == "clean_kitchen"
+    assert habit_to_intent("do the dishes") == "clean_kitchen"
+    assert habit_to_intent("evening hygiene") == "evening_hygiene"
+    assert habit_to_intent("morning wash") == "morning_toilet_and_wash"
+    assert habit_to_intent("hang the laundry") == "hang_laundry"
+    assert habit_to_intent("start the laundry") == "start_laundry"
+    # Every intent the table names must stay reachable through at least one of its own keywords.
+    from smart_home_sim.hybrid_planning.day_generation import _INTENT_KEYWORDS
+
+    for intent_id, keywords in _INTENT_KEYWORDS:
+        assert any(habit_to_intent(keyword) == intent_id for keyword in keywords), (
+            f"{intent_id} is shadowed by another entry and can never be selected"
+        )
+
+
 def test_build_day_plan_scaffolds_wake_and_sleep() -> None:
     day = _day(
         "2026-08-03",
