@@ -77,4 +77,22 @@ describe("application components", () => {
     expect(door?.getAttribute("y1")).toBe("0.4");
     expect(door?.getAttribute("y2")).toBe("-0.4");
   });
+
+  it("mutes the generated fallback provider so it does not caption every room", () => {
+    const withService: HomeModel = {
+      ...home,
+      entities: [
+        ...home.entities,
+        { entityId: "service_kitchen", entityType: "generated_environment_service", regionId: "kitchen", interactionPointId: "point", capabilities: [], initialState: {} },
+      ],
+    };
+    const { container } = render(<PlanCanvas home={withService} />);
+    const service = container.querySelector("g.entity-node.is-service");
+    const real = container.querySelector("g.entity-node:not(.is-service)");
+    expect(service).not.toBeNull();
+    expect(service?.querySelector("circle")?.getAttribute("r")).toBe(".1");
+    // A real provider keeps its marker and its crosshair; the fallback gets neither.
+    expect(service?.querySelector("path")).toBeNull();
+    expect(real?.querySelector("path")).not.toBeNull();
+  });
 });

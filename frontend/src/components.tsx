@@ -227,6 +227,9 @@ function polygonPoints(points: Point[]): string {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
 }
 
+// Generated fallback provider: carries the capabilities no real piece of furniture claims.
+const SERVICE_ENTITY_TYPE = "generated_environment_service";
+
 function bounds(points: Point[]): { minX: number; minY: number; maxX: number; maxY: number } | undefined {
   if (points.length === 0) return undefined;
   return {
@@ -360,6 +363,9 @@ export function PlanCanvas({
           {home.entities.map((entity) => {
             const point = interactionPoints.get(entity.interactionPointId);
             if (!point) return null;
+            // The per-region fallback provider is an implementation detail with no footprint; one
+            // per room, each captioned, buried the plan under its own labels.
+            const isService = entity.entityType === SERVICE_ENTITY_TYPE;
             return (
               <g
                 key={entity.entityId}
@@ -367,13 +373,13 @@ export function PlanCanvas({
                 tabIndex={0}
                 aria-label={`${entity.entityType} ${entity.entityId}`}
                 transform={`translate(${point.position.x} ${point.position.y})`}
-                className={`entity-node ${selectedId === entity.entityId ? "is-selected" : ""}`}
+                className={`entity-node ${isService ? "is-service" : ""} ${selectedId === entity.entityId ? "is-selected" : ""}`}
                 onClick={() => activate(entity.entityId)}
                 onKeyDown={(event) => keyboard(event, entity.entityId)}
               >
-                <circle r=".34" />
-                <path d="M-.14 0h.28M0-.14v.28" />
-                <text x=".45" y=".12">{entity.entityType.replaceAll("_", " ")}</text>
+                <circle r={isService ? ".1" : ".18"} />
+                {!isService && <path d="M-.08 0h.16M0-.08v.16" />}
+                <text x=".28" y=".1">{entity.entityType.replaceAll("_", " ")}</text>
               </g>
             );
           })}

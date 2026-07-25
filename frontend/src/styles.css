@@ -265,6 +265,12 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .obstacle:hover, .obstacle.is-selected { stroke: var(--red); stroke-width: 2.3px; }
 /* The glyph is decoration over its footprint: the polygon underneath stays the hit target. */
 .furniture-glyph { color: var(--amber); opacity: .9; pointer-events: none; }
+/* A furnished plan carries ~30 captions in a few metres of drawing, which is unreadable. The glyph
+   already says what the thing is, so the name is revealed on hover, focus or selection. */
+.entity-node text, .sensor-node text { opacity: 0; transition: opacity .12s; pointer-events: none; }
+.entity-node:hover text, .entity-node:focus-within text, .entity-node.is-selected text,
+.sensor-node:hover text, .sensor-node:focus-within text, .sensor-node.is-selected text { opacity: 1; }
+.entity-node.is-service circle { opacity: .35; }
 g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .interaction-point { fill: var(--teal); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 1px; }
 .entity-node circle { fill: var(--indigo-soft); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; }
