@@ -1250,17 +1250,14 @@ class WorkspaceService:
                                     (export_id,),
                                 ).fetchone()
                             if export_row is not None:
-                                try:
-                                    self.register_artifact(
-                                        path,
-                                        role="export_archive",
-                                        media_type="application/zip",
-                                        schema_version="1.0.0",
-                                    )
-                                    known.add(path)
-                                    continue
-                                except WorkspaceError:
-                                    pass
+                                self.register_artifact(
+                                    path,
+                                    role="export_archive",
+                                    media_type="application/zip",
+                                    schema_version="1.0.0",
+                                )
+                                known.add(path)
+                                continue
                         issues.append(f"orphan file: {path.relative_to(self.root).as_posix()}")
         self.diagnostic_mode = bool(issues)
         return sorted(issues)
