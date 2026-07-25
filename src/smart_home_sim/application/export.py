@@ -330,5 +330,11 @@ class ExportService:
                     if entry.is_file():
                         archive.write(entry, arcname=f"{export_id}/{entry.relative_to(export_dir)}")
             temporary.replace(zip_path)
+        self.workspace.register_artifact(
+            zip_path,
+            role="export_archive",
+            media_type="application/zip",
+            schema_version="1.0.0",
+        )
         return zip_path
 

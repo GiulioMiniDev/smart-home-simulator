@@ -255,5 +255,39 @@ def test_archive_export_creates_valid_zip(
         names = archive.namelist()
         assert f"{manifest.export_id}/manifest.json" in names
         assert f"{manifest.export_id}/observable.jsonl" in names
+    relative = f"exports/{manifest.export_id}.zip"
+    with workspace.connection() as connection:
+        row = connection.execute("SELECT * FROM artifacts WHERE relative_path = ?", (relative,)).fetchone()
+    assert row is not None
+    assert row["role"] == "export_archive"
+
+
+def test_reconcile_auto_registers_orphan_export_zips(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+    manifest = service.export(
+        ExportRequest(
+            run_id=run_id,
+            formats=[ExportFormat.jsonl],
+            roles=["observable"],
+        )
+    )
+    zip_path = service.archive_export(manifest.export_id)
+    relative = f"exports/{manifest.export_id}.zip"
+    # Unregister zip artifact manually to simulate an uncatalogued/orphan export archive
+    with workspace.transaction() as connection:
+        connection.execute("DELETE FROM artifacts WHERE relative_path = ?", (relative,))
+    # Running reconcile should auto-register the orphan export zip and clear diagnostic_mode for it
+    reconciled_issues = [
+        issue for issue in workspace.reconcile() if f"orphan file: {relative}" in issue
+    ]
+    assert reconciled_issues == []
+    with workspace.connection() as connection:
+        row = connection.execute("SELECT * FROM artifacts WHERE relative_path = ?", (relative,)).fetchone()
+    assert row is not None
+    assert row["role"] == "export_archive"
+
 
 

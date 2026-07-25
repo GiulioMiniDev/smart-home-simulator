@@ -1238,6 +1238,29 @@ class WorkspaceService:
                         and path not in known
                         and path.name != "workspace-manifest.json"
                     ):
+                        if (
+                            base == self.exports_path
+                            and path.suffix == ".zip"
+                            and not path.name.startswith(".")
+                        ):
+                            export_id = path.stem
+                            with self.connection() as connection:
+                                export_row = connection.execute(
+                                    "SELECT export_id FROM exports WHERE export_id = ?",
+                                    (export_id,),
+                                ).fetchone()
+                            if export_row is not None:
+                                try:
+                                    self.register_artifact(
+                                        path,
+                                        role="export_archive",
+                                        media_type="application/zip",
+                                        schema_version="1.0.0",
+                                    )
+                                    known.add(path)
+                                    continue
+                                except WorkspaceError:
+                                    pass
                         issues.append(f"orphan file: {path.relative_to(self.root).as_posix()}")
         self.diagnostic_mode = bool(issues)
         return sorted(issues)
