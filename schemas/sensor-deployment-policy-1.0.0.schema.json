@@ -122,6 +122,42 @@
       "title": "Temperaturethermaltimeconstanthours",
       "type": "number"
     },
+    "temperatureSeasonalCoupling": {
+      "default": 0.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Temperatureseasonalcoupling",
+      "type": "number"
+    },
+    "temperatureReportingMode": {
+      "default": "periodic",
+      "enum": [
+        "periodic",
+        "on_change"
+      ],
+      "title": "Temperaturereportingmode",
+      "type": "string"
+    },
+    "temperatureReportThresholdCelsius": {
+      "default": 0.5,
+      "exclusiveMinimum": 0,
+      "maximum": 10,
+      "title": "Temperaturereportthresholdcelsius",
+      "type": "number"
+    },
+    "temperatureHeartbeatSeconds": {
+      "default": 0.0,
+      "minimum": 0,
+      "title": "Temperatureheartbeatseconds",
+      "type": "number"
+    },
+    "clockDriftPpmSpread": {
+      "default": 0.0,
+      "maximum": 500,
+      "minimum": 0,
+      "title": "Clockdriftppmspread",
+      "type": "number"
+    },
     "useCityClimate": {
       "default": false,
       "title": "Usecityclimate",

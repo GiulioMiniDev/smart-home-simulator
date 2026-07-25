@@ -578,11 +578,20 @@ def deploy_sensors(
         false_negative_probability=policy.false_negative_probability,
         false_positive_probability_per_day=policy.false_positive_probability_per_day,
     )
-    timing = SensorTiming(
-        latency_milliseconds=policy.latency_milliseconds,
-        clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
-        cooldown_milliseconds=policy.pir_cooldown_milliseconds,
-    )
+
+    def sensor_timing(sensor_id: str, *, cooldown_milliseconds: float = 0.0) -> SensorTiming:
+        """Per-node timing: every sensor keeps its own stable RTC skew inside the policy band."""
+        drift = 0.0
+        if policy.clock_drift_ppm_spread > 0:
+            fraction = _stable_fraction(str(bundle.seed), sensor_id, "clock-drift")
+            drift = (fraction - 0.5) * 2 * policy.clock_drift_ppm_spread
+        return SensorTiming(
+            latency_milliseconds=policy.latency_milliseconds,
+            clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
+            cooldown_milliseconds=cooldown_milliseconds,
+            clock_drift_ppm=round(drift, 6),
+        )
+
     for region in selected:
         positions = [_center(region.boundary)]
         if policy.preset == "dense":
@@ -604,7 +613,10 @@ def deploy_sensors(
                     coverage=region.boundary,
                     hold_milliseconds=policy.pir_hold_milliseconds,
                     hold_log_sigma=policy.pir_hold_log_sigma,
-                    timing=timing,
+                    timing=sensor_timing(
+                        f"pir_{region.region_id}{suffix}",
+                        cooldown_milliseconds=policy.pir_cooldown_milliseconds,
+                    ),
                     error_model=pir_error,
                 )
             )
@@ -633,10 +645,7 @@ def deploy_sensors(
                 action_types=["enter_home", "leave_home"],
                 pulse_milliseconds=policy.contact_pulse_milliseconds,
                 pulse_log_sigma=policy.contact_pulse_log_sigma,
-                timing=SensorTiming(
-                    latency_milliseconds=policy.latency_milliseconds,
-                    clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
-                ),
+                timing=sensor_timing("contact_entrance_door"),
                 error_model=pir_error,
             )
         )
@@ -648,10 +657,7 @@ def deploy_sensors(
                 entity_id=entity.entity_id,
                 pulse_milliseconds=policy.contact_pulse_milliseconds,
                 pulse_log_sigma=policy.contact_pulse_log_sigma,
-                timing=SensorTiming(
-                    latency_milliseconds=policy.latency_milliseconds,
-                    clock_jitter_milliseconds=policy.clock_jitter_milliseconds,
-                ),
+                timing=sensor_timing(f"contact_{entity.entity_id}"),
                 error_model=pir_error,
             )
         )
@@ -693,6 +699,13 @@ def deploy_sensors(
                 thermal_time_constant_hours=policy.temperature_thermal_time_constant_hours,
                 quantization_celsius=policy.temperature_quantization_celsius,
                 sample_phase_seconds=round(sample_phase, 6),
+                seasonal_coupling=(
+                    policy.temperature_seasonal_coupling if policy.use_city_climate else 0.0
+                ),
+                reporting_mode=policy.temperature_reporting_mode,
+                report_threshold_celsius=policy.temperature_report_threshold_celsius,
+                heartbeat_seconds=policy.temperature_heartbeat_seconds,
+                timing=sensor_timing(f"temperature_{region.region_id}"),
                 sources=[
                     TemperatureSource(
                         entity_id=source.entity_id,

@@ -271,6 +271,13 @@
           "minimum": 0,
           "title": "Cooldownmilliseconds",
           "type": "number"
+        },
+        "clockDriftPpm": {
+          "default": 0.0,
+          "maximum": 500,
+          "minimum": -500,
+          "title": "Clockdriftppm",
+          "type": "number"
         }
       },
       "title": "SensorTiming",
@@ -351,6 +358,35 @@
           "default": 0.0,
           "minimum": 0,
           "title": "Samplephaseseconds",
+          "type": "number"
+        },
+        "seasonalCoupling": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Seasonalcoupling",
+          "type": "number"
+        },
+        "reportingMode": {
+          "default": "periodic",
+          "enum": [
+            "periodic",
+            "on_change"
+          ],
+          "title": "Reportingmode",
+          "type": "string"
+        },
+        "reportThresholdCelsius": {
+          "default": 0.5,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Reportthresholdcelsius",
+          "type": "number"
+        },
+        "heartbeatSeconds": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Heartbeatseconds",
           "type": "number"
         },
         "sources": {

@@ -510,6 +510,23 @@ def _outdoor_temperature(trace: ExecutionTrace, city: str, at: datetime) -> floa
     return mean + daily_amplitude * math.sin(2 * math.pi * (local_hour - 9) / 24)
 
 
+def _should_report(
+    value: float,
+    at: datetime,
+    last_value: float | None,
+    last_at: datetime | None,
+    *,
+    threshold: float,
+    heartbeat_seconds: float,
+) -> bool:
+    """Threshold reporting: emit the first reading, then only real movement or a heartbeat."""
+    if last_value is None or last_at is None:
+        return True
+    if abs(value - last_value) >= threshold:
+        return True
+    return heartbeat_seconds > 0 and (at - last_at).total_seconds() >= heartbeat_seconds
+
+
 def _temperature_candidates(
     trace: ExecutionTrace,
     bundle: SimulationBundle,
@@ -535,6 +552,8 @@ def _temperature_candidates(
         ):
             current = float(initial_ambient) + sensor.room_offset_celsius
         source_adjustment = 0.0
+        last_reported_value: float | None = None
+        last_reported_at: datetime | None = None
         while sample_at <= trace.ended_at:
             sample_transition: StateTransition | None = None
             while delta_index < len(deltas) and deltas[delta_index].at <= sample_at:
@@ -548,10 +567,16 @@ def _temperature_candidates(
             if sensor.climate_profile == "city_seasonal":
                 outdoor = _outdoor_temperature(trace, city, sample_at)
                 climate_mean = _daily_climate_mean(sample_at, city)
+                annual_mean, _, _, _ = _climate_parameters(city)
+                # (outdoor - climate_mean) is the *daily* excursion only: the seasonal cosine sits
+                # in both terms and cancels, so this alone pins the indoor mean to baseline all
+                # year. seasonalCoupling re-injects the share of the seasonal swing that a room
+                # actually follows.
                 target = (
                     sensor.baseline_celsius
                     + sensor.room_offset_celsius
                     + 0.32 * (outdoor - climate_mean)
+                    + sensor.seasonal_coupling * (climate_mean - annual_mean)
                     + source_adjustment
                 )
                 if sensor.thermal_time_constant_hours > 0:
@@ -571,6 +596,18 @@ def _temperature_candidates(
             value = (
                 round(value / sensor.quantization_celsius) * sensor.quantization_celsius
             )
+            if sensor.reporting_mode == "on_change" and not _should_report(
+                value,
+                sample_at,
+                last_reported_value,
+                last_reported_at,
+                threshold=sensor.report_threshold_celsius,
+                heartbeat_seconds=sensor.heartbeat_seconds,
+            ):
+                sample_at += timedelta(seconds=interval)
+                continue
+            last_reported_value = value
+            last_reported_at = sample_at
             if sample_transition is None:
                 common = dict(
                     origin="environment_model",
@@ -906,8 +943,16 @@ def _project_sensor(
             continue
         latency = sensor.timing.latency_milliseconds
         jitter_bound = sensor.timing.clock_jitter_milliseconds
+        # Latency and jitter are bounded and zero-mean; the node's own RTC skew is neither, so it
+        # is accumulated separately against elapsed trace time and may push a stamp backwards.
+        drift_milliseconds = (
+            (candidate.at - trace.started_at).total_seconds()
+            * sensor.timing.clock_drift_ppm
+            / 1_000.0
+        )
         observed_at = candidate.at + timedelta(
             milliseconds=max(0.0, latency + jitter.uniform(-jitter_bound, jitter_bound))
+            + drift_milliseconds
         )
         value = candidate.value
         noisy = candidate.origin == "false_positive"

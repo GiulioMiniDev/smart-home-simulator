@@ -10,7 +10,7 @@ simulation (M5) and sensor projection (M6) are a separate, user-triggered step.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -25,6 +25,7 @@ from smart_home_sim.hybrid_planning.day_generation import (
     build_day_scenario,
     build_scenario_from_day_plan,
 )
+from smart_home_sim.hybrid_planning.drives import DayRhythm, RhythmProfile, plan_rhythms
 from smart_home_sim.hybrid_planning.habit_trace import build_planned_trace
 from smart_home_sim.hybrid_planning.package_authoring import build_probe_scenario
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
@@ -58,16 +59,30 @@ def build_horizon(
     start_index: int = 0,
     days: int | None = None,
     day_plans: dict[str, DayPlan] | None = None,
+    rhythm_profile: RhythmProfile | None = None,
 ) -> HorizonResult:
     """Compile and bundle each calendar day, then write one batch manifest over them.
 
     When ``day_plans`` maps a date to a DayPlan (e.g. from the LLM layer), that plan is used for the
     date; otherwise the deterministic substrate day is built.
+
+    With ``rhythm_profile`` set, the substrate days are shaped by homeostatic drive state carried
+    across the horizon instead of the fixed 06:00/22:30 scaffold, and activity durations are drawn
+    per occurrence. The rhythms are computed over the whole slice in one pass because day N's
+    sleep debt is what day N-1 left behind.
     """
     limit = len(calendar.days) if days is None else start_index + days
     day_slice = calendar.days[start_index:limit]
     if not day_slice:
         raise HorizonError("requested calendar slice is empty")
+
+    rhythms: dict[str, DayRhythm] = {}
+    if rhythm_profile is not None:
+        rhythms = plan_rhythms(
+            rhythm_profile,
+            [date.fromisoformat(day.date) for day in day_slice],
+            seed=calendar.seed,
+        )
 
     package_path = output_dir / "package.json"
     home_path = output_dir / "home.json"
@@ -85,7 +100,12 @@ def build_horizon(
         if day_plans is not None and day.date in day_plans:
             scenario = build_scenario_from_day_plan(world, day_plans[day.date])
         else:
-            scenario = build_day_scenario(world, day)
+            scenario = build_day_scenario(
+                world,
+                day,
+                rhythm=rhythms.get(day.date),
+                seed=calendar.seed if rhythm_profile is not None else None,
+            )
         scenario_path = output_dir / "scenarios" / f"day-{day.date}.scenario.json"
         _write(scenario_path, scenario)
 

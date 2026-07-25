@@ -25,6 +25,11 @@ from smart_home_sim.domain.sensors import (
 )
 from smart_home_sim.sensors import project_sensor_files
 from smart_home_sim.sensors import project_sensors as project_sensors_with_bundle
+from smart_home_sim.sensors.service import (
+    _climate_parameters,
+    _daily_climate_mean,
+    _scenario_city,
+)
 
 ROOT = Path(__file__).parents[1]
 TRACE_PATH = ROOT / "examples/execution/mario_week.execution-trace.json"
@@ -561,4 +566,111 @@ def test_public_artifact_contracts_reject_inconsistent_content(
             origin="false_positive",
             cause_type="movement",
             cause_ids=["movement"],
+        )
+
+
+def _realistic_model(sensor_model: SensorModel, sensor: object) -> SensorModel:
+    """The seasonal, threshold and drift behaviours only run on the 1.2.0 projection policy."""
+    return sensor_model.model_copy(update={"sensors": [sensor], "sensor_model_version": "1.2.0"})
+
+
+def _seasonal_temperature(sensor_model: SensorModel) -> TemperatureSensor:
+    sensor = next(item for item in sensor_model.sensors if isinstance(item, TemperatureSensor))
+    return sensor.model_copy(
+        update={
+            "error_model": SensorErrorModel(),
+            "timing": SensorTiming(),
+            "climate_profile": "city_seasonal",
+            "quantization_celsius": 0.1,
+        }
+    )
+
+
+def test_seasonal_coupling_moves_the_indoor_mean_across_the_year(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    """Uncoupled, the seasonal cosine cancels between outdoor and climate mean and the room
+    stays pinned to baseline all year; coupling re-injects a known share of that swing."""
+    base = _seasonal_temperature(sensor_model)
+
+    def mean_reading(coupling: float) -> float:
+        sensor = base.model_copy(update={"seasonal_coupling": coupling})
+        result = project_sensors(trace, _realistic_model(sensor_model, sensor))
+        assert result.observable_log is not None
+        values = [float(item.value) for item in result.observable_log.records]
+        return sum(values) / len(values)
+
+    annual_mean, _, _, _ = _climate_parameters(_scenario_city(BUNDLE))
+    midpoint = trace.started_at + (trace.ended_at - trace.started_at) / 2
+    seasonal_excursion = _daily_climate_mean(midpoint, _scenario_city(BUNDLE)) - annual_mean
+    # This trace sits in mid-October, still above the Rome annual mean, so the room reads warmer.
+    assert seasonal_excursion > 0
+
+    flat = mean_reading(0.0)
+    coupled = mean_reading(0.45)
+    assert coupled - flat == pytest.approx(0.45 * seasonal_excursion, abs=0.15)
+
+
+def test_on_change_reporting_drops_flat_stretches_but_keeps_the_heartbeat(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    base = _seasonal_temperature(sensor_model)
+    periodic = project_sensors(trace, _realistic_model(sensor_model, base))
+    assert periodic.observable_log is not None
+
+    on_change = base.model_copy(
+        update={
+            "reporting_mode": "on_change",
+            "report_threshold_celsius": 0.5,
+            "heartbeat_seconds": 0.0,
+        }
+    )
+    sparse = project_sensors(trace, _realistic_model(sensor_model, on_change))
+    assert sparse.observable_log is not None
+    assert 0 < len(sparse.observable_log.records) < len(periodic.observable_log.records)
+    # Every consecutive pair must differ by at least the threshold: no redundant repeats survive.
+    values = [float(item.value) for item in sparse.observable_log.records]
+    assert all(abs(b - a) >= 0.5 - 1e-9 for a, b in zip(values, values[1:], strict=False))
+
+    beating = on_change.model_copy(update={"heartbeat_seconds": 3_600})
+    kept_alive = project_sensors(trace, _realistic_model(sensor_model, beating))
+    assert kept_alive.observable_log is not None
+    assert len(kept_alive.observable_log.records) > len(sparse.observable_log.records)
+
+
+def test_clock_drift_accumulates_against_trace_time(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    source = next(item for item in sensor_model.sensors if isinstance(item, PirSensor))
+    clean = source.model_copy(update={"error_model": SensorErrorModel(), "timing": SensorTiming()})
+    drifting = clean.model_copy(
+        update={"timing": SensorTiming(clock_drift_ppm=500)},
+    )
+    baseline = project_sensors(trace, _realistic_model(sensor_model, clean))
+    skewed = project_sensors(trace, _realistic_model(sensor_model, drifting))
+    assert baseline.observable_log is not None and skewed.observable_log is not None
+    assert len(baseline.observable_log.records) == len(skewed.observable_log.records)
+
+    offsets = [
+        (late.observed_at - early.observed_at).total_seconds()
+        for early, late in zip(
+            baseline.observable_log.records, skewed.observable_log.records, strict=True
+        )
+    ]
+    # Drift grows with elapsed trace time rather than staying a constant latency.
+    assert offsets[0] < offsets[-1]
+    assert all(a <= b + 1e-9 for a, b in zip(offsets, offsets[1:], strict=False))
+
+
+def test_on_change_threshold_must_not_sit_below_quantization() -> None:
+    with pytest.raises(ValidationError):
+        TemperatureSensor(
+            sensor_id="temperature_x",
+            position=Point2D(x=0, y=0),
+            region_id="kitchen",
+            baseline_celsius=21.0,
+            quantization_celsius=0.5,
+            reporting_mode="on_change",
+            report_threshold_celsius=0.1,
+            sources=[TemperatureSource(entity_id="stove", fact="active", delta_celsius=1.0)],
         )

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "observable_sensor_log",
-  "logId": "sensor_log_48675c03864765b8",
+  "logId": "sensor_log_415f1032783b7228",
   "sensorModelId": "mario_monteverde_ambient_sensors",
   "sensorModelVersion": "1.0.0",
   "startedAt": "2026-10-12T00:00:00+02:00",
@@ -13,7 +13,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T00:00:00.541671+02:00",
       "measurement": "temperature",
-      "value": 20.595771,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -83,7 +83,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:42:31.312465+02:00",
       "measurement": "temperature",
-      "value": 21.017894,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -93,7 +93,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:43:31.132821+02:00",
       "measurement": "temperature",
-      "value": 21.761409,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -103,7 +103,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:44:31.183194+02:00",
       "measurement": "temperature",
-      "value": 22.348165,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -113,7 +113,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:45:31.299971+02:00",
       "measurement": "temperature",
-      "value": 22.860078,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -183,7 +183,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:51:05.407626+02:00",
       "measurement": "temperature",
-      "value": 22.638336,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -203,7 +203,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:52:05.506882+02:00",
       "measurement": "temperature",
-      "value": 22.360321,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -213,7 +213,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:53:05.520348+02:00",
       "measurement": "temperature",
-      "value": 22.070715,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -233,7 +233,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:54:05.427257+02:00",
       "measurement": "temperature",
-      "value": 22.003052,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -243,7 +243,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:55:05.465146+02:00",
       "measurement": "temperature",
-      "value": 21.73436,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -253,7 +253,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:56:05.444824+02:00",
       "measurement": "temperature",
-      "value": 21.189064,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -263,7 +263,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:57:05.563886+02:00",
       "measurement": "temperature",
-      "value": 21.190008,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -273,7 +273,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:58:05.472763+02:00",
       "measurement": "temperature",
-      "value": 20.856656,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -283,7 +283,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T06:59:05.457637+02:00",
       "measurement": "temperature",
-      "value": 20.892281,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -293,7 +293,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T07:00:05.573826+02:00",
       "measurement": "temperature",
-      "value": 20.51228,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1143,7 +1143,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:11:35.420891+02:00",
       "measurement": "temperature",
-      "value": 21.256305,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1153,7 +1153,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:12:35.560431+02:00",
       "measurement": "temperature",
-      "value": 21.768914,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1163,7 +1163,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:13:35.466175+02:00",
       "measurement": "temperature",
-      "value": 22.374722,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1173,7 +1173,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:14:35.474879+02:00",
       "measurement": "temperature",
-      "value": 22.894286,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1183,7 +1183,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:20:35.565616+02:00",
       "measurement": "temperature",
-      "value": 22.647338,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1193,7 +1193,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:21:35.405479+02:00",
       "measurement": "temperature",
-      "value": 22.330882,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1203,7 +1203,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:22:35.576000+02:00",
       "measurement": "temperature",
-      "value": 22.147815,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1213,7 +1213,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:23:35.513075+02:00",
       "measurement": "temperature",
-      "value": 21.958778,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1223,7 +1223,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:24:35.521883+02:00",
       "measurement": "temperature",
-      "value": 21.768029,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1233,7 +1233,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:25:35.401151+02:00",
       "measurement": "temperature",
-      "value": 21.584123,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1243,7 +1243,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:26:35.528926+02:00",
       "measurement": "temperature",
-      "value": 21.186307,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1283,7 +1283,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:27:35.463248+02:00",
       "measurement": "temperature",
-      "value": 21.111627,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1323,7 +1323,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:28:35.550460+02:00",
       "measurement": "temperature",
-      "value": 20.678697,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1333,7 +1333,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-12T19:29:35.468881+02:00",
       "measurement": "temperature",
-      "value": 20.605009,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1883,7 +1883,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:42:31.278882+02:00",
       "measurement": "temperature",
-      "value": 21.060525,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1893,7 +1893,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:43:31.213732+02:00",
       "measurement": "temperature",
-      "value": 21.790711,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1903,7 +1903,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:44:31.254083+02:00",
       "measurement": "temperature",
-      "value": 22.281081,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1913,7 +1913,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:45:31.170733+02:00",
       "measurement": "temperature",
-      "value": 22.884873,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1963,7 +1963,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:51:05.480137+02:00",
       "measurement": "temperature",
-      "value": 22.521143,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1973,7 +1973,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:52:05.577349+02:00",
       "measurement": "temperature",
-      "value": 22.416425,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1983,7 +1983,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:53:05.487604+02:00",
       "measurement": "temperature",
-      "value": 22.084783,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -1993,7 +1993,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:54:05.501933+02:00",
       "measurement": "temperature",
-      "value": 21.910611,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -2023,7 +2023,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:55:05.427562+02:00",
       "measurement": "temperature",
-      "value": 21.704562,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -2073,7 +2073,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:56:05.471436+02:00",
       "measurement": "temperature",
-      "value": 21.514762,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -2093,7 +2093,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:57:05.500926+02:00",
       "measurement": "temperature",
-      "value": 21.217389,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -2103,7 +2103,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:58:05.558683+02:00",
       "measurement": "temperature",
-      "value": 20.896442,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -2123,7 +2123,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T06:59:05.430997+02:00",
       "measurement": "temperature",
-      "value": 20.809682,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -2133,7 +2133,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-13T07:00:05.442898+02:00",
       "measurement": "temperature",
-      "value": 20.608658,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3143,7 +3143,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:44:31.214024+02:00",
       "measurement": "temperature",
-      "value": 21.161565,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3153,7 +3153,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:45:31.238186+02:00",
       "measurement": "temperature",
-      "value": 21.685696,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3163,7 +3163,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:46:31.155875+02:00",
       "measurement": "temperature",
-      "value": 22.375445,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3173,7 +3173,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:47:31.127158+02:00",
       "measurement": "temperature",
-      "value": 22.839461,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3243,7 +3243,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:53:05.553047+02:00",
       "measurement": "temperature",
-      "value": 22.645563,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3253,7 +3253,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:54:05.527551+02:00",
       "measurement": "temperature",
-      "value": 22.369578,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3273,7 +3273,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:55:05.511060+02:00",
       "measurement": "temperature",
-      "value": 22.265383,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3283,7 +3283,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:56:05.593763+02:00",
       "measurement": "temperature",
-      "value": 21.962817,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3293,7 +3293,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:57:05.459853+02:00",
       "measurement": "temperature",
-      "value": 21.622016,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3313,7 +3313,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:58:05.460755+02:00",
       "measurement": "temperature",
-      "value": 21.419358,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3323,7 +3323,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T06:59:05.410556+02:00",
       "measurement": "temperature",
-      "value": 21.207146,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3333,7 +3333,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T07:00:05.548893+02:00",
       "measurement": "temperature",
-      "value": 21.055499,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3343,7 +3343,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T07:01:05.447705+02:00",
       "measurement": "temperature",
-      "value": 20.698433,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -3353,7 +3353,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-14T07:02:05.533019+02:00",
       "measurement": "temperature",
-      "value": 20.495999,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4543,7 +4543,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:42:31.252414+02:00",
       "measurement": "temperature",
-      "value": 20.881539,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4553,7 +4553,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:43:31.277752+02:00",
       "measurement": "temperature",
-      "value": 21.591717,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4563,7 +4563,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:44:31.209823+02:00",
       "measurement": "temperature",
-      "value": 22.277344,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4573,7 +4573,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:45:31.268622+02:00",
       "measurement": "temperature",
-      "value": 22.960831,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4643,7 +4643,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:51:05.425060+02:00",
       "measurement": "temperature",
-      "value": 22.550612,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4653,7 +4653,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:52:05.531729+02:00",
       "measurement": "temperature",
-      "value": 22.269772,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4673,7 +4673,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:53:05.424421+02:00",
       "measurement": "temperature",
-      "value": 22.315462,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4683,7 +4683,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:54:05.414831+02:00",
       "measurement": "temperature",
-      "value": 21.964947,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4693,7 +4693,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:55:05.486959+02:00",
       "measurement": "temperature",
-      "value": 21.736627,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4713,7 +4713,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:56:05.567335+02:00",
       "measurement": "temperature",
-      "value": 21.313801,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4723,7 +4723,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:57:05.403693+02:00",
       "measurement": "temperature",
-      "value": 21.187668,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4733,7 +4733,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:58:05.593906+02:00",
       "measurement": "temperature",
-      "value": 21.00645,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4743,7 +4743,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T06:59:05.502940+02:00",
       "measurement": "temperature",
-      "value": 20.833642,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -4753,7 +4753,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-15T07:00:05.518870+02:00",
       "measurement": "temperature",
-      "value": 20.618503,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6083,7 +6083,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:42:31.219132+02:00",
       "measurement": "temperature",
-      "value": 21.10382,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6093,7 +6093,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:43:31.249444+02:00",
       "measurement": "temperature",
-      "value": 21.794803,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6103,7 +6103,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:44:31.288337+02:00",
       "measurement": "temperature",
-      "value": 22.305887,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6113,7 +6113,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:45:31.146271+02:00",
       "measurement": "temperature",
-      "value": 22.868861,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6183,7 +6183,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:51:05.474969+02:00",
       "measurement": "temperature",
-      "value": 22.82752,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6193,7 +6193,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:52:05.485956+02:00",
       "measurement": "temperature",
-      "value": 22.352663,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6213,7 +6213,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:53:05.402856+02:00",
       "measurement": "temperature",
-      "value": 22.031612,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6223,7 +6223,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:54:05.416812+02:00",
       "measurement": "temperature",
-      "value": 21.960485,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6233,7 +6233,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:55:05.590128+02:00",
       "measurement": "temperature",
-      "value": 21.72773,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6253,7 +6253,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:56:05.476774+02:00",
       "measurement": "temperature",
-      "value": 21.434393,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6263,7 +6263,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:57:05.403823+02:00",
       "measurement": "temperature",
-      "value": 21.223213,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6273,7 +6273,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:58:05.406270+02:00",
       "measurement": "temperature",
-      "value": 20.998957,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6283,7 +6283,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T06:59:05.587427+02:00",
       "measurement": "temperature",
-      "value": 20.696619,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6293,7 +6293,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T07:00:05.509585+02:00",
       "measurement": "temperature",
-      "value": 20.600121,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6823,7 +6823,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:34:25.536599+02:00",
       "measurement": "temperature",
-      "value": 21.10165,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6833,7 +6833,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:35:25.497149+02:00",
       "measurement": "temperature",
-      "value": 21.646238,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6843,7 +6843,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:36:25.443148+02:00",
       "measurement": "temperature",
-      "value": 22.267652,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6853,7 +6853,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:37:25.466844+02:00",
       "measurement": "temperature",
-      "value": 22.917223,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6923,7 +6923,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:51:55.453103+02:00",
       "measurement": "temperature",
-      "value": 22.575928,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6933,7 +6933,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:52:55.472748+02:00",
       "measurement": "temperature",
-      "value": 22.484338,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -6973,7 +6973,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:53:55.577233+02:00",
       "measurement": "temperature",
-      "value": 22.053795,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7013,7 +7013,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:54:55.434599+02:00",
       "measurement": "temperature",
-      "value": 21.731207,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7023,7 +7023,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:55:55.445626+02:00",
       "measurement": "temperature",
-      "value": 21.706361,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7063,7 +7063,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:56:55.492464+02:00",
       "measurement": "temperature",
-      "value": 21.517131,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7103,7 +7103,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:57:55.422414+02:00",
       "measurement": "temperature",
-      "value": 21.113093,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7113,7 +7113,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:58:55.527950+02:00",
       "measurement": "temperature",
-      "value": 20.941516,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7153,7 +7153,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T17:59:55.478570+02:00",
       "measurement": "temperature",
-      "value": 20.711372,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7193,7 +7193,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-16T18:00:55.572745+02:00",
       "measurement": "temperature",
-      "value": 20.556605,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7763,7 +7763,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:14:44.133846+02:00",
       "measurement": "temperature",
-      "value": 21.250652,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7773,7 +7773,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:15:44.043558+02:00",
       "measurement": "temperature",
-      "value": 21.685512,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7783,7 +7783,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:16:44.131016+02:00",
       "measurement": "temperature",
-      "value": 22.338506,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7793,7 +7793,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:17:43.976530+02:00",
       "measurement": "temperature",
-      "value": 22.853981,
+      "value": 23.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7863,7 +7863,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:24:35.414087+02:00",
       "measurement": "temperature",
-      "value": 22.744808,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7873,7 +7873,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:25:35.430184+02:00",
       "measurement": "temperature",
-      "value": 22.452935,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7893,7 +7893,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:26:35.518279+02:00",
       "measurement": "temperature",
-      "value": 22.272115,
+      "value": 22.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7903,7 +7903,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:27:35.570732+02:00",
       "measurement": "temperature",
-      "value": 21.956198,
+      "value": 22.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7913,7 +7913,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:28:35.566071+02:00",
       "measurement": "temperature",
-      "value": 21.670174,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7933,7 +7933,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:29:35.425619+02:00",
       "measurement": "temperature",
-      "value": 21.413694,
+      "value": 21.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7943,7 +7943,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:30:35.406726+02:00",
       "measurement": "temperature",
-      "value": 21.208865,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7953,7 +7953,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:31:35.583309+02:00",
       "measurement": "temperature",
-      "value": 21.060488,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7963,7 +7963,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:32:35.498940+02:00",
       "measurement": "temperature",
-      "value": 21.011432,
+      "value": 21.0,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -7973,7 +7973,7 @@
       "sensorType": "temperature",
       "observedAt": "2026-10-17T08:33:35.422793+02:00",
       "measurement": "temperature",
-      "value": 20.497766,
+      "value": 20.5,
       "unit": "celsius",
       "quality": "noisy"
     },
@@ -11088,5 +11088,5 @@
       "quality": "nominal"
     }
   ],
-  "semanticDigest": "48675c03864765b8dae90def81a3164530ce22c5c72349315b096928bd17433a"
+  "semanticDigest": "415f1032783b72285bf704b15236ad7ed0f7f61fcd0db1944702bc7d594bf2fc"
 }

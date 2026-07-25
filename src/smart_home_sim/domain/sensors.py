@@ -35,6 +35,9 @@ class SensorTiming(ContractModel):
     latency_milliseconds: float = Field(default=0, ge=0)
     clock_jitter_milliseconds: float = Field(default=0, ge=0)
     cooldown_milliseconds: float = Field(default=0, ge=0)
+    # Real nodes keep their own free-running RTC, so their timestamps slide against the trace clock
+    # by a roughly constant rate. Jitter alone is zero-mean and never reproduces that slow skew.
+    clock_drift_ppm: float = Field(default=0.0, ge=-500, le=500)
 
 
 class SensorErrorModel(ContractModel):
@@ -139,6 +142,14 @@ class TemperatureSensor(SensorBase):
     thermal_time_constant_hours: float = Field(default=0.0, ge=0, le=72)
     quantization_celsius: float = Field(default=0.5, gt=0, le=10)
     sample_phase_seconds: float = Field(default=0.0, ge=0)
+    # Fraction of the outdoor seasonal swing that reaches the room. 0 keeps the indoor mean pinned
+    # to baselineCelsius all year (the historical behaviour); an unconditioned flat sits near 0.45.
+    seasonal_coupling: float = Field(default=0.0, ge=0, le=1)
+    # "periodic" emits every sample tick. "on_change" emits only once the reading moved by at least
+    # reportThresholdCelsius, which is how CASAS-style threshold nodes actually report.
+    reporting_mode: Literal["periodic", "on_change"] = "periodic"
+    report_threshold_celsius: float = Field(default=0.5, gt=0, le=10)
+    heartbeat_seconds: float = Field(default=0.0, ge=0)
     sources: list[TemperatureSource] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -146,6 +157,12 @@ class TemperatureSensor(SensorBase):
         keys = [(item.entity_id, item.fact) for item in self.sources]
         if len(keys) != len(set(keys)):
             raise ValueError("temperature sources must be unique by entityId and fact")
+        if self.reporting_mode == "on_change" and self.report_threshold_celsius < (
+            self.quantization_celsius
+        ):
+            raise ValueError(
+                "temperature reportThresholdCelsius must be at least quantizationCelsius"
+            )
         return self
 
 

@@ -57,6 +57,12 @@ class SensorDeploymentPolicy(ContractModel):
     temperature_source_delta_celsius: float = Field(default=0.5, gt=0, le=20)
     temperature_quantization_celsius: float = Field(default=0.5, gt=0, le=10)
     temperature_thermal_time_constant_hours: float = Field(default=0.0, ge=0, le=72)
+    temperature_seasonal_coupling: float = Field(default=0.0, ge=0, le=1)
+    temperature_reporting_mode: Literal["periodic", "on_change"] = "periodic"
+    temperature_report_threshold_celsius: float = Field(default=0.5, gt=0, le=10)
+    temperature_heartbeat_seconds: float = Field(default=0.0, ge=0)
+    # Half-width of the per-sensor RTC skew band; each node gets its own stable value inside it.
+    clock_drift_ppm_spread: float = Field(default=0.0, ge=0, le=500)
     use_city_climate: bool = False
     stagger_temperature_sampling: bool = False
     dropout_probability: float = Field(default=0.0, ge=0, le=1)
@@ -93,6 +99,13 @@ class SensorDeploymentPolicy(ContractModel):
             temperature_source_delta_celsius=0.7,
             temperature_quantization_celsius=0.1,
             temperature_thermal_time_constant_hours=4.0,
+            # An unconditioned flat follows roughly half the outdoor seasonal swing.
+            temperature_seasonal_coupling=0.45,
+            # CASAS-style threshold reporting, with a slow heartbeat so quiet rooms stay alive.
+            temperature_reporting_mode="on_change",
+            temperature_report_threshold_celsius=0.5,
+            temperature_heartbeat_seconds=3_600,
+            clock_drift_ppm_spread=40.0,
             use_city_climate=True,
             stagger_temperature_sampling=True,
             dropout_probability=0.005,

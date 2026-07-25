@@ -15,6 +15,7 @@ from pathlib import Path
 
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.hybrid_planning.cadence import build_cadence_calendar
+from smart_home_sim.hybrid_planning.drives import RhythmProfile
 from smart_home_sim.hybrid_planning.habits import generate_habits
 from smart_home_sim.hybrid_planning.horizon import HorizonResult, build_horizon
 from smart_home_sim.hybrid_planning.llm_days import generate_llm_day_plans
@@ -53,6 +54,7 @@ def run_generation(
     seed: int | None = None,
     days: int | None = None,
     progress: ProgressCallback | None = None,
+    use_drive_rhythms: bool = True,
 ) -> HorizonResult:
     """Run the full local generation pipeline, writing every artifact under ``output_dir``."""
     _emit(progress, 0, "Inventing the persona")
@@ -87,4 +89,17 @@ def run_generation(
         _emit(progress, 5, "Using the deterministic day substrate")
 
     _emit(progress, 6, "Merging the horizon into a batch manifest")
-    return build_horizon(world, package, calendar, output_dir, days=days, day_plans=day_plans)
+    rhythm_profile = (
+        RhythmProfile.from_persona(persona.persona_id, persona.age, persona.health)
+        if use_drive_rhythms
+        else None
+    )
+    return build_horizon(
+        world,
+        package,
+        calendar,
+        output_dir,
+        days=days,
+        day_plans=day_plans,
+        rhythm_profile=rhythm_profile,
+    )

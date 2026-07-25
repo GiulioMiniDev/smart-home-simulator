@@ -56,17 +56,17 @@
     {
       "role": "sensor_policy",
       "relativePath": "sensor-deployment-policy.json",
-      "sha256": "96b38fad7b58ebd6784094feb46bde201a125f65f4939a0637aa6dc9065f4fea"
+      "sha256": "df0536c06a95fdd1372b4a0c28485054c4fcd61e695a972661b87be9be7631f3"
     },
     {
       "role": "sensor_report",
       "relativePath": "sensor-deployment-report.json",
-      "sha256": "fea2a6f50d862ddcab0fd676f6ff2c1be5488fb3ca9f9adacaaad617f8d8bbd2"
+      "sha256": "05f21982e08a126a9cf18bb063695ac80ee355b8afd488c6f8c504391756459a"
     },
     {
       "role": "sensor_model",
       "relativePath": "sensor-model.json",
-      "sha256": "7e62deaa926cc62b7802ab36cd273e3a195166b2e17f11f4f213c697ed4995bb"
+      "sha256": "9a4732f8c5a1f9906fc308f7e6a3b5feffd4e143d80b842377c573a75ad931b9"
     },
     {
       "role": "simulation_report",
@@ -81,7 +81,7 @@
     {
       "role": "projection_report",
       "relativePath": "sensor-projection-report.json",
-      "sha256": "54959f1c453ffd059394a68128d7bd7ef07682db6214877973430a53a1d50ba6"
+      "sha256": "20923ad212c20320a7f71c5abd415fa8243f44cc00d2ca0e66b7314075fd7d61"
     },
     {
       "role": "observable_sensor_log",

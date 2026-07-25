@@ -15,7 +15,7 @@
   "sourceTraceSemanticDigest": "85d64887999deb99067a111041c69ba05f65dbff5f6c7aa878ca9d00f326f3e0",
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
-  "sensorModelSha256": "7e62deaa926cc62b7802ab36cd273e3a195166b2e17f11f4f213c697ed4995bb",
+  "sensorModelSha256": "9a4732f8c5a1f9906fc308f7e6a3b5feffd4e143d80b842377c573a75ad931b9",
   "observableLogSha256": "a6f8f094461e0b8e3fa6a79e38ee8e6297e150bc0514ed7d1ab5f6dde9e755bf",
   "oracleMappingSha256": "ed67b246e7882e1598756e1c77ac859e52c62289367d2fcf79ae83cfd506a961",
   "projectedAt": "2026-11-02T06:52:00+01:00",

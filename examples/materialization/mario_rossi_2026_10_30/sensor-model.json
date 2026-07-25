@@ -56,7 +56,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 750.0
+        "cooldownMilliseconds": 750.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -89,7 +90,8 @@
           }
         ]
       },
-      "holdMilliseconds": 5000.0
+      "holdMilliseconds": 5000.0,
+      "holdLogSigma": 0.0
     },
     {
       "sensorId": "pir_bathroom",
@@ -100,7 +102,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 750.0
+        "cooldownMilliseconds": 750.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -133,7 +136,8 @@
           }
         ]
       },
-      "holdMilliseconds": 5000.0
+      "holdMilliseconds": 5000.0,
+      "holdLogSigma": 0.0
     },
     {
       "sensorId": "pir_kitchen",
@@ -144,7 +148,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 750.0
+        "cooldownMilliseconds": 750.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -177,7 +182,8 @@
           }
         ]
       },
-      "holdMilliseconds": 5000.0
+      "holdMilliseconds": 5000.0,
+      "holdLogSigma": 0.0
     },
     {
       "sensorId": "pir_living_room",
@@ -188,7 +194,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 750.0
+        "cooldownMilliseconds": 750.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -221,7 +228,8 @@
           }
         ]
       },
-      "holdMilliseconds": 5000.0
+      "holdMilliseconds": 5000.0,
+      "holdLogSigma": 0.0
     },
     {
       "sensorId": "pir_hallway",
@@ -232,7 +240,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 750.0
+        "cooldownMilliseconds": 750.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -265,7 +274,8 @@
           }
         ]
       },
-      "holdMilliseconds": 5000.0
+      "holdMilliseconds": 5000.0,
+      "holdLogSigma": 0.0
     },
     {
       "sensorId": "pir_balcony",
@@ -276,7 +286,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 750.0
+        "cooldownMilliseconds": 750.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -309,7 +320,8 @@
           }
         ]
       },
-      "holdMilliseconds": 5000.0
+      "holdMilliseconds": 5000.0,
+      "holdLogSigma": 0.0
     },
     {
       "sensorId": "contact_entrance_door",
@@ -320,7 +332,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -338,6 +351,7 @@
       ],
       "actionTrigger": "ended",
       "pulseMilliseconds": 1000.0,
+      "pulseLogSigma": 0.0,
       "openValue": true,
       "closedValue": false
     },
@@ -350,7 +364,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -365,6 +380,7 @@
       "actionTypes": [],
       "actionTrigger": "ended",
       "pulseMilliseconds": 1000.0,
+      "pulseLogSigma": 0.0,
       "openValue": true,
       "closedValue": false
     },
@@ -377,7 +393,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -392,6 +409,7 @@
       "actionTypes": [],
       "actionTrigger": "ended",
       "pulseMilliseconds": 1000.0,
+      "pulseLogSigma": 0.0,
       "openValue": true,
       "closedValue": false
     },
@@ -404,7 +422,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -416,6 +435,15 @@
       "sensorType": "temperature",
       "regionId": "bedroom",
       "baselineCelsius": 20.0,
+      "climateProfile": "fixed",
+      "roomOffsetCelsius": 0.0,
+      "thermalTimeConstantHours": 0.0,
+      "quantizationCelsius": 0.5,
+      "samplePhaseSeconds": 0.0,
+      "seasonalCoupling": 0.0,
+      "reportingMode": "periodic",
+      "reportThresholdCelsius": 0.5,
+      "heartbeatSeconds": 0.0,
       "sources": [
         {
           "entityId": "bed",
@@ -438,7 +466,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -450,6 +479,15 @@
       "sensorType": "temperature",
       "regionId": "bathroom",
       "baselineCelsius": 20.0,
+      "climateProfile": "fixed",
+      "roomOffsetCelsius": 0.0,
+      "thermalTimeConstantHours": 0.0,
+      "quantizationCelsius": 0.5,
+      "samplePhaseSeconds": 0.0,
+      "seasonalCoupling": 0.0,
+      "reportingMode": "periodic",
+      "reportThresholdCelsius": 0.5,
+      "heartbeatSeconds": 0.0,
       "sources": [
         {
           "entityId": "service_bathroom",
@@ -472,7 +510,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -484,6 +523,15 @@
       "sensorType": "temperature",
       "regionId": "kitchen",
       "baselineCelsius": 20.0,
+      "climateProfile": "fixed",
+      "roomOffsetCelsius": 0.0,
+      "thermalTimeConstantHours": 0.0,
+      "quantizationCelsius": 0.5,
+      "samplePhaseSeconds": 0.0,
+      "seasonalCoupling": 0.0,
+      "reportingMode": "periodic",
+      "reportThresholdCelsius": 0.5,
+      "heartbeatSeconds": 0.0,
       "sources": [
         {
           "entityId": "stove",
@@ -516,7 +564,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -528,6 +577,15 @@
       "sensorType": "temperature",
       "regionId": "living_room",
       "baselineCelsius": 20.0,
+      "climateProfile": "fixed",
+      "roomOffsetCelsius": 0.0,
+      "thermalTimeConstantHours": 0.0,
+      "quantizationCelsius": 0.5,
+      "samplePhaseSeconds": 0.0,
+      "seasonalCoupling": 0.0,
+      "reportingMode": "periodic",
+      "reportThresholdCelsius": 0.5,
+      "heartbeatSeconds": 0.0,
       "sources": [
         {
           "entityId": "service_living_room",
@@ -550,7 +608,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -562,6 +621,15 @@
       "sensorType": "temperature",
       "regionId": "hallway",
       "baselineCelsius": 20.0,
+      "climateProfile": "fixed",
+      "roomOffsetCelsius": 0.0,
+      "thermalTimeConstantHours": 0.0,
+      "quantizationCelsius": 0.5,
+      "samplePhaseSeconds": 0.0,
+      "seasonalCoupling": 0.0,
+      "reportingMode": "periodic",
+      "reportThresholdCelsius": 0.5,
+      "heartbeatSeconds": 0.0,
       "sources": [
         {
           "entityId": "medication_cleaning_cabinet",
@@ -584,7 +652,8 @@
       "timing": {
         "latencyMilliseconds": 0.0,
         "clockJitterMilliseconds": 0.0,
-        "cooldownMilliseconds": 0.0
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
       },
       "errorModel": {
         "dropoutProbability": 0.0,
@@ -596,6 +665,15 @@
       "sensorType": "temperature",
       "regionId": "balcony",
       "baselineCelsius": 20.0,
+      "climateProfile": "fixed",
+      "roomOffsetCelsius": 0.0,
+      "thermalTimeConstantHours": 0.0,
+      "quantizationCelsius": 0.5,
+      "samplePhaseSeconds": 0.0,
+      "seasonalCoupling": 0.0,
+      "reportingMode": "periodic",
+      "reportThresholdCelsius": 0.5,
+      "heartbeatSeconds": 0.0,
       "sources": [
         {
           "entityId": "service_balcony",

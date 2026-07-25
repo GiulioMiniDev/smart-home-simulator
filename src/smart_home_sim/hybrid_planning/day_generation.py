@@ -9,6 +9,9 @@ valid, simulatable day always exists and is the fallback.
 
 from __future__ import annotations
 
+import hashlib
+import math
+import random
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -23,6 +26,7 @@ from smart_home_sim.domain.models import (
     SimulationWindow,
 )
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay
+from smart_home_sim.hybrid_planning.drives import DayRhythm
 from smart_home_sim.hybrid_planning.intents import IntentCategory, intent_spec
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
 
@@ -75,6 +79,38 @@ _CATEGORY_DURATION_MINUTES: dict[IntentCategory, tuple[int, int, int]] = {
 # day boundary (allowBoundaryTruncation), so a natural length is fine.
 _SLEEP_DURATION = (360, 420, 480)
 
+# Stochastic-behaviour path only (see `_sample_duration`). The solver minimises deviation from
+# preferredMinutes, so with a fixed preferred every occurrence lands on exactly that value and the
+# range above acts as a *ceiling* variability can only shave: observed durations pile up against
+# the maximum with near-zero variance. Real ADL durations are right-skewed instead, so here the
+# preferred value is drawn per occurrence from a log-normal and the bounds are widened to leave the
+# tail room. (minimumMinutes, medianMinutes, maximumMinutes, logSigma)
+_CATEGORY_DURATION_SHAPE: dict[IntentCategory, tuple[int, int, int, float]] = {
+    IntentCategory.sleep_wake: (5, 15, 40, 0.35),
+    IntentCategory.hygiene: (6, 18, 45, 0.35),
+    IntentCategory.medication: (3, 8, 20, 0.30),
+    IntentCategory.meal: (12, 28, 75, 0.32),
+    IntentCategory.cooking: (12, 30, 80, 0.35),
+    IntentCategory.chores: (8, 24, 70, 0.38),
+    IntentCategory.laundry: (8, 18, 45, 0.30),
+    IntentCategory.exercise: (12, 28, 60, 0.30),
+    IntentCategory.outdoor: (20, 45, 120, 0.35),
+    IntentCategory.errand: (25, 55, 140, 0.33),
+    IntentCategory.leisure: (15, 45, 150, 0.45),
+    IntentCategory.social: (8, 22, 75, 0.45),
+}
+# A nocturnal bathroom trip is short and reuses the only executable toilet intent; the label keeps
+# it distinguishable from the morning routine in the ground truth.
+_NIGHT_VISIT_INTENT = "morning_toilet_and_wash"
+_NIGHT_VISIT_LABEL = "night_visit"
+_NIGHT_VISIT_SHAPE = (3, 6, 12, 0.35)
+_NAP_INTENT = "rest_or_nap"
+# A debt nap is its own thing, much shorter than the generic leisure band it would otherwise
+# inherit. (minimumMinutes, medianMinutes, maximumMinutes, logSigma)
+_NAP_SHAPE = (20, 40, 75, 0.30)
+# Afternoon band a debt nap may occupy, in minutes after midnight (13:00-18:30).
+_NAP_WINDOW = (13 * 60, 18 * 60 + 30)
+
 
 def habit_to_intent(label: str, kind: str | None = None) -> str:
     """Map a free-text habit label to a canonical intent (deterministic, first keyword match)."""
@@ -91,6 +127,12 @@ class TimelineEntry:
     hhmm: str
     habit_id: str | None = None
     truncatable: bool = False
+    label: str | None = None
+    # An exact (minimum, preferred, maximum) band, used where the value is already decided (the
+    # night length comes from the sleep model).
+    duration: tuple[int, int, int] | None = None
+    # A (minimum, median, maximum, logSigma) shape to draw from, overriding the intent's category.
+    duration_shape: tuple[int, int, int, float] | None = None
 
 
 def plan_from_entries(
@@ -100,8 +142,13 @@ def plan_from_entries(
     *,
     timezone: str,
     actor_id: str,
+    seed: int | None = None,
 ) -> DayPlan:
-    """Assemble a DayPlan from ordered intent entries (shared by deterministic and LLM sources)."""
+    """Assemble a DayPlan from ordered intent entries (shared by deterministic and LLM sources).
+
+    With ``seed`` set, each activity's preferred duration is drawn from its category's log-normal
+    instead of being pinned to the category default.
+    """
     tz = ZoneInfo(timezone)
     activities = [
         _activity(
@@ -113,31 +160,132 @@ def plan_from_entries(
             index=index,
             habit_id=entry.habit_id,
             truncatable=entry.truncatable,
+            label=entry.label,
+            duration=entry.duration,
+            duration_shape=entry.duration_shape,
+            seed=seed,
         )
         for index, entry in enumerate(entries)
     ]
     return DayPlan(date=day_date, context=DayContext(day_type=day_type), activities=activities)
 
 
-def build_day_plan(day: CalendarDay, *, timezone: str, actor_id: str) -> DayPlan:
-    """Deterministic DayPlan: wake, the due habits mapped to intents, then a terminal sleep."""
-    entries = [TimelineEntry("wake_up", WAKE_TIME)]
+def build_day_plan(
+    day: CalendarDay,
+    *,
+    timezone: str,
+    actor_id: str,
+    rhythm: DayRhythm | None = None,
+    seed: int | None = None,
+) -> DayPlan:
+    """Deterministic DayPlan: wake, the due habits mapped to intents, then a terminal sleep.
+
+    Without ``rhythm`` this is the frozen substrate: a fixed 06:00 wake and 22:30 lights-out on
+    every single day of the horizon. With a rhythm, the day is shaped by the drive state it
+    inherited — the night starts and ends where the sleep model put it, nocturnal bathroom trips
+    are laid down before the wake, and a nap appears when sleep debt has built up.
+    """
+    entries: list[TimelineEntry] = []
+    wake_time = WAKE_TIME
+    sleep_time = SLEEP_TIME
+    if rhythm is not None:
+        wake_time = rhythm.wake_hhmm
+        sleep_time = rhythm.sleep_hhmm
+        # The trips belong to the night that is *ending*, so they precede the wake and land in the
+        # small hours the log was previously silent through.
+        entries.extend(
+            TimelineEntry(
+                _NIGHT_VISIT_INTENT,
+                visit,
+                label=_NIGHT_VISIT_LABEL,
+                duration_shape=_NIGHT_VISIT_SHAPE,
+            )
+            for visit in rhythm.night_visits
+            if visit < wake_time
+        )
+    entries.append(TimelineEntry("wake_up", wake_time))
     for occurrence in day.occurrences:
         entries.append(
             TimelineEntry(
                 habit_to_intent(occurrence.label, occurrence.kind.value),
-                occurrence.target_time,
+                _shift(occurrence.target_time, rhythm, wake_time),
                 habit_id=occurrence.habit_id,
             )
         )
-    entries.append(TimelineEntry("sleep", SLEEP_TIME, truncatable=True))
+    entries.sort(key=lambda item: item.hhmm)
+    if rhythm is not None and rhythm.nap:
+        slot = _nap_slot(entries)
+        if slot is not None:
+            entries.append(
+                TimelineEntry(
+                    _NAP_INTENT, slot, label="sleep_debt_nap", duration_shape=_NAP_SHAPE
+                )
+            )
+    entries.append(
+        TimelineEntry(
+            "sleep",
+            sleep_time,
+            truncatable=True,
+            duration=None if rhythm is None else _sleep_duration(rhythm.sleep_minutes),
+        )
+    )
+    entries.sort(key=lambda item: item.hhmm)
     return plan_from_entries(
         date.fromisoformat(day.date),
         day.weekday.value,
         entries,
         timezone=timezone,
         actor_id=actor_id,
+        seed=seed,
     )
+
+
+def _nap_slot(entries: list[TimelineEntry]) -> str | None:
+    """Drop the nap into the day's widest free afternoon gap, or not at all.
+
+    A nap pinned to a fixed clock time collides with whatever habit already sits there and makes
+    the day unsolvable, so it has to be placed against the schedule that actually exists.
+    """
+    occupied: list[tuple[int, int]] = []
+    for entry in entries:
+        start = _to_minutes(entry.hhmm)
+        shape = entry.duration_shape or _CATEGORY_DURATION_SHAPE[
+            intent_spec(entry.intent_id).category
+        ]
+        longest = entry.duration[2] if entry.duration is not None else shape[2]
+        occupied.append((start, start + longest))
+    occupied.sort()
+
+    needed = _NAP_SHAPE[2] + 2 * int(_WINDOW_FLEX.total_seconds() // 60)
+    best: tuple[int, int] | None = None
+    cursor = _NAP_WINDOW[0]
+    for start, end in [*occupied, (_NAP_WINDOW[1], _NAP_WINDOW[1])]:
+        if start > cursor:
+            gap = (cursor, min(start, _NAP_WINDOW[1]))
+            if gap[1] - gap[0] > (0 if best is None else best[1] - best[0]):
+                best = gap
+        cursor = max(cursor, end)
+        if cursor >= _NAP_WINDOW[1]:
+            break
+    if best is None or best[1] - best[0] < needed:
+        return None
+    return _to_hhmm((best[0] + best[1]) // 2 - _NAP_SHAPE[1] // 2)
+
+
+def _sleep_duration(sleep_minutes: int) -> tuple[int, int, int]:
+    """Centre the night on what the sleep model produced, keeping the solver a little slack."""
+    low = max(1, int(round(sleep_minutes * 0.85)))
+    high = max(low + 1, int(round(sleep_minutes * 1.15)))
+    return low, max(low, min(sleep_minutes, high)), high
+
+
+def _shift(hhmm: str, rhythm: DayRhythm | None, wake_time: str) -> str:
+    """Slide a habit's target time by the day's meal shift, never before the resident is up."""
+    if rhythm is None or rhythm.meal_shift_minutes == 0:
+        return hhmm
+    shifted = _to_minutes(hhmm) + rhythm.meal_shift_minutes
+    floor = _to_minutes(wake_time) + 5
+    return _to_hhmm(max(floor, min(shifted, 23 * 60 + 30)))
 
 
 def build_scenario_from_day_plan(world: PlanningWorld, day_plan: DayPlan) -> Scenario:
@@ -148,13 +296,22 @@ def build_scenario_from_day_plan(world: PlanningWorld, day_plan: DayPlan) -> Sce
     return assemble_scenario(world, days=[day_plan], window=SimulationWindow(start=start, end=end))
 
 
-def build_day_scenario(world: PlanningWorld, day: CalendarDay) -> Scenario:
+def build_day_scenario(
+    world: PlanningWorld,
+    day: CalendarDay,
+    *,
+    rhythm: DayRhythm | None = None,
+    seed: int | None = None,
+) -> Scenario:
     """Assemble a one-day scenario. Days are independent so the CP-SAT solver stays fast and the
     horizon scales; the dataset is the concatenation of per-day sensor logs (absolute timestamps).
     """
     actor_id = world.residents[0].resident_id
     return build_scenario_from_day_plan(
-        world, build_day_plan(day, timezone=world.time_zone, actor_id=actor_id)
+        world,
+        build_day_plan(
+            day, timezone=world.time_zone, actor_id=actor_id, rhythm=rhythm, seed=seed
+        ),
     )
 
 
@@ -164,13 +321,23 @@ def build_day_scenarios(
     *,
     start_index: int = 0,
     days: int | None = None,
+    rhythms: dict[str, DayRhythm] | None = None,
+    seed: int | None = None,
 ) -> list[Scenario]:
     """Build one independent scenario per calendar day over the requested slice."""
     limit = len(calendar.days) if days is None else start_index + days
     chunk = calendar.days[start_index:limit]
     if not chunk:
         raise ValueError("requested calendar slice is empty")
-    return [build_day_scenario(world, day) for day in chunk]
+    return [
+        build_day_scenario(
+            world,
+            day,
+            rhythm=None if rhythms is None else rhythms.get(day.date),
+            seed=seed,
+        )
+        for day in chunk
+    ]
 
 
 def _activity(
@@ -183,12 +350,30 @@ def _activity(
     index: int,
     habit_id: str | None = None,
     truncatable: bool = False,
+    label: str | None = None,
+    duration: tuple[int, int, int] | None = None,
+    duration_shape: tuple[int, int, int, float] | None = None,
+    seed: int | None = None,
 ) -> Activity:
     spec = intent_spec(intent_id)
     moment = _at(day_date, hhmm, tz)
-    low, pref, high = (
-        _SLEEP_DURATION if intent_id == "sleep" else _CATEGORY_DURATION_MINUTES[spec.category]
-    )
+    shape = duration_shape or _CATEGORY_DURATION_SHAPE[spec.category]
+    if duration is not None:
+        low, pref, high = duration
+    elif intent_id == "sleep":
+        # The night length is set by the sleep model, never by the category shape.
+        low, pref, high = _SLEEP_DURATION
+    elif seed is not None:
+        low, pref, high = _sample_duration(shape, seed, day_date, index, intent_id)
+    elif duration_shape is not None:
+        low, pref, high = duration_shape[0], duration_shape[1], duration_shape[2]
+    elif intent_id == "sleep":
+        low, pref, high = _SLEEP_DURATION
+    else:
+        low, pref, high = _CATEGORY_DURATION_MINUTES[spec.category]
+    labels = [f"habit:{habit_id}"] if habit_id else []
+    if label:
+        labels.append(label)
     return Activity(
         activity_id=f"{day_date.isoformat()}_{index:02d}_{intent_id}",
         actor_id=actor_id,
@@ -202,8 +387,33 @@ def _activity(
         ),
         mandatory=not truncatable,
         allow_boundary_truncation=truncatable,
-        labels=[f"habit:{habit_id}"] if habit_id else [],
+        labels=labels,
     )
+
+
+def _sample_duration(
+    shape: tuple[int, int, int, float], seed: int, day_date: date, index: int, intent_id: str
+) -> tuple[int, int, int]:
+    """Draw this occurrence's preferred duration from its log-normal shape."""
+    low, median, high, sigma = shape
+    rng = _rng(seed, "duration", day_date.isoformat(), index, intent_id)
+    preferred = median * math.exp(rng.gauss(0, sigma))
+    return low, int(round(max(low, min(preferred, high)))), high
+
+
+def _rng(seed: int, *parts: object) -> random.Random:
+    key = "|".join(str(part) for part in (seed, *parts))
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    return random.Random(int(digest[:16], 16))
+
+
+def _to_minutes(hhmm: str) -> int:
+    hours, minutes = (int(part) for part in hhmm.split(":"))
+    return hours * 60 + minutes
+
+
+def _to_hhmm(total: int) -> str:
+    return f"{total // 60:02d}:{total % 60:02d}"
 
 
 def _at(day_date: date, hhmm: str, tz: ZoneInfo) -> datetime:

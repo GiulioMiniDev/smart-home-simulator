@@ -170,3 +170,110 @@ def test_cli_generate_days_rejects_bad_input(tmp_path) -> None:
     )
     assert result.exit_code == 2
     assert "Cannot load inputs" in result.output
+
+
+def _rhythm_horizon(days: int = 60, **profile_overrides: object):
+    from datetime import date, timedelta
+
+    from smart_home_sim.hybrid_planning.drives import RhythmProfile, plan_rhythms
+
+    profile = RhythmProfile(persona_id="luigi_bianchi", **profile_overrides)  # type: ignore[arg-type]
+    horizon = [date(2026, 8, 3) + timedelta(days=index) for index in range(days)]
+    return profile, horizon, plan_rhythms(profile, horizon, seed=1)
+
+
+def _plans_over_horizon(days: int = 60, **profile_overrides: object):
+    _, horizon, rhythms = _rhythm_horizon(days, **profile_overrides)
+    plans = []
+    for day in horizon:
+        calendar_day = _day(
+            day.isoformat(),
+            Weekday.monday,
+            [_occ("morning coffee", "07:10"), _occ("lunch", "12:30")],
+        )
+        plans.append(
+            build_day_plan(
+                calendar_day,
+                timezone="Europe/Rome",
+                actor_id="luigi_bianchi",
+                rhythm=rhythms[day.isoformat()],
+                seed=1,
+            )
+        )
+    return plans
+
+
+def test_day_plan_without_a_rhythm_keeps_the_frozen_scaffold() -> None:
+    day = _day("2026-08-03", Weekday.monday, [_occ("morning coffee", "07:10")])
+    plan = build_day_plan(day, timezone="Europe/Rome", actor_id="luigi_bianchi")
+    wake = next(item for item in plan.activities if item.intent == "wake_up")
+    assert wake.start_window.preferred.strftime("%H:%M") == "06:00"
+    breakfast = next(item for item in plan.activities if item.intent == "eat_breakfast")
+    assert breakfast.duration.preferred_minutes == 30
+
+
+def test_rhythm_moves_wake_and_bedtime_off_the_fixed_scaffold() -> None:
+    plans = _plans_over_horizon()
+    wake_times = {
+        next(
+            item for item in plan.activities if item.intent == "wake_up"
+        ).start_window.preferred.strftime("%H:%M")
+        for plan in plans
+    }
+    assert len(wake_times) > 25
+    assert wake_times != {"06:00"}
+
+
+def test_rhythm_lays_night_visits_before_the_wake() -> None:
+    plans = _plans_over_horizon(nocturia_base_probability=0.8)
+    nights = 0
+    for plan in plans:
+        wake = next(item for item in plan.activities if item.intent == "wake_up")
+        visits = [item for item in plan.activities if "night_visit" in item.labels]
+        nights += bool(visits)
+        for visit in visits:
+            assert visit.start_window.preferred < wake.start_window.preferred
+            assert visit.location_ids == [intent_spec("morning_toilet_and_wash").default_location]
+    assert nights > 15
+
+
+def test_sampled_durations_are_right_skewed_instead_of_hugging_a_ceiling() -> None:
+    """The frozen table pinned every occurrence to preferredMinutes, so the observed maximum was
+    the planned value and the variance was near zero."""
+    import statistics
+
+    plans = _plans_over_horizon()
+    lunches = [
+        item.duration.preferred_minutes
+        for plan in plans
+        for item in plan.activities
+        if item.intent == "eat_lunch"
+    ]
+    assert statistics.pstdev(lunches) > 4
+    assert max(lunches) > statistics.mean(lunches) + 10
+    # A right tail, not a symmetric band clipped at the top.
+    assert statistics.mean(lunches) > statistics.median(lunches)
+
+
+def test_night_lengths_vary_across_the_horizon() -> None:
+    plans = _plans_over_horizon()
+    nights = {
+        next(item for item in plan.activities if item.intent == "sleep").duration.preferred_minutes
+        for plan in plans
+    }
+    assert len(nights) > 20
+
+
+def test_rhythm_days_still_compile() -> None:
+    _, horizon, rhythms = _rhythm_horizon(days=6, nocturia_base_probability=0.9)
+    for day in horizon:
+        calendar_day = _day(
+            day.isoformat(),
+            Weekday.monday,
+            [_occ("morning coffee", "07:10"), _occ("evening pill", "20:00")],
+        )
+        scenario = build_day_scenario(
+            _world(), calendar_day, rhythm=rhythms[day.isoformat()], seed=1
+        )
+        result = compile_scenario(scenario)
+        assert result.plan is not None, [i.message for i in result.report.issues]
