@@ -271,6 +271,14 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .entity-node:hover text, .entity-node:focus-within text, .entity-node.is-selected text,
 .sensor-node:hover text, .sensor-node:focus-within text, .sensor-node.is-selected text { opacity: 1; }
 .entity-node.is-service circle { opacity: .35; }
+/* CSS lengths inside an SVG viewBox are user units, and here one unit is one metre: the global
+   focus ring above therefore drew a 3-metre outline around whatever was focused, swallowing the
+   plan. Focus is shown with a stroke instead, kept at screen scale by non-scaling-stroke. */
+.plan-canvas [tabindex="0"]:focus-visible { outline: none; }
+.plan-canvas .entity-node:focus-visible circle,
+.plan-canvas .sensor-node:focus-visible circle { stroke: var(--indigo); stroke-width: 3.5px; }
+.plan-canvas g[role="button"]:focus-visible .region,
+.plan-canvas g[role="button"]:focus-visible .obstacle { stroke: var(--indigo); stroke-width: 3px; }
 g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .interaction-point { fill: var(--teal); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 1px; }
 .entity-node circle { fill: var(--indigo-soft); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; }

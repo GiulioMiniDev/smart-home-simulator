@@ -332,13 +332,13 @@
       "allowedMobilityProfiles": []
     },
     {
-      "connectionId": "transit_bedroom_outside",
+      "connectionId": "transit_hallway_outside",
       "kind": "transit",
-      "regionAId": "bedroom",
+      "regionAId": "hallway",
       "regionBId": "outside",
       "portalA": {
-        "x": 3.00455,
-        "y": 5.949350000000001
+        "x": 9.6938,
+        "y": 4.7672
       },
       "portalB": {
         "x": 3.0,
@@ -351,13 +351,13 @@
       "allowedMobilityProfiles": []
     },
     {
-      "connectionId": "transit_bedroom_supermarket",
+      "connectionId": "transit_hallway_supermarket",
       "kind": "transit",
-      "regionAId": "bedroom",
+      "regionAId": "hallway",
       "regionBId": "supermarket",
       "portalA": {
-        "x": 3.00455,
-        "y": 5.949350000000001
+        "x": 9.6938,
+        "y": 4.7672
       },
       "portalB": {
         "x": 9.0,
@@ -370,13 +370,13 @@
       "allowedMobilityProfiles": []
     },
     {
-      "connectionId": "transit_bedroom_neighborhood_bar",
+      "connectionId": "transit_hallway_neighborhood_bar",
       "kind": "transit",
-      "regionAId": "bedroom",
+      "regionAId": "hallway",
       "regionBId": "neighborhood_bar",
       "portalA": {
-        "x": 3.00455,
-        "y": 5.949350000000001
+        "x": 9.6938,
+        "y": 4.7672
       },
       "portalB": {
         "x": 15.0,

@@ -467,24 +467,6 @@ def generate_home(
                     width_meters=policy.doorway_width_meters,
                 )
             )
-    anchor_id = local[0].location_id if local else remote[0].location_id
-    for location in remote:
-        if location.location_id == anchor_id:
-            continue
-        connections.append(
-            HomeConnection(
-                connection_id=f"transit_{anchor_id}_{location.location_id}",
-                kind=ConnectionKind.transit,
-                region_a_id=anchor_id,
-                region_b_id=location.location_id,
-                portal_a=_center(regions_by_id[anchor_id].boundary),
-                portal_b=_center(regions_by_id[location.location_id].boundary),
-                width_meters=policy.doorway_width_meters,
-                traversal_mode=TraversalMode.transport,
-                distance_meters=policy.transport_distance_meters,
-            )
-        )
-
     resources_by_region: dict[str, list[Any]] = defaultdict(list)
     for resource in scenario.resources:
         resources_by_region[_expanded_regions(scenario, resource.location_id)[0]].append(resource)
@@ -517,6 +499,32 @@ def generate_home(
                     boundary=item.footprint.to_polygon(),
                 )
             )
+
+    # Every route in and out of the flat leaves from the room that holds the front door. Anchoring
+    # it anywhere else (it used to be simply the first room in the scenario) means the resident
+    # walks out through the bedroom while the entrance sits in the hall, untouched by any path.
+    anchor_id = _entrance_region(local, regions) if local else remote[0].region_id
+    anchor_portal = (
+        _free_anchor(regions_by_id[anchor_id], room_rects, furniture_by_region, policy)
+        if anchor_id in regions_by_id
+        else _center(regions_by_id[anchor_id].boundary)
+    )
+    for location in remote:
+        if location.location_id == anchor_id:
+            continue
+        connections.append(
+            HomeConnection(
+                connection_id=f"transit_{anchor_id}_{location.location_id}",
+                kind=ConnectionKind.transit,
+                region_a_id=anchor_id,
+                region_b_id=location.location_id,
+                portal_a=anchor_portal,
+                portal_b=_center(regions_by_id[location.location_id].boundary),
+                width_meters=policy.doorway_width_meters,
+                traversal_mode=TraversalMode.transport,
+                distance_meters=policy.transport_distance_meters,
+            )
+        )
 
     interaction_points = [
         InteractionPoint(
@@ -614,7 +622,7 @@ def generate_home(
         )
     # The flat's front door belongs in a circulation space, and its point has to clear the
     # furniture like any other; the old fixed offset from the left wall now lands inside a wardrobe.
-    entrance_region = _entrance_region(local, regions)
+    entrance_region = anchor_id
     entrance_boundary = regions_by_id[entrance_region].boundary
     entrance_center = _center(entrance_boundary)
     entrance_rect = room_rects.get(entrance_region)

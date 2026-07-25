@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 from smart_home_sim.cli import app
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import PersonalProcessPackage
-from smart_home_sim.domain.environment import HomeModel, SimulationBundle
+from smart_home_sim.domain.environment import ConnectionKind, HomeModel, SimulationBundle
 from smart_home_sim.domain.materialization import (
     HomeGenerationPolicy,
     HomeGenerationReport,
@@ -160,9 +160,7 @@ def test_realistic_sensor_profile_is_deterministic_and_state_coherent() -> None:
     assert first.sensor_model is not None
     assert first.sensor_model.sensor_model_version == "1.2.0"
     pir = [item for item in first.sensor_model.sensors if isinstance(item, PirSensor)]
-    contacts = [
-        item for item in first.sensor_model.sensors if isinstance(item, ContactSensor)
-    ]
+    contacts = [item for item in first.sensor_model.sensors if isinstance(item, ContactSensor)]
     temperatures = [
         item for item in first.sensor_model.sensors if isinstance(item, TemperatureSensor)
     ]
@@ -180,9 +178,9 @@ def test_realistic_sensor_profile_is_deterministic_and_state_coherent() -> None:
     binary_states: dict[tuple[str, object], set[object]] = {}
     for record in projection.observable_log.records:
         if record.sensor_type in {"pir", "contact"}:
-            binary_states.setdefault(
-                (record.sensor_id, record.observed_at), set()
-            ).add(record.value)
+            binary_states.setdefault((record.sensor_id, record.observed_at), set()).add(
+                record.value
+            )
     assert all(len(values) == 1 for values in binary_states.values())
     assert projection.report.summary.noisy_observation_count > 0
 
@@ -347,3 +345,46 @@ def test_materialization_cli_commands(tmp_path: Path) -> None:
         ],
     )
     assert repeated.exit_code == 2
+
+
+def test_the_way_out_of_the_flat_starts_where_the_front_door_is() -> None:
+    """Door and exit route are anchored to the same room, and that point is walkable.
+
+    They used to coincide only because both defaulted to the first room in the scenario. Once the
+    door moved to a circulation space the transit links stayed behind, so the resident left the
+    flat through the bedroom while the entrance sat in the hall, on no route at all.
+    """
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry import Polygon as ShapelyPolygon
+
+    scenario, package = source_models()
+    home = generate_home(scenario, package, HomeGenerationPolicy()).home
+    assert home is not None
+
+    door = next(item for item in home.entities if item.entity_id == "entrance_door")
+    points = {item.interaction_point_id: item for item in home.interaction_points}
+    door_point = points[door.interaction_point_id]
+    assert door_point.region_id == door.region_id
+
+    exits = [item for item in home.connections if item.kind is not ConnectionKind.doorway]
+    assert exits, "the flat has no way out at all"
+    for connection in exits:
+        assert connection.region_a_id == door.region_id, (
+            f"exit to {connection.region_b_id} leaves from {connection.region_a_id}, "
+            f"but the front door is in {door.region_id}"
+        )
+
+    # The portal has to be reachable: a point inside the sofa is not a way out.
+    region = next(item for item in home.regions if item.region_id == door.region_id)
+    shell = ShapelyPolygon([(point.x, point.y) for point in region.boundary.vertices])
+    blocking = [
+        ShapelyPolygon([(point.x, point.y) for point in obstacle.boundary.vertices])
+        for obstacle in home.obstacles
+        if obstacle.region_id == door.region_id
+    ]
+    for probe in (door_point.position, exits[0].portal_a):
+        point = ShapelyPoint(probe.x, probe.y)
+        assert shell.buffer(-door_point.approach_radius_meters).covers(point)
+        assert not any(
+            item.buffer(door_point.approach_radius_meters).covers(point) for item in blocking
+        )

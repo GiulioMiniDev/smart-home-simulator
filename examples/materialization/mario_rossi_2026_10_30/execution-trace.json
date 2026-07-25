@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "execution_trace",
-  "traceId": "trace_f2e88dc93b10edd1",
+  "traceId": "trace_3598118ffda69229",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "f2e88dc93b10edd1beafe8820dbdc2d2700503c263e98c8d15300815bf91bf0b",
+  "sourceBundleSha256": "3598118ffda69229687745a779d44e303f0a631291287fcada42589a44562fbe",
   "seed": 42,
   "engine": {
     "engineName": "smart-home-sim-engine",
@@ -7868,11 +7868,11 @@
       "actionExecutionId": "action_21b682c3cba4bf19",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T09:45:46.153846+01:00",
-      "endedAt": "2026-10-30T09:47:01.530286+01:00",
+      "endedAt": "2026-10-30T09:46:48.653846+01:00",
       "originRegionId": "hallway",
       "destinationRegionId": "supermarket",
-      "distanceMeters": 511.5887962415226,
-      "durationMicroseconds": 75376440,
+      "distanceMeters": 500.0,
+      "durationMicroseconds": 62500000,
       "waypoints": [
         {
           "at": "2026-10-30T09:45:46.153846+01:00",
@@ -7884,70 +7884,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T09:45:46.301464+01:00",
-          "regionId": "hallway",
-          "position": {
-            "x": 9.6938,
-            "y": 3.7653
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:46.419334+01:00",
-          "regionId": "kitchen",
-          "position": {
-            "x": 9.6938,
-            "y": 2.9653
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:46.938887+01:00",
-          "regionId": "kitchen",
-          "position": {
-            "x": 6.4091,
-            "y": 1.6826
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:47.056758+01:00",
-          "regionId": "living_room",
-          "position": {
-            "x": 5.6091,
-            "y": 1.6826
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:47.563317+01:00",
-          "regionId": "living_room",
-          "position": {
-            "x": 3.0045,
-            "y": 3.9268
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:47.681187+01:00",
-          "regionId": "bedroom",
-          "position": {
-            "x": 3.0045,
-            "y": 4.7268
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:47.861315+01:00",
-          "regionId": "bedroom",
-          "position": {
-            "x": 3.00455,
-            "y": 5.949350000000001
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T09:45:50.464881+01:00",
+          "at": "2026-10-30T09:45:48.381120+01:00",
           "regionId": "supermarket",
           "position": {
             "x": 9.0,
@@ -7962,11 +7899,11 @@
       "actionExecutionId": "action_f284b70c1f0dd90a",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T10:45:00+01:00",
-      "endedAt": "2026-10-30T10:46:03.430387+01:00",
+      "endedAt": "2026-10-30T10:46:15.877595+01:00",
       "originRegionId": "supermarket",
       "destinationRegionId": "bedroom",
-      "distanceMeters": 500.8373478996212,
-      "durationMicroseconds": 63430387,
+      "distanceMeters": 512.0398351983987,
+      "durationMicroseconds": 75877595,
       "waypoints": [
         {
           "at": "2026-10-30T10:45:00+01:00",
@@ -7978,16 +7915,70 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T10:45:02.237972+01:00",
-          "regionId": "bedroom",
+          "at": "2026-10-30T10:45:02.640422+01:00",
+          "regionId": "hallway",
           "position": {
-            "x": 3.00455,
-            "y": 5.949350000000001
+            "x": 9.6938,
+            "y": 4.7672
           },
           "traversalMode": "transport"
         },
         {
-          "at": "2026-10-30T10:45:02.344021+01:00",
+          "at": "2026-10-30T10:45:02.788891+01:00",
+          "regionId": "hallway",
+          "position": {
+            "x": 9.6938,
+            "y": 3.7653
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T10:45:02.907440+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 9.6938,
+            "y": 2.9653
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T10:45:03.429987+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 6.4091,
+            "y": 1.6826
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T10:45:03.548537+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 5.6091,
+            "y": 1.6826
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T10:45:04.058015+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 3.0045,
+            "y": 3.9268
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T10:45:04.176564+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0045,
+            "y": 4.7268
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-30T10:45:04.424568+01:00",
           "regionId": "bedroom",
           "position": {
             "x": 3.8045,
@@ -11347,11 +11338,11 @@
       "actionExecutionId": "action_9b8e5674f57d61c3",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T18:20:46.153846+01:00",
-      "endedAt": "2026-10-31T18:22:01.530286+01:00",
+      "endedAt": "2026-10-31T18:21:48.653846+01:00",
       "originRegionId": "hallway",
       "destinationRegionId": "neighborhood_bar",
-      "distanceMeters": 511.5887962415226,
-      "durationMicroseconds": 75376440,
+      "distanceMeters": 500.0,
+      "durationMicroseconds": 62500000,
       "waypoints": [
         {
           "at": "2026-10-31T18:20:46.153846+01:00",
@@ -11363,70 +11354,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T18:20:46.301464+01:00",
-          "regionId": "hallway",
-          "position": {
-            "x": 9.6938,
-            "y": 3.7653
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:46.419334+01:00",
-          "regionId": "kitchen",
-          "position": {
-            "x": 9.6938,
-            "y": 2.9653
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:46.938887+01:00",
-          "regionId": "kitchen",
-          "position": {
-            "x": 6.4091,
-            "y": 1.6826
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:47.056758+01:00",
-          "regionId": "living_room",
-          "position": {
-            "x": 5.6091,
-            "y": 1.6826
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:47.563317+01:00",
-          "regionId": "living_room",
-          "position": {
-            "x": 3.0045,
-            "y": 3.9268
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:47.681187+01:00",
-          "regionId": "bedroom",
-          "position": {
-            "x": 3.0045,
-            "y": 4.7268
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:47.861315+01:00",
-          "regionId": "bedroom",
-          "position": {
-            "x": 3.00455,
-            "y": 5.949350000000001
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:20:50.881561+01:00",
+          "at": "2026-10-31T18:20:48.476164+01:00",
           "regionId": "neighborhood_bar",
           "position": {
             "x": 15.0,
@@ -11441,11 +11369,11 @@
       "actionExecutionId": "action_22224bcd9110cffe",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T18:55:00+01:00",
-      "endedAt": "2026-10-31T18:56:10.067625+01:00",
+      "endedAt": "2026-10-31T18:56:08.467778+01:00",
       "originRegionId": "neighborhood_bar",
       "destinationRegionId": "kitchen",
-      "distanceMeters": 506.81086238227954,
-      "durationMicroseconds": 70067625,
+      "distanceMeters": 505.37100019192513,
+      "durationMicroseconds": 68467778,
       "waypoints": [
         {
           "at": "2026-10-31T18:55:00+01:00",
@@ -11457,52 +11385,34 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T18:55:02.833995+01:00",
-          "regionId": "bedroom",
+          "at": "2026-10-31T18:55:02.517025+01:00",
+          "regionId": "hallway",
           "position": {
-            "x": 3.00455,
-            "y": 5.949350000000001
+            "x": 9.6938,
+            "y": 4.7672
           },
           "traversalMode": "transport"
         },
         {
-          "at": "2026-10-31T18:55:03.003015+01:00",
-          "regionId": "bedroom",
+          "at": "2026-10-31T18:55:02.652763+01:00",
+          "regionId": "hallway",
           "position": {
-            "x": 3.0045,
-            "y": 4.7268
+            "x": 9.6938,
+            "y": 3.7653
           },
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T18:55:03.113617+01:00",
-          "regionId": "living_room",
-          "position": {
-            "x": 3.0045,
-            "y": 3.9268
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:55:03.588938+01:00",
-          "regionId": "living_room",
-          "position": {
-            "x": 5.6091,
-            "y": 1.6826
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T18:55:03.699540+01:00",
+          "at": "2026-10-31T18:55:02.761147+01:00",
           "regionId": "kitchen",
           "position": {
-            "x": 6.4091,
-            "y": 1.6826
+            "x": 9.6938,
+            "y": 2.9653
           },
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T18:55:03.775611+01:00",
+          "at": "2026-10-31T18:55:03.244690+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -11517,11 +11427,11 @@
       "actionExecutionId": "action_8cdb33d7ac2b4f1c",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T19:01:03.636364+01:00",
-      "endedAt": "2026-10-31T19:02:13.703989+01:00",
+      "endedAt": "2026-10-31T19:02:12.104142+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "neighborhood_bar",
-      "distanceMeters": 506.81086238227954,
-      "durationMicroseconds": 70067625,
+      "distanceMeters": 505.37100019192513,
+      "durationMicroseconds": 68467778,
       "waypoints": [
         {
           "at": "2026-10-31T19:01:03.636364+01:00",
@@ -11533,52 +11443,34 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:01:03.712435+01:00",
+          "at": "2026-10-31T19:01:04.119907+01:00",
           "regionId": "kitchen",
           "position": {
-            "x": 6.4091,
-            "y": 1.6826
+            "x": 9.6938,
+            "y": 2.9653
           },
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:01:03.823037+01:00",
-          "regionId": "living_room",
+          "at": "2026-10-31T19:01:04.228291+01:00",
+          "regionId": "hallway",
           "position": {
-            "x": 5.6091,
-            "y": 1.6826
+            "x": 9.6938,
+            "y": 3.7653
           },
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:01:04.298358+01:00",
-          "regionId": "living_room",
+          "at": "2026-10-31T19:01:04.364028+01:00",
+          "regionId": "hallway",
           "position": {
-            "x": 3.0045,
-            "y": 3.9268
+            "x": 9.6938,
+            "y": 4.7672
           },
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:01:04.408959+01:00",
-          "regionId": "bedroom",
-          "position": {
-            "x": 3.0045,
-            "y": 4.7268
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:01:04.577979+01:00",
-          "regionId": "bedroom",
-          "position": {
-            "x": 3.00455,
-            "y": 5.949350000000001
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:01:07.411975+01:00",
+          "at": "2026-10-31T19:01:06.881054+01:00",
           "regionId": "neighborhood_bar",
           "position": {
             "x": 15.0,
@@ -11593,11 +11485,11 @@
       "actionExecutionId": "action_41b8fabc0a8b6c5b",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T19:20:00+01:00",
-      "endedAt": "2026-10-31T19:21:03.430387+01:00",
+      "endedAt": "2026-10-31T19:21:15.877595+01:00",
       "originRegionId": "neighborhood_bar",
       "destinationRegionId": "bedroom",
-      "distanceMeters": 500.8373478996212,
-      "durationMicroseconds": 63430387,
+      "distanceMeters": 512.0398351983987,
+      "durationMicroseconds": 75877595,
       "waypoints": [
         {
           "at": "2026-10-31T19:20:00+01:00",
@@ -11609,16 +11501,70 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:20:02.596141+01:00",
-          "regionId": "bedroom",
+          "at": "2026-10-31T19:20:02.753097+01:00",
+          "regionId": "hallway",
           "position": {
-            "x": 3.00455,
-            "y": 5.949350000000001
+            "x": 9.6938,
+            "y": 4.7672
           },
           "traversalMode": "transport"
         },
         {
-          "at": "2026-10-31T19:20:02.702190+01:00",
+          "at": "2026-10-31T19:20:02.901565+01:00",
+          "regionId": "hallway",
+          "position": {
+            "x": 9.6938,
+            "y": 3.7653
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T19:20:03.020115+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 9.6938,
+            "y": 2.9653
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T19:20:03.542662+01:00",
+          "regionId": "kitchen",
+          "position": {
+            "x": 6.4091,
+            "y": 1.6826
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T19:20:03.661211+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 5.6091,
+            "y": 1.6826
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T19:20:04.170689+01:00",
+          "regionId": "living_room",
+          "position": {
+            "x": 3.0045,
+            "y": 3.9268
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T19:20:04.289239+01:00",
+          "regionId": "bedroom",
+          "position": {
+            "x": 3.0045,
+            "y": 4.7268
+          },
+          "traversalMode": "walking"
+        },
+        {
+          "at": "2026-10-31T19:20:04.537243+01:00",
           "regionId": "bedroom",
           "position": {
             "x": 3.8045,
@@ -15391,8 +15337,8 @@
       }
     },
     {
-      "transitionId": "state_363976f986489240",
-      "at": "2026-10-30T09:47:01.530286+01:00",
+      "transitionId": "state_6a592c7da4956450",
+      "at": "2026-10-30T09:46:48.653846+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -15489,8 +15435,8 @@
       }
     },
     {
-      "transitionId": "state_9c2879306ea0c804",
-      "at": "2026-10-30T10:46:03.430387+01:00",
+      "transitionId": "state_9095846eebe9a657",
+      "at": "2026-10-30T10:46:15.877595+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -19689,8 +19635,8 @@
       }
     },
     {
-      "transitionId": "state_eca09f247e614248",
-      "at": "2026-10-31T18:22:01.530286+01:00",
+      "transitionId": "state_f0241ec62ffc98aa",
+      "at": "2026-10-31T18:21:48.653846+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -19745,8 +19691,8 @@
       }
     },
     {
-      "transitionId": "state_c9b80c0a8ecb5550",
-      "at": "2026-10-31T18:56:10.067625+01:00",
+      "transitionId": "state_d49be4650f7fe6d6",
+      "at": "2026-10-31T18:56:08.467778+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -19787,8 +19733,8 @@
       }
     },
     {
-      "transitionId": "state_1d06c0b16c3e180e",
-      "at": "2026-10-31T19:02:13.703989+01:00",
+      "transitionId": "state_e4aa3c8fb09fef4e",
+      "at": "2026-10-31T19:02:12.104142+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -19829,8 +19775,8 @@
       }
     },
     {
-      "transitionId": "state_493d39cc7059176b",
-      "at": "2026-10-31T19:21:03.430387+01:00",
+      "transitionId": "state_bcb9654a9ad8b759",
+      "at": "2026-10-31T19:21:15.877595+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -25717,5 +25663,5 @@
       "washing_machine": 1
     }
   },
-  "semanticDigest": "e75882ec441b15bc47addcb57dd5b6af5d01cb6501b2f13bd1a8c6bc464de826"
+  "semanticDigest": "77fa069f7f9ffcaf31609761bda0d485361c963a1fc461e0c036adc4b1288fd6"
 }
