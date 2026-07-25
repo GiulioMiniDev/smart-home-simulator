@@ -96,6 +96,7 @@ class WorkspaceService:
         service = cls(root)
         if not service.database_path.is_file():
             raise WorkspaceError(f"workspace database not found at '{service.database_path}'")
+        service._ensure_layout()
         service._migrate()
         if recover_jobs:
             service._recover_running_jobs()
@@ -110,6 +111,7 @@ class WorkspaceService:
         target = target.resolve()
         target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_name(f".{target.name}.{uuid4().hex}.tmp")
+        self.staging_path.mkdir(parents=True, exist_ok=True)
         snapshot_root = Path(tempfile.mkdtemp(prefix="workspace-snapshot-", dir=self.staging_path))
         try:
             snapshot_database = snapshot_root / "workspace.sqlite3"

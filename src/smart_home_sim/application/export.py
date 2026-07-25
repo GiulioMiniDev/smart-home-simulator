@@ -211,6 +211,7 @@ class ExportService:
             raise WorkspaceError("execution trace seed is invalid")
         export_id = f"export_{uuid4().hex[:16]}"
         target = self.workspace.exports_path / export_id
+        self.workspace.exports_path.mkdir(parents=True, exist_ok=True)
         staging = Path(tempfile.mkdtemp(prefix=f".{export_id}.", dir=self.workspace.exports_path))
         files: list[ExportManifestFile] = []
         try:

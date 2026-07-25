@@ -213,3 +213,24 @@ def test_export_manifest_rejects_missing_and_unsafe_paths(
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(WorkspaceError, match="unsafe path"):
         service.verify_manifest(manifest.export_id)
+
+
+def test_export_creates_missing_exports_directory(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+    if workspace.exports_path.exists():
+        shutil.rmtree(workspace.exports_path)
+    assert not workspace.exports_path.exists()
+
+    manifest = service.export(
+        ExportRequest(
+            run_id=run_id,
+            formats=[ExportFormat.jsonl],
+            roles=["observable"],
+        )
+    )
+    assert workspace.exports_path.exists()
+    assert (workspace.exports_path / manifest.export_id / "manifest.json").is_file()
+
