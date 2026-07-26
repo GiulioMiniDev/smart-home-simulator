@@ -160,9 +160,7 @@ def _python_fingerprint() -> str:
     )
 
 
-def _configure_frontend(
-    state: dict[str, Any], *, npm: str, force: bool
-) -> None:
+def _configure_frontend(state: dict[str, Any], *, npm: str, force: bool) -> None:
     lock_digest = _fingerprint([FRONTEND_ROOT / "package-lock.json"])
     dependencies_missing = not (FRONTEND_ROOT / "node_modules").is_dir()
     if force or dependencies_missing or state.get("frontendLock") != lock_digest:
@@ -179,9 +177,7 @@ def _configure_frontend(
     state["frontendSource"] = source_digest
 
 
-def _configure_python(
-    state: dict[str, Any], *, uv: str | None, venv: Path, force: bool
-) -> None:
+def _configure_python(state: dict[str, Any], *, uv: str | None, venv: Path, force: bool) -> None:
     source_digest = _python_fingerprint()
     application = _application_executable(venv)
     installer = "uv" if uv is not None else "pip"
@@ -235,9 +231,7 @@ def _tcp_port_open(port: int) -> bool:
 
 def _simulator_responds(port: int) -> bool:
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/api/session", timeout=1
-        ) as response:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/session", timeout=1) as response:
             payload = json.loads(response.read().decode("utf-8"))
             return response.status == 200 and isinstance(payload.get("token"), str)
     except (OSError, ValueError, urllib.error.URLError):
@@ -328,9 +322,7 @@ def main() -> int:
     try:
         _, npm = _node_tools()
     except BootstrapError as error:
-        raise BootstrapError(
-            f"{error}. Installa Node.js LTS da https://nodejs.org/"
-        ) from error
+        raise BootstrapError(f"{error}. Installa Node.js LTS da https://nodejs.org/") from error
 
     _configure_frontend(state, npm=npm, force=arguments.reconfigure)
     _configure_python(state, uv=uv, venv=venv, force=arguments.reconfigure)

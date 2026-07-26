@@ -65,13 +65,10 @@ def _resolve_arguments(
             present = expression.index is not None and expression.index < len(activity.location_ids)
             value = activity.location_ids[expression.index] if present else None
         elif expression.source is ValueSource.activity_resource:
-            present = (
-                expression.index is not None
-                and expression.index < len(activity.required_resources)
+            present = expression.index is not None and expression.index < len(
+                activity.required_resources
             )
-            value = (
-                activity.required_resources[expression.index].resource_id if present else None
-            )
+            value = activity.required_resources[expression.index].resource_id if present else None
         elif expression.source is ValueSource.activity_intent:
             present, value = True, activity.intent
         elif expression.source is ValueSource.actor:
@@ -81,9 +78,7 @@ def _resolve_arguments(
             if definition is None:
                 present, value = False, None
             else:
-                present, value = _resolve_variable(
-                    definition, scenario, day, activity.actor_id
-                )
+                present, value = _resolve_variable(definition, scenario, day, activity.actor_id)
         if not present:
             return None
         result[name] = value
@@ -113,9 +108,7 @@ def _apply_effect(
         result[fact] = [*current, value] if isinstance(current, list) else _UNKNOWN
     elif operation is EffectOperation.remove:
         result[fact] = (
-            [item for item in current if item != value]
-            if isinstance(current, list)
-            else _UNKNOWN
+            [item for item in current if item != value] if isinstance(current, list) else _UNKNOWN
         )
     return result
 

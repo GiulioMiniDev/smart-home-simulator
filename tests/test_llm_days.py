@@ -131,9 +131,7 @@ def test_generate_llm_day_plans_falls_back_on_bad_output() -> None:
 def test_generate_llm_day_plans_falls_back_when_uncompilable(monkeypatch) -> None:
     import types
 
-    monkeypatch.setattr(
-        ld, "compile_scenario", lambda scenario: types.SimpleNamespace(plan=None)
-    )
+    monkeypatch.setattr(ld, "compile_scenario", lambda scenario: types.SimpleNamespace(plan=None))
     result = generate_llm_day_plans(_world(), _calendar(), _fixed_client(_CANNED))
     assert result.llm_authored_count == 0
 

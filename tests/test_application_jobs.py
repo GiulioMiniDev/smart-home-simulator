@@ -22,9 +22,9 @@ PROJECT_ROOT = Path(__file__).parents[1]
 
 def test_partial_sensor_policy_uses_realistic_research_defaults() -> None:
     assert _sensor_policy_from_request(None) == SensorDeploymentPolicy.realistic()
-    assert _sensor_policy_from_request(
-        {"preset": "minimal"}
-    ) == SensorDeploymentPolicy.realistic(preset="minimal")
+    assert _sensor_policy_from_request({"preset": "minimal"}) == SensorDeploymentPolicy.realistic(
+        preset="minimal"
+    )
     assert _sensor_policy_from_request(
         {"policyVersion": "1.1.0", "preset": "minimal"}
     ) == SensorDeploymentPolicy(preset="minimal")

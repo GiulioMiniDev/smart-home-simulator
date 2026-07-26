@@ -72,8 +72,10 @@ _HABITS = json.dumps(
 def _pipeline_client() -> LMStudioClient:
     def transport(url: str, body: bytes, timeout: float) -> str:
         text = " ".join(m["content"] for m in json.loads(body)["messages"]).lower()
-        reply = _PERSONA if "invent one coherent person" in text else (
-            _HABITS if "daily-habit portfolio" in text else "{}"
+        reply = (
+            _PERSONA
+            if "invent one coherent person" in text
+            else (_HABITS if "daily-habit portfolio" in text else "{}")
         )
         return json.dumps({"choices": [{"message": {"content": reply}, "finish_reason": "stop"}]})
 
@@ -230,9 +232,7 @@ def test_horizon_installs_one_sensor_field_over_days_that_deploy_different_ones(
         source_bundle_id="horizon_test",
         source_bundle_sha256="b" * 64,
     )
-    assert {item.sensor_id for item in field.sensors} == {
-        item.sensor_id for item in full.sensors
-    }
+    assert {item.sensor_id for item in field.sensors} == {item.sensor_id for item in full.sensors}
     assert introduced["day-1"] == [dropped["sensorId"]]
     assert field.source_bundle_id == "horizon_test"
 
@@ -304,9 +304,7 @@ def test_publishing_an_earlier_generation_rebuilds_its_horizon_scenario(tmp_path
 
         detail = client.get(f"/api/homes/{home_id}", headers=headers)
         resident = detail.json()["residents"][0]
-        scenario = json.loads(
-            app.state.workspace.read_artifact(resident["scenarioArtifactId"])
-        )
+        scenario = json.loads(app.state.workspace.read_artifact(resident["scenarioArtifactId"]))
         # The rebuilt document holds every day of the horizon, spanning the whole window.
         assert len(scenario["days"]) == expected_days
         assert scenario["simulationWindow"]["start"] < scenario["simulationWindow"]["end"]
@@ -357,8 +355,7 @@ def test_run_endpoint_routes_a_generated_home_to_its_horizon(monkeypatch, tmp_pa
         app.state.jobs,
         "start_horizon_run",
         lambda home: (
-            started.append(home)
-            or workspace.create_job("simulation", home_id=home, request={}),
+            started.append(home) or workspace.create_job("simulation", home_id=home, request={}),
         )[-1],
     )
     with TestClient(app) as client:

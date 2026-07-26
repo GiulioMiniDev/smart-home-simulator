@@ -45,9 +45,7 @@ def test_abstract_state_join_effects_and_precondition_operators() -> None:
 
 def test_activity_location_argument_is_resolved_from_canonical_activity() -> None:
     payload = json.loads(
-        (ROOT / "examples/authoring/minimal.authoring-bundle.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "examples/authoring/minimal.authoring-bundle.json").read_text(encoding="utf-8")
     )
     scenario = Scenario.model_validate_json(json.dumps(payload["scenario"]))
     compilation = compile_payload(payload["scenario"])
@@ -59,9 +57,7 @@ def test_activity_location_argument_is_resolved_from_canonical_activity() -> Non
                 "nodeId": "move",
                 "kind": "action",
                 "actionType": "move_to",
-                "arguments": {
-                    "destination": {"source": "activity_location", "index": 0}
-                },
+                "arguments": {"destination": {"source": "activity_location", "index": 0}},
                 "durationWeight": 1,
             }
         )

@@ -375,8 +375,8 @@ def _contact_candidates(trace: ExecutionTrace, sensor: ContactSensor) -> list[Ca
                         group_start=True,
                         **common,
                     ),
-                Candidate(
-                    at=at + timedelta(milliseconds=pulse_milliseconds),
+                    Candidate(
+                        at=at + timedelta(milliseconds=pulse_milliseconds),
                         value="CLOSED",
                         measurement="contact",
                         unit=None,
@@ -487,9 +487,7 @@ def _climate_parameters(city: str) -> tuple[float, float, float, int]:
 def _daily_climate_mean(at: datetime, city: str) -> float:
     annual_mean, seasonal_amplitude, _, warmest_day = _climate_parameters(city)
     day = at.timetuple().tm_yday
-    return annual_mean + seasonal_amplitude * math.cos(
-        2 * math.pi * (day - warmest_day) / 365.25
-    )
+    return annual_mean + seasonal_amplitude * math.cos(2 * math.pi * (day - warmest_day) / 365.25)
 
 
 def _weather_anomaly(seed: int, city: str, at: datetime) -> float:
@@ -542,9 +540,7 @@ def _temperature_candidates(
         delta_index = 0
         sample_at = trace.started_at + timedelta(seconds=sensor.sample_phase_seconds)
         city = _scenario_city(bundle)
-        initial_ambient = bundle.scenario.initial_state.environment_facts.get(
-            "ambient_temperature"
-        )
+        initial_ambient = bundle.scenario.initial_state.environment_facts.get("ambient_temperature")
         if (
             sensor.climate_profile == "city_seasonal"
             and isinstance(initial_ambient, (int, float))
@@ -580,9 +576,7 @@ def _temperature_candidates(
                     + source_adjustment
                 )
                 if sensor.thermal_time_constant_hours > 0:
-                    alpha = 1 - math.exp(
-                        -interval / (sensor.thermal_time_constant_hours * 3600)
-                    )
+                    alpha = 1 - math.exp(-interval / (sensor.thermal_time_constant_hours * 3600))
                     current += alpha * (target - current)
                 else:
                     current = target
@@ -593,9 +587,7 @@ def _temperature_candidates(
                     2 * math.pi * (local_hour - 9) / 24
                 )
                 value = current + daily_component
-            value = (
-                round(value / sensor.quantization_celsius) * sensor.quantization_celsius
-            )
+            value = round(value / sensor.quantization_celsius) * sensor.quantization_celsius
             if sensor.reporting_mode == "on_change" and not _should_report(
                 value,
                 sample_at,
@@ -964,8 +956,7 @@ def _project_sensor(
         ):
             noisy_value = float(value) + measurement_noise.gauss(0, standard_deviation)
             value = round(
-                round(noisy_value / sensor.quantization_celsius)
-                * sensor.quantization_celsius,
+                round(noisy_value / sensor.quantization_celsius) * sensor.quantization_celsius,
                 6,
             )
             noisy = True

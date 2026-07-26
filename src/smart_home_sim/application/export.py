@@ -337,4 +337,3 @@ class ExportService:
             schema_version="1.0.0",
         )
         return zip_path
-

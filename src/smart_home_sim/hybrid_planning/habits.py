@@ -189,8 +189,7 @@ def generate_habits(
 
     if issues:
         raise HabitsGenerationError(
-            "Habit portfolio remained unbalanced after "
-            f"{attempts} repair(s): {'; '.join(issues)}"
+            f"Habit portfolio remained unbalanced after {attempts} repair(s): {'; '.join(issues)}"
         )
 
     profile = _assemble_profile(persona, habits, client=client, seed=seed, now=stamped)
@@ -317,12 +316,16 @@ def _normalise_habit(entry: Any, seen: set[str]) -> Habit | None:
 
 
 def _build_cadence(frequency: Any, time_band: Any, weekdays: Any) -> HabitCadence:
-    freq_key = frequency if isinstance(frequency, str) and frequency in _FREQUENCY_TO_CADENCE else (
-        _DEFAULT_FREQUENCY
+    freq_key = (
+        frequency
+        if isinstance(frequency, str) and frequency in _FREQUENCY_TO_CADENCE
+        else (_DEFAULT_FREQUENCY)
     )
     period, times, every = _FREQUENCY_TO_CADENCE[freq_key]
-    band_key = time_band if isinstance(time_band, str) and time_band in _TIME_BAND_TO_WINDOW else (
-        _DEFAULT_TIME_BAND
+    band_key = (
+        time_band
+        if isinstance(time_band, str) and time_band in _TIME_BAND_TO_WINDOW
+        else (_DEFAULT_TIME_BAND)
     )
     start, end = _TIME_BAND_TO_WINDOW[band_key]
     resolved_weekdays = _coerce_weekdays(weekdays)

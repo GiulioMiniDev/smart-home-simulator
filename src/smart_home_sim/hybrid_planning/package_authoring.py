@@ -230,8 +230,13 @@ def author_process_package(
         probe = build_probe_scenario(world)
         for spec in INTENT_CATALOG:
             candidate = _author_model_via_llm(
-                client, spec.intent_id, accepted[spec.intent_id], vocabulary, resident_id,
-                seed=seed, max_repairs=max_repairs,
+                client,
+                spec.intent_id,
+                accepted[spec.intent_id],
+                vocabulary,
+                resident_id,
+                seed=seed,
+                max_repairs=max_repairs,
             )
             if candidate is None:
                 continue

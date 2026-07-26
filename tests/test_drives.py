@@ -168,9 +168,7 @@ def test_eating_less_leaves_the_resident_hungrier() -> None:
     lean_meals, _ = _routine(HORIZON, meals=2, social_weekdays=(2,))
 
     def mean_hunger(meals: dict[date, int]) -> float:
-        rhythms = plan_rhythms(
-            profile, HORIZON, seed=3, meals_by_day=meals, social_by_day=social
-        )
+        rhythms = plan_rhythms(profile, HORIZON, seed=3, meals_by_day=meals, social_by_day=social)
         return statistics.mean(item.state_at_start.hunger for item in rhythms.values())
 
     assert mean_hunger(lean_meals) > mean_hunger(fed_meals) + 0.05

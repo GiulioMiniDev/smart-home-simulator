@@ -102,11 +102,11 @@ def _build_messages(brief: str) -> list[ChatMessage]:
         f"{brief.strip()}\n\n"
         "Return JSON with these fields:\n"
         '  "name" (string), "age" (integer), "sex" ("F", "M" or "X"),\n'
-        '  "occupation" (string), "household" (string, e.g. \"lives alone\"),\n'
+        '  "occupation" (string), "household" (string, e.g. "lives alone"),\n'
         '  "health" (array of conditions, may be empty),\n'
         '  "city" (string), "notes" (short free text on lifestyle and temperament),\n'
         '  "routine_anchors" (array of 1 to 3 short labels for the person\'s most fixed '
-        "daily habits, e.g. \"morning coffee\").\n"
+        'daily habits, e.g. "morning coffee").\n'
         "Keep it plausible and internally consistent. Do not invent exact times or schedules."
     )
     return [ChatMessage("system", system), ChatMessage("user", user)]

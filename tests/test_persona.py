@@ -164,9 +164,7 @@ def test_cli_generate_persona_reports_lmstudio_error(
         raise LMStudioError("endpoint down")
 
     monkeypatch.setattr(cli, "generate_persona", fake_generate)
-    result = runner.invoke(
-        cli.app, ["generate-persona", "brief", "-o", str(tmp_path / "p.json")]
-    )
+    result = runner.invoke(cli.app, ["generate-persona", "brief", "-o", str(tmp_path / "p.json")])
     assert result.exit_code == 2
     assert "LM Studio generation failed" in result.output
 
@@ -178,9 +176,7 @@ def test_cli_generate_persona_reports_generation_error(
         raise PersonaGenerationError("bad output")
 
     monkeypatch.setattr(cli, "generate_persona", fake_generate)
-    result = runner.invoke(
-        cli.app, ["generate-persona", "brief", "-o", str(tmp_path / "p.json")]
-    )
+    result = runner.invoke(cli.app, ["generate-persona", "brief", "-o", str(tmp_path / "p.json")])
     assert result.exit_code == 1
     assert "Persona generation failed" in result.output
 

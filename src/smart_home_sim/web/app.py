@@ -490,9 +490,7 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     @app.get("/api/exports/{export_id}/zip", dependencies=[secured])
     def export_zip(export_id: str) -> FileResponse:
         archive_path = exports.archive_export(export_id)
-        return FileResponse(
-            archive_path, media_type="application/zip", filename=f"{export_id}.zip"
-        )
+        return FileResponse(archive_path, media_type="application/zip", filename=f"{export_id}.zip")
 
     static_root = _static_root()
     if static_root is not None:

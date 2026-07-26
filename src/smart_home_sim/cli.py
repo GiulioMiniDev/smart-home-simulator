@@ -883,8 +883,14 @@ def generate_dataset_command(
             seed=seed,
             progress=progress,
         )
-    except (LMStudioError, PersonaGenerationError, HabitsGenerationError, PackageAuthoringError,
-            CadenceError, HorizonError) as error:
+    except (
+        LMStudioError,
+        PersonaGenerationError,
+        HabitsGenerationError,
+        PackageAuthoringError,
+        CadenceError,
+        HorizonError,
+    ) as error:
         typer.echo(f"Generation failed: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(

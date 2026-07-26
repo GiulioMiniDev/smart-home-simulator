@@ -26,6 +26,7 @@ _PERSONA = json.dumps(
     }
 )
 
+
 def _h(label: str, kind: str, frequency: str, band: str) -> dict[str, str]:
     return {"label": label, "kind": kind, "frequency": frequency, "time_band": band}
 
@@ -57,9 +58,7 @@ _DAYS = json.dumps(
 
 def _pipeline_client() -> LMStudioClient:
     def transport(url: str, body: bytes, timeout: float) -> str:
-        text = " ".join(
-            message["content"] for message in json.loads(body)["messages"]
-        ).lower()
+        text = " ".join(message["content"] for message in json.loads(body)["messages"]).lower()
         if "invent one coherent person" in text:
             reply = _PERSONA
         elif "daily-habit portfolio" in text:
@@ -123,8 +122,18 @@ def test_run_generation_with_llm_days_and_progress(tmp_path) -> None:
 
 
 def test_cli_generate_dataset(monkeypatch, tmp_path) -> None:
-    def fake_run(brief, output_dir, client, *, start_date, months, use_llm_package, use_llm_days,
-                 seed, progress):
+    def fake_run(
+        brief,
+        output_dir,
+        client,
+        *,
+        start_date,
+        months,
+        use_llm_package,
+        use_llm_days,
+        seed,
+        progress,
+    ):
         progress("persona", 0.0, "inventing")
         return types.SimpleNamespace(manifest_path=tmp_path / "batch-manifest.json", day_count=3)
 

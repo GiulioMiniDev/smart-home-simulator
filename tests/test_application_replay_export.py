@@ -257,7 +257,9 @@ def test_archive_export_creates_valid_zip(
         assert f"{manifest.export_id}/observable.jsonl" in names
     relative = f"exports/{manifest.export_id}.zip"
     with workspace.connection() as connection:
-        row = connection.execute("SELECT * FROM artifacts WHERE relative_path = ?", (relative,)).fetchone()
+        row = connection.execute(
+            "SELECT * FROM artifacts WHERE relative_path = ?", (relative,)
+        ).fetchone()
     assert row is not None
     assert row["role"] == "export_archive"
 
@@ -274,7 +276,7 @@ def test_reconcile_auto_registers_orphan_export_zips(
             roles=["observable"],
         )
     )
-    zip_path = service.archive_export(manifest.export_id)
+    service.archive_export(manifest.export_id)
     relative = f"exports/{manifest.export_id}.zip"
     # Unregister zip artifact manually to simulate an uncatalogued/orphan export archive
     with workspace.transaction() as connection:
@@ -285,9 +287,8 @@ def test_reconcile_auto_registers_orphan_export_zips(
     ]
     assert reconciled_issues == []
     with workspace.connection() as connection:
-        row = connection.execute("SELECT * FROM artifacts WHERE relative_path = ?", (relative,)).fetchone()
+        row = connection.execute(
+            "SELECT * FROM artifacts WHERE relative_path = ?", (relative,)
+        ).fetchone()
     assert row is not None
     assert row["role"] == "export_archive"
-
-
-

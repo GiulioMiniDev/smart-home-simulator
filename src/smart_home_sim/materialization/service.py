@@ -401,9 +401,7 @@ def generate_home(
                 )
             )
     plan_height = (
-        max(rect.max_y for rect in room_rects.values())
-        if room_rects
-        else policy.room_height_meters
+        max(rect.max_y for rect in room_rects.values()) if room_rects else policy.room_height_meters
     )
     remote_y = plan_height + policy.external_spacing_meters
     for index, location in enumerate(remote):

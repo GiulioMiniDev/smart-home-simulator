@@ -233,9 +233,7 @@ def build_day_plan(
         slot = _free_slot(entries, _NAP_WINDOW, _NAP_SHAPE)
         if slot is not None:
             entries.append(
-                TimelineEntry(
-                    _NAP_INTENT, slot, label="sleep_debt_nap", duration_shape=_NAP_SHAPE
-                )
+                TimelineEntry(_NAP_INTENT, slot, label="sleep_debt_nap", duration_shape=_NAP_SHAPE)
             )
     if rhythm is not None and rhythm.unplanned_social_contact:
         slot = _free_slot(entries, _UNPLANNED_SOCIAL_WINDOW, _UNPLANNED_SOCIAL_SHAPE)
@@ -280,9 +278,9 @@ def _free_slot(
     occupied: list[tuple[int, int]] = []
     for entry in entries:
         start = _to_minutes(entry.hhmm)
-        entry_shape = entry.duration_shape or _CATEGORY_DURATION_SHAPE[
-            intent_spec(entry.intent_id).category
-        ]
+        entry_shape = (
+            entry.duration_shape or _CATEGORY_DURATION_SHAPE[intent_spec(entry.intent_id).category]
+        )
         longest = entry.duration[2] if entry.duration is not None else entry_shape[2]
         occupied.append((start, start + longest))
     occupied.sort()
@@ -340,9 +338,7 @@ def build_day_scenario(
     actor_id = world.residents[0].resident_id
     return build_scenario_from_day_plan(
         world,
-        build_day_plan(
-            day, timezone=world.time_zone, actor_id=actor_id, rhythm=rhythm, seed=seed
-        ),
+        build_day_plan(day, timezone=world.time_zone, actor_id=actor_id, rhythm=rhythm, seed=seed),
     )
 
 
@@ -413,9 +409,7 @@ def _activity(
         start_window=DateTimeWindow(
             earliest=moment - _WINDOW_FLEX, preferred=moment, latest=moment + _WINDOW_FLEX
         ),
-        duration=DurationRange(
-            minimum_minutes=low, preferred_minutes=pref, maximum_minutes=high
-        ),
+        duration=DurationRange(minimum_minutes=low, preferred_minutes=pref, maximum_minutes=high),
         mandatory=not truncatable,
         allow_boundary_truncation=truncatable,
         labels=labels,

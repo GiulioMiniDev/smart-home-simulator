@@ -143,8 +143,9 @@ class _Accumulator:
         self.first_trace: dict[str, Any] | None = None
         self.last_trace: dict[str, Any] | None = None
 
-    def add(self, run_id: str, trace: ExecutionTrace, log: ObservableSensorLog,
-            oracle: OracleMapping) -> None:
+    def add(
+        self, run_id: str, trace: ExecutionTrace, log: ObservableSensorLog, oracle: OracleMapping
+    ) -> None:
         payload = json.loads(trace.model_dump_json(by_alias=True))
         for key in TRACE_COLLECTIONS:
             self.trace_parts[key].extend(payload[key])
@@ -206,9 +207,7 @@ class _Accumulator:
                 "records": records,
             }
         )
-        last = (
-            datetime.fromisoformat(records[-1]["observedAt"]) if records else trace.ended_at
-        )
+        last = datetime.fromisoformat(records[-1]["observedAt"]) if records else trace.ended_at
         return ObservableSensorLog.model_validate_json(
             json.dumps(
                 {
@@ -330,9 +329,7 @@ def simulate_horizon(
             skipped.append(run.run_id)
             continue
         # Every day observes the SAME installed field; only its provenance is bound to the day.
-        projection = project_sensors(
-            simulation.trace, bundle, _retargeted(sensor_model, bundle)
-        )
+        projection = project_sensors(simulation.trace, bundle, _retargeted(sensor_model, bundle))
         if projection.observable_log is None or projection.oracle_mapping is None:
             skipped.append(run.run_id)
             continue

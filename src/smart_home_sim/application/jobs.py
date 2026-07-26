@@ -31,9 +31,7 @@ def _sensor_policy_from_request(payload: dict[str, Any] | None) -> SensorDeploym
         if profile == "adverse"
         else SensorDeploymentPolicy.realistic()
     )
-    return SensorDeploymentPolicy.model_validate(
-        {**base.model_dump(by_alias=True), **payload}
-    )
+    return SensorDeploymentPolicy.model_validate({**base.model_dump(by_alias=True), **payload})
 
 
 def _materialization_worker(root: str, job_id: str) -> None:

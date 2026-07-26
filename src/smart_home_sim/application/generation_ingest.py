@@ -102,9 +102,7 @@ def _horizon_scenario_json(directory: Path, manifest: SimulationBatchManifest) -
         last = scenario
     if first is None or last is None:
         raise GenerationIngestError("the generation recorded no simulatable day")
-    window = SimulationWindow(
-        start=first.simulation_window.start, end=last.simulation_window.end
-    )
+    window = SimulationWindow(start=first.simulation_window.start, end=last.simulation_window.end)
     merged = first.model_copy(
         update={
             "simulation_window": window,

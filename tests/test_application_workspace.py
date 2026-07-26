@@ -106,12 +106,15 @@ def test_authoring_resident_replacement_updates_revives_and_removes(tmp_path: Pa
             behavior_artifact_id=behavior_2.artifact_id,
         )
 
-    assert workspace.replace_authoring_residents(
-        home.home_id,
-        [],
-        scenario_artifact_id=scenario_2.artifact_id,
-        behavior_artifact_id=behavior_2.artifact_id,
-    ) == []
+    assert (
+        workspace.replace_authoring_residents(
+            home.home_id,
+            [],
+            scenario_artifact_id=scenario_2.artifact_id,
+            behavior_artifact_id=behavior_2.artifact_id,
+        )
+        == []
+    )
     revived = workspace.replace_authoring_residents(
         home.home_id,
         [("resident_a", "Revived A")],

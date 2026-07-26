@@ -44,12 +44,12 @@ def test_extract_bare_object_and_array() -> None:
 
 
 def test_extract_from_json_fence() -> None:
-    text = "Here you go:\n```json\n{\"a\": 1}\n```\nDone."
+    text = 'Here you go:\n```json\n{"a": 1}\n```\nDone.'
     assert extract_json_value(text) == {"a": 1}
 
 
 def test_extract_from_plain_fence() -> None:
-    text = "```\n{\"b\": 2}\n```"
+    text = '```\n{"b": 2}\n```'
     assert extract_json_value(text) == {"b": 2}
 
 
@@ -65,7 +65,7 @@ def test_extract_handles_escaped_quotes_inside_strings() -> None:
 
 def test_extract_prefers_answer_after_reasoning_block() -> None:
     text = (
-        "<think>Keys: {\"name\": ...} and a decoy {\"a\": 999}</think>\n"
+        '<think>Keys: {"name": ...} and a decoy {"a": 999}</think>\n'
         'Here is the result:\n{"a": 1, "b": 2}'
     )
     assert extract_json_value(text) == {"a": 1, "b": 2}

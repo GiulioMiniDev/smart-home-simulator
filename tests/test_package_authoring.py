@@ -41,9 +41,7 @@ def _echo_reference_client() -> LMStudioClient:
     def transport(url: str, body: bytes, timeout: float) -> str:
         request = json.loads(body)
         prompt = next(
-            m["content"]
-            for m in request["messages"]
-            if "reference process model" in m["content"]
+            m["content"] for m in request["messages"] if "reference process model" in m["content"]
         )
         reference = extract_json_value(prompt)
         message = {"content": json.dumps(reference)}
@@ -57,6 +55,7 @@ def _fixed_reply_client(content: str) -> LMStudioClient:
         return json.dumps({"choices": [{"message": {"content": content}, "finish_reason": "stop"}]})
 
     return _reply_client(transport)
+
 
 runner = CliRunner()
 _NOW = datetime(2026, 7, 24, 9, 0, tzinfo=UTC)
@@ -117,9 +116,7 @@ def test_author_process_package_raises_on_gate_failure(monkeypatch: pytest.Monke
 
 
 def test_llm_echo_accepts_every_reference_variant() -> None:
-    result = author_process_package(
-        _persona(), _world(), client=_echo_reference_client(), now=_NOW
-    )
+    result = author_process_package(_persona(), _world(), client=_echo_reference_client(), now=_NOW)
     assert result.report.valid
     assert result.llm_authored_count == len(INTENT_CATALOG)
     assert result.fallback_count == 0
