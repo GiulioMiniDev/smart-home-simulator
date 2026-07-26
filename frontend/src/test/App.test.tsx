@@ -114,7 +114,7 @@ describe("complete application routes", () => {
     fireEvent.click(copyButtons[1]);
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
     expect(writeText.mock.calls[1]?.[0]).toContain("simulation_authoring_bundle");
-    expect(writeText.mock.calls[1]?.[0]).toContain("generate-simulation-inputs-1.2.2-simplified");
+    expect(writeText.mock.calls[1]?.[0]).toContain("generate-simulation-inputs-1.2.3-simplified");
     expect(writeText.mock.calls[1]?.[0]).not.toContain("[GENERATION_TIMESTAMP]");
     expect(writeText.mock.calls[1]?.[0]).toMatch(/20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/);
     writeText.mockRejectedValueOnce(new Error("Clipboard denied"));

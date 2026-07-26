@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from hashlib import sha256
 from pathlib import Path
 
@@ -103,18 +104,14 @@ def test_preflight_rejects_provably_false_cross_action_state() -> None:
             {"actionType": "leave_home"},
             {
                 "actionType": "put_item",
-                "arguments": {
-                    "itemRole": {"source": "literal", "value": "never_taken"}
-                },
+                "arguments": {"itemRole": {"source": "literal", "value": "never_taken"}},
             },
         ],
     )
 
     report = validate_authoring_payload(payload).report
 
-    findings = [
-        item for item in report.issues if item.code == "DETERMINISTIC_PRECONDITION_FAILED"
-    ]
+    findings = [item for item in report.issues if item.code == "DETERMINISTIC_PRECONDITION_FAILED"]
     assert not report.valid
     assert len(findings) == 2
     assert {item.details["actionType"] for item in findings} == {"leave_home", "put_item"}
@@ -131,9 +128,7 @@ def test_preflight_preserves_unknown_home_generated_entity_state() -> None:
         [
             {
                 "actionType": "close",
-                "arguments": {
-                    "target": {"source": "literal", "value": "generated_cabinet"}
-                },
+                "arguments": {"target": {"source": "literal", "value": "generated_cabinet"}},
             }
         ],
     )
@@ -141,9 +136,7 @@ def test_preflight_preserves_unknown_home_generated_entity_state() -> None:
     report = validate_authoring_payload(payload).report
 
     assert report.valid
-    assert "DETERMINISTIC_PRECONDITION_FAILED" not in {
-        item.code for item in report.issues
-    }
+    assert "DETERMINISTIC_PRECONDITION_FAILED" not in {item.code for item in report.issues}
 
 
 def test_invalid_scenario_blocks_behavior_validation_and_output(tmp_path: Path) -> None:
@@ -331,10 +324,62 @@ def test_distributed_prompt_1_2_is_single_self_contained_authoring_request() -> 
         assert compact in prompt
 
 
+def test_simplified_prompt_1_2_3_is_regenerated_from_the_catalogs() -> None:
+    """The committed prompt must equal a fresh render.
+
+    The 1.2.2 prompt taught `call_sister_lucia` for days after catalog 1.2.0 dropped it, because
+    the section was retyped by hand and only ever checked against the catalog it was written from.
+    Comparing against a fresh render turns any future catalog move into a failing test.
+    """
+    sys.path.insert(0, str(ROOT))
+    from tools.build_authoring_artifacts import (
+        SIMPLIFIED_ACTIVITY_CATALOG_VERSION,
+        SIMPLIFIED_PROMPT_PATH,
+        SIMPLIFIED_REFERENCE_MODELS,
+        render_simplified_prompt,
+    )
+
+    committed = SIMPLIFIED_PROMPT_PATH.read_text(encoding="utf-8")
+    assert committed == render_simplified_prompt(), (
+        "prompts/generate-simulation-inputs-1.2.3-simplified.md is stale; "
+        "run `make authoring-artifacts`"
+    )
+
+    catalog_dir = ROOT / "src/smart_home_sim/catalogs"
+    activity_catalog = json.loads(
+        (catalog_dir / f"activity-catalog-{SIMPLIFIED_ACTIVITY_CATALOG_VERSION}.json").read_text()
+    )
+    reference_models = json.loads((catalog_dir / SIMPLIFIED_REFERENCE_MODELS).read_text())
+
+    # Every catalog intent is offered, and every proven recipe is shown rather than guessed at.
+    intent_section = committed.split("## 4. Intent ammessi e componenti esatti", 1)[1].split(
+        "## 5. Componenti e sequenze obbligatorie di azioni", 1
+    )[0]
+    documented_intents = {
+        line.split(" = ", 1)[0]: line.split(" = ", 1)[1].split(", ")
+        for line in intent_section.splitlines()
+        if " = " in line and not line.startswith("Ogni ")
+    }
+    assert documented_intents == {
+        item["intent"]: item["components"] for item in activity_catalog["activities"]
+    }
+
+    reference_section = committed.split("## 5.1 Modelli di riferimento provati", 1)[1].split(
+        "## 6. Grafo e catalogo azioni", 1
+    )[0]
+    for intent in reference_models["models"]:
+        assert f"{intent}  [" in reference_section
+
+    # The container openings the reference models gained are what the prompt exists to teach.
+    assert "open(cleaning_product_storage) -> take_item(cleaning_tool)" in reference_section
+    assert 'version: "1.2.0"' in committed
+    assert "call_sister_lucia" not in committed
+
+
 def test_simplified_prompt_1_2_2_tracks_frozen_catalogs_and_state_contract() -> None:
-    prompt = (
-        ROOT / "prompts/generate-simulation-inputs-1.2.2-simplified.md"
-    ).read_text(encoding="utf-8")
+    prompt = (ROOT / "prompts/generate-simulation-inputs-1.2.2-simplified.md").read_text(
+        encoding="utf-8"
+    )
     activity_catalog = json.loads(
         (ROOT / "src/smart_home_sim/catalogs/activity-catalog-1.0.0.json").read_text()
     )
@@ -351,21 +396,20 @@ def test_simplified_prompt_1_2_2_tracks_frozen_catalogs_and_state_contract() -> 
         item["intent"]: item["components"] for item in activity_catalog["activities"]
     }
 
-    component_section = prompt.split(
-        "## 5. Componenti e sequenze obbligatorie di azioni", 1
-    )[1].split("## 6. Grafo e catalogo azioni", 1)[0]
+    component_section = prompt.split("## 5. Componenti e sequenze obbligatorie di azioni", 1)[
+        1
+    ].split("## 6. Grafo e catalogo azioni", 1)[0]
     documented_components = {
         line.split(": ", 1)[0]: line.split(": ", 1)[1].split(" -> ")
         for line in component_section.splitlines()
         if ": " in line and not line.startswith(("Per ", "Attenzione"))
     }
     assert documented_components == {
-        item["componentId"]: item["requiredActionTypes"]
-        for item in activity_catalog["components"]
+        item["componentId"]: item["requiredActionTypes"] for item in activity_catalog["components"]
     }
 
     assert 'documentType: "personal_process_package"' in prompt
-    assert 'language: string;' in prompt
+    assert "language: string;" in prompt
     assert 'referenceId: "activity_catalog"' in prompt
     assert 'catalogId: "smart_home_action_catalog"' in prompt
     assert "La fine di `simulationWindow` e esclusiva" in prompt

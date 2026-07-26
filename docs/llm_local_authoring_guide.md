@@ -6,9 +6,13 @@ Il simulatore accetta un `SimulationAuthoringBundle` composto da `scenario` e
 `personalProcessPackage`. Un modello locale può generare questo bundle, ma il risultato è
 accettato soltanto dopo i gate deterministici di ingestion e simulazione.
 
-Il runtime non integra LM Studio né altri provider: la chiamata al modello resta esterna al
-simulatore. Nel repository non sono presenti script automatici per invocare LM Studio,
-autoriparare risposte o generare un intero anno.
+Questo documento descrive il percorso **one-shot**: un prompt unico inviato a mano a un LLM
+esterno. La pipeline di generazione locale, che invece orchestra LM Studio in più stadi
+deterministicamente validati, è un percorso distinto ed è descritta in
+`docs/spec/13-local-generation-pipeline.md`.
+
+Sul percorso one-shot il runtime non integra alcun provider: la chiamata al modello resta
+esterna al simulatore e nessuno script la automatizza o autoripara le risposte.
 
 ## Prompt disponibili
 
@@ -17,9 +21,22 @@ autoriparare risposte o generare un intero anno.
   prova Qwen del 2026-07-21;
 - `prompts/generate-simulation-inputs-1.2.1-simplified.md`: revisione storica con guardrail
   di plausibilità e provenance, non più consigliata;
-- `prompts/generate-simulation-inputs-1.2.2-simplified.md`: versione compatta corrente,
-  con riferimenti e argomenti allineati ai cataloghi congelati, intervallo end-exclusive e
-  registro cronologico per `at_home`, oggetti trasportati, aperture e attivazioni.
+- `prompts/generate-simulation-inputs-1.2.2-simplified.md`: revisione storica ancorata al
+  catalogo attività `1.0.0`, quindi al vocabolario di intenti che nominava persone private;
+- `prompts/generate-simulation-inputs-1.2.3-simplified.md`: versione compatta corrente.
+  Non si modifica a mano: è **generata** da
+  `prompts/templates/generate-simulation-inputs-1.2.3-simplified.template.md` e dai cataloghi
+  congelati con `make authoring-artifacts`. Le sezioni 4, 5, 5.1, 6 e il registro della 7
+  sono rese dal catalogo attività `1.2.0`, dal catalogo azioni `1.1.0` e dai 24 modelli di
+  processo di riferimento `1.2.0`; un test confronta il file committato con una resa fresca,
+  quindi il prompt non può più divergere in silenzio dai contratti.
+
+La 1.2.3 è la prima versione allineata alla pipeline di generazione locale: entrambi i
+percorsi etichettano ora i dataset con lo stesso vocabolario neutro, condizione necessaria
+perché il confronto fra i due sia leggibile. La sezione 5.1 mostra inoltre i modelli già
+provati in simulazione invece del solo minimo imposto dal validatore: il minimo non apre il
+contenitore da cui il residente prende un oggetto, quindi valida senza errori ma non fa mai
+scattare il sensore di contatto.
 
 Il prompt completo misura 102.717 byte. Il prompt semplificato 1.2.0 usato nella prova ne
 misura 24.717: una riduzione del 75,9% per byte. Le riduzioni in token devono essere misurate
