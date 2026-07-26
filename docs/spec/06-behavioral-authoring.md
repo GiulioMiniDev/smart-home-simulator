@@ -145,10 +145,60 @@ number.
 
 | Catalog | Instances | Content |
 |---|---|---|
-| Activity | `1.0.0`, `1.1.0` | `1.1.0` declares 92 intents composed from 54 ordered semantic components |
-| Action | `1.0.0`, `1.1.0` | typed atomic action vocabulary |
+| Activity | `1.0.0`, `1.1.0`, `1.2.0` | 92 intents in `1.0.0`/`1.1.0`; **90** in `1.2.0`; 54 ordered semantic components throughout |
+| Action | `1.0.0`, `1.1.0` | 27 typed atomic actions — same vocabulary in both |
 | Variable | `1.0.0` only | 18 variables across four scopes |
-| Reference process models | `1.1.0` | 24 models extracted from the proven `mario_rossi 1.1.0` package |
+| Reference process models | `1.1.0`, `1.2.0` | 24 models extracted from the proven `mario_rossi` package |
+
+Each instance is derived from its predecessor by a migration script wired into `make check`
+(`tools/migrate_behavior_1_1.py`, `tools/migrate_behavior_1_2.py`), so a version can be regenerated
+and cannot silently drift from the code that consumes it.
+
+### 1.0.0 to 1.1.0 — object-carrying semantics
+
+The `1.1.0` instances do **not** extend the vocabulary. Both activity catalogs declare the same 92
+intents and the same 54 components, and both action catalogs declare the same 27 action types. What
+`1.1.0` changes is object-carrying semantics:
+
+- component `travel` drops `leave_home` from its required action types, keeping only `travel_to`;
+  crossing the home boundary is modeled separately by the `leave_home`/`enter_home` actions;
+- `dress` gains the effect `resident.carrying.used_clothing`;
+- `shop` gains the effect `resident.carrying.purchases`;
+- `prepare_food` gains an `outputRole` parameter and the effect `resident.carrying.{outputRole}`.
+
+An artifact pinned to `1.0.0` therefore keeps the original, laxer carrying semantics; one pinned to
+`1.1.0` must account for what the resident is holding. This is the groundwork for Milestone 10
+(object containment), not a vocabulary extension.
+
+### 1.1.0 to 1.2.0 — a persona-neutral vocabulary
+
+Catalog `1.1.0` inherited its vocabulary from the Mario Rossi acceptance case, which left seven
+intents naming private individuals. **An intent id is the ground-truth label published in the
+dataset**, so a generated persona with no sister had to reuse `call_sister_lucia` to express
+"phones a relative", and the label then asserted something untrue about the simulated resident.
+That is a defect in the validity of the produced data, not a naming preference.
+
+| `1.1.0` | `1.2.0` |
+|---|---|
+| `call_mother`, `call_sister_lucia`, `call_friend_paolo` | `phone_call` |
+| `aperitivo_with_paolo` | `social_drink_out` |
+| `prepare_to_visit_mother` | `prepare_to_visit_relative` |
+| `travel_to_mothers_home` | `travel_to_relatives_home` |
+| `visit_mother_and_have_dinner` | `visit_relative_and_have_dinner` |
+
+The three phone intents were already byte-identical in semantics — same `phone_call` component,
+same `relevantVariableIds` — so collapsing them loses no expressive power and takes the catalog
+from 92 to 90 intents. Identity of the person involved belongs in the scenario, which already
+models it through `externalPeople` and an activity's `participantIds`.
+
+The reference process models are neutralized in the same pass: their prose no longer names a
+resident, nor attributes to every persona the knee osteoarthritis of the original one.
+
+Consumers select an instance explicitly and older artifacts are untouched: the local generation
+pipeline pins `1.2.0`, while anything pinned to `1.0.0` or `1.1.0` keeps validating and replaying
+exactly as before. The remaining hyper-specific intents (`prepare_quick_pasta_and_salad`,
+`iron_work_shirts`, `long_sunday_walk`) are a separate concern: they are narrow, but they do not
+assert anything false about a resident.
 
 `--activity-catalog-version` and `--action-catalog-version` select the instance; the CLI default
 remains `1.0.0`, so an existing command keeps its previous behaviour. The local generation pipeline

@@ -20,7 +20,10 @@ from smart_home_sim.hybrid_planning.habits import generate_habits
 from smart_home_sim.hybrid_planning.horizon import HorizonResult, build_horizon
 from smart_home_sim.hybrid_planning.llm_days import generate_llm_day_plans
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient
-from smart_home_sim.hybrid_planning.package_authoring import author_process_package
+from smart_home_sim.hybrid_planning.package_authoring import (
+    ACTIVITY_CATALOG_VERSION,
+    author_process_package,
+)
 from smart_home_sim.hybrid_planning.persona import generate_persona
 from smart_home_sim.hybrid_planning.world import build_planning_world
 
@@ -66,7 +69,11 @@ def run_generation(
     _write(output_dir, "behavioral-profile.json", profile)
 
     _emit(progress, 2, "Building the planning world")
-    world = build_planning_world(persona, seed=seed or 1)
+    # The world records which activity catalog the horizon is authored against; it must be the one
+    # the process package actually pins, or the two artifacts disagree in provenance.
+    world = build_planning_world(
+        persona, seed=seed or 1, activity_catalog_version=ACTIVITY_CATALOG_VERSION
+    )
     _write(output_dir, "planning-world.json", world)
 
     _emit(progress, 3, "Authoring the process package")

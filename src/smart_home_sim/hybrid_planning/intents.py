@@ -18,7 +18,7 @@ from importlib.resources import files
 
 from smart_home_sim.domain.behavior import ProcessModel
 
-REFERENCE_FILE = "reference-process-models-1.1.0.json"
+REFERENCE_FILE = "reference-process-models-1.2.0.json"
 
 
 class IntentCategory(StrEnum):
@@ -44,9 +44,10 @@ class IntentSpec:
     default_location: str
 
 
-# ~24 sensor-distinct ADL intents. Each intent_id is an EXACT activity-catalog 1.1.0 intent (so
+# ~24 sensor-distinct ADL intents. Each intent_id is an EXACT activity-catalog 1.2.0 intent (so
 # bindings validate) that also has a reference process model; default_location must be a standard
-# PlanningWorld location. Some ids keep the catalog's wording because that is the frozen vocabulary.
+# PlanningWorld location. Catalog 1.2.0 made the vocabulary neutral, so an id no longer names a
+# private individual: who is on the other end of a call is scenario data, not a ground-truth label.
 INTENT_CATALOG: tuple[IntentSpec, ...] = (
     IntentSpec("wake_up", "Wake up", IntentCategory.sleep_wake, "bedroom"),
     IntentSpec("morning_toilet_and_wash", "Morning wash", IntentCategory.hygiene, "bathroom"),
@@ -71,7 +72,7 @@ INTENT_CATALOG: tuple[IntentSpec, ...] = (
     IntentSpec("watch_television", "Watch television", IntentCategory.leisure, "living_room"),
     IntentSpec("read_and_rest", "Read and rest", IntentCategory.leisure, "living_room"),
     IntentSpec("rest_or_nap", "Nap", IntentCategory.leisure, "bedroom"),
-    IntentSpec("call_mother", "Phone a relative", IntentCategory.social, "living_room"),
+    IntentSpec("phone_call", "Phone a relative or friend", IntentCategory.social, "living_room"),
     IntentSpec("evening_hygiene", "Evening hygiene", IntentCategory.hygiene, "bathroom"),
     IntentSpec("sleep", "Sleep", IntentCategory.sleep_wake, "bedroom"),
 )

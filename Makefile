@@ -1,4 +1,4 @@
-.PHONY: app sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
+.PHONY: app sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts behavior-1.2-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
 
 app:
 	./start
@@ -91,6 +91,9 @@ runtime-1.1-artifacts:
 behavior-1.1-artifacts: runtime-1.1-artifacts
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/migrate_behavior_1_1.py
 
+behavior-1.2-artifacts: behavior-1.1-artifacts
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/migrate_behavior_1_2.py
+
 authoring-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_authoring_artifacts.py
 
@@ -154,4 +157,4 @@ lint:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff check .
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run ruff format --check .
 
-check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts environment-artifacts simulation-artifacts sensor-artifacts materialization-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-build frontend-lint frontend-test frontend-e2e
+check: behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts behavior-1.2-artifacts environment-artifacts simulation-artifacts sensor-artifacts materialization-artifacts schema authoring-artifacts test lint validate validate-runtime-1.1 compile compile-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home bundle bundle-1.1 simulate replay project-sensors benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-build frontend-lint frontend-test frontend-e2e

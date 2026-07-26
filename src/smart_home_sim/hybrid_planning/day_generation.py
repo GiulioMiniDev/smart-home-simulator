@@ -58,7 +58,7 @@ _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("indoor_light_exercise", ("exercise", "stretch", "workout", "yoga", "gym")),
     ("evening_walk", ("walk", "stroll", "outdoors", "outside", "garden")),
     ("watch_television", ("tv", "television", "watch", "documentary", "news")),
-    ("call_mother", ("call", "phone", "video call", "visit", "chat")),
+    ("phone_call", ("call", "phone", "video call", "visit", "chat")),
     ("rest_or_nap", ("nap", "rest", "lie down")),
     ("read_and_rest", ("read", "book", "relax")),
     ("sleep", ("sleep", "bed")),
