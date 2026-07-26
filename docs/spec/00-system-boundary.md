@@ -33,6 +33,9 @@ external authoring
 | Oracle ground truth | trace projector | semantic and causal truth | Yes |
 | Sensor projection report | trace projector | projection counts, losses, noise and provenance | No |
 | Synthetic workspace manifest | scenario-first orchestrator | roles, paths and canonical digests of a completed M3–M6 run | No |
+| Persona and behavioral profile | local generation pipeline | invented resident and frozen habit ground truth | No |
+| Cadence calendar | local generation pipeline | which habit is due on which day, planned in advance | No |
+| Planned habit trace | local generation pipeline | mining ground truth known before simulation | Yes |
 
 ## Stable boundary
 
@@ -48,6 +51,13 @@ authority: it does not infer a real dwelling or repair scenario/process semantic
 home and sensor outputs have the same frozen contracts and pass the same M4/M6 gates as
 researcher-authored alternatives. A workspace becomes visible only after every M2–M6
 stage succeeds.
+
+The local generation pipeline is likewise an optional **producer**, not an authority. It emits the
+same canonical authoring artifacts a researcher would write by hand, and each one passes the same
+validator and compiler gates before it is accepted; a model proposal that fails a gate is discarded
+in favour of the deterministic substrate. Generation stops at a compiled batch manifest and never
+simulates. The planned habit trace is oracle data and is kept in its own artifact so that mining
+labels never reach the observable sensor log. See `13-local-generation-pipeline.md`.
 
 ## Fundamental invariants
 

@@ -100,7 +100,15 @@ rule and prevents an authoring artifact from silently shadowing runtime state.
 
 The distributed catalog covers personal demographics and mobility, household and health
 profile, fatigue/hunger/stress/social state, food and medication state, workday/holiday,
-weather, weekday and season.
+weather, weekday and season. It declares 18 variables across the four scopes.
+
+The precedence rule above describes the **runtime** semantics of an accepted scenario and is
+unchanged. It does not describe how the days of a generated horizon are shaped upstream: the local
+generation pipeline carries `fatigue`, `hunger`, `social_need` and a generator-internal sleep debt
+across the days it emits, so that wake time, night length, naps and nocturnal events drift and
+recover instead of repeating. Those dynamics run entirely **before** simulation, in the generator,
+and reach the engine only as ordinary scenario content. No new variable scope and no new precedence
+rule is introduced. See `13-local-generation-pipeline.md`.
 
 ## Value expressions
 
@@ -128,6 +136,31 @@ The public Draft 2020-12 schemas are:
 - `action-catalog-1.0.0.schema.json`;
 - `personal-process-package-1.0.0.schema.json`;
 - `behavior-validation-report-1.0.0.schema.json`.
+
+## Catalog instance versions
+
+The schemas above are frozen at `1.0.0`. The **catalog instances** validated by them are versioned
+independently and have moved on; the schema version and the catalog-content version are not the same
+number.
+
+| Catalog | Instances | Content |
+|---|---|---|
+| Activity | `1.0.0`, `1.1.0` | `1.1.0` declares 92 intents composed from 54 ordered semantic components |
+| Action | `1.0.0`, `1.1.0` | typed atomic action vocabulary |
+| Variable | `1.0.0` only | 18 variables across four scopes |
+| Reference process models | `1.1.0` | 24 models extracted from the proven `mario_rossi 1.1.0` package |
+
+`--activity-catalog-version` and `--action-catalog-version` select the instance; the CLI default
+remains `1.0.0`, so an existing command keeps its previous behaviour. The local generation pipeline
+requires `1.1.0`.
+
+That pipeline draws from a deliberately **reduced alphabet**: roughly 24 sensor-distinct intents,
+each an exact activity-catalog `1.1.0` intent that also has a reference process model, grouped in
+twelve categories (sleep/wake, hygiene, medication, meal, cooking, chores, laundry, exercise,
+outdoor, errand, leisure, social). The restriction is a measurement decision, not a modelling
+limit: a fixed sensor layout could not distinguish a finer vocabulary, and habit mining needs one
+comparable label space across residents. Per-persona diversity comes from which intents recur, when,
+and in what sequences. See `13-local-generation-pipeline.md`.
 
 The end-to-end transport schema is `simulation-authoring-bundle-1.0.0.schema.json`. The
 current ingestion report is `authoring-ingestion-report-1.1.0.schema.json`; historical

@@ -27,7 +27,7 @@ relativi controlli di compatibilità.
 | 6.1 | Materializzazione automatica scenario-first | scenario + process package M3 accettati + policy | casa, sensori e workspace M3–M6 transazionale | **Completata e congelata — 1.0.0** |
 | 7 | Applicazione UI, workspace, export e replay | workspace M6.1 + artefatti M1–M6 | applicazione end-to-end + dataset JSONL/CSV/XES + replay | **Completata e congelata — 1.0.0** |
 | 8 | Esecuzione longitudinale | orizzonti validati + stato persistente | simulazioni annuali e repliche Monte Carlo | Non iniziata |
-| 8.1 | Authoring ibrido locale LLM + simulatore | profilo, durata, stato precedente e calendario | piani a rolling horizon validati con provenance completa | Pianificata |
+| 8.1 | Authoring ibrido locale LLM + simulatore | profilo, durata, stato precedente e calendario | piani a rolling horizon validati con provenance completa | **In corso — non congelata** |
 | 9 | Calibrazione e valutazione sperimentale | dati reali e sintetici | rapporto riproducibile di qualità e utilità | Non iniziata |
 
 ## Regola generale di avanzamento
@@ -636,6 +636,26 @@ il runtime non richiede né invoca un LLM.
   del 95% sono completi.
 
 ## Milestone 8.1 — Authoring ibrido locale LLM + simulatore
+
+### Stato di avanzamento
+
+Implementata nella sostanza e documentata in
+[`docs/spec/13-local-generation-pipeline.md`](docs/spec/13-local-generation-pipeline.md):
+adattatore LM Studio disattivabile, pianificazione incrementale, responsabilità del modello
+limitata a persona, abitudini, process model e disposizione dei giorni, gate deterministici su
+ogni artefatto accettato, fallback esplicito al substrato, cache immutabile dello scambio e job
+di generazione nella UI M7.
+
+Restano aperti due criteri della definition of done, entrambi dipendenti da milestone non
+iniziate:
+
+- il rolling horizon usa un calendario di cadenza pianificato in anticipo, non lo stato
+  realmente ottenuto dalla simulazione dell'orizzonte precedente: richiede M8;
+- manca il confronto sperimentale a parità di profilo fra piano manuale, generatore
+  probabilistico e LLM locale: riservato a M9.
+
+La milestone non può essere dichiarata completata né congelata finché entrambi non sono
+soddisfatti.
 
 ### Responsabilità
 

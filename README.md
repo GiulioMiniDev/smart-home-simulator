@@ -19,11 +19,25 @@ JSONL/CSV/XES.
 Il runtime richiede Python 3.12 e supporta Windows, macOS e Linux. La CI impone su tutti e
 tre i sistemi suite completa, lint e benchmark multiprocesso.
 
+**M8.1 (authoring ibrido locale) è in corso, non congelata.** Il sistema include una pipeline
+opzionale di generazione locale che, partendo da un brief testuale, inventa una persona, ne
+autora le abitudini, costruisce mondo e process package, espande il calendario di cadenza e
+produce un batch manifest simulabile — usando un modello locale via LM Studio. La generazione
+non simula: si ferma al manifest, e `simulate-batch` resta un passo esplicito del ricercatore.
+Ogni artefatto generato supera gli stessi gate degli input manuali. Vedi
+[Pipeline di generazione locale](docs/spec/13-local-generation-pipeline.md).
+
 Restano intenzionalmente assenti:
 
 - esecuzione longitudinale annuale e repliche Monte Carlo, assegnate a M8;
-- calibrazione empirica, assegnata a M9;
-- chiamate integrate a provider LLM.
+- calibrazione empirica e confronto sperimentale fra piano manuale, generatore probabilistico
+  e LLM locale, assegnati a M9;
+- rolling horizon alimentato dallo stato realmente simulato dell'orizzonte precedente, che
+  dipende da M8 ed è uno dei due criteri mancanti per chiudere M8.1;
+- dipendenze da provider LLM cloud: l'unica chiamata di rete del progetto è verso un endpoint
+  LM Studio locale, confinata al sottosistema di generazione. Validazione, compilazione,
+  simulazione e proiezione sensoriale non ne contengono alcuna, e un artefatto già accettato si
+  simula e si riproduce senza LM Studio attivo.
 
 Queste feature verranno sviluppate separatamente solo dopo il completamento dei rispettivi criteri di ingresso descritti in [ROADMAP.md](ROADMAP.md).
 
@@ -362,7 +376,8 @@ Gli artefatti pubblici congelati sono:
 - `schemas/sensor-deployment-policy-1.0.0.schema.json`;
 - `schemas/sensor-deployment-report-1.0.0.schema.json`;
 - `schemas/synthetic-workspace-manifest-1.0.0.schema.json`;
-- i tre cataloghi versionati in `src/smart_home_sim/catalogs/`;
+- i cataloghi versionati in `src/smart_home_sim/catalogs/`: attività (`1.0.0`, `1.1.0`), azioni
+  (`1.0.0`, `1.1.0`), variabili (`1.0.0`) e modelli di processo di riferimento (`1.1.0`);
 - i prompt ufficiali versionati in `prompts/`;
 - il registro degli 83 codici in `src/smart_home_sim/domain/codes.py`;
 - il registro dei codici comportamentali in
@@ -371,6 +386,52 @@ Gli artefatti pubblici congelati sono:
 L'accettazione principale è una settimana completa di 173 attività in `examples/valid/mario_week.json`. L'esempio `examples/valid/minimal.json` è utile per imparare il contratto senza il rumore del caso completo.
 
 La compilazione golden della settimana è in `examples/compiled/`: contiene 169 attività principali, 3 contingenze, 4 alternative e 3 rischedulazioni. Usa OR-Tools CP-SAT `9.15.6755`, tempo intero al microsecondo e una policy deterministica documentata.
+
+## Generazione locale con LLM (M8.1, in corso)
+
+Pipeline opzionale che produce gli stessi artefatti canonici del percorso manuale partendo da un
+brief testuale, usando un modello locale servito da LM Studio (default
+`http://127.0.0.1:1234`, modello `qwen2.5-coder-7b-instruct`). Il percorso manuale resta invariato.
+
+Catena completa in un comando:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim generate-dataset \
+  "Donna di 72 anni, vedova, vive sola a Roma, diabetica" \
+  --output-dir generated/lucia \
+  --start 2026-08-01 \
+  --months 1 \
+  --seed 42
+```
+
+Il comando scrive persona, profilo comportamentale, mondo di pianificazione, process package,
+calendario di cadenza, gli scenari/piani/bundle giornalieri, il `batch-manifest.json` e la ground
+truth pianificata `planned-habit-trace.json`. **Non simula.** Per simulare:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim simulate-batch generated/lucia/batch-manifest.json --output-dir generated/lucia-run
+```
+
+I flag `--use-llm-package` e `--use-llm-days` attivano i due stadi opzionali affidati al modello:
+un candidato viene accettato solo se l'artefatto che lo contiene continua a superare il gate
+deterministico, altrimenti si mantiene il substrato. Ogni comando accetta `--exchange-output` per
+persistere richiesta, risposta, parametri e token usati come provenance immutabile.
+
+Gli stadi sono disponibili anche singolarmente, per ispezionare o riusare un artefatto intermedio:
+
+```bash
+smart-home-sim generate-persona          # brief            -> persona.json
+smart-home-sim generate-habits           # persona          -> behavioral-profile.json
+smart-home-sim build-planning-world      # persona          -> planning-world.json
+smart-home-sim author-process-package    # persona + mondo  -> personal-process-package.json
+smart-home-sim build-cadence-calendar    # profilo          -> cadence-calendar.json
+smart-home-sim generate-days             # mondo + calendario
+smart-home-sim generate-horizon          # mondo + package + calendario -> batch manifest
+```
+
+L'applicazione locale espone la stessa pipeline come job durevole del workspace, con progresso e
+cancellazione; al termine pubblica gli artefatti come **input** di una nuova casa, da cui la
+simulazione si avvia come qualsiasi altra run.
 
 ## Documentazione
 
@@ -386,6 +447,8 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Motore di simulazione completo](docs/spec/09-simulation-engine.md)
 - [Orchestrazione dei batch paralleli](docs/spec/10-parallel-batch-orchestration.md)
 - [Sensori e separazione oracle/observable](docs/spec/11-sensor-projection.md)
+- [Applicazione, workspace, export e replay](docs/spec/12-application-workspace-export-replay.md)
+- [Pipeline di generazione locale](docs/spec/13-local-generation-pipeline.md)
 - [Blueprint architetturale del motore](docs/design/simulation-engine-blueprint.md)
 - [Decisioni architetturali](docs/decisions/ADR-001-feature-milestones.md)
 - [Freeze dei contratti 1.0.0](docs/decisions/ADR-002-freeze-scenario-contract-1.0.0.md)
@@ -402,6 +465,10 @@ La compilazione golden della settimana è in `examples/compiled/`: contiene 169 
 - [Lock batch multipiattaforma](docs/decisions/ADR-013-cross-platform-batch-locking.md)
 - [Freeze della proiezione sensoriale 1.0.0](docs/decisions/ADR-014-freeze-sensor-projection-1.0.0.md)
 - [Materializzazione scenario-first di casa e sensori](docs/decisions/ADR-015-scenario-first-environment-materialization.md)
+- [Applicazione locale e workspace SQLite](docs/decisions/ADR-016-local-application-and-sqlite-workspace.md)
+- [Design: pianificazione ibrida locale](docs/plans/2026-07-22-hybrid-local-planning-design.md)
+- [Design: ground truth delle abitudini](docs/plans/2026-07-22-behavioral-profile-habit-ground-truth-design.md)
+- [Design: da persona locale a dataset simulabile](docs/plans/2026-07-24-local-persona-to-simulatable-dataset-design.md)
 - [Audit di chiusura M5](docs/audits/milestone-5-closure.md)
 - [Audit di chiusura M5.1](docs/audits/milestone-5.1-closure.md)
 - [Audit di chiusura M6](docs/audits/milestone-6-closure.md)
