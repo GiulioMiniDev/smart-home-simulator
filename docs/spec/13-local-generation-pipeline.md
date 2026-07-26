@@ -122,6 +122,40 @@ saturates, and a long night repays only part of the accumulated debt.
 This layer is enabled by default and is fully deterministic: the same persona, seed and calendar
 always yield the same rhythms, so the reproducibility contract is preserved.
 
+### Every drive is spent, not only accumulated
+
+A drive that only grows stops being a variable. Sleep debt was closed from the start — a nap repays
+real debt — but hunger and the need for company originally had no consumption term at all: hunger
+drifted to its ceiling in about seventeen days and social need in about six, after which both were
+constants for the rest of a long horizon, and the meal shift they were supposed to modulate became
+constant with them.
+
+Both now read what the calendar actually scheduled for the day and spend accordingly. Relief is a
+**proportion** of what is standing rather than a fixed subtraction: a fixed one merely moves the
+saturation to the other end, since three meals a day would drive appetite to zero and pin it there.
+Taking a share leaves a stable interior equilibrium that still responds to a change in routine —
+over a simulated year, appetite settles near `0.19` for a resident eating three meals a day and
+near `0.33` for one eating two, without ever touching either bound.
+
+When the need for company runs high and the calendar offers nothing, the resident reaches out
+anyway and an unplanned contact is emitted. This mirrors the debt nap exactly, including the
+placement rule: the activity is dropped into the widest free gap of an evening band rather than
+pinned to a clock time, because a fixed time collides with whatever habit already sits there and
+makes the day unsolvable.
+
+### Drive-generated activities are not habit occurrences
+
+Nocturnal bathroom trips, debt naps and unplanned social contacts are real: they execute, they move
+the resident and they trigger sensors. They are **not** habit occurrences, and the distinction is
+carried in the activity labels. A scheduled habit carries `habit:<habit_id>`; a drive-generated
+activity carries only its own label — `night_visit`, `sleep_debt_nap`, `social_need_contact` — and
+no `habit:` prefix.
+
+The planned habit trace is built exclusively from the calendar's occurrences, so these activities
+never enter it. That is what lets the drive layer add behaviour to a day without contaminating the
+mining ground truth: the same intent may appear both as a habit and as a drive response, and the
+label is what tells them apart.
+
 ### Interaction with the variable catalog
 
 `variable-catalog-1.0.0.json` already declared `resident.fatigue`, `resident.hunger`,

@@ -108,6 +108,13 @@ _NIGHT_VISIT_INTENT = "morning_toilet_and_wash"
 _NIGHT_VISIT_LABEL = "night_visit"
 _NIGHT_VISIT_SHAPE = (3, 6, 12, 0.35)
 _NAP_INTENT = "rest_or_nap"
+# An unscheduled reach-out when the need for company ran high. Its own label keeps it out of the
+# habit ground truth: it happened, but nobody planned it.
+_UNPLANNED_SOCIAL_INTENT = "phone_call"
+_UNPLANNED_SOCIAL_LABEL = "social_need_contact"
+_UNPLANNED_SOCIAL_SHAPE = (8, 18, 35, 0.30)
+# Evening band a spontaneous call may occupy, in minutes after midnight (17:00-21:30).
+_UNPLANNED_SOCIAL_WINDOW = (17 * 60, 21 * 60 + 30)
 # A debt nap is its own thing, much shorter than the generic leisure band it would otherwise
 # inherit. (minimumMinutes, medianMinutes, maximumMinutes, logSigma)
 _NAP_SHAPE = (20, 40, 75, 0.30)
@@ -223,11 +230,22 @@ def build_day_plan(
         )
     entries.sort(key=lambda item: item.hhmm)
     if rhythm is not None and rhythm.nap:
-        slot = _nap_slot(entries)
+        slot = _free_slot(entries, _NAP_WINDOW, _NAP_SHAPE)
         if slot is not None:
             entries.append(
                 TimelineEntry(
                     _NAP_INTENT, slot, label="sleep_debt_nap", duration_shape=_NAP_SHAPE
+                )
+            )
+    if rhythm is not None and rhythm.unplanned_social_contact:
+        slot = _free_slot(entries, _UNPLANNED_SOCIAL_WINDOW, _UNPLANNED_SOCIAL_SHAPE)
+        if slot is not None:
+            entries.append(
+                TimelineEntry(
+                    _UNPLANNED_SOCIAL_INTENT,
+                    slot,
+                    label=_UNPLANNED_SOCIAL_LABEL,
+                    duration_shape=_UNPLANNED_SOCIAL_SHAPE,
                 )
             )
     entries.append(
@@ -249,36 +267,40 @@ def build_day_plan(
     )
 
 
-def _nap_slot(entries: list[TimelineEntry]) -> str | None:
-    """Drop the nap into the day's widest free afternoon gap, or not at all.
+def _free_slot(
+    entries: list[TimelineEntry],
+    window: tuple[int, int],
+    shape: tuple[int, int, int, float],
+) -> str | None:
+    """Drop a drive-generated activity into the widest free gap of ``window``, or not at all.
 
-    A nap pinned to a fixed clock time collides with whatever habit already sits there and makes
-    the day unsolvable, so it has to be placed against the schedule that actually exists.
+    An activity pinned to a fixed clock time collides with whatever habit already sits there and
+    makes the day unsolvable, so it has to be placed against the schedule that actually exists.
     """
     occupied: list[tuple[int, int]] = []
     for entry in entries:
         start = _to_minutes(entry.hhmm)
-        shape = entry.duration_shape or _CATEGORY_DURATION_SHAPE[
+        entry_shape = entry.duration_shape or _CATEGORY_DURATION_SHAPE[
             intent_spec(entry.intent_id).category
         ]
-        longest = entry.duration[2] if entry.duration is not None else shape[2]
+        longest = entry.duration[2] if entry.duration is not None else entry_shape[2]
         occupied.append((start, start + longest))
     occupied.sort()
 
-    needed = _NAP_SHAPE[2] + 2 * int(_WINDOW_FLEX.total_seconds() // 60)
+    needed = shape[2] + 2 * int(_WINDOW_FLEX.total_seconds() // 60)
     best: tuple[int, int] | None = None
-    cursor = _NAP_WINDOW[0]
-    for start, end in [*occupied, (_NAP_WINDOW[1], _NAP_WINDOW[1])]:
+    cursor = window[0]
+    for start, end in [*occupied, (window[1], window[1])]:
         if start > cursor:
-            gap = (cursor, min(start, _NAP_WINDOW[1]))
+            gap = (cursor, min(start, window[1]))
             if gap[1] - gap[0] > (0 if best is None else best[1] - best[0]):
                 best = gap
         cursor = max(cursor, end)
-        if cursor >= _NAP_WINDOW[1]:
+        if cursor >= window[1]:
             break
     if best is None or best[1] - best[0] < needed:
         return None
-    return _to_hhmm((best[0] + best[1]) // 2 - _NAP_SHAPE[1] // 2)
+    return _to_hhmm((best[0] + best[1]) // 2 - shape[1] // 2)
 
 
 def _sleep_duration(sleep_minutes: int) -> tuple[int, int, int]:

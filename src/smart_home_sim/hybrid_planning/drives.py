@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import math
 import random
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 
@@ -43,6 +44,19 @@ _DEBT_RECOVERY_FRACTION = 0.55
 _MAX_NIGHT_VISITS = 3
 # Keeps a trip clear of midnight and of the morning wake, and keeps two trips from colliding.
 _NIGHT_VISIT_MARGIN_MINUTES = 25.0
+
+# Appetite and the wish for company both build daily and are spent by doing the thing. Without a
+# consumption term they only ever climb: hunger saturated in about seventeen days and social need
+# in about six, after which a variable meant to shape the day became a constant.
+#
+# Relief is a *proportion* of what is standing, not a fixed subtraction. A fixed one only moves the
+# saturation to the other end — three meals a day would drive appetite to zero and pin it there —
+# whereas taking a share leaves a stable interior equilibrium that still responds to a skipped meal.
+_HUNGER_SATIATION_PER_MEAL = 0.25
+_SOCIAL_SATIATION_PER_CONTACT = 0.5
+# Above this, the resident reaches out even though nothing was on the calendar. The unplanned
+# contact is behaviour, not a habit occurrence, and the day generator labels it as such.
+_UNPLANNED_SOCIAL_THRESHOLD = 0.55
 
 
 @dataclass(frozen=True)
@@ -122,6 +136,9 @@ class DayRhythm:
     night_visits: tuple[str, ...]
     state_at_start: DriveState
     meal_shift_minutes: int
+    # An unscheduled reach-out, emitted when the need for company ran high and the calendar was
+    # empty. Like the debt nap it is behaviour, not a habit occurrence.
+    unplanned_social_contact: bool = False
 
 
 def initial_state(profile: RhythmProfile, seed: int) -> DriveState:
@@ -141,16 +158,27 @@ def plan_rhythms(
     *,
     seed: int,
     rest_days: frozenset[date] = frozenset(),
+    meals_by_day: Mapping[date, int] | None = None,
+    social_by_day: Mapping[date, int] | None = None,
 ) -> dict[str, DayRhythm]:
     """Walk the horizon in order, carrying drive state, and shape every day.
 
     Days must be consecutive and ordered: the whole point is that day N reads the state day N-1
-    left behind.
+    left behind. ``meals_by_day`` and ``social_by_day`` carry what the calendar scheduled, so the
+    corresponding drives are spent as well as accumulated; omitting them leaves both climbing.
     """
     state = initial_state(profile, seed)
     rhythms: dict[str, DayRhythm] = {}
     for day in days:
-        rhythm, state = advance(profile, day, state, seed=seed, rest_day=day in rest_days)
+        rhythm, state = advance(
+            profile,
+            day,
+            state,
+            seed=seed,
+            rest_day=day in rest_days,
+            meals=0 if meals_by_day is None else meals_by_day.get(day, 0),
+            social_contacts=0 if social_by_day is None else social_by_day.get(day, 0),
+        )
         rhythms[day.isoformat()] = rhythm
     return rhythms
 
@@ -162,8 +190,14 @@ def advance(
     *,
     seed: int,
     rest_day: bool = False,
+    meals: int = 0,
+    social_contacts: int = 0,
 ) -> tuple[DayRhythm, DriveState]:
-    """Turn today's incoming drive state into a day shape and tomorrow's state."""
+    """Turn today's incoming drive state into a day shape and tomorrow's state.
+
+    ``meals`` and ``social_contacts`` are what the calendar actually scheduled for this day. They
+    are what closes the loop: without them hunger and social need only accumulate.
+    """
     key = day.isoformat()
     rng = _rng(seed, profile.persona_id, "rhythm", key)
     relaxed = rest_day or day.weekday() >= 5
@@ -200,8 +234,22 @@ def advance(
         # A nap repays real debt, which is why it damps the following days rather than free noise.
         debt -= rng.uniform(20, 55)
 
-    social = state.social_need + rng.uniform(0.05, 0.18)
-    hunger = _clip(state.hunger + rng.uniform(-0.12, 0.2), 0.0, 1.0)
+    # Appetite builds every day and is spent at the table: a day with the usual three meals ends
+    # about where it started, a day that skips one ends hungrier and shifts tomorrow's meals
+    # earlier.
+    hunger = (state.hunger + rng.uniform(0.20, 0.32)) * (1 - _HUNGER_SATIATION_PER_MEAL) ** meals
+    hunger = _clip(hunger, 0.0, 1.0)
+
+    # The same shape for company. A contact the calendar scheduled relieves the need; when the need
+    # runs high and the calendar offers nothing, the resident reaches out anyway.
+    social = (state.social_need + rng.uniform(0.05, 0.18)) * (
+        1 - _SOCIAL_SATIATION_PER_CONTACT
+    ) ** social_contacts
+    unplanned_social = social_contacts == 0 and social >= _UNPLANNED_SOCIAL_THRESHOLD
+    if unplanned_social:
+        # Mirrors the debt nap: the relief is real, so it damps the following days instead of
+        # letting the need sit pinned at its ceiling forever.
+        social *= 1 - _SOCIAL_SATIATION_PER_CONTACT
     # Meals follow the morning: a hungry resident eats earlier, a late riser eats later. Both
     # bounded, so the day never reorders itself.
     baseline_wake = profile.chronotype_bedtime_minutes + need
@@ -216,6 +264,7 @@ def advance(
         night_visits=visits,
         state_at_start=state,
         meal_shift_minutes=meal_shift,
+        unplanned_social_contact=unplanned_social,
     )
     following = DriveState(
         sleep_debt_minutes=debt,

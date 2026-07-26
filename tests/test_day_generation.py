@@ -255,6 +255,47 @@ def test_rhythm_lays_night_visits_before_the_wake() -> None:
     assert nights > 15
 
 
+def test_an_unmet_need_for_company_produces_a_labelled_unplanned_call() -> None:
+    """The social counterpart of the debt nap, placed against the schedule that actually exists."""
+    from datetime import date, timedelta
+
+    from smart_home_sim.hybrid_planning.drives import RhythmProfile, plan_rhythms
+
+    profile = RhythmProfile(persona_id="luigi_bianchi")
+    horizon = [date(2026, 8, 3) + timedelta(days=index) for index in range(60)]
+    # Meals are scheduled, company never is: exactly the case that should make the resident call.
+    rhythms = plan_rhythms(
+        profile,
+        horizon,
+        seed=1,
+        meals_by_day={day: 3 for day in horizon},
+        social_by_day={day: 0 for day in horizon},
+    )
+
+    calls = 0
+    for day in horizon:
+        calendar_day = _day(
+            day.isoformat(),
+            Weekday.monday,
+            [_occ("morning coffee", "07:10"), _occ("lunch", "12:30")],
+        )
+        plan = build_day_plan(
+            calendar_day,
+            timezone="Europe/Rome",
+            actor_id="luigi_bianchi",
+            rhythm=rhythms[day.isoformat()],
+            seed=1,
+        )
+        for activity in plan.activities:
+            if "social_need_contact" not in activity.labels:
+                continue
+            calls += 1
+            assert activity.intent == "phone_call"
+            # The key invariant: it happened, but nobody planned it, so it is not a habit.
+            assert not any(label.startswith("habit:") for label in activity.labels)
+    assert calls > 10
+
+
 def test_sampled_durations_are_right_skewed_instead_of_hugging_a_ceiling() -> None:
     """The frozen table pinned every occurrence to preferredMinutes, so the observed maximum was
     the planned value and the variance was near zero."""

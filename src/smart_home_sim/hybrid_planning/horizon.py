@@ -20,13 +20,15 @@ from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatch
 from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.models import DayPlan, Scenario, SimulationWindow
 from smart_home_sim.environment import build_bundle_files
-from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
+from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay
 from smart_home_sim.hybrid_planning.day_generation import (
     build_day_scenario,
     build_scenario_from_day_plan,
+    habit_to_intent,
 )
 from smart_home_sim.hybrid_planning.drives import DayRhythm, RhythmProfile, plan_rhythms
 from smart_home_sim.hybrid_planning.habit_trace import build_planned_trace
+from smart_home_sim.hybrid_planning.intents import IntentCategory, intent_spec
 from smart_home_sim.hybrid_planning.package_authoring import build_probe_scenario
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
 from smart_home_sim.materialization import generate_home
@@ -43,6 +45,33 @@ class HorizonResult:
     trace_path: Path | None = None
     failed_days: list[str] = field(default_factory=list)
     scenario_path: Path | None = None
+
+
+def _scheduled_drive_load(
+    day_slice: list[CalendarDay],
+) -> tuple[dict[date, int], dict[date, int]]:
+    """Count, per day, the scheduled meals and social contacts the drives are allowed to spend.
+
+    Hunger and the need for company are only halfway modelled if they accumulate without ever being
+    consumed: they climb to their ceiling and stop varying. This reads what the calendar actually
+    scheduled so the drive layer can subtract it.
+    """
+    meals: dict[date, int] = {}
+    social: dict[date, int] = {}
+    for day in day_slice:
+        key = date.fromisoformat(day.date)
+        meal_count = 0
+        social_count = 0
+        for occurrence in day.occurrences:
+            intent = habit_to_intent(occurrence.label, occurrence.kind.value)
+            category = intent_spec(intent).category
+            if category is IntentCategory.meal:
+                meal_count += 1
+            elif category is IntentCategory.social:
+                social_count += 1
+        meals[key] = meal_count
+        social[key] = social_count
+    return meals, social
 
 
 def _write(path: Path, model: ContractModel) -> None:
@@ -78,10 +107,13 @@ def build_horizon(
 
     rhythms: dict[str, DayRhythm] = {}
     if rhythm_profile is not None:
+        meals_by_day, social_by_day = _scheduled_drive_load(day_slice)
         rhythms = plan_rhythms(
             rhythm_profile,
             [date.fromisoformat(day.date) for day in day_slice],
             seed=calendar.seed,
+            meals_by_day=meals_by_day,
+            social_by_day=social_by_day,
         )
 
     package_path = output_dir / "package.json"
