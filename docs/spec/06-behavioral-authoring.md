@@ -224,7 +224,7 @@ bundle. A complete externally repaired bundle must pass the same ingestion gates
 beginning.
 
 The preferred researcher-facing prompt is the single self-contained
-`generate-simulation-inputs-1.2.0.md`; prompts `1.0.0`, `1.1.0` and the focused scenario
-and process templates remain available as contract documentation. JSON is authoritative.
+`generate-simulation-inputs-1.3.0.md`; prompts `1.0.0`, `1.1.0`, `1.2.0` and the focused
+scenario and process templates remain available as contract documentation. JSON is authoritative.
 Mermaid may be generated later as a visual projection but is neither accepted input nor a
 runtime dependency in version `1.0.0`.

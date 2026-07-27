@@ -21,7 +21,7 @@ conversation state and retries remain outside the runtime boundary.
 
 ## Single distributed prompt
 
-`prompts/generate-simulation-inputs-1.2.0.md` embeds:
+`prompts/generate-simulation-inputs-1.3.0.md` embeds:
 
 - the complete authoring-bundle JSON Schema;
 - the complete project activity catalog;
@@ -30,7 +30,13 @@ conversation state and retries remain outside the runtime boundary.
 - scenario, personal ADL and cross-document generation rules;
 - the mandatory compatibility matrix between value-expression sources and action-parameter
   reference kinds;
+- the action state contract enforced by the deterministic replay: the precondition and effect
+  table, the chronological per-resident ledger that carries across activities and days, and the
+  mandatory bridge for a `travel` component performed away from home;
 - a marked `PERSON_AND_CASE_DESCRIPTION` section for the researcher.
+
+Prompts `1.0.0`, `1.1.0` and `1.2.0` stay committed and buildable so the trials recorded
+against them remain reproducible.
 
 It is generated deterministically from its template and the distributed contracts by
 `tools/build_authoring_artifacts.py`. The generated prompt is the file supplied to the

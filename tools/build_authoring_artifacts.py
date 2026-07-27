@@ -34,6 +34,21 @@ REFERENCE_COMPATIBILITY_FRAGMENT = (
 # frozen 1.1.0 untouched — is injected here rather than written into the shared template.
 ROUTINE_VARIATION_FRAGMENT = ROOT / "prompts/templates/routine-variation-1.2.0.fragment.md"
 
+# Prompt 1.3.0 is 1.2.0 plus the state-continuity contract. The 1.2.0 trials passed schema,
+# compilation and behavior validation and were still rejected by the deterministic replay, because
+# no prompt before this one told the model that action preconditions carry across activities and
+# days. 1.2.0 stays frozen so the trials already recorded against it remain reproducible.
+PROMPT_1_3_PATH = ROOT / "prompts/generate-simulation-inputs-1.3.0.md"
+ACTION_STATE_FRAGMENT = ROOT / "prompts/templates/action-state-continuity-1.3.0.fragment.md"
+ACTION_STATE_CHECKS = (
+    "- every `leave_home`, `enter_home`, `put_item`, `open`, `close`, `activate` and "
+    "`deactivate`\n"
+    "  satisfies its catalog precondition in the chronological ledger, across activities and "
+    "days;\n"
+    "- every `travel` component performed away from home carries the mandatory\n"
+    "  `move_to_capability(home_entrance) -> enter_home` bridge;"
+)
+
 # The simplified prompt is the one a local model actually receives, so the sections that enumerate
 # the frozen vocabularies are rendered from those vocabularies instead of being retyped: the drift
 # that made it teach `call_sister_lucia` for months is then a build failure, not a silent defect.
@@ -64,6 +79,34 @@ def _embed_authoritative_artifacts(prompt: str) -> str:
     return prompt
 
 
+def _insert_before(prompt: str, insertion_point: str, text: str, separator: str = "\n") -> str:
+    if prompt.count(insertion_point) != 1:
+        raise RuntimeError(f"Prompt insertion point missing or ambiguous: {insertion_point}")
+    return prompt.replace(insertion_point, f"{text}{separator}{insertion_point}")
+
+
+def _render_action_state_contract(action_catalog: dict[str, Any]) -> str:
+    """Restate the replayed preconditions and effects from the catalog the prompt embeds.
+
+    Retyping them is how the 1.2.0 trial rules drifted from the validators; rendering them means a
+    catalog that gains an action with a precondition cannot leave the prompt silently incomplete.
+    """
+    actions = sorted(action_catalog["actions"], key=lambda item: item["actionType"])
+    preconditions = [
+        f"{action['actionType']:19} requires {item['factTemplate']} "
+        f"{item['operator']} {json.dumps(item['value'])}"
+        for action in actions
+        for item in action["preconditions"]
+    ]
+    effects = [
+        f"{action['actionType']:19} {item['operation']:9} {item['factTemplate']} "
+        f"= {json.dumps(item['value'])}"
+        for action in actions
+        for item in action["effects"]
+    ]
+    return _fence(["Preconditions", *preconditions, "", "Effects", *effects])
+
+
 def build_prompt() -> None:
     for template_path, prompt_path in PROMPTS:
         prompt = template_path.read_text(encoding="utf-8")
@@ -77,14 +120,38 @@ def build_prompt() -> None:
         # This one continues the numbered list right above it, so it joins without a blank line.
         (ROUTINE_VARIATION_FRAGMENT, "\n## Mandatory compilation and contingency rules", "\n"),
     ):
-        if prompt_1_2.count(insertion_point) != 1:
-            raise RuntimeError(
-                f"Prompt 1.2 insertion point missing or ambiguous: {insertion_point}"
-            )
-        fragment = fragment_path.read_text(encoding="utf-8").strip()
-        prompt_1_2 = prompt_1_2.replace(insertion_point, f"{fragment}{separator}{insertion_point}")
+        prompt_1_2 = _insert_before(
+            prompt_1_2,
+            insertion_point,
+            fragment_path.read_text(encoding="utf-8").strip(),
+            separator,
+        )
     PROMPT_1_2_PATH.write_text(
         _embed_authoritative_artifacts(prompt_1_2), encoding="utf-8", newline="\n"
+    )
+
+    # The replay uses action catalog 1.0.0, the one this prompt family embeds, so the restated
+    # contract is rendered from that exact file rather than from the simplified prompt's 1.1.0.
+    action_catalog = json.loads(
+        (CATALOG_DIR / "action-catalog-1.0.0.json").read_text(encoding="utf-8")
+    )
+    state_fragment = (
+        ACTION_STATE_FRAGMENT.read_text(encoding="utf-8")
+        .strip()
+        .replace("{{ACTION_STATE_CONTRACT}}", _render_action_state_contract(action_catalog))
+    )
+    prompt_1_3 = prompt_1_2.replace("1.2.0", "1.3.0")
+    prompt_1_3 = _insert_before(
+        prompt_1_3, "## Required final consistency checks", state_fragment, "\n\n"
+    )
+    prompt_1_3 = _insert_before(
+        prompt_1_3,
+        "- output provenance is truthful and the JSON is complete.",
+        ACTION_STATE_CHECKS.strip(),
+        "\n",
+    )
+    PROMPT_1_3_PATH.write_text(
+        _embed_authoritative_artifacts(prompt_1_3), encoding="utf-8", newline="\n"
     )
 
 

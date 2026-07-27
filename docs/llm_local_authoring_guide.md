@@ -16,7 +16,14 @@ esterna al simulatore e nessuno script la automatizza o autoripara le risposte.
 
 ## Prompt disponibili
 
-- `prompts/generate-simulation-inputs-1.2.0.md`: prompt completo e autorevole;
+- `prompts/generate-simulation-inputs-1.3.0.md`: prompt completo e autorevole corrente. È il
+  `1.2.0` più la sezione generata «Mandatory action state continuity»: tabella di precondizioni
+  ed effetti resa dal catalogo azioni `1.0.0`, registro cronologico che attraversa attività e
+  giorni, e ponte obbligatorio per il componente `travel` eseguito fuori casa (ADR-017);
+- `prompts/generate-simulation-inputs-1.2.0.md`: revisione storica completa, congelata perché
+  la terza prova esterna resti riproducibile. Valida schema, compilazione e comportamento, ma
+  non insegna il contratto di stato: la prova del 2026-07-27 è stata respinta da quattro
+  `DETERMINISTIC_PRECONDITION_FAILED`;
 - `prompts/generate-simulation-inputs-1.2.0-simplified.md`: versione compatta usata nella
   prova Qwen del 2026-07-21;
 - `prompts/generate-simulation-inputs-1.2.1-simplified.md`: revisione storica con guardrail
@@ -38,8 +45,9 @@ provati in simulazione invece del solo minimo imposto dal validatore: il minimo 
 contenitore da cui il residente prende un oggetto, quindi valida senza errori ma non fa mai
 scattare il sensore di contatto.
 
-Il prompt completo misura 102.717 byte. Il prompt semplificato 1.2.0 usato nella prova ne
-misura 24.717: una riduzione del 75,9% per byte. Le riduzioni in token devono essere misurate
+Il prompt completo `1.3.0` misura 109.035 byte, il `1.2.0` 103.153. Il prompt semplificato
+1.2.0 usato nella prova ne misura 24.717: una riduzione del 75,9% per byte rispetto al
+completo dell'epoca. Le riduzioni in token devono essere misurate
 con il tokenizer del modello effettivamente usato.
 
 ## Configurazione sperimentale registrata

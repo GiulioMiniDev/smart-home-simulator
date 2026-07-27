@@ -324,6 +324,44 @@ def test_distributed_prompt_1_2_is_single_self_contained_authoring_request() -> 
         assert compact in prompt
 
 
+def test_distributed_prompt_1_3_teaches_the_replayed_action_state_contract() -> None:
+    """1.3.0 is 1.2.0 plus the contract the deterministic replay enforces.
+
+    A 1.2.0 bundle passed schema, compilation and behavior validation and was still rejected by
+    `DETERMINISTIC_PRECONDITION_FAILED`, because no prompt stated that action preconditions carry
+    across activities and days. The precondition lines are asserted against the catalog so a new
+    precondition cannot ship with the prompt silently omitting it.
+    """
+    prompt = (ROOT / "prompts/generate-simulation-inputs-1.3.0.md").read_text(encoding="utf-8")
+    frozen = (ROOT / "prompts/generate-simulation-inputs-1.2.0.md").read_text(encoding="utf-8")
+
+    assert "`generatorVersion`: `1.3.0`" in prompt
+    assert "`promptTemplateVersion`: `generate-simulation-inputs-1.3.0`" in prompt
+    assert "1.2.0" not in prompt.split("## Authoritative output schema", 1)[0]
+    # Everything 1.2.0 already taught has to survive the new version.
+    assert "Mandatory ValueExpression and reference-kind compatibility" in prompt
+    assert "zero `ACTION_ARGUMENT_TYPE_MISMATCH` possibilities" in prompt
+    assert "## Mandatory action state continuity" in prompt
+    assert "DETERMINISTIC_PRECONDITION_FAILED" in prompt
+    assert "The state is not reset between activities and not reset between days." in prompt
+    assert "move_to_capability(home_entrance) -> enter_home [bridge]" in prompt
+    assert "PROCESS_COMPONENT_MISMATCH" in prompt
+    assert "## Mandatory action state continuity" not in frozen
+
+    action_catalog = json.loads(
+        (ROOT / "src/smart_home_sim/catalogs/action-catalog-1.0.0.json").read_text()
+    )
+    contract = prompt.split("## Mandatory action state continuity", 1)[1].split(
+        "## Required final consistency checks", 1
+    )[0]
+    for action in action_catalog["actions"]:
+        for precondition in action["preconditions"]:
+            assert (
+                f"{action['actionType']:19} requires {precondition['factTemplate']} "
+                f"{precondition['operator']} {json.dumps(precondition['value'])}"
+            ) in contract
+
+
 def test_simplified_prompt_1_2_3_is_regenerated_from_the_catalogs() -> None:
     """The committed prompt must equal a fresh render.
 

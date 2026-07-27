@@ -1,4 +1,4 @@
-import advancedPrompt from "../../prompts/generate-simulation-inputs-1.2.0.md?raw";
+import advancedPrompt from "../../prompts/generate-simulation-inputs-1.3.0.md?raw";
 import simplifiedPrompt from "../../prompts/generate-simulation-inputs-1.2.3-simplified.md?raw";
 
 export const authoringPrompts = {
@@ -7,7 +7,7 @@ export const authoringPrompts = {
     text: simplifiedPrompt,
   },
   advanced: {
-    version: "generate-simulation-inputs-1.2.0",
+    version: "generate-simulation-inputs-1.3.0",
     text: advancedPrompt,
   },
 } as const;
