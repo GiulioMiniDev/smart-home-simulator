@@ -61,6 +61,16 @@ class ActivityVariables:
 
 
 @dataclass(frozen=True, slots=True)
+class LockRequest:
+    """One deterministic value-fixing attempt of the `priority-preference-1.0.0` policy."""
+
+    variable: cp_model.IntVar
+    target: int
+    name: str
+    presence: cp_model.IntVar | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class SolveOutcome:
     status: str
     values: dict[str, ScheduledValue]
@@ -254,63 +264,62 @@ class ScheduleSolver:
             self.model.add(variable == optimum)
             self.model.clear_objective()
 
-        for variables in sorted(
-            self.variables.values(),
-            key=lambda item: item.record.activity.activity_id,
-        ):
-            if variables.record.activity.mandatory:
-                continue
-            status, solver = self._try_lock_value(
+        optional_requests = [
+            LockRequest(
                 variables.presence,
                 1,
                 f"canonical_optional__{variables.record.activity.activity_id}",
             )
-            if status not in {cp_model.OPTIMAL, cp_model.INFEASIBLE}:
-                return self._not_optimal_outcome(status, solver)
+            for variables in sorted(
+                self.variables.values(),
+                key=lambda item: item.record.activity.activity_id,
+            )
+            if not variables.record.activity.mandatory
+        ]
+        aborted = self._lock_requests(optional_requests)
+        if aborted is not None:
+            return self._not_optimal_outcome(*aborted)
 
+        preference_requests: list[LockRequest] = []
         for variables in sorted(
             self.variables.values(),
             key=lambda item: (item.record.day_index, item.record.activity_index),
         ):
             activity = variables.record.activity
-            preferences: list[tuple[cp_model.IntVar, int, str]] = []
             if activity.duration is not None:
-                preferences.append(
-                    (
+                preference_requests.append(
+                    LockRequest(
                         variables.duration,
                         duration_microseconds(
                             activity.activity_id,
                             "preferredMinutes",
                             activity.duration.preferred_minutes,
                         ),
-                        "duration",
+                        f"preferred_duration__{activity.activity_id}",
+                        variables.presence,
                     )
                 )
             if activity.start_window is not None:
-                preferences.append(
-                    (
+                preference_requests.append(
+                    LockRequest(
                         variables.start,
                         self.axis.to_tick(activity.start_window.preferred),
-                        "start",
+                        f"preferred_start__{activity.activity_id}",
+                        variables.presence,
                     )
                 )
             if activity.end_window is not None:
-                preferences.append(
-                    (
+                preference_requests.append(
+                    LockRequest(
                         variables.end,
                         self.axis.to_tick(activity.end_window.preferred),
-                        "end",
+                        f"preferred_end__{activity.activity_id}",
+                        variables.presence,
                     )
                 )
-            for variable, target, field_name in preferences:
-                status, solver = self._try_lock_value(
-                    variable,
-                    target,
-                    f"preferred_{field_name}__{activity.activity_id}",
-                    presence=variables.presence,
-                )
-                if status not in {cp_model.OPTIMAL, cp_model.INFEASIBLE}:
-                    return self._not_optimal_outcome(status, solver)
+        aborted = self._lock_requests(preference_requests)
+        if aborted is not None:
+            return self._not_optimal_outcome(*aborted)
 
         solver = self._new_solver()
         status = solver.solve(self.model)
@@ -363,24 +372,72 @@ class ScheduleSolver:
             objective_values=objective_values,
         )
 
-    def _try_lock_value(
+    def _declare_lock(self, request: LockRequest) -> cp_model.IntVar:
+        lock = self.model.new_bool_var(f"lock__{request.name}")
+        enforcement = [lock] if request.presence is None else [lock, request.presence]
+        self.model.add(request.variable == request.target).only_enforce_if(enforcement)
+        return lock
+
+    def _decide_lock(
         self,
-        variable: cp_model.IntVar,
-        target: int,
-        name: str,
-        presence: cp_model.IntVar | None = None,
+        lock: cp_model.IntVar,
+        request: LockRequest,
     ) -> tuple[int, cp_model.CpSolver]:
-        lock = self.model.new_bool_var(f"lock__{name}")
-        enforcement = [lock] if presence is None else [lock, presence]
-        self.model.add(variable == target).only_enforce_if(enforcement)
         self.model.add_assumption(lock)
-        solver = self._new_solver()
+        solver = self._new_feasibility_solver()
         status = solver.solve(self.model)
         self.model.clear_assumptions()
         self.model.add(lock == (1 if status == cp_model.OPTIMAL else 0))
-        if presence is None and status == cp_model.INFEASIBLE:
-            self.model.add(variable != target)
+        if request.presence is None and status == cp_model.INFEASIBLE:
+            self.model.add(request.variable != request.target)
         return status, solver
+
+    def _lock_requests(
+        self,
+        requests: list[LockRequest],
+    ) -> tuple[int, cp_model.CpSolver] | None:
+        """Fix every request the sequential policy would fix, in the same order.
+
+        A single solve settles the whole batch when the targets are jointly feasible: the
+        sequential loop would then accept each of them in turn, having strictly fewer active
+        constraints at every step. An unsatisfiable batch yields a conflict core; a core holding
+        exactly one request proves that request infeasible on its own, so the sequential loop
+        rejects it too regardless of what it had already fixed. Any larger core leaves the order
+        undecided and falls back to the sequential loop over the requests still pending.
+
+        Returns ``None`` once every request is decided, or the ``(status, solver)`` pair whose
+        inconclusive status must abort the solve.
+        """
+        pending = [(self._declare_lock(request), request) for request in requests]
+        while pending:
+            for lock, _ in pending:
+                self.model.add_assumption(lock)
+            solver = self._new_feasibility_solver()
+            status = solver.solve(self.model)
+            self.model.clear_assumptions()
+            if status == cp_model.OPTIMAL:
+                for lock, _ in pending:
+                    self.model.add(lock == 1)
+                return None
+            if status != cp_model.INFEASIBLE:
+                return status, solver
+            core = set(solver.sufficient_assumptions_for_infeasibility())
+            conflicting = [item for item in pending if item[0].index in core]
+            if len(conflicting) != 1:
+                return self._lock_sequentially(pending)
+            self._decide_lock(*conflicting[0])
+            pending.remove(conflicting[0])
+        return None
+
+    def _lock_sequentially(
+        self,
+        pending: list[tuple[cp_model.IntVar, LockRequest]],
+    ) -> tuple[int, cp_model.CpSolver] | None:
+        for lock, request in pending:
+            status, solver = self._decide_lock(lock, request)
+            if status not in {cp_model.OPTIMAL, cp_model.INFEASIBLE}:
+                return status, solver
+        return None
 
     @staticmethod
     def _not_optimal_outcome(
@@ -401,6 +458,19 @@ class ScheduleSolver:
         solver.parameters.random_seed = 0
         solver.parameters.max_deterministic_time = MAX_DETERMINISTIC_TIME
         solver.parameters.log_search_progress = False
+        return solver
+
+    def _new_feasibility_solver(self) -> cp_model.CpSolver:
+        """Solver for value-fixing probes, whose only observable result is the status.
+
+        Those probes discard their assignment, so these parameters cannot reach the canonical
+        plan. The linear relaxation and probing only pay off when search has to backtrack, which
+        never happens here: dropping them keeps long horizons conclusive within the frozen
+        deterministic-time budget instead of exhausting it and reporting `UNKNOWN`.
+        """
+        solver = self._new_solver()
+        solver.parameters.linearization_level = 0
+        solver.parameters.cp_model_probing_level = 0
         return solver
 
     def _create_activity_variables(self) -> None:
