@@ -254,6 +254,12 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     def import_authoring_bundle(home_id: str, request: dict[str, Any]) -> dict[str, Any]:
         return application.import_authoring_bundle(home_id, request)
 
+    @app.post("/api/homes/{home_id}/horizon-outline", dependencies=[secured])
+    def import_horizon_outline(
+        home_id: str, request: dict[str, Any], seed: int = 0
+    ) -> dict[str, Any]:
+        return application.import_horizon_outline(home_id, request, seed=seed)
+
     @app.put("/api/homes/{home_id}/home-model", dependencies=[secured])
     def publish_home(home_id: str, request: ModelPublish) -> dict[str, Any]:
         return application.publish_home(home_id, request.model)

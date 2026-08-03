@@ -15,6 +15,29 @@ from smart_home_sim.domain.plan import ObjectiveValues
 MICROSECONDS_PER_MINUTE = 60_000_000
 MAX_SOLVER_VALUE = 2**60
 MAX_DETERMINISTIC_TIME = 2.0
+# Budget for the value-fixing probes alone. Their only observable result is the status, so this
+# cannot reach the canonical plan; what it buys is a conclusive answer. A contended horizon —
+# wide windows, real collisions to resolve — exhausts the frozen budget on some probes and
+# reports `UNKNOWN`, which aborts an otherwise sound compilation with `SOLVER_NOT_OPTIMAL`.
+FEASIBILITY_DETERMINISTIC_TIME = 30.0
+# A ceiling on the whole canonicalisation, not on one probe. `MAX_DETERMINISTIC_TIME` bounds a
+# single solve and never fired on the horizon that started this: each probe was individually
+# quick, and it was their number — 7 740 of them — that turned compilation into a thirteen-hour
+# silence with no error and no progress. A budget on the total is the only thing that can see
+# that. Generous enough that no honest horizon meets it, small enough that a runaway is reported
+# in minutes rather than discovered by giving up.
+MAX_FEASIBILITY_PROBES = 20_000
+
+
+class CompilationBudgetError(RuntimeError):
+    """The canonicalisation needed more feasibility probes than the budget allows."""
+
+    def __init__(self, probes: int, budget: int) -> None:
+        self.probes = probes
+        self.budget = budget
+        super().__init__(
+            f"exhausted the compilation budget of {budget} after {probes} feasibility probes"
+        )
 
 
 class TimePrecisionError(ValueError):
@@ -186,6 +209,7 @@ class ScheduleSolver:
         self.temporal_deviations: list[cp_model.IntVar] = []
         self.effective_starts: list[cp_model.IntVar] = []
         self.resident_ids = {item.resident_id for item in scenario.residents}
+        self.probe_count = 0
         self.commitments = {item.commitment_id: item for item in scenario.commitments}
 
     def solve(self) -> SolveOutcome:
@@ -383,6 +407,9 @@ class ScheduleSolver:
         lock: cp_model.IntVar,
         request: LockRequest,
     ) -> tuple[int, cp_model.CpSolver]:
+        self.probe_count += 1
+        if self.probe_count > MAX_FEASIBILITY_PROBES:
+            raise CompilationBudgetError(self.probe_count, MAX_FEASIBILITY_PROBES)
         self.model.add_assumption(lock)
         solver = self._new_feasibility_solver()
         status = solver.solve(self.model)
@@ -403,18 +430,14 @@ class ScheduleSolver:
         constraints at every step. An unsatisfiable batch yields a conflict core; a core holding
         exactly one request proves that request infeasible on its own, so the sequential loop
         rejects it too regardless of what it had already fixed. Any larger core leaves the order
-        undecided and falls back to the sequential loop over the requests still pending.
+        undecided, and the first rejection is then located by bisection over the greedy prefix.
 
         Returns ``None`` once every request is decided, or the ``(status, solver)`` pair whose
         inconclusive status must abort the solve.
         """
         pending = [(self._declare_lock(request), request) for request in requests]
         while pending:
-            for lock, _ in pending:
-                self.model.add_assumption(lock)
-            solver = self._new_feasibility_solver()
-            status = solver.solve(self.model)
-            self.model.clear_assumptions()
+            status, solver = self._probe([lock for lock, _ in pending])
             if status == cp_model.OPTIMAL:
                 for lock, _ in pending:
                     self.model.add(lock == 1)
@@ -423,20 +446,79 @@ class ScheduleSolver:
                 return status, solver
             core = set(solver.sufficient_assumptions_for_infeasibility())
             conflicting = [item for item in pending if item[0].index in core]
-            if len(conflicting) != 1:
-                return self._lock_sequentially(pending)
-            self._decide_lock(*conflicting[0])
-            pending.remove(conflicting[0])
+            if len(conflicting) == 1:
+                self._decide_lock(*conflicting[0])
+                pending.remove(conflicting[0])
+                continue
+            # The core bounds where the first rejection can be: the prefix ending at its last
+            # member is already unsatisfiable, so nothing past it needs searching. Collisions are
+            # local — two activities of one evening — so this usually shrinks a search over
+            # thousands of requests to one over a handful.
+            positions = {item[0].index: position for position, item in enumerate(pending)}
+            horizon = max(positions[item[0].index] for item in conflicting) + 1
+            aborted = self._lock_by_bisection(pending, horizon)
+            if aborted is not None:
+                return aborted
+            return None
         return None
 
-    def _lock_sequentially(
+    def _probe(self, locks: list[cp_model.IntVar]) -> tuple[int, cp_model.CpSolver]:
+        self.probe_count += 1
+        if self.probe_count > MAX_FEASIBILITY_PROBES:
+            raise CompilationBudgetError(self.probe_count, MAX_FEASIBILITY_PROBES)
+        for lock in locks:
+            self.model.add_assumption(lock)
+        solver = self._new_feasibility_solver()
+        status = solver.solve(self.model)
+        self.model.clear_assumptions()
+        return status, solver
+
+    def _lock_by_bisection(
         self,
         pending: list[tuple[cp_model.IntVar, LockRequest]],
+        horizon: int | None = None,
     ) -> tuple[int, cp_model.CpSolver] | None:
-        for lock, request in pending:
-            status, solver = self._decide_lock(lock, request)
-            if status not in {cp_model.OPTIMAL, cp_model.INFEASIBLE}:
+        """Decide the remaining requests in greedy order, finding each rejection by bisection.
+
+        The sequential loop is exact but pays one full solve per request. It is also unnecessary:
+        the requests the loop accepts are exactly the longest prefix that is jointly feasible, so
+        the only thing worth locating is where that prefix ends. Bisecting for it costs a
+        logarithmic number of solves per rejection instead of a linear one, and accepts the whole
+        prefix in a single step.
+
+        Exactness follows from the same induction as the batch path. If `p_i..p_k` are jointly
+        feasible with what is already fixed, the loop would have accepted every one of them, each
+        step facing strictly fewer constraints than the conjunction. And `p_{k+1}` is rejected
+        because the loop reaches it holding precisely that prefix.
+        """
+        index = 0
+        while index < len(pending):
+            remaining = pending[index:]
+            status, solver = self._probe([lock for lock, _ in remaining])
+            if status == cp_model.OPTIMAL:
+                for lock, _ in remaining:
+                    self.model.add(lock == 1)
+                return None
+            if status != cp_model.INFEASIBLE:
                 return status, solver
+            # Smallest `length` whose prefix is already unsatisfiable; the request it ends on is
+            # the one the loop rejects. A caller-supplied conflict core bounds the first search.
+            bound = len(remaining) if horizon is None else min(horizon - index, len(remaining))
+            horizon = None
+            low, high = 1, max(1, bound)
+            while low < high:
+                middle = (low + high) // 2
+                status, solver = self._probe([lock for lock, _ in remaining[:middle]])
+                if status == cp_model.INFEASIBLE:
+                    high = middle
+                elif status == cp_model.OPTIMAL:
+                    low = middle + 1
+                else:
+                    return status, solver
+            for lock, _ in remaining[: low - 1]:
+                self.model.add(lock == 1)
+            self._decide_lock(*remaining[low - 1])
+            index += low
         return None
 
     @staticmethod
@@ -471,6 +553,7 @@ class ScheduleSolver:
         solver = self._new_solver()
         solver.parameters.linearization_level = 0
         solver.parameters.cp_model_probing_level = 0
+        solver.parameters.max_deterministic_time = FEASIBILITY_DETERMINISTIC_TIME
         return solver
 
     def _create_activity_variables(self) -> None:

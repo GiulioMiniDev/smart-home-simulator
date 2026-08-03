@@ -188,6 +188,7 @@ class ExportRequest(ContractModel):
             "runtime_events",
             "plan_deviations",
             "final_state",
+            "habit_ground_truth",
         ]
     ] = Field(min_length=1)
     include_start: AwareDatetime | None = None

@@ -292,3 +292,25 @@ def test_reconcile_auto_registers_orphan_export_zips(
         ).fetchone()
     assert row is not None
     assert row["role"] == "export_archive"
+
+
+def test_the_export_offers_every_role_the_backend_defines() -> None:
+    """A role the UI never asks for is a dataset column nobody receives.
+
+    `habit_ground_truth` was added for outline-first horizons, and the value of adding it is
+    entirely in it reaching the researcher who downloads the export — so the button must request
+    it. Comparing the two lists is what stops one from quietly falling behind the other.
+    """
+    import re
+
+    from smart_home_sim.application.export import ROLE_SOURCES
+
+    source = (PROJECT_ROOT / "frontend/src/App.tsx").read_text(encoding="utf-8")
+    match = re.search(r"roles: \[([^\]]+)\]", source)
+    assert match is not None, "the export button no longer names its roles"
+    requested = set(re.findall(r'"([a-z_]+)"', match.group(1)))
+
+    assert requested == set(ROLE_SOURCES), {
+        "missing from the UI": sorted(set(ROLE_SOURCES) - requested),
+        "unknown to the backend": sorted(requested - set(ROLE_SOURCES)),
+    }

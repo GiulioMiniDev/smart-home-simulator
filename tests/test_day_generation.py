@@ -9,17 +9,17 @@ from typer.testing import CliRunner
 from smart_home_sim import cli
 from smart_home_sim.compiler import compile_scenario
 from smart_home_sim.domain.models import AuthorType, Provenance
-from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay, HabitOccurrence
+from smart_home_sim.hybrid_planning.cadence import ActivityOccurrence, CadenceCalendar, CalendarDay
 from smart_home_sim.hybrid_planning.day_generation import (
     DEFAULT_INTENT,
     build_day_plan,
     build_day_scenario,
     build_day_scenarios,
-    habit_to_intent,
+    label_to_intent,
 )
-from smart_home_sim.hybrid_planning.habits import HabitKind, Weekday
 from smart_home_sim.hybrid_planning.intents import intent_ids, intent_spec
 from smart_home_sim.hybrid_planning.persona import Persona
+from smart_home_sim.hybrid_planning.recurring_activities import RecurringActivityKind, Weekday
 from smart_home_sim.hybrid_planning.world import build_planning_world
 
 runner = CliRunner()
@@ -44,9 +44,11 @@ def _world():
     return build_planning_world(persona, now=_NOW)
 
 
-def _occ(label: str, target: str, kind: HabitKind = HabitKind.anchor) -> HabitOccurrence:
-    return HabitOccurrence(
-        habit_id=label.replace(" ", "_"),
+def _occ(
+    label: str, target: str, kind: RecurringActivityKind = RecurringActivityKind.anchor
+) -> ActivityOccurrence:
+    return ActivityOccurrence(
+        recurring_activity_id=label.replace(" ", "_"),
         label=label,
         kind=kind,
         target_time=target,
@@ -55,7 +57,7 @@ def _occ(label: str, target: str, kind: HabitKind = HabitKind.anchor) -> HabitOc
     )
 
 
-def _day(date_str: str, weekday: Weekday, occurrences: list[HabitOccurrence]) -> CalendarDay:
+def _day(date_str: str, weekday: Weekday, occurrences: list[ActivityOccurrence]) -> CalendarDay:
     return CalendarDay(date=date_str, weekday=weekday, occurrences=occurrences)
 
 
@@ -75,28 +77,28 @@ def _calendar(days: list[CalendarDay]) -> CadenceCalendar:
 
 
 def test_habit_to_intent_keyword_matches() -> None:
-    assert habit_to_intent("morning coffee") == "eat_breakfast"
-    assert habit_to_intent("blood-pressure pill") == "take_morning_medication"
-    assert habit_to_intent("evening walk") == "evening_walk"
-    assert habit_to_intent("weekly groceries") == "buy_groceries"
-    assert habit_to_intent("watch the news") == "watch_television"
-    assert habit_to_intent("something idiosyncratic") == DEFAULT_INTENT
+    assert label_to_intent("morning coffee") == "eat_breakfast"
+    assert label_to_intent("blood-pressure pill") == "take_morning_medication"
+    assert label_to_intent("evening walk") == "evening_walk"
+    assert label_to_intent("weekly groceries") == "buy_groceries"
+    assert label_to_intent("watch the news") == "watch_television"
+    assert label_to_intent("something idiosyncratic") == DEFAULT_INTENT
 
 
 def test_specific_habit_labels_are_not_swallowed_by_generic_keywords() -> None:
     """With first-match-wins the generic word won and the habit was recorded as another activity:
     "wash up the dishes" became morning hygiene and `evening_hygiene` was unreachable outright."""
-    assert habit_to_intent("wash up the dishes") == "clean_kitchen"
-    assert habit_to_intent("do the dishes") == "clean_kitchen"
-    assert habit_to_intent("evening hygiene") == "evening_hygiene"
-    assert habit_to_intent("morning wash") == "morning_toilet_and_wash"
-    assert habit_to_intent("hang the laundry") == "hang_laundry"
-    assert habit_to_intent("start the laundry") == "start_laundry"
+    assert label_to_intent("wash up the dishes") == "clean_kitchen"
+    assert label_to_intent("do the dishes") == "clean_kitchen"
+    assert label_to_intent("evening hygiene") == "evening_hygiene"
+    assert label_to_intent("morning wash") == "morning_toilet_and_wash"
+    assert label_to_intent("hang the laundry") == "hang_laundry"
+    assert label_to_intent("start the laundry") == "start_laundry"
     # Every intent the table names must stay reachable through at least one of its own keywords.
     from smart_home_sim.hybrid_planning.day_generation import _INTENT_KEYWORDS
 
     for intent_id, keywords in _INTENT_KEYWORDS:
-        assert any(habit_to_intent(keyword) == intent_id for keyword in keywords), (
+        assert any(label_to_intent(keyword) == intent_id for keyword in keywords), (
             f"{intent_id} is shadowed by another entry and can never be selected"
         )
 
@@ -116,11 +118,13 @@ def test_build_day_plan_scaffolds_wake_and_sleep() -> None:
     sleep = plan.activities[-1]
     assert sleep.allow_boundary_truncation and not sleep.mandatory
     assert plan.activities[1].location_ids == [intent_spec("eat_breakfast").default_location]
-    assert plan.activities[1].labels == ["habit:morning_coffee"]
+    assert plan.activities[1].labels == ["activity:morning_coffee"]
 
 
 def test_build_day_scenario_uses_vocabulary_intents() -> None:
-    day = _day("2026-08-03", Weekday.monday, [_occ("groceries", "10:30", HabitKind.contextual)])
+    day = _day(
+        "2026-08-03", Weekday.monday, [_occ("groceries", "10:30", RecurringActivityKind.contextual)]
+    )
     scenario = build_day_scenario(_world(), day)
     assert scenario.scenario_id == "luigi_bianchi_scenario"
     assert len(scenario.days) == 1
@@ -292,7 +296,7 @@ def test_an_unmet_need_for_company_produces_a_labelled_unplanned_call() -> None:
             calls += 1
             assert activity.intent == "phone_call"
             # The key invariant: it happened, but nobody planned it, so it is not a habit.
-            assert not any(label.startswith("habit:") for label in activity.labels)
+            assert not any(label.startswith("activity:") for label in activity.labels)
     assert calls > 10
 
 

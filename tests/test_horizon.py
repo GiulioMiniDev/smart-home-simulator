@@ -8,11 +8,11 @@ from typer.testing import CliRunner
 
 from smart_home_sim import cli
 from smart_home_sim.domain.models import AuthorType, Provenance
-from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay, HabitOccurrence
-from smart_home_sim.hybrid_planning.habits import HabitKind, Weekday
+from smart_home_sim.hybrid_planning.cadence import ActivityOccurrence, CadenceCalendar, CalendarDay
 from smart_home_sim.hybrid_planning.horizon import HorizonError, build_horizon
 from smart_home_sim.hybrid_planning.package_authoring import build_reference_package
 from smart_home_sim.hybrid_planning.persona import Persona
+from smart_home_sim.hybrid_planning.recurring_activities import RecurringActivityKind, Weekday
 from smart_home_sim.hybrid_planning.world import PlanningWorld, build_planning_world
 
 runner = CliRunner()
@@ -40,11 +40,11 @@ def _world() -> PlanningWorld:
     return build_planning_world(_persona(), now=_NOW)
 
 
-def _occ(label: str, target: str) -> HabitOccurrence:
-    return HabitOccurrence(
-        habit_id=label.replace(" ", "_"),
+def _occ(label: str, target: str) -> ActivityOccurrence:
+    return ActivityOccurrence(
+        recurring_activity_id=label.replace(" ", "_"),
         label=label,
-        kind=HabitKind.anchor,
+        kind=RecurringActivityKind.anchor,
         target_time=target,
         window_start="06:00",
         window_end="22:00",
@@ -89,8 +89,8 @@ def test_build_horizon_writes_manifest_and_bundles(tmp_path) -> None:
     assert (tmp_path / "home.json").exists()
     assert (tmp_path / "package.json").exists()
     assert result.trace_path is not None and result.trace_path.exists()
-    trace = json.loads((tmp_path / "planned-habit-trace.json").read_text(encoding="utf-8"))
-    assert trace["documentType"] == "planned_habit_trace"
+    trace = json.loads((tmp_path / "planned-activity-trace.json").read_text(encoding="utf-8"))
+    assert trace["documentType"] == "planned_activity_trace"
     assert len(trace["entries"]) == 3
     manifest = json.loads((tmp_path / "batch-manifest.json").read_text(encoding="utf-8"))
     assert [run["runId"] for run in manifest["runs"]] == ["day-2026-08-03", "day-2026-08-04"]

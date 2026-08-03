@@ -569,6 +569,12 @@ eventi runtime, quindi il `seed` non ha su cosa agire.
 Il difetto di scalabilità resta reale e la soluzione 2 resta necessaria: diventerà anzi più
 rilevante quando i giorni saranno effettivamente diversi fra loro, perché la contesa aumenterà.
 
+**Esito.** Questo rilievo è stato ripreso e deciso in
+[ADR-018](../decisions/ADR-018-outline-first-external-authoring.md), che sposta i giorni concreti
+fuori dall'output del modello: l'LLM esterno autora un canovaccio dell'orizzonte, un espansore
+deterministico lo srotola in giorni. Le misure di questa sezione, più la curva di degrado
+1,00 / 0,74 / 0,03 e l'analisi delle dimensioni, ne costituiscono il contesto.
+
 ---
 
 ## 11. Implementazione applicata

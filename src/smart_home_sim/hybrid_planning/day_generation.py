@@ -1,7 +1,8 @@
 """Stage C (deterministic substrate): turn a cadence calendar into simulatable scenario days.
 
 Every activity in a day must use one of the shared canonical intents (the only ones the process
-package can execute), so each due habit is mapped to an intent and each day gets a minimal scaffold
+package can execute), so each due activity is mapped to an intent and each day gets a minimal
+scaffold
 (wake at the start, sleep at the end). The result is a scenario chunk (world + days) that compiles
 and simulates. The LLM day layer will later enrich and vary these days; this substrate guarantees a
 valid, simulatable day always exists and is the fallback.
@@ -35,10 +36,10 @@ SLEEP_TIME = "22:30"
 _WINDOW_FLEX = timedelta(minutes=15)
 DEFAULT_INTENT = "read_and_rest"
 
-# Substring keywords mapping a free-text habit label to a canonical intent. The *longest* matching
-# keyword wins, not the first one listed: with first-match-wins the generic "wash" swallowed "wash
-# up the dishes", and "hygiene" made `evening_hygiene` unreachable outright, so habits were silently
-# recorded in the ground truth as the wrong activity.
+# Substring keywords mapping a free-text activity label to a canonical intent. The *longest*
+# matching keyword wins, not the first one listed: with first-match-wins the generic "wash"
+# swallowed "wash up the dishes", and "hygiene" made `evening_hygiene` unreachable, so activities
+# were silently recorded in the ground truth as the wrong one.
 _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("take_morning_medication", ("medication", "medicine", "pill", "tablet", "insulin")),
     ("morning_toilet_and_shower", ("shower",)),
@@ -109,8 +110,17 @@ _NIGHT_VISIT_LABEL = "night_visit"
 _NIGHT_VISIT_SHAPE = (3, 6, 12, 0.35)
 _NAP_INTENT = "rest_or_nap"
 # An unscheduled reach-out when the need for company ran high. Its own label keeps it out of the
-# habit ground truth: it happened, but nobody planned it.
+# activity ground truth: it happened, but nobody planned it.
 _UNPLANNED_SOCIAL_INTENT = "phone_call"
+
+# Everything the drive layer can put in a day without any outline declaring it: the wake and the
+# night it always emits, plus the three it produces from state — a debt nap, a nocturnal bathroom
+# trip, an unplanned reach-out when the need for company runs high. A process package has to
+# implement all of them or the days will reference behaviour nobody wrote, which is why the
+# authoring prompt renders this set rather than restating it.
+RHYTHM_EMITTED_INTENTS: frozenset[str] = frozenset(
+    {"wake_up", "sleep", _NAP_INTENT, _NIGHT_VISIT_INTENT, _UNPLANNED_SOCIAL_INTENT}
+)
 _UNPLANNED_SOCIAL_LABEL = "social_need_contact"
 _UNPLANNED_SOCIAL_SHAPE = (8, 18, 35, 0.30)
 # Evening band a spontaneous call may occupy, in minutes after midnight (17:00-21:30).
@@ -122,8 +132,8 @@ _NAP_SHAPE = (20, 40, 75, 0.30)
 _NAP_WINDOW = (13 * 60, 18 * 60 + 30)
 
 
-def habit_to_intent(label: str, kind: str | None = None) -> str:
-    """Map a free-text habit label to a canonical intent (deterministic, longest keyword match).
+def label_to_intent(label: str, kind: str | None = None) -> str:
+    """Map a free-text activity label to a canonical intent (deterministic, longest keyword match).
 
     Ranking by keyword length makes the table order-independent: a specific phrase always beats a
     generic word contained in it, so adding a keyword can no longer shadow an existing intent.
@@ -141,7 +151,7 @@ def habit_to_intent(label: str, kind: str | None = None) -> str:
 class TimelineEntry:
     intent_id: str
     hhmm: str
-    habit_id: str | None = None
+    recurring_activity_id: str | None = None
     truncatable: bool = False
     label: str | None = None
     # An exact (minimum, preferred, maximum) band, used where the value is already decided (the
@@ -174,7 +184,7 @@ def plan_from_entries(
             tz,
             actor_id,
             index=index,
-            habit_id=entry.habit_id,
+            recurring_activity_id=entry.recurring_activity_id,
             truncatable=entry.truncatable,
             label=entry.label,
             duration=entry.duration,
@@ -194,7 +204,8 @@ def build_day_plan(
     rhythm: DayRhythm | None = None,
     seed: int | None = None,
 ) -> DayPlan:
-    """Deterministic DayPlan: wake, the due habits mapped to intents, then a terminal sleep.
+    """Deterministic DayPlan: wake, the due recurring activities mapped to intents, then a terminal
+    sleep.
 
     Without ``rhythm`` this is the frozen substrate: a fixed 06:00 wake and 22:30 lights-out on
     every single day of the horizon. With a rhythm, the day is shaped by the drive state it
@@ -223,9 +234,9 @@ def build_day_plan(
     for occurrence in day.occurrences:
         entries.append(
             TimelineEntry(
-                habit_to_intent(occurrence.label, occurrence.kind.value),
+                occurrence.intent or label_to_intent(occurrence.label, occurrence.kind.value),
                 _shift(occurrence.target_time, rhythm, wake_time),
-                habit_id=occurrence.habit_id,
+                recurring_activity_id=occurrence.recurring_activity_id,
             )
         )
     entries.sort(key=lambda item: item.hhmm)
@@ -272,7 +283,7 @@ def _free_slot(
 ) -> str | None:
     """Drop a drive-generated activity into the widest free gap of ``window``, or not at all.
 
-    An activity pinned to a fixed clock time collides with whatever habit already sits there and
+    An activity pinned to a fixed clock time collides with whatever activity already sits there and
     makes the day unsolvable, so it has to be placed against the schedule that actually exists.
     """
     occupied: list[tuple[int, int]] = []
@@ -309,7 +320,7 @@ def _sleep_duration(sleep_minutes: int) -> tuple[int, int, int]:
 
 
 def _shift(hhmm: str, rhythm: DayRhythm | None, wake_time: str) -> str:
-    """Slide a habit's target time by the day's meal shift, never before the resident is up."""
+    """Slide a activity's target time by the day's meal shift, never before the resident is up."""
     if rhythm is None or rhythm.meal_shift_minutes == 0:
         return hhmm
     shifted = _to_minutes(hhmm) + rhythm.meal_shift_minutes
@@ -375,7 +386,7 @@ def _activity(
     actor_id: str,
     *,
     index: int,
-    habit_id: str | None = None,
+    recurring_activity_id: str | None = None,
     truncatable: bool = False,
     label: str | None = None,
     duration: tuple[int, int, int] | None = None,
@@ -398,7 +409,7 @@ def _activity(
         low, pref, high = _SLEEP_DURATION
     else:
         low, pref, high = _CATEGORY_DURATION_MINUTES[spec.category]
-    labels = [f"habit:{habit_id}"] if habit_id else []
+    labels = [f"activity:{recurring_activity_id}"] if recurring_activity_id else []
     if label:
         labels.append(label)
     return Activity(

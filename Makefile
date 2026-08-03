@@ -1,4 +1,4 @@
-.PHONY: app sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts behavior-1.2-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
+.PHONY: outline-example app sync validate validate-runtime-1.1 validate-behavior validate-behavior-1.1 validate-home compile compile-runtime-1.1 bundle bundle-1.1 simulate replay project-sensors run-synthetic compare-sensor-density benchmark-environment benchmark-simulation benchmark-batch-simulation benchmark-sensors benchmark-materialization benchmark-application frontend-install frontend-build frontend-lint frontend-test frontend-e2e schema behavior-artifacts runtime-1.1-artifacts behavior-1.1-artifacts behavior-1.2-artifacts environment-artifacts environment-visualization simulation-artifacts sensor-artifacts materialization-artifacts authoring-artifacts test lint check
 
 app:
 	./start
@@ -97,6 +97,9 @@ behavior-1.2-artifacts: behavior-1.1-artifacts
 authoring-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_authoring_artifacts.py
 
+outline-example:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_outline_example.py
+
 environment-artifacts:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_environment_artifacts.py
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run python tools/build_environment_visualization.py
@@ -127,6 +130,9 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-authoring-bundle --output schemas/simulation-authoring-bundle-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-ingestion-report --output schemas/authoring-ingestion-report-1.1.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-repair-request --output schemas/authoring-repair-request-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-outline --output schemas/horizon-outline-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-authoring-bundle --output schemas/horizon-authoring-bundle-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract habit-ground-truth --output schemas/habit-ground-truth-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract home-model --output schemas/home-model-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract environment-validation-report --output schemas/environment-validation-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-bundle --output schemas/simulation-bundle-1.0.0.schema.json

@@ -20,14 +20,14 @@ from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatch
 from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.models import DayPlan, Scenario, SimulationWindow
 from smart_home_sim.environment import build_bundle_files
+from smart_home_sim.hybrid_planning.activity_trace import build_planned_trace
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay
 from smart_home_sim.hybrid_planning.day_generation import (
     build_day_scenario,
     build_scenario_from_day_plan,
-    habit_to_intent,
+    label_to_intent,
 )
 from smart_home_sim.hybrid_planning.drives import DayRhythm, RhythmProfile, plan_rhythms
-from smart_home_sim.hybrid_planning.habit_trace import build_planned_trace
 from smart_home_sim.hybrid_planning.intents import IntentCategory, intent_spec
 from smart_home_sim.hybrid_planning.package_authoring import build_probe_scenario
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
@@ -63,7 +63,7 @@ def _scheduled_drive_load(
         meal_count = 0
         social_count = 0
         for occurrence in day.occurrences:
-            intent = habit_to_intent(occurrence.label, occurrence.kind.value)
+            intent = label_to_intent(occurrence.label, occurrence.kind.value)
             category = intent_spec(intent).category
             if category is IntentCategory.meal:
                 meal_count += 1
@@ -166,7 +166,7 @@ def build_horizon(
     manifest_path = output_dir / "batch-manifest.json"
     _write(manifest_path, manifest)
 
-    trace_path = output_dir / "planned-habit-trace.json"
+    trace_path = output_dir / "planned-activity-trace.json"
     _write(trace_path, build_planned_trace(calendar, start_index=start_index, days=days))
 
     scenario_path = output_dir / "horizon-scenario.json"

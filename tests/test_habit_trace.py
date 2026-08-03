@@ -5,18 +5,18 @@ from datetime import UTC, datetime
 import pytest
 
 from smart_home_sim.domain.models import AuthorType, Provenance
-from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay, HabitOccurrence
-from smart_home_sim.hybrid_planning.habit_trace import build_planned_trace
-from smart_home_sim.hybrid_planning.habits import HabitKind, Weekday
+from smart_home_sim.hybrid_planning.activity_trace import build_planned_trace
+from smart_home_sim.hybrid_planning.cadence import ActivityOccurrence, CadenceCalendar, CalendarDay
+from smart_home_sim.hybrid_planning.recurring_activities import RecurringActivityKind, Weekday
 
 _NOW = datetime(2026, 7, 24, 9, 0, tzinfo=UTC)
 
 
-def _occ(label: str, target: str) -> HabitOccurrence:
-    return HabitOccurrence(
-        habit_id=label.replace(" ", "_"),
+def _occ(label: str, target: str) -> ActivityOccurrence:
+    return ActivityOccurrence(
+        recurring_activity_id=label.replace(" ", "_"),
         label=label,
-        kind=HabitKind.anchor,
+        kind=RecurringActivityKind.anchor,
         target_time=target,
         window_start="06:00",
         window_end="22:00",

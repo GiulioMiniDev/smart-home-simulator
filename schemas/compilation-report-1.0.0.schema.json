@@ -6,6 +6,7 @@
         "code": {
           "enum": [
             "CANONICAL_PLAN_INVALID",
+            "COMPILATION_BUDGET_EXCEEDED",
             "CONTINGENCY_PLAN_INFEASIBLE",
             "CONTINGENCY_TARGET_NOT_SCHEDULED",
             "CROSS_BRANCH_DEPENDENCY",

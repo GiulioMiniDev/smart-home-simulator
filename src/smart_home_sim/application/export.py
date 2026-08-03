@@ -36,6 +36,10 @@ ROLE_SOURCES: dict[str, tuple[str, str]] = {
     "runtime_events": ("execution_trace", "runtimeEvents.item"),
     "plan_deviations": ("execution_trace", "planDeviations.item"),
     "final_state": ("execution_trace", "finalState"),
+    # Outline-first horizons carry their habit bands in the scenario, because the application
+    # never sees the outline they came from. One row per band, with the activity mix measured
+    # across the horizon: the answer sheet for a segmentation algorithm.
+    "habit_ground_truth": ("scenario", "extensions.habitGroundTruth.habits.item"),
 }
 
 TIME_FIELDS = (

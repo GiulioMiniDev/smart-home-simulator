@@ -136,3 +136,103 @@ def test_sensor_publication_rejects_structure_and_requires_home(tmp_path: Path) 
     )
     with pytest.raises(WorkspaceError, match="publish a valid home"):
         service.publish_sensor(home.home_id, sensor)
+
+
+def test_the_ui_asks_the_backend_for_artifacts_that_exist() -> None:
+    """The front end names generation artifacts as literal paths, so a rename can strand it.
+
+    That is not hypothetical: renaming `planned-habit-trace.json` to `planned-activity-trace.json`
+    left the Generate review page requesting a file the backend no longer serves, and the front-end
+    tests did not notice because they mock the API and return whatever shape they were told to.
+    Mocks cannot check a contract with the other side; this can.
+    """
+    import re
+
+    from smart_home_sim.application.generation_paths import GENERATION_ARTIFACTS
+
+    source = (PROJECT_ROOT / "frontend/src/App.tsx").read_text(encoding="utf-8")
+    # The page builds one `${base}` ending in /artifact and appends each filename to it.
+    assert "/artifact`" in source, "the review page no longer builds an artifact base path"
+    requested = set(re.findall(r"\$\{base\}/([A-Za-z0-9._-]+\.json)", source))
+
+    assert requested, "expected the review page to fetch at least one generation artifact"
+    assert requested <= set(GENERATION_ARTIFACTS), sorted(requested - set(GENERATION_ARTIFACTS))
+
+
+def test_the_ui_reads_the_field_the_behavioural_profile_publishes() -> None:
+    """Same drift, one level down: the file existed but its list had been renamed underneath."""
+    from smart_home_sim.hybrid_planning.recurring_activities import BehavioralProfile
+
+    source = (PROJECT_ROOT / "frontend/src/App.tsx").read_text(encoding="utf-8")
+    alias = BehavioralProfile.model_fields["recurring_activities"].alias or "recurring_activities"
+
+    assert "behavioral-profile.json" in source
+    assert f"{alias}: unknown[]" in source
+    assert f"profile.{alias}.length" in source
+
+
+def _outline_bundle() -> dict[str, object]:
+    """The reference outline, paired with a package that covers everything the days will contain.
+
+    The published example carries no process package of its own — it illustrates the outline — so
+    the minimal bundle's package is padded to bind every catalog intent plus the ones the rhythm
+    adds by itself. Without that padding the expander refuses the pair, which is the behaviour a
+    sibling test asserts.
+    """
+    from smart_home_sim.hybrid_planning.day_generation import RHYTHM_EMITTED_INTENTS
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+
+    package = _authoring()["personalProcessPackage"]
+    assert isinstance(package, dict)
+    template = package["bindings"][0]
+    bound = {binding["intent"] for binding in package["bindings"]}
+    needed = {spec.intent_id for spec in INTENT_CATALOG} | RHYTHM_EMITTED_INTENTS | {"work_shift"}
+    for intent in sorted(needed - bound):
+        package["bindings"].append(
+            {**template, "bindingId": f"{template['residentId']}__{intent}", "intent": intent}
+        )
+    outline = json.loads(
+        (PROJECT_ROOT / "examples/authoring/meredith.horizon-outline.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    return {
+        "schemaVersion": "1.0.0",
+        "documentType": "horizon_authoring_bundle",
+        "outline": outline,
+        "personalProcessPackage": package,
+    }
+
+
+def test_a_horizon_outline_is_expanded_and_then_imported_like_any_bundle(tmp_path: Path) -> None:
+    """The application can take a long horizon without the researcher leaving it for a terminal.
+
+    What arrives is a structure, not days; the expander produces them and the result rejoins the
+    ordinary import immediately, which is why the response carries the same report as an authored
+    bundle plus a summary of what expanding it produced.
+    """
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Outline")
+    home = workspace.create_home("Outline home")
+    service = ApplicationService(workspace)
+
+    result = service.import_horizon_outline(home.home_id, _outline_bundle(), seed=1)
+
+    expansion = result["expansion"]
+    assert expansion["seed"] == 1
+    assert expansion["dayCount"] > 200, "eight months of days should have been produced"
+    assert expansion["habitBandCount"] >= 3
+    assert "report" in result or result.get("valid") is True
+
+
+def test_a_document_that_is_not_an_outline_is_refused_before_anything_is_written(
+    tmp_path: Path,
+) -> None:
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Outline")
+    home = workspace.create_home("Outline home")
+    service = ApplicationService(workspace)
+
+    result = service.import_horizon_outline(home.home_id, _authoring(), seed=1)
+
+    assert result["valid"] is False
+    assert result["stage"] == "outline"
+    assert workspace.list_residents(home.home_id) == []

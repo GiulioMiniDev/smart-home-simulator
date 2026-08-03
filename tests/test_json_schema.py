@@ -45,6 +45,11 @@ from smart_home_sim.domain.sensors import (
     SensorModel,
     SensorProjectionReport,
 )
+from smart_home_sim.hybrid_planning.outline import (
+    HabitGroundTruth,
+    HorizonAuthoringBundle,
+    HorizonOutline,
+)
 from smart_home_sim.validation.codes import STABLE_ISSUE_CODES
 
 PROJECT_ROOT = Path(__file__).parents[1]
@@ -63,6 +68,11 @@ AUTHORING_SCHEMAS = {
     "simulation-authoring-bundle-1.0.0.schema.json": SimulationAuthoringBundle,
     "authoring-ingestion-report-1.1.0.schema.json": AuthoringIngestionReport,
     "authoring-repair-request-1.0.0.schema.json": AuthoringRepairRequest,
+}
+OUTLINE_SCHEMAS = {
+    "horizon-outline-1.0.0.schema.json": HorizonOutline,
+    "horizon-authoring-bundle-1.0.0.schema.json": HorizonAuthoringBundle,
+    "habit-ground-truth-1.0.0.schema.json": HabitGroundTruth,
 }
 HISTORICAL_AUTHORING_REPORT_SCHEMA = (
     PROJECT_ROOT / "schemas/authoring-ingestion-report-1.0.0.schema.json"
@@ -120,6 +130,7 @@ def test_frozen_schema_checksums_match() -> None:
         COMPILATION_SCHEMA_PATH,
         *(PROJECT_ROOT / "schemas" / name for name in BEHAVIOR_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in AUTHORING_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in OUTLINE_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in SENSOR_SCHEMAS),
@@ -299,3 +310,21 @@ def test_sensor_schemas_match_models_and_golden_artifacts() -> None:
         Draft202012Validator.check_schema(schema)
         payload = json.loads((PROJECT_ROOT / "examples/sensors" / artifacts[filename]).read_text())
         assert list(Draft202012Validator(schema).iter_errors(payload)) == []
+
+
+def test_outline_schemas_match_models_and_the_published_example() -> None:
+    """The prompt embeds these, so a model drifting from its schema must break the build."""
+    for name, model in OUTLINE_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / name).read_text(encoding="utf-8"))
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)
+
+    outline_schema = json.loads(
+        (PROJECT_ROOT / "schemas/horizon-outline-1.0.0.schema.json").read_text(encoding="utf-8")
+    )
+    example = json.loads(
+        (PROJECT_ROOT / "examples/authoring/meredith.horizon-outline.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert list(Draft202012Validator(outline_schema).iter_errors(example)) == []

@@ -1,0 +1,1525 @@
+{
+  "$defs": {
+    "ActivityCadence": {
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "$ref": "#/$defs/CadencePeriod"
+        },
+        "timesPerPeriod": {
+          "minimum": 1,
+          "title": "Timesperperiod",
+          "type": "integer"
+        },
+        "everyNPeriods": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Everynperiods",
+          "type": "integer"
+        },
+        "weekdays": {
+          "items": {
+            "$ref": "#/$defs/Weekday"
+          },
+          "title": "Weekdays",
+          "type": "array"
+        },
+        "windowStart": {
+          "title": "Windowstart",
+          "type": "string"
+        },
+        "windowEnd": {
+          "title": "Windowend",
+          "type": "string"
+        },
+        "jitterMinutes": {
+          "default": 30,
+          "minimum": 0,
+          "title": "Jitterminutes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "period",
+        "timesPerPeriod",
+        "windowStart",
+        "windowEnd"
+      ],
+      "title": "ActivityCadence",
+      "type": "object"
+    },
+    "ActivityDisplacement": {
+      "additionalProperties": false,
+      "description": "One habit the event pushes off its day, and what happens to that occurrence.\n\nThe policy is carried per habit rather than per event because a single event routinely wants\nboth. A week of flu postpones the shopping and simply cancels the runs; forcing one answer for\nthe whole event would misdescribe half of it, and expressing the mixture as two overlapping\nevents would be a workaround rather than a model.",
+      "properties": {
+        "recurringActivityId": {
+          "minLength": 1,
+          "title": "Recurringactivityid",
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/Displacement",
+          "default": "skip"
+        }
+      },
+      "required": [
+        "recurringActivityId"
+      ],
+      "title": "ActivityDisplacement",
+      "type": "object"
+    },
+    "ActivityOverride": {
+      "additionalProperties": false,
+      "description": "What a phase does to one habit while it is active.\n\nEither the habit stops occurring, or it occurs on a different cadence. Both at once is\ncontradictory and rejected: a suspended habit has no cadence to replace.",
+      "properties": {
+        "recurringActivityId": {
+          "minLength": 1,
+          "title": "Recurringactivityid",
+          "type": "string"
+        },
+        "suspended": {
+          "default": false,
+          "title": "Suspended",
+          "type": "boolean"
+        },
+        "cadence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActivityCadence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "recurringActivityId"
+      ],
+      "title": "ActivityOverride",
+      "type": "object"
+    },
+    "AuthorType": {
+      "enum": [
+        "human",
+        "external_llm",
+        "rule_generator",
+        "import"
+      ],
+      "title": "AuthorType",
+      "type": "string"
+    },
+    "BehaviorCatalogReferences": {
+      "additionalProperties": false,
+      "properties": {
+        "activityCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        },
+        "variableCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        },
+        "actionCatalog": {
+          "$ref": "#/$defs/CatalogReference"
+        }
+      },
+      "required": [
+        "activityCatalog",
+        "variableCatalog",
+        "actionCatalog"
+      ],
+      "title": "BehaviorCatalogReferences",
+      "type": "object"
+    },
+    "BehavioralProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Schemaversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "behavioral_profile",
+          "default": "behavioral_profile",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "profileId": {
+          "minLength": 1,
+          "title": "Profileid",
+          "type": "string"
+        },
+        "personaId": {
+          "minLength": 1,
+          "title": "Personaid",
+          "type": "string"
+        },
+        "recurringActivities": {
+          "items": {
+            "$ref": "#/$defs/RecurringActivity"
+          },
+          "minItems": 8,
+          "title": "Recurringactivities",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "profileId",
+        "personaId",
+        "recurringActivities",
+        "provenance"
+      ],
+      "title": "BehavioralProfile",
+      "type": "object"
+    },
+    "CadencePeriod": {
+      "enum": [
+        "day",
+        "week",
+        "month"
+      ],
+      "title": "CadencePeriod",
+      "type": "string"
+    },
+    "CatalogReference": {
+      "additionalProperties": false,
+      "properties": {
+        "catalogId": {
+          "minLength": 1,
+          "title": "Catalogid",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "catalogId",
+        "version"
+      ],
+      "title": "CatalogReference",
+      "type": "object"
+    },
+    "ConditionOperator": {
+      "enum": [
+        "truthy",
+        "falsy",
+        "exists",
+        "not_exists",
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "in",
+        "not_in"
+      ],
+      "title": "ConditionOperator",
+      "type": "string"
+    },
+    "Displacement": {
+      "description": "What becomes of a activity occurrence the event pushed off its day.",
+      "enum": [
+        "skip",
+        "reschedule"
+      ],
+      "title": "Displacement",
+      "type": "string"
+    },
+    "DurationRange": {
+      "additionalProperties": false,
+      "properties": {
+        "minimumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Minimumminutes",
+          "type": "number"
+        },
+        "preferredMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Preferredminutes",
+          "type": "number"
+        },
+        "maximumMinutes": {
+          "exclusiveMinimum": 0,
+          "title": "Maximumminutes",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minimumMinutes",
+        "preferredMinutes",
+        "maximumMinutes"
+      ],
+      "title": "DurationRange",
+      "type": "object"
+    },
+    "EffectOperation": {
+      "enum": [
+        "set",
+        "increment",
+        "decrement",
+        "append",
+        "remove"
+      ],
+      "title": "EffectOperation",
+      "type": "string"
+    },
+    "ExternalPerson": {
+      "additionalProperties": false,
+      "properties": {
+        "externalPersonId": {
+          "minLength": 1,
+          "title": "Externalpersonid",
+          "type": "string"
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Displayname"
+        },
+        "relationshipToResidents": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Relationshiptoresidents",
+          "type": "object"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "externalPersonId"
+      ],
+      "title": "ExternalPerson",
+      "type": "object"
+    },
+    "FixedCommitment": {
+      "additionalProperties": false,
+      "description": "The one place absolute clock times are legitimate.\n\nWorking hours and appointments are fixed by someone other than the resident, so pinning them\nis a fact about the world rather than a schedule the model invented. Everything else in this\ncontract is a window.",
+      "properties": {
+        "commitmentId": {
+          "minLength": 1,
+          "title": "Commitmentid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "weekdays": {
+          "items": {
+            "$ref": "#/$defs/Weekday"
+          },
+          "minItems": 1,
+          "title": "Weekdays",
+          "type": "array"
+        },
+        "startTime": {
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "title": "Endtime",
+          "type": "string"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "startDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startdate"
+        },
+        "endDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enddate"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "commitmentId",
+        "label",
+        "weekdays",
+        "startTime",
+        "endTime"
+      ],
+      "title": "FixedCommitment",
+      "type": "object"
+    },
+    "HabitSegment": {
+      "additionalProperties": false,
+      "description": "A habit in the sense the smart-home literature uses the word.\n\nLeotta, Mecella and Sora define a habit as \"a sequence or interleaving of activities that\nhappen in specific contextual conditions\", the focus being the routine rather than the goal \u2014\nwhat the resident does each morning between 08:00 and 10:00. The habit-segmentation work makes\nthe same point operationally: it discretises the timestamp axis, and each bin is a time range\nin which a clearly identifiable process runs. In their Aruba results the bin `05:15-07:00` is\nabout 80% the *sleeping activity*, with `bed_to_toilet` and `meal_preparation` making up most\nof the rest.\n\nSo a habit is a band of the day, and activities live inside it. That is why this contract\nseparates the two: `RecurringActivity` says what recurs and how often, and this says how the\nday is carved up. A researcher's segmentation algorithm is trying to recover exactly these\nbands from a sensor log, which is why the expander publishes them as ground truth.\n\nThe night band is the one that legitimately wraps: `window_start` after `window_end` means the\nsegment crosses midnight.",
+      "properties": {
+        "habitId": {
+          "minLength": 1,
+          "title": "Habitid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "windowStart": {
+          "title": "Windowstart",
+          "type": "string"
+        },
+        "windowEnd": {
+          "title": "Windowend",
+          "type": "string"
+        },
+        "recurringActivityIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recurringactivityids",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "habitId",
+        "label",
+        "windowStart",
+        "windowEnd"
+      ],
+      "title": "HabitSegment",
+      "type": "object"
+    },
+    "HorizonOutline": {
+      "additionalProperties": false,
+      "description": "One brief, one confirmed outline, any horizon length.\n\nNothing here grows with the number of days: a year and eight months differ in the event list,\nnot in the structure. The confirmed outline is also the habit ground truth the external\nauthoring path has never produced, `mining_difficulty` included.",
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Schemaversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "horizon_outline",
+          "default": "horizon_outline",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "outlineId": {
+          "minLength": 1,
+          "title": "Outlineid",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "timeZone": {
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "startDate": {
+          "format": "date",
+          "title": "Startdate",
+          "type": "string"
+        },
+        "months": {
+          "minimum": 1,
+          "title": "Months",
+          "type": "integer"
+        },
+        "world": {
+          "$ref": "#/$defs/OutlineWorld"
+        },
+        "profile": {
+          "$ref": "#/$defs/BehavioralProfile"
+        },
+        "rhythm": {
+          "$ref": "#/$defs/OutlineRhythm"
+        },
+        "habits": {
+          "items": {
+            "$ref": "#/$defs/HabitSegment"
+          },
+          "title": "Habits",
+          "type": "array"
+        },
+        "fixedCommitments": {
+          "items": {
+            "$ref": "#/$defs/FixedCommitment"
+          },
+          "title": "Fixedcommitments",
+          "type": "array"
+        },
+        "phases": {
+          "items": {
+            "$ref": "#/$defs/OutlinePhase"
+          },
+          "title": "Phases",
+          "type": "array"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/OutlineEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outlineId",
+        "title",
+        "residentId",
+        "timeZone",
+        "startDate",
+        "months",
+        "world",
+        "profile",
+        "provenance"
+      ],
+      "title": "Smart Home Horizon Outline 1.0.0",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/LocationKind"
+        },
+        "memberLocationIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Memberlocationids",
+          "type": "array"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "locationId",
+        "kind"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "LocationKind": {
+      "enum": [
+        "room",
+        "external",
+        "transit",
+        "composite"
+      ],
+      "title": "LocationKind",
+      "type": "string"
+    },
+    "OutlineEvent": {
+      "additionalProperties": false,
+      "description": "Something that happens a bounded number of times inside a date window.\n\nThe window is the point. `earliest_date == latest_date` pins the day when the day genuinely is\nfixed; anything wider hands the placement to the expander, which owns the calendar and the\ndrive state and can put the event where the resident could plausibly absorb it.",
+      "properties": {
+        "eventId": {
+          "minLength": 1,
+          "title": "Eventid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "earliestDate": {
+          "format": "date",
+          "title": "Earliestdate",
+          "type": "string"
+        },
+        "latestDate": {
+          "format": "date",
+          "title": "Latestdate",
+          "type": "string"
+        },
+        "occurrences": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Occurrences",
+          "type": "integer"
+        },
+        "windowStart": {
+          "default": "08:00",
+          "title": "Windowstart",
+          "type": "string"
+        },
+        "windowEnd": {
+          "default": "22:00",
+          "title": "Windowend",
+          "type": "string"
+        },
+        "minimumMinutes": {
+          "default": 30,
+          "minimum": 1,
+          "title": "Minimumminutes",
+          "type": "integer"
+        },
+        "maximumMinutes": {
+          "default": 120,
+          "minimum": 1,
+          "title": "Maximumminutes",
+          "type": "integer"
+        },
+        "weekdays": {
+          "items": {
+            "$ref": "#/$defs/Weekday"
+          },
+          "title": "Weekdays",
+          "type": "array"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "displaces": {
+          "items": {
+            "$ref": "#/$defs/ActivityDisplacement"
+          },
+          "title": "Displaces",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "eventId",
+        "label",
+        "earliestDate",
+        "latestDate"
+      ],
+      "title": "OutlineEvent",
+      "type": "object"
+    },
+    "OutlinePhase": {
+      "additionalProperties": false,
+      "description": "A stretch of the horizon over which the routine is not the baseline routine.\n\nA phase is what makes eight months more than one month repeated eight times: a course that\noccupies Tuesday evenings from October, a fortnight away, a winter in which the walk stops.\nIt carries dates, never instants, and reshapes recurring_activities only through explicit\noverrides.",
+      "properties": {
+        "phaseId": {
+          "minLength": 1,
+          "title": "Phaseid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "startDate": {
+          "format": "date",
+          "title": "Startdate",
+          "type": "string"
+        },
+        "endDate": {
+          "format": "date",
+          "title": "Enddate",
+          "type": "string"
+        },
+        "activityOverrides": {
+          "items": {
+            "$ref": "#/$defs/ActivityOverride"
+          },
+          "title": "Activityoverrides",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "phaseId",
+        "label",
+        "startDate",
+        "endDate"
+      ],
+      "title": "OutlinePhase",
+      "type": "object"
+    },
+    "OutlineRhythm": {
+      "additionalProperties": false,
+      "description": "The persona-level constants the drive dynamics need, and nothing more.\n\nAge sets the nightly sleep need and the nocturia baseline; declared conditions move the same\ntwo dials. Everything downstream of these \u2014 the actual bedtimes, the debt, the naps \u2014 is\ncomputed, which is why an author declares who the resident is rather than when she sleeps.",
+      "properties": {
+        "age": {
+          "default": 45,
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Age",
+          "type": "integer"
+        },
+        "health": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Health",
+          "type": "array"
+        },
+        "chronotypeBedtime": {
+          "default": "22:30",
+          "title": "Chronotypebedtime",
+          "type": "string"
+        }
+      },
+      "title": "OutlineRhythm",
+      "type": "object"
+    },
+    "OutlineWorld": {
+      "additionalProperties": false,
+      "description": "Where the routine happens, declared once for the whole horizon.\n\nADR-015 materializes the executable home from the scenario's declared locations, so those\ndeclarations have to come from the author rather than from a generator that never read the\nbrief. Like everything else here, this is O(1) in the horizon.",
+      "properties": {
+        "homeModel": {
+          "$ref": "#/$defs/VersionedReference"
+        },
+        "locations": {
+          "items": {
+            "$ref": "#/$defs/Location"
+          },
+          "minItems": 1,
+          "title": "Locations",
+          "type": "array"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/Resource"
+          },
+          "title": "Resources",
+          "type": "array"
+        },
+        "externalPeople": {
+          "items": {
+            "$ref": "#/$defs/ExternalPerson"
+          },
+          "title": "Externalpeople",
+          "type": "array"
+        },
+        "startLocationId": {
+          "minLength": 1,
+          "title": "Startlocationid",
+          "type": "string"
+        },
+        "residentFacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Residentfacts",
+          "type": "object"
+        },
+        "environmentFacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Environmentfacts",
+          "type": "object"
+        },
+        "resourceFacts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "title": "Resourcefacts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "homeModel",
+        "locations",
+        "startLocationId"
+      ],
+      "title": "OutlineWorld",
+      "type": "object"
+    },
+    "PersonalProcessPackage": {
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Schemaversion",
+          "type": "string"
+        },
+        "documentType": {
+          "const": "personal_process_package",
+          "default": "personal_process_package",
+          "title": "Documenttype",
+          "type": "string"
+        },
+        "packageId": {
+          "minLength": 1,
+          "title": "Packageid",
+          "type": "string"
+        },
+        "packageVersion": {
+          "minLength": 1,
+          "title": "Packageversion",
+          "type": "string"
+        },
+        "sourceScenarioId": {
+          "minLength": 1,
+          "title": "Sourcescenarioid",
+          "type": "string"
+        },
+        "sourceScenarioVersion": {
+          "minLength": 1,
+          "title": "Sourcescenarioversion",
+          "type": "string"
+        },
+        "language": {
+          "minLength": 2,
+          "title": "Language",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "catalogs": {
+          "$ref": "#/$defs/BehaviorCatalogReferences"
+        },
+        "processModels": {
+          "items": {
+            "$ref": "#/$defs/ProcessModel"
+          },
+          "minItems": 1,
+          "title": "Processmodels",
+          "type": "array"
+        },
+        "bindings": {
+          "items": {
+            "$ref": "#/$defs/ProcessBinding"
+          },
+          "minItems": 1,
+          "title": "Bindings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "packageId",
+        "packageVersion",
+        "sourceScenarioId",
+        "sourceScenarioVersion",
+        "language",
+        "provenance",
+        "catalogs",
+        "processModels",
+        "bindings"
+      ],
+      "title": "Smart Home Personal Process Package 1.0.0",
+      "type": "object"
+    },
+    "ProcessBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "bindingId": {
+          "minLength": 1,
+          "title": "Bindingid",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "applicability": {
+          "items": {
+            "$ref": "#/$defs/VariableCondition"
+          },
+          "title": "Applicability",
+          "type": "array"
+        },
+        "fallback": {
+          "default": false,
+          "title": "Fallback",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bindingId",
+        "residentId",
+        "intent",
+        "processModelId"
+      ],
+      "title": "ProcessBinding",
+      "type": "object"
+    },
+    "ProcessEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "sourceNodeId": {
+          "minLength": 1,
+          "title": "Sourcenodeid",
+          "type": "string"
+        },
+        "targetNodeId": {
+          "minLength": 1,
+          "title": "Targetnodeid",
+          "type": "string"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VariableCondition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "isDefault": {
+          "default": false,
+          "title": "Isdefault",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sourceNodeId",
+        "targetNodeId"
+      ],
+      "title": "ProcessEdge",
+      "type": "object"
+    },
+    "ProcessModel": {
+      "additionalProperties": false,
+      "properties": {
+        "processModelId": {
+          "minLength": 1,
+          "title": "Processmodelid",
+          "type": "string"
+        },
+        "processModelVersion": {
+          "minLength": 1,
+          "title": "Processmodelversion",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "implementedComponents": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Implementedcomponents",
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ProcessNode"
+          },
+          "minItems": 2,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/ProcessEdge"
+          },
+          "minItems": 1,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "processModelId",
+        "processModelVersion",
+        "residentId",
+        "title",
+        "description",
+        "implementedComponents",
+        "nodes",
+        "edges"
+      ],
+      "title": "ProcessModel",
+      "type": "object"
+    },
+    "ProcessNode": {
+      "additionalProperties": false,
+      "properties": {
+        "nodeId": {
+          "minLength": 1,
+          "title": "Nodeid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ProcessNodeKind"
+        },
+        "actionType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actiontype"
+        },
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ValueExpression"
+          },
+          "title": "Arguments",
+          "type": "object"
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DurationRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "durationWeight": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationweight"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/VariableCondition"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/StateEffect"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "maxIterations": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxiterations"
+        }
+      },
+      "required": [
+        "nodeId",
+        "kind"
+      ],
+      "title": "ProcessNode",
+      "type": "object"
+    },
+    "ProcessNodeKind": {
+      "enum": [
+        "start",
+        "end",
+        "action",
+        "choice",
+        "parallel_split",
+        "parallel_join",
+        "loop"
+      ],
+      "title": "ProcessNodeKind",
+      "type": "string"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "$ref": "#/$defs/AuthorType"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "generatorVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorversion"
+        },
+        "modelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        },
+        "generatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatedat"
+        },
+        "humanReviewed": {
+          "default": false,
+          "title": "Humanreviewed",
+          "type": "boolean"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RecurringActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "recurringActivityId": {
+          "minLength": 1,
+          "title": "Recurringactivityid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RecurringActivityKind"
+        },
+        "cadence": {
+          "$ref": "#/$defs/ActivityCadence"
+        },
+        "miningDifficulty": {
+          "default": "medium",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ],
+          "title": "Miningdifficulty",
+          "type": "string"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recurringActivityId",
+        "label",
+        "kind",
+        "cadence"
+      ],
+      "title": "RecurringActivity",
+      "type": "object"
+    },
+    "RecurringActivityKind": {
+      "enum": [
+        "anchor",
+        "contextual",
+        "optional",
+        "rare"
+      ],
+      "title": "RecurringActivityKind",
+      "type": "string"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": {
+          "minLength": 1,
+          "title": "Resourceid",
+          "type": "string"
+        },
+        "resourceType": {
+          "minLength": 1,
+          "title": "Resourcetype",
+          "type": "string"
+        },
+        "locationId": {
+          "minLength": 1,
+          "title": "Locationid",
+          "type": "string"
+        },
+        "capacity": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Capacity",
+          "type": "integer"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "resourceId",
+        "resourceType",
+        "locationId"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "StateEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "minLength": 1,
+          "title": "Fact",
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/EffectOperation"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "fact",
+        "operation",
+        "value"
+      ],
+      "title": "StateEffect",
+      "type": "object"
+    },
+    "ValueExpression": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/ValueSource"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "variableId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Variableid"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Index"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ValueExpression",
+      "type": "object"
+    },
+    "ValueSource": {
+      "enum": [
+        "literal",
+        "variable",
+        "activity_location",
+        "activity_resource",
+        "activity_intent",
+        "actor"
+      ],
+      "title": "ValueSource",
+      "type": "string"
+    },
+    "VariableCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "variableId": {
+          "minLength": 1,
+          "title": "Variableid",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/ConditionOperator",
+          "default": "truthy"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "variableId"
+      ],
+      "title": "VariableCondition",
+      "type": "object"
+    },
+    "VersionedReference": {
+      "additionalProperties": false,
+      "properties": {
+        "referenceId": {
+          "minLength": 1,
+          "title": "Referenceid",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "referenceId",
+        "version"
+      ],
+      "title": "VersionedReference",
+      "type": "object"
+    },
+    "Weekday": {
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "title": "Weekday",
+      "type": "string"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:horizon-authoring-bundle:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Transport envelope for outline-first authoring: the arc, and how its actions are performed.\n\nKept apart for the same reason `SimulationAuthoringBundle` keeps scenario and package apart:\nthe two halves answer to different reviewers. A human confirms the outline, because whether\neight months are plausible is not a machine question. The process package is already gated by\nbehavior validation and the deterministic replay, so nobody needs to read its twenty-four\ngraphs by hand.\n\nNeither half grows with the horizon. The package is per-intent, which is why moving the days\nout of the model's output removes the entire horizon-proportional part of the response.",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "horizon_authoring_bundle",
+      "default": "horizon_authoring_bundle",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "outline": {
+      "$ref": "#/$defs/HorizonOutline"
+    },
+    "personalProcessPackage": {
+      "$ref": "#/$defs/PersonalProcessPackage"
+    }
+  },
+  "required": [
+    "outline",
+    "personalProcessPackage"
+  ],
+  "title": "Smart Home Horizon Authoring Bundle 1.0.0",
+  "type": "object"
+}

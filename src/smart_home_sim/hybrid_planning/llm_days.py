@@ -1,7 +1,8 @@
-"""Stage C LLM layer: arrange varied, coherent days around the calendar's due habits.
+"""Stage C LLM layer: arrange varied, coherent days around the calendar's due recurring activities.
 
 One LLM call per week returns a light per-day timeline of intents (from the shared vocabulary),
-arranged around that week's due habits plus everyday filler. Deterministic code validates the
+arranged around that week's due recurring activities plus everyday filler. Deterministic code
+validates the
 intents, frames each day with a wake and a terminal sleep, and **compile-gates** every candidate:
 a day is accepted only if it compiles, otherwise the deterministic substrate day is used. Generation
 never simulates (that is the researcher's separate step); compilation is the deterministic gate.
@@ -158,8 +159,8 @@ def _entries_from_timeline(items: Any, vocabulary: set[str]) -> list[TimelineEnt
             continue
         if not isinstance(around, str) or not _HHMM_RE.match(around):
             continue
-        habit = item.get("habit") if isinstance(item.get("habit"), str) else None
-        middle.append(TimelineEntry(intent, around, habit_id=habit))
+        activity = item.get("activity") if isinstance(item.get("activity"), str) else None
+        middle.append(TimelineEntry(intent, around, recurring_activity_id=activity))
     middle.sort(key=lambda entry: entry.hhmm)
     return [
         TimelineEntry("wake_up", WAKE_TIME),
@@ -180,10 +181,13 @@ def _week_messages(
     )
     due_lines = []
     for day in week:
-        habits = ", ".join(
-            f"{occ.label} ~{occ.target_time} [{occ.habit_id}]" for occ in day.occurrences
+        recurring_activities = ", ".join(
+            f"{occ.label} ~{occ.target_time} [{occ.recurring_activity_id}]"
+            for occ in day.occurrences
         )
-        due_lines.append(f"{day.date} ({day.weekday.value}): {habits or 'no fixed habits'}")
+        due_lines.append(
+            f"{day.date} ({day.weekday.value}): {recurring_activities or 'nothing fixed'}"
+        )
     labels = ", ".join(f"{spec.intent_id}={spec.label}" for spec in INTENT_CATALOG)
     system = (
         "You plan realistic daily routines for a smart-home behavioural dataset. "
@@ -191,13 +195,14 @@ def _week_messages(
     )
     user = (
         f"Person: {summary}\n\n"
-        "Plan each of these days. For each date the fixed due habits are listed with a rough time "
+        "Plan each of these days. For each date the fixed due recurring activities are listed "
+        "with a rough time "
         "and id; arrange a plausible, varied day that naturally includes them plus everyday "
         "activities (meals, hygiene, leisure). Vary weekdays vs weekend; do not repeat identical "
         "days.\n\n" + "\n".join(due_lines) + "\n\n"
         f"Use ONLY these activity intents (id=meaning): {labels}.\n"
         'Return JSON {"days": [{"date": "YYYY-MM-DD", "timeline": [{"intent": "<id>", '
-        '"around": "HH:MM", "habit": "<habit id or null>"}]}]}. Order each timeline by time. '
+        '"around": "HH:MM", "activity": "<activity id or null>"}]}]}. Order each timeline by time. '
         "You do not need to include wake_up or sleep; they are added automatically."
     )
     if retry:

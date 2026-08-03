@@ -12,6 +12,8 @@ from smart_home_sim.domain.environment import HomeModel
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.sensors import SensorModel
 from smart_home_sim.environment import validate_home_model
+from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
+from smart_home_sim.hybrid_planning.outline import HorizonAuthoringBundle
 
 
 def _reference(path: str) -> GraphicalReference | None:
@@ -87,6 +89,58 @@ class ApplicationService:
                 "personalProcessPackage": behavior_payload,
             },
         )
+
+    def import_horizon_outline(
+        self,
+        home_id: str,
+        payload: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, Any]:
+        """Expand one confirmed horizon outline and import the bundle it produces.
+
+        The outline is not importable as it stands and never will be: it describes the structure
+        of a period, and the days it implies do not exist until the expander computes them. Doing
+        that here rather than only in the CLI is what lets a researcher stay in the application
+        for a long horizon, and the result rejoins the ordinary path immediately — everything
+        after this line is the same import an authored bundle goes through.
+        """
+        self.workspace.ensure_writable()
+        self.workspace.get_home(home_id)
+        try:
+            bundle = HorizonAuthoringBundle.model_validate_json(json.dumps(payload))
+        except ValidationError as error:
+            return {
+                "valid": False,
+                "stage": "outline",
+                "message": "The document is not a valid horizon authoring bundle.",
+                "details": error.errors(
+                    include_url=False, include_context=False, include_input=False
+                ),
+            }
+        try:
+            expansion = expand_outline(
+                bundle.outline, bundle.personal_process_package, seed=seed
+            )
+        except ExpansionError as error:
+            # One readable sentence rather than the hundreds of downstream rejections the same
+            # defect produces once the days exist.
+            return {"valid": False, "stage": "expansion", "message": str(error)}
+
+        imported = self.import_authoring_bundle(
+            home_id, json.loads(expansion.bundle.model_dump_json(by_alias=True))
+        )
+        return {
+            **imported,
+            "expansion": {
+                "dayCount": expansion.day_count,
+                "activityCount": expansion.activity_count,
+                "skippedOccurrences": expansion.skipped_occurrences,
+                "rescheduledOccurrences": expansion.rescheduled_occurrences,
+                "droppedOccurrences": expansion.dropped_occurrences,
+                "habitBandCount": len(expansion.habit_ground_truth.habits),
+                "seed": seed,
+            },
+        }
 
     def import_authoring_bundle(
         self,

@@ -8,24 +8,24 @@ from typer.testing import CliRunner
 
 from smart_home_sim import cli
 from smart_home_sim.domain.models import AuthorType, Provenance
-from smart_home_sim.hybrid_planning.habits import (
+from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioConfig, LMStudioError
+from smart_home_sim.hybrid_planning.persona import Persona
+from smart_home_sim.hybrid_planning.recurring_activities import (
+    ActivityCadence,
     BehavioralProfile,
     CadencePeriod,
-    Habit,
-    HabitCadence,
-    HabitKind,
-    HabitsGenerationError,
+    ProfileGenerationError,
+    RecurringActivity,
+    RecurringActivityKind,
     Weekday,
     _assemble_profile,
     _build_cadence,
     _coerce_kind,
     _coerce_weekdays,
-    _normalise_habits,
-    generate_habits,
+    _normalise_recurring_activities,
+    generate_recurring_activities,
     validate_portfolio,
 )
-from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioConfig, LMStudioError
-from smart_home_sim.hybrid_planning.persona import Persona
 
 runner = CliRunner()
 _NOW = datetime(2026, 7, 24, 9, 0, tzinfo=UTC)
@@ -70,7 +70,7 @@ def _persona() -> Persona:
 
 
 def _balanced(**extra: object) -> dict[str, object]:
-    habits = [
+    recurring_activities = [
         {
             "label": "morning coffee",
             "kind": "anchor",
@@ -97,14 +97,14 @@ def _balanced(**extra: object) -> dict[str, object]:
         {"label": "cinema", "kind": "optional", "frequency": "biweekly", "time_band": "evening"},
         {"label": "doctor visit", "kind": "rare", "frequency": "monthly", "time_band": "morning"},
     ]
-    payload: dict[str, object] = {"habits": habits}
+    payload: dict[str, object] = {"recurring_activities": recurring_activities}
     payload.update(extra)
     return payload
 
 
 def _unbalanced_only_anchor() -> dict[str, object]:
     return {
-        "habits": [
+        "recurring_activities": [
             {"label": f"anchor {i}", "kind": "anchor", "frequency": "daily", "time_band": "morning"}
             for i in range(8)
         ]
@@ -112,13 +112,13 @@ def _unbalanced_only_anchor() -> dict[str, object]:
 
 
 def test_generate_habits_happy_path() -> None:
-    result = generate_habits(_persona(), _client(_balanced()), now=_NOW)
+    result = generate_recurring_activities(_persona(), _client(_balanced()), now=_NOW)
     profile = result.profile
     assert result.repair_attempts == 0
     assert profile.persona_id == "luigi_bianchi"
     assert profile.profile_id == "luigi_bianchi_profile"
-    assert len(profile.habits) == 8
-    by_label = {habit.label: habit for habit in profile.habits}
+    assert len(profile.recurring_activities) == 8
+    by_label = {activity.label: activity for activity in profile.recurring_activities}
     coffee = by_label["morning coffee"]
     assert coffee.cadence.period is CadencePeriod.day
     assert coffee.cadence.window_start == "06:00"
@@ -134,38 +134,40 @@ def test_generate_habits_happy_path() -> None:
 
 def test_generate_habits_repairs_unbalanced_then_succeeds() -> None:
     client = _client(_unbalanced_only_anchor(), _balanced())
-    result = generate_habits(_persona(), client, now=_NOW)
+    result = generate_recurring_activities(_persona(), client, now=_NOW)
     assert result.repair_attempts == 1
-    assert len(result.profile.habits) == 8
+    assert len(result.profile.recurring_activities) == 8
 
 
 def test_generate_habits_fails_after_exhausting_repairs() -> None:
     client = _client(_unbalanced_only_anchor(), _unbalanced_only_anchor())
-    with pytest.raises(HabitsGenerationError):
-        generate_habits(_persona(), client, max_repairs=1, now=_NOW)
+    with pytest.raises(ProfileGenerationError):
+        generate_recurring_activities(_persona(), client, max_repairs=1, now=_NOW)
 
 
 def test_generate_habits_fails_immediately_when_no_repairs_allowed() -> None:
-    with pytest.raises(HabitsGenerationError):
-        generate_habits(_persona(), _client(_unbalanced_only_anchor()), max_repairs=0, now=_NOW)
+    with pytest.raises(ProfileGenerationError):
+        generate_recurring_activities(
+            _persona(), _client(_unbalanced_only_anchor()), max_repairs=0, now=_NOW
+        )
 
 
 def test_validate_portfolio_reports_missing_kinds() -> None:
-    habits = [_habit(f"a{i}", HabitKind.anchor) for i in range(3)]
-    issues = validate_portfolio(habits)
-    assert any("total habits" in issue for issue in issues)
+    recurring_activities = [_recurring(f"a{i}", RecurringActivityKind.anchor) for i in range(3)]
+    issues = validate_portfolio(recurring_activities)
+    assert any("total activities" in issue for issue in issues)
     assert any("contextual" in issue for issue in issues)
     assert any("rare" in issue for issue in issues)
 
 
 def test_normalise_accepts_top_level_list_and_singular_key() -> None:
     entry = {"label": "walk", "kind": "anchor", "frequency": "daily", "time_band": "morning"}
-    assert _normalise_habits([entry])[0].label == "walk"
-    assert _normalise_habits({"habit": [entry]})[0].label == "walk"
+    assert _normalise_recurring_activities([entry])[0].label == "walk"
+    assert _normalise_recurring_activities({"activity": [entry]})[0].label == "walk"
 
 
 def test_normalise_skips_bad_entries_and_dedupes_ids() -> None:
-    habits = _normalise_habits(
+    recurring_activities = _normalise_recurring_activities(
         [
             "not a dict",
             {"kind": "anchor"},
@@ -175,35 +177,35 @@ def test_normalise_skips_bad_entries_and_dedupes_ids() -> None:
             {"label": "!!!", "kind": "optional", "frequency": "weekly", "time_band": "night"},
         ]
     )
-    ids = [habit.habit_id for habit in habits]
-    assert ids == ["walk", "walk_2", "habit"]
+    ids = [activity.recurring_activity_id for activity in recurring_activities]
+    assert ids == ["walk", "walk_2", "activity"]
 
 
 def test_normalise_skips_habit_when_construction_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    import smart_home_sim.hybrid_planning.habits as habits_mod
+    import smart_home_sim.hybrid_planning.recurring_activities as habits_mod
 
-    def boom(**kwargs: object) -> Habit:
+    def boom(**kwargs: object) -> RecurringActivity:
         raise ValueError("forced")
 
-    monkeypatch.setattr(habits_mod, "Habit", boom)
+    monkeypatch.setattr(habits_mod, "RecurringActivity", boom)
     entry = {"label": "walk", "kind": "anchor", "frequency": "daily", "time_band": "morning"}
-    with pytest.raises(HabitsGenerationError):
-        _normalise_habits([entry])
+    with pytest.raises(ProfileGenerationError):
+        _normalise_recurring_activities([entry])
 
 
 def test_normalise_rejects_non_object() -> None:
-    with pytest.raises(HabitsGenerationError):
-        _normalise_habits(42)
+    with pytest.raises(ProfileGenerationError):
+        _normalise_recurring_activities(42)
 
 
 def test_normalise_rejects_empty_array() -> None:
-    with pytest.raises(HabitsGenerationError):
-        _normalise_habits({"habits": []})
+    with pytest.raises(ProfileGenerationError):
+        _normalise_recurring_activities({"recurring_activities": []})
 
 
 def test_normalise_rejects_all_invalid_entries() -> None:
-    with pytest.raises(HabitsGenerationError):
-        _normalise_habits(["x", {"kind": "anchor"}])
+    with pytest.raises(ProfileGenerationError):
+        _normalise_recurring_activities(["x", {"kind": "anchor"}])
 
 
 def test_build_cadence_defaults_and_mappings() -> None:
@@ -222,71 +224,76 @@ def test_build_cadence_defaults_and_mappings() -> None:
 
 
 def test_coerce_kind_and_weekdays_edge_cases() -> None:
-    assert _coerce_kind("Rare") is HabitKind.rare
-    assert _coerce_kind("nonsense") is HabitKind.optional
-    assert _coerce_kind(7) is HabitKind.optional
+    assert _coerce_kind("Rare") is RecurringActivityKind.rare
+    assert _coerce_kind("nonsense") is RecurringActivityKind.optional
+    assert _coerce_kind(7) is RecurringActivityKind.optional
     assert _coerce_weekdays("monday") == []
 
 
 def test_cadence_rejects_bad_window() -> None:
     with pytest.raises(ValueError, match="HH:MM"):
-        HabitCadence(
+        ActivityCadence(
             period=CadencePeriod.day, times_per_period=1, window_start="25:00", window_end="26:00"
         )
     with pytest.raises(ValueError, match="before end"):
-        HabitCadence(
+        ActivityCadence(
             period=CadencePeriod.day, times_per_period=1, window_start="10:00", window_end="09:00"
         )
 
 
-def _habit(habit_id: str, kind: HabitKind = HabitKind.anchor) -> Habit:
-    return Habit(
-        habit_id=habit_id,
-        label=habit_id,
+def _recurring(
+    recurring_activity_id: str, kind: RecurringActivityKind = RecurringActivityKind.anchor
+) -> RecurringActivity:
+    return RecurringActivity(
+        recurring_activity_id=recurring_activity_id,
+        label=recurring_activity_id,
         kind=kind,
-        cadence=HabitCadence(
+        cadence=ActivityCadence(
             period=CadencePeriod.day, times_per_period=1, window_start="07:00", window_end="08:00"
         ),
     )
 
 
 def test_profile_rejects_duplicate_habit_ids() -> None:
-    habits = [_habit(f"h{i}") for i in range(7)] + [_habit("h0")]
+    recurring_activities = [_recurring(f"h{i}") for i in range(7)] + [_recurring("h0")]
     with pytest.raises(ValueError, match="unique"):
         BehavioralProfile(
             profile_id="p",
             persona_id="q",
-            habits=habits,
+            recurring_activities=recurring_activities,
             provenance=Provenance(author_type=AuthorType.human, generated_at=_NOW),
         )
 
 
 def test_assemble_profile_wraps_validation_error() -> None:
-    habits = [_habit(f"h{i}") for i in range(7)] + [_habit("h0")]
-    with pytest.raises(HabitsGenerationError):
-        _assemble_profile(_persona(), habits, client=_client(), seed=None, now=_NOW)
+    recurring_activities = [_recurring(f"h{i}") for i in range(7)] + [_recurring("h0")]
+    with pytest.raises(ProfileGenerationError):
+        _assemble_profile(_persona(), recurring_activities, client=_client(), seed=None, now=_NOW)
 
 
 def test_cli_generate_habits_writes_profile(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     def fake_generate(persona, client, *, max_repairs, seed):
-        return generate_habits(persona, _client(_balanced()), now=_NOW)
+        return generate_recurring_activities(persona, _client(_balanced()), now=_NOW)
 
-    monkeypatch.setattr(cli, "generate_habits", fake_generate)
+    monkeypatch.setattr(cli, "generate_recurring_activities", fake_generate)
     persona_path = tmp_path / "persona.json"
     persona_path.write_text(_persona().model_dump_json(by_alias=True), encoding="utf-8")
     output = tmp_path / "profile.json"
-    result = runner.invoke(cli.app, ["generate-habits", str(persona_path), "-o", str(output)])
+    result = runner.invoke(
+        cli.app, ["generate-recurring-activities", str(persona_path), "-o", str(output)]
+    )
     assert result.exit_code == 0, result.output
     profile = json.loads(output.read_text(encoding="utf-8"))
     assert profile["personaId"] == "luigi_bianchi"
-    assert len(profile["habits"]) == 8
+    assert len(profile["recurringActivities"]) == 8
 
 
 def test_cli_generate_habits_rejects_bad_persona(tmp_path) -> None:
     persona_path = tmp_path / "persona.json"
     persona_path.write_text("{not json}", encoding="utf-8")
     result = runner.invoke(
-        cli.app, ["generate-habits", str(persona_path), "-o", str(tmp_path / "p.json")]
+        cli.app,
+        ["generate-recurring-activities", str(persona_path), "-o", str(tmp_path / "p.json")],
     )
     assert result.exit_code == 2
     assert "Cannot load persona" in result.output
@@ -296,16 +303,17 @@ def test_cli_generate_habits_reports_generation_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     def fake_generate(*args, **kwargs):
-        raise HabitsGenerationError("unbalanced")
+        raise ProfileGenerationError("unbalanced")
 
-    monkeypatch.setattr(cli, "generate_habits", fake_generate)
+    monkeypatch.setattr(cli, "generate_recurring_activities", fake_generate)
     persona_path = tmp_path / "persona.json"
     persona_path.write_text(_persona().model_dump_json(by_alias=True), encoding="utf-8")
     result = runner.invoke(
-        cli.app, ["generate-habits", str(persona_path), "-o", str(tmp_path / "p.json")]
+        cli.app,
+        ["generate-recurring-activities", str(persona_path), "-o", str(tmp_path / "p.json")],
     )
     assert result.exit_code == 1
-    assert "Habit generation failed" in result.output
+    assert "RecurringActivity generation failed" in result.output
 
 
 def test_cli_generate_habits_reports_lmstudio_error(
@@ -314,11 +322,12 @@ def test_cli_generate_habits_reports_lmstudio_error(
     def fake_generate(*args, **kwargs):
         raise LMStudioError("down")
 
-    monkeypatch.setattr(cli, "generate_habits", fake_generate)
+    monkeypatch.setattr(cli, "generate_recurring_activities", fake_generate)
     persona_path = tmp_path / "persona.json"
     persona_path.write_text(_persona().model_dump_json(by_alias=True), encoding="utf-8")
     result = runner.invoke(
-        cli.app, ["generate-habits", str(persona_path), "-o", str(tmp_path / "p.json")]
+        cli.app,
+        ["generate-recurring-activities", str(persona_path), "-o", str(tmp_path / "p.json")],
     )
     assert result.exit_code == 2
     assert "LM Studio generation failed" in result.output
@@ -331,7 +340,7 @@ def test_cli_generate_habits_rejects_colliding_outputs(tmp_path) -> None:
     result = runner.invoke(
         cli.app,
         [
-            "generate-habits",
+            "generate-recurring-activities",
             str(persona_path),
             "-o",
             str(output),

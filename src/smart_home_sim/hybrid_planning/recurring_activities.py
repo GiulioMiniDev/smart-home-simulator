@@ -2,7 +2,7 @@
 
 The model proposes a small habit list over closed vocabularies (kind, frequency, time band).
 Deterministic code expands each proposal into a schedulable habit, assembles the profile, and gates
-it on a portfolio balance (enough anchor/contextual/optional/rare habits). An unbalanced portfolio
+it on a portfolio balance (enough anchor/contextual/optional/rare ones). An unbalanced portfolio
 triggers a bounded, directive repair that states the exact current-versus-required counts, because a
 small model otherwise under-produces the rarer kinds. The accepted profile is the frozen ground
 truth the cadence calendar later expands into planned habit occurrences.
@@ -28,21 +28,21 @@ from smart_home_sim.hybrid_planning.lmstudio import (
 )
 from smart_home_sim.hybrid_planning.persona import Persona
 
-PROMPT_TEMPLATE_VERSION = "habits-1.0.0"
-GENERATOR_NAME = "smart-home-sim.hybrid_planning.habits"
+PROMPT_TEMPLATE_VERSION = "recurring_activities-1.0.0"
+GENERATOR_NAME = "smart-home-sim.hybrid_planning.recurring_activities"
 GENERATOR_VERSION = "1.0.0"
 
 # Reasoning models spend completion tokens on a private preamble, so the habit list needs a larger
 # budget than a persona to avoid truncation.
 HABITS_MAX_TOKENS = 16384
 
-MIN_HABITS = 8
+MIN_RECURRING_ACTIVITIES = 8
 REQUIRED_KINDS: dict[str, int] = {"anchor": 3, "contextual": 2, "optional": 2, "rare": 1}
 
 _TIME_ZONE_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
-class HabitKind(StrEnum):
+class RecurringActivityKind(StrEnum):
     anchor = "anchor"
     contextual = "contextual"
     optional = "optional"
@@ -92,11 +92,11 @@ for _day in Weekday:
     _WEEKDAY_ALIASES[_day.value[:3]] = _day
 
 
-class HabitsGenerationError(ValueError):
+class ProfileGenerationError(ValueError):
     """The model output could not be turned into a balanced, valid behavioural profile."""
 
 
-class HabitCadence(ContractModel):
+class ActivityCadence(ContractModel):
     period: CadencePeriod
     times_per_period: int = Field(ge=1)
     every_n_periods: int = Field(default=1, ge=1)
@@ -106,7 +106,7 @@ class HabitCadence(ContractModel):
     jitter_minutes: int = Field(default=30, ge=0)
 
     @model_validator(mode="after")
-    def check_window(self) -> HabitCadence:
+    def check_window(self) -> ActivityCadence:
         for value in (self.window_start, self.window_end):
             if not _TIME_ZONE_RE.match(value):
                 raise ValueError(f"cadence window must be HH:MM, got {value!r}")
@@ -115,12 +115,18 @@ class HabitCadence(ContractModel):
         return self
 
 
-class Habit(ContractModel):
-    habit_id: str = Field(min_length=1)
+class RecurringActivity(ContractModel):
+    recurring_activity_id: str = Field(min_length=1)
     label: str = Field(min_length=1)
-    kind: HabitKind
-    cadence: HabitCadence
+    kind: RecurringActivityKind
+    cadence: ActivityCadence
     mining_difficulty: Literal["easy", "medium", "hard"] = "medium"
+    # Which canonical intent this habit performs. Left unset the intent is inferred from the label
+    # by keyword, which is safe here — the local pipeline writes those labels itself — but not for
+    # an externally authored outline, where free prose silently misses: "Teach at Idioms High
+    # School" matched nothing and fell back to `read_and_rest`, quietly disagreeing with the
+    # process model the same document declared for it.
+    intent: str | None = None
     note: str = ""
 
 
@@ -129,76 +135,84 @@ class BehavioralProfile(ContractModel):
     document_type: Literal["behavioral_profile"] = "behavioral_profile"
     profile_id: str = Field(min_length=1)
     persona_id: str = Field(min_length=1)
-    habits: list[Habit] = Field(min_length=MIN_HABITS)
+    recurring_activities: list[RecurringActivity] = Field(min_length=MIN_RECURRING_ACTIVITIES)
     provenance: Provenance
 
     @model_validator(mode="after")
     def check_unique_ids(self) -> BehavioralProfile:
-        identifiers = [habit.habit_id for habit in self.habits]
+        identifiers = [activity.recurring_activity_id for activity in self.recurring_activities]
         if len(set(identifiers)) != len(identifiers):
-            raise ValueError("habit identifiers must be unique")
+            raise ValueError("activity identifiers must be unique")
         return self
 
 
 @dataclass(frozen=True)
-class HabitsGenerationResult:
+class ProfileGenerationResult:
     profile: BehavioralProfile
     completion: LMStudioJSONCompletion
     repair_attempts: int
 
 
-def validate_portfolio(habits: list[Habit]) -> list[str]:
-    """Return directive issue strings for an unbalanced or too-small habit portfolio."""
-    counts = Counter(habit.kind.value for habit in habits)
+def validate_portfolio(recurring_activities: list[RecurringActivity]) -> list[str]:
+    """Return directive issue strings for an unbalanced or too-small activity portfolio."""
+    counts = Counter(activity.kind.value for activity in recurring_activities)
     issues: list[str] = []
-    if len(habits) < MIN_HABITS:
-        issues.append(f"total habits: have {len(habits)}, need >= {MIN_HABITS}")
+    if len(recurring_activities) < MIN_RECURRING_ACTIVITIES:
+        issues.append(
+            f"total activities: have {len(recurring_activities)}, "
+            f"need >= {MIN_RECURRING_ACTIVITIES}"
+        )
     for kind, required in REQUIRED_KINDS.items():
         have = counts.get(kind, 0)
         if have < required:
-            issues.append(f"{kind} habits: have {have}, need >= {required} (add {required - have})")
+            issues.append(
+                f"{kind} activities: have {have}, need >= {required} (add {required - have})"
+            )
     return issues
 
 
-def generate_habits(
+def generate_recurring_activities(
     persona: Persona,
     client: LMStudioClient,
     *,
     max_repairs: int = 2,
     seed: int | None = None,
     now: datetime | None = None,
-) -> HabitsGenerationResult:
+) -> ProfileGenerationResult:
     """Generate, balance, and freeze a behavioural profile for one persona."""
     stamped = now or datetime.now(UTC)
     completion = client.complete_json(
         _build_messages(persona), seed=seed, max_tokens=HABITS_MAX_TOKENS
     )
-    habits = _normalise_habits(completion.data)
-    issues = validate_portfolio(habits)
+    recurring_activities = _normalise_recurring_activities(completion.data)
+    issues = validate_portfolio(recurring_activities)
 
     attempts = 0
     while issues and attempts < max_repairs:
         attempts += 1
         completion = client.complete_json(
-            _build_repair_messages(persona, habits, issues),
+            _build_repair_messages(persona, recurring_activities, issues),
             seed=seed,
             max_tokens=HABITS_MAX_TOKENS,
         )
-        habits = _normalise_habits(completion.data)
-        issues = validate_portfolio(habits)
+        recurring_activities = _normalise_recurring_activities(completion.data)
+        issues = validate_portfolio(recurring_activities)
 
     if issues:
-        raise HabitsGenerationError(
-            f"Habit portfolio remained unbalanced after {attempts} repair(s): {'; '.join(issues)}"
+        raise ProfileGenerationError(
+            f"Activity portfolio remained unbalanced after {attempts} repair(s): "
+            f"{'; '.join(issues)}"
         )
 
-    profile = _assemble_profile(persona, habits, client=client, seed=seed, now=stamped)
-    return HabitsGenerationResult(profile=profile, completion=completion, repair_attempts=attempts)
+    profile = _assemble_profile(
+        persona, recurring_activities, client=client, seed=seed, now=stamped
+    )
+    return ProfileGenerationResult(profile=profile, completion=completion, repair_attempts=attempts)
 
 
 def _assemble_profile(
     persona: Persona,
-    habits: list[Habit],
+    recurring_activities: list[RecurringActivity],
     *,
     client: LMStudioClient,
     seed: int | None,
@@ -217,30 +231,31 @@ def _assemble_profile(
         return BehavioralProfile(
             profile_id=f"{persona.persona_id}_profile",
             persona_id=persona.persona_id,
-            habits=habits,
+            recurring_activities=recurring_activities,
             provenance=provenance,
         )
     except ValueError as error:
-        raise HabitsGenerationError(f"Behavioural profile failed validation: {error}") from error
+        raise ProfileGenerationError(f"Behavioural profile failed validation: {error}") from error
 
 
 def _build_messages(persona: Persona) -> list[ChatMessage]:
     system = (
-        "You design a realistic daily-habit portfolio for a fictional person in a smart-home "
+        "You design a realistic daily-activity portfolio for a fictional person in a smart-home "
         "behavioural dataset. Reply with a single JSON object and no prose."
     )
     user = (
         f"Person: {persona.name}, age {persona.age}, {persona.occupation}, {persona.household}, "
         f"in {persona.city}. Health: {', '.join(persona.health) or 'none noted'}. "
         f"Notes: {persona.notes or 'none'}.\n"
-        f"Fixed daily anchors to include as anchor habits: "
+        f"Fixed daily anchors to include as anchor recurring_activities: "
         f"{', '.join(persona.routine_anchors)}.\n\n"
-        'Return JSON {"habits": [ ... ]}. Each habit has:\n'
+        'Return JSON {"recurring_activities": [ ... ]}. Each activity has:\n'
         '  "label" (short string), "kind" (one of anchor, contextual, optional, rare),\n'
         '  "frequency" (one of daily, few_times_week, weekly, biweekly, monthly, rarely),\n'
         '  "time_band" (one of early_morning, morning, midday, afternoon, evening, night),\n'
         '  optional "weekdays" (array like ["Tue","Fri"]) and "note" (short string).\n\n'
-        "Provide AT LEAST 3 anchor, 2 contextual, 2 optional, and 1 rare habit (8 or more total). "
+        "Provide AT LEAST 3 anchor, 2 contextual, 2 optional and 1 rare activity "
+        "(8 or more in total). "
         "Anchors are near-daily fixed routines; contextual depend on day type; optional are "
         "occasional preferences; rare happen every few weeks or monthly. Keep them coherent with "
         "the person and mutually consistent."
@@ -249,48 +264,52 @@ def _build_messages(persona: Persona) -> list[ChatMessage]:
 
 
 def _build_repair_messages(
-    persona: Persona, habits: list[Habit], issues: list[str]
+    persona: Persona, recurring_activities: list[RecurringActivity], issues: list[str]
 ) -> list[ChatMessage]:
-    counts = Counter(habit.kind.value for habit in habits)
+    counts = Counter(activity.kind.value for activity in recurring_activities)
     current = ", ".join(f"{kind}={counts.get(kind, 0)}" for kind in REQUIRED_KINDS)
-    existing = ", ".join(f"{habit.label} ({habit.kind.value})" for habit in habits)
+    existing = ", ".join(
+        f"{activity.label} ({activity.kind.value})" for activity in recurring_activities
+    )
     system = (
-        "You correct an unbalanced daily-habit portfolio. Reply with a single JSON object "
-        '{"habits": [ ... ]} containing the FULL corrected list and no prose.'
+        "You correct an unbalanced daily-activity portfolio. Reply with a single JSON object "
+        '{"recurring_activities": [ ... ]} containing the FULL corrected list and no prose.'
     )
     user = (
         f"Person: {persona.name}, {persona.occupation}. Current kind counts: {current}.\n"
         f"Problems to fix:\n- " + "\n- ".join(issues) + "\n\n"
-        f"Existing habits: {existing}.\n\n"
-        "Return the complete corrected habit list (keep the good ones, add exactly what is "
+        f"Existing recurring_activities: {existing}.\n\n"
+        "Return the complete corrected activity list (keep the good ones, add exactly what is "
         "missing) using the same fields: label, kind, frequency, time_band, optional weekdays "
         "and note. Required minimums: 3 anchor, 2 contextual, 2 optional, 1 rare, 8 or more total."
     )
     return [ChatMessage("system", system), ChatMessage("user", user)]
 
 
-def _normalise_habits(data: Any) -> list[Habit]:
+def _normalise_recurring_activities(data: Any) -> list[RecurringActivity]:
     if isinstance(data, dict):
-        raw = data.get("habits", data.get("habit", []))
+        raw = data.get("recurring_activities", data.get("activity", []))
     elif isinstance(data, list):
         raw = data
     else:
-        raise HabitsGenerationError("Habit output must be a JSON object or array")
+        raise ProfileGenerationError("RecurringActivity output must be a JSON object or array")
     if not isinstance(raw, list) or not raw:
-        raise HabitsGenerationError("Habit output must contain a non-empty 'habits' array")
+        raise ProfileGenerationError(
+            "RecurringActivity output must contain a non-empty 'recurring_activities' array"
+        )
 
-    habits: list[Habit] = []
+    recurring_activities: list[RecurringActivity] = []
     seen: set[str] = set()
     for entry in raw:
-        habit = _normalise_habit(entry, seen)
-        if habit is not None:
-            habits.append(habit)
-    if not habits:
-        raise HabitsGenerationError("No habit entry could be normalised")
-    return habits
+        activity = _normalise_recurring_activity(entry, seen)
+        if activity is not None:
+            recurring_activities.append(activity)
+    if not recurring_activities:
+        raise ProfileGenerationError("No activity entry could be normalised")
+    return recurring_activities
 
 
-def _normalise_habit(entry: Any, seen: set[str]) -> Habit | None:
+def _normalise_recurring_activity(entry: Any, seen: set[str]) -> RecurringActivity | None:
     if not isinstance(entry, dict):
         return None
     label = entry.get("label")
@@ -298,13 +317,13 @@ def _normalise_habit(entry: Any, seen: set[str]) -> Habit | None:
         return None
     label = label.strip()
 
-    habit_id = _unique_id(_slugify(label), seen)
+    recurring_activity_id = _unique_id(_slugify(label), seen)
     kind = _coerce_kind(entry.get("kind"))
     cadence = _build_cadence(entry.get("frequency"), entry.get("time_band"), entry.get("weekdays"))
     note = entry.get("note")
     try:
-        return Habit(
-            habit_id=habit_id,
+        return RecurringActivity(
+            recurring_activity_id=recurring_activity_id,
             label=label,
             kind=kind,
             cadence=cadence,
@@ -315,7 +334,7 @@ def _normalise_habit(entry: Any, seen: set[str]) -> Habit | None:
         return None
 
 
-def _build_cadence(frequency: Any, time_band: Any, weekdays: Any) -> HabitCadence:
+def _build_cadence(frequency: Any, time_band: Any, weekdays: Any) -> ActivityCadence:
     freq_key = (
         frequency
         if isinstance(frequency, str) and frequency in _FREQUENCY_TO_CADENCE
@@ -331,7 +350,7 @@ def _build_cadence(frequency: Any, time_band: Any, weekdays: Any) -> HabitCadenc
     resolved_weekdays = _coerce_weekdays(weekdays)
     if period is CadencePeriod.week and resolved_weekdays:
         times = len(resolved_weekdays)
-    return HabitCadence(
+    return ActivityCadence(
         period=period,
         times_per_period=times,
         every_n_periods=every,
@@ -341,13 +360,13 @@ def _build_cadence(frequency: Any, time_band: Any, weekdays: Any) -> HabitCadenc
     )
 
 
-def _coerce_kind(value: Any) -> HabitKind:
+def _coerce_kind(value: Any) -> RecurringActivityKind:
     if isinstance(value, str):
         try:
-            return HabitKind(value.strip().lower())
+            return RecurringActivityKind(value.strip().lower())
         except ValueError:
-            return HabitKind.optional
-    return HabitKind.optional
+            return RecurringActivityKind.optional
+    return RecurringActivityKind.optional
 
 
 def _coerce_weekdays(value: Any) -> list[Weekday]:
@@ -362,10 +381,10 @@ def _coerce_weekdays(value: Any) -> list[Weekday]:
     return resolved
 
 
-def _difficulty_for(kind: HabitKind) -> Literal["easy", "medium", "hard"]:
-    if kind is HabitKind.anchor:
+def _difficulty_for(kind: RecurringActivityKind) -> Literal["easy", "medium", "hard"]:
+    if kind is RecurringActivityKind.anchor:
         return "easy"
-    if kind is HabitKind.rare:
+    if kind is RecurringActivityKind.rare:
         return "hard"
     return "medium"
 
@@ -382,4 +401,4 @@ def _unique_id(base: str, seen: set[str]) -> str:
 
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
-    return slug or "habit"
+    return slug or "activity"

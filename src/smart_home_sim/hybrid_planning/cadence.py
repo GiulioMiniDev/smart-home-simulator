@@ -1,9 +1,12 @@
 """Deterministically expand a frozen behavioural profile into a per-day cadence calendar.
 
-This stage uses no LLM. It rolls each habit's cadence rule over a chosen horizon (in months) into
-a concrete, seeded schedule of due habits per day, each with a target time drawn inside its window.
-The calendar is the *planned* habit-mining ground truth: it is known before any day is generated, is
-exactly what the program scheduled, and later tells the day generator which habits are due each day.
+This stage uses no LLM. It rolls each activity's cadence rule over a chosen horizon (in months) into
+a concrete, seeded schedule of due recurring activities per day, each with a target time drawn
+inside its window.
+The calendar is the *planned* activity ground truth: it is known before any day is generated,
+is
+exactly what the program scheduled, and later tells the day generator which recurring activities
+are due each day.
 Same profile + same seed + same horizon always yields an identical calendar.
 """
 
@@ -22,11 +25,11 @@ from pydantic import Field, model_validator
 
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.domain.models import AuthorType, Provenance
-from smart_home_sim.hybrid_planning.habits import (
+from smart_home_sim.hybrid_planning.recurring_activities import (
     BehavioralProfile,
     CadencePeriod,
-    Habit,
-    HabitKind,
+    RecurringActivity,
+    RecurringActivityKind,
     Weekday,
 )
 
@@ -41,19 +44,21 @@ class CadenceError(ValueError):
     """The requested horizon or profile could not be turned into a calendar."""
 
 
-class HabitOccurrence(ContractModel):
-    habit_id: str = Field(min_length=1)
+class ActivityOccurrence(ContractModel):
+    recurring_activity_id: str = Field(min_length=1)
     label: str = Field(min_length=1)
-    kind: HabitKind
+    kind: RecurringActivityKind
     target_time: str
     window_start: str
     window_end: str
+    # Carried through from the activity so the day builder need not re-infer it from prose.
+    intent: str | None = None
 
 
 class CalendarDay(ContractModel):
     date: str
     weekday: Weekday
-    occurrences: list[HabitOccurrence] = Field(default_factory=list)
+    occurrences: list[ActivityOccurrence] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_date(self) -> CalendarDay:
@@ -92,37 +97,40 @@ def build_cadence_calendar(
     timezone: str = "Europe/Rome",
     now: datetime | None = None,
 ) -> CadenceCalendarResult:
-    """Roll the profile's habits over ``months`` from ``start_date`` into a seeded calendar."""
+    """Roll the profile's recurring activities over ``months`` from ``start_date`` into a seeded
+    calendar."""
     if months < 1:
         raise CadenceError("horizon must be at least one month")
-    end_date = _add_months(start_date, months)
+    end_date = add_months(start_date, months)
 
-    per_habit_due = {
-        habit.habit_id: _due_times(habit, start_date, end_date, seed) for habit in profile.habits
+    per_activity_due = {
+        activity.recurring_activity_id: _due_times(activity, start_date, end_date, seed)
+        for activity in profile.recurring_activities
     }
-    by_id = {habit.habit_id: habit for habit in profile.habits}
+    by_id = {activity.recurring_activity_id: activity for activity in profile.recurring_activities}
 
     days: list[CalendarDay] = []
     total = 0
     current = start_date
     while current < end_date:
-        occurrences: list[HabitOccurrence] = []
-        for habit_id, schedule in per_habit_due.items():
+        occurrences: list[ActivityOccurrence] = []
+        for recurring_activity_id, schedule in per_activity_due.items():
             target = schedule.get(current)
             if target is None:
                 continue
-            habit = by_id[habit_id]
+            activity = by_id[recurring_activity_id]
             occurrences.append(
-                HabitOccurrence(
-                    habit_id=habit.habit_id,
-                    label=habit.label,
-                    kind=habit.kind,
+                ActivityOccurrence(
+                    recurring_activity_id=activity.recurring_activity_id,
+                    label=activity.label,
+                    kind=activity.kind,
+                    intent=activity.intent,
                     target_time=target,
-                    window_start=habit.cadence.window_start,
-                    window_end=habit.cadence.window_end,
+                    window_start=activity.cadence.window_start,
+                    window_end=activity.cadence.window_end,
                 )
             )
-        occurrences.sort(key=lambda item: (item.target_time, item.habit_id))
+        occurrences.sort(key=lambda item: (item.target_time, item.recurring_activity_id))
         total += len(occurrences)
         days.append(
             CalendarDay(
@@ -155,15 +163,15 @@ def build_cadence_calendar(
     return CadenceCalendarResult(calendar=calendar, total_occurrences=total)
 
 
-def _due_times(habit: Habit, start: date, end: date, seed: int) -> dict[date, str]:
-    cadence = habit.cadence
+def _due_times(activity: RecurringActivity, start: date, end: date, seed: int) -> dict[date, str]:
+    cadence = activity.cadence
     due: dict[date, str] = {}
     if cadence.period is CadencePeriod.day:
         current = start
         index = 0
         while current < end:
             if index % cadence.every_n_periods == 0:
-                due[current] = _target_time(habit, current, seed)
+                due[current] = _target_time(activity, current, seed)
             current += timedelta(days=1)
             index += 1
         return due
@@ -177,8 +185,8 @@ def _due_times(habit: Habit, start: date, end: date, seed: int) -> dict[date, st
         for week_index, dates in buckets.items():
             if week_index % cadence.every_n_periods != 0:
                 continue
-            for chosen in _select_week_dates(habit, week_index, dates, seed):
-                due[chosen] = _target_time(habit, chosen, seed)
+            for chosen in _select_week_dates(activity, week_index, dates, seed):
+                due[chosen] = _target_time(activity, chosen, seed)
         return due
 
     month_buckets: dict[tuple[int, int], list[date]] = defaultdict(list)
@@ -190,36 +198,38 @@ def _due_times(habit: Habit, start: date, end: date, seed: int) -> dict[date, st
         ordinal = (year - start.year) * 12 + (month - start.month)
         if ordinal % cadence.every_n_periods != 0:
             continue
-        for chosen in _select_month_dates(habit, year, month, dates, seed):
-            due[chosen] = _target_time(habit, chosen, seed)
+        for chosen in _select_month_dates(activity, year, month, dates, seed):
+            due[chosen] = _target_time(activity, chosen, seed)
     return due
 
 
-def _select_week_dates(habit: Habit, week_index: int, dates: list[date], seed: int) -> list[date]:
-    weekdays = set(habit.cadence.weekdays)
+def _select_week_dates(
+    activity: RecurringActivity, week_index: int, dates: list[date], seed: int
+) -> list[date]:
+    weekdays = set(activity.cadence.weekdays)
     if weekdays:
         return [day for day in dates if _weekday_of(day) in weekdays]
-    count = min(habit.cadence.times_per_period, len(dates))
-    rng = _rng(seed, habit.habit_id, "week", week_index)
+    count = min(activity.cadence.times_per_period, len(dates))
+    rng = _rng(seed, activity.recurring_activity_id, "week", week_index)
     return sorted(rng.sample(dates, count))
 
 
 def _select_month_dates(
-    habit: Habit, year: int, month: int, dates: list[date], seed: int
+    activity: RecurringActivity, year: int, month: int, dates: list[date], seed: int
 ) -> list[date]:
-    weekdays = set(habit.cadence.weekdays)
+    weekdays = set(activity.cadence.weekdays)
     candidates = [day for day in dates if _weekday_of(day) in weekdays] if weekdays else dates
     if not candidates:
         return []
-    count = min(habit.cadence.times_per_period, len(candidates))
-    rng = _rng(seed, habit.habit_id, "month", year, month)
+    count = min(activity.cadence.times_per_period, len(candidates))
+    rng = _rng(seed, activity.recurring_activity_id, "month", year, month)
     return sorted(rng.sample(candidates, count))
 
 
-def _target_time(habit: Habit, day: date, seed: int) -> str:
-    low = _minutes(habit.cadence.window_start)
-    high = _minutes(habit.cadence.window_end)
-    rng = _rng(seed, habit.habit_id, "time", day.isoformat())
+def _target_time(activity: RecurringActivity, day: date, seed: int) -> str:
+    low = _minutes(activity.cadence.window_start)
+    high = _minutes(activity.cadence.window_end)
+    rng = _rng(seed, activity.recurring_activity_id, "time", day.isoformat())
     return _hhmm(rng.randint(low, high))
 
 
@@ -242,7 +252,7 @@ def _hhmm(total: int) -> str:
     return f"{total // 60:02d}:{total % 60:02d}"
 
 
-def _add_months(day: date, months: int) -> date:
+def add_months(day: date, months: int) -> date:
     total = day.year * 12 + (day.month - 1) + months
     year, month_index = divmod(total, 12)
     month = month_index + 1

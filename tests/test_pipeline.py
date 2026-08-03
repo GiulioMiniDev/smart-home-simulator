@@ -33,7 +33,7 @@ def _h(label: str, kind: str, frequency: str, band: str) -> dict[str, str]:
 
 _HABITS = json.dumps(
     {
-        "habits": [
+        "recurring_activities": [
             _h("morning coffee", "anchor", "daily", "early_morning"),
             _h("evening pill", "anchor", "daily", "evening"),
             _h("morning walk", "anchor", "daily", "morning"),
@@ -61,7 +61,7 @@ def _pipeline_client() -> LMStudioClient:
         text = " ".join(message["content"] for message in json.loads(body)["messages"]).lower()
         if "invent one coherent person" in text:
             reply = _PERSONA
-        elif "daily-habit portfolio" in text:
+        elif "daily-activity portfolio" in text:
             reply = _HABITS
         elif "plan each of these days" in text:
             reply = _DAYS
@@ -80,7 +80,7 @@ def _assert_all_artifacts(output_dir) -> None:
         "personal-process-package.json",
         "cadence-calendar.json",
         "batch-manifest.json",
-        "planned-habit-trace.json",
+        "planned-activity-trace.json",
     ):
         assert (output_dir / name).exists(), name
 

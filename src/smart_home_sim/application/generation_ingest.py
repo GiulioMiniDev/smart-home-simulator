@@ -1,6 +1,7 @@
 """Publish a completed generation as the INPUT of a workspace home.
 
-Generation is an *authoring* step: it invents a persona, its habits and a horizon of days. This
+Generation is an *authoring* step: it invents a persona, its recurring activities and a horizon of
+days. This
 module turns that output into exactly the same kind of workspace input a researcher imports by hand
 (scenario + personal process package + residents + an executable home and sensor field), so from
 that point on the home behaves like any other: run the simulation, replay it, export the dataset.

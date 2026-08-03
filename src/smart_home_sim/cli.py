@@ -9,6 +9,7 @@ from typing import Annotated
 from uuid import uuid4
 
 import typer
+from pydantic import ValidationError
 
 from smart_home_sim.authoring import ingest_authoring_file, prepare_authoring_repair_file
 from smart_home_sim.behavior import validate_behavior_files
@@ -66,8 +67,10 @@ from smart_home_sim.formatting import (
 from smart_home_sim.hybrid_planning import (
     BehavioralProfile,
     CadenceError,
-    HabitsGenerationError,
+    HabitGroundTruth,
+    HorizonAuthoringBundle,
     HorizonError,
+    HorizonOutline,
     LMStudioClient,
     LMStudioConfig,
     LMStudioError,
@@ -75,17 +78,19 @@ from smart_home_sim.hybrid_planning import (
     Persona,
     PersonaGenerationError,
     PlanningWorld,
+    ProfileGenerationError,
     author_process_package,
     build_cadence_calendar,
     build_day_scenarios,
     build_horizon,
     build_planning_world,
-    generate_habits,
     generate_llm_day_plans,
     generate_persona,
+    generate_recurring_activities,
     run_generation,
 )
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
+from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
 from smart_home_sim.hybrid_planning.lmstudio import DEFAULT_BASE_URL, DEFAULT_MODEL
 from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
 from smart_home_sim.materialization.service import (
@@ -122,6 +127,9 @@ class SchemaContract(StrEnum):
     simulation_authoring_bundle = "simulation-authoring-bundle"
     authoring_ingestion_report = "authoring-ingestion-report"
     authoring_repair_request = "authoring-repair-request"
+    horizon_outline = "horizon-outline"
+    horizon_authoring_bundle = "horizon-authoring-bundle"
+    habit_ground_truth = "habit-ground-truth"
     home_model = "home-model"
     environment_validation_report = "environment-validation-report"
     simulation_bundle = "simulation-bundle"
@@ -698,8 +706,8 @@ def generate_persona_command(
         typer.echo(f"Generation exchange written to: {exchange_output.resolve()}")
 
 
-@app.command("generate-habits")
-def generate_habits_command(
+@app.command("generate-recurring-activities")
+def generate_recurring_activities_command(
     persona_path: Path,
     output: Annotated[Path, typer.Option("--output", "-o")],
     model: Annotated[str, typer.Option("--model")] = DEFAULT_MODEL,
@@ -709,7 +717,7 @@ def generate_habits_command(
     max_repairs: Annotated[int, typer.Option("--max-repairs", min=0)] = 2,
     exchange_output: Annotated[Path | None, typer.Option("--exchange-output")] = None,
 ) -> None:
-    """Generate a frozen behavioural profile (habit ground truth) from a persona via LM Studio."""
+    """Generate a frozen behavioural profile — the activity ground truth — from a persona."""
     outputs = {output.resolve()}
     if exchange_output is not None:
         if exchange_output.resolve() in {output.resolve(), persona_path.resolve()}:
@@ -732,18 +740,19 @@ def generate_habits_command(
         LMStudioConfig(base_url=base_url, model=model, temperature=temperature, seed=seed)
     )
     try:
-        result = generate_habits(persona, client, max_repairs=max_repairs, seed=seed)
+        result = generate_recurring_activities(persona, client, max_repairs=max_repairs, seed=seed)
     except LMStudioError as error:
         typer.echo(f"LM Studio generation failed: {error}", err=True)
         raise typer.Exit(code=2) from error
-    except HabitsGenerationError as error:
-        typer.echo(f"Habit generation failed: {error}", err=True)
+    except ProfileGenerationError as error:
+        typer.echo(f"RecurringActivity generation failed: {error}", err=True)
         raise typer.Exit(code=1) from error
 
     _atomic_write(output, result.profile.model_dump_json(by_alias=True, indent=2))
     typer.echo(
         f"Behavioural profile written to: {output.resolve()} "
-        f"({len(result.profile.habits)} habits, {result.repair_attempts} repair attempt(s))"
+        f"({len(result.profile.recurring_activities)} activities, "
+        f"{result.repair_attempts} repair attempt(s))"
     )
     if exchange_output is not None:
         exchange = {
@@ -886,7 +895,7 @@ def generate_dataset_command(
     except (
         LMStudioError,
         PersonaGenerationError,
-        HabitsGenerationError,
+        ProfileGenerationError,
         PackageAuthoringError,
         CadenceError,
         HorizonError,
@@ -901,6 +910,60 @@ def generate_dataset_command(
         "Generation complete. To simulate, run: "
         f"smart-home-sim simulate-batch {result.manifest_path} --output-dir <dir>"
     )
+
+
+@app.command("expand-outline")
+def expand_outline_command(
+    bundle_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    ground_truth_output: Annotated[Path | None, typer.Option("--ground-truth-output")] = None,
+    seed: Annotated[int, typer.Option("--seed")] = 0,
+) -> None:
+    """Roll a confirmed horizon outline into one authoring bundle covering the whole horizon."""
+    try:
+        bundle = HorizonAuthoringBundle.model_validate_json(bundle_path.read_text(encoding="utf-8"))
+    except ValidationError as error:
+        typer.echo(f"Not a valid horizon authoring bundle: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    try:
+        result = expand_outline(bundle.outline, bundle.personal_process_package, seed=seed)
+    except ExpansionError as error:
+        typer.echo(f"Expansion failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        result.bundle.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    typer.echo(
+        f"Authoring bundle written to: {output.resolve()} "
+        f"({result.day_count} days, {result.activity_count} activities)"
+    )
+    typer.echo(
+        f"Displaced occurrences: {result.skipped_occurrences} skipped, "
+        f"{result.rescheduled_occurrences} rescheduled, {result.dropped_occurrences} dropped"
+    )
+
+    truth_path = ground_truth_output or output.with_name("habit-ground-truth.json")
+    truth_path.parent.mkdir(parents=True, exist_ok=True)
+    truth_path.write_text(
+        result.habit_ground_truth.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    habits = result.habit_ground_truth.habits
+    typer.echo(
+        f"Habit ground truth written to: {truth_path.resolve()} ({len(habits)} habit band(s))"
+    )
+    if not habits:
+        typer.echo(
+            "The outline declared no habit bands, so nothing states how the day divides. "
+            "A habit-mining evaluation has no target without them.",
+            err=True,
+        )
 
 
 @app.command("generate-horizon")
@@ -967,7 +1030,7 @@ def generate_horizon_command(
         f"({result.day_count} days bundled, {len(result.failed_days)} skipped){llm_note}"
     )
     if result.trace_path is not None:
-        typer.echo(f"Planned habit ground-truth written to: {result.trace_path.resolve()}")
+        typer.echo(f"Planned activity ground-truth written to: {result.trace_path.resolve()}")
     typer.echo(
         "Generation complete. To simulate, run: "
         f"smart-home-sim simulate-batch {result.manifest_path} --output-dir <dir>"
@@ -1038,7 +1101,7 @@ def build_cadence_calendar_command(
     _atomic_write(output, result.calendar.model_dump_json(by_alias=True, indent=2))
     typer.echo(
         f"Cadence calendar written to: {output.resolve()} "
-        f"({len(result.calendar.days)} days, {result.total_occurrences} habit occurrences)"
+        f"({len(result.calendar.days)} days, {result.total_occurrences} activity occurrences)"
     )
 
 
@@ -1061,6 +1124,9 @@ def schema(
         SchemaContract.simulation_authoring_bundle: SimulationAuthoringBundle,
         SchemaContract.authoring_ingestion_report: AuthoringIngestionReport,
         SchemaContract.authoring_repair_request: AuthoringRepairRequest,
+        SchemaContract.horizon_outline: HorizonOutline,
+        SchemaContract.horizon_authoring_bundle: HorizonAuthoringBundle,
+        SchemaContract.habit_ground_truth: HabitGroundTruth,
         SchemaContract.home_model: HomeModel,
         SchemaContract.environment_validation_report: EnvironmentValidationReport,
         SchemaContract.simulation_bundle: SimulationBundle,

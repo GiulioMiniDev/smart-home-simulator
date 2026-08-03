@@ -55,7 +55,7 @@ _PERSONA = json.dumps(
 )
 _HABITS = json.dumps(
     {
-        "habits": [
+        "recurring_activities": [
             _h("morning coffee", "anchor", "daily", "early_morning"),
             _h("evening pill", "anchor", "daily", "evening"),
             _h("morning walk", "anchor", "daily", "morning"),
@@ -75,7 +75,7 @@ def _pipeline_client() -> LMStudioClient:
         reply = (
             _PERSONA
             if "invent one coherent person" in text
-            else (_HABITS if "daily-habit portfolio" in text else "{}")
+            else (_HABITS if "daily-activity portfolio" in text else "{}")
         )
         return json.dumps({"choices": [{"message": {"content": reply}, "finish_reason": "stop"}]})
 

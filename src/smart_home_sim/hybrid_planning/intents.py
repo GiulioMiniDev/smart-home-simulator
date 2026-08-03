@@ -1,8 +1,10 @@
-"""The shared intent vocabulary: the common ADL alphabet for habits, days, and process packages.
+"""The shared intent vocabulary: the common ADL alphabet for recurring activities, days, and process
+packages.
 
 Habit mining needs a fixed, comparable label space across residents, so every persona draws from
 this same catalog. Per-persona diversity comes from which intents recur, when, and in what
-sequences (the habits and days) — not from bespoke activity types, which the fixed sensor layout
+sequences (the recurring activities and days) — not from bespoke activity types, which the fixed
+sensor layout
 could not distinguish anyway. Each intent carries a default standard-apartment location (for
 distinct sensor signatures) and is grounded on a reference process model extracted from a proven
 package, on which stage A2b anchors the LLM authoring and its deterministic fallback.
@@ -77,6 +79,35 @@ INTENT_CATALOG: tuple[IntentSpec, ...] = (
     IntentSpec("sleep", "Sleep", IntentCategory.sleep_wake, "bedroom"),
 )
 
+# Time spent away from the dwelling, taken from the activity catalog rather than enumerated here.
+# These are deliberately *not* in `INTENT_CATALOG`: that tuple pairs one-to-one with the bundled
+# reference process models, and the local pipeline builds a package by walking it. An away intent
+# has no reference model and needs none — nothing it does is observable by a home sensor, so the
+# only fact the simulation takes from it is that the resident is out. Admitting them by catalog
+# category lets a case say "she is at work" without the vocabulary growing an intent per
+# occupation, and without touching a frozen artifact.
+AWAY_CATEGORIES: frozenset[str] = frozenset({"travel", "work", "social_visit"})
+AWAY_LOCATION = "outdoors"
+ACTIVITY_CATALOG_FILE = "activity-catalog-1.2.0.json"
+
+
+@lru_cache(maxsize=1)
+def away_intent_specs() -> tuple[IntentSpec, ...]:
+    catalog = json.loads(
+        files("smart_home_sim.catalogs").joinpath(ACTIVITY_CATALOG_FILE).read_text(encoding="utf-8")
+    )
+    return tuple(
+        IntentSpec(
+            activity["intent"],
+            activity.get("displayName") or activity["intent"],
+            IntentCategory.outdoor,
+            AWAY_LOCATION,
+        )
+        for activity in sorted(catalog["activities"], key=lambda item: item["intent"])
+        if activity["category"] in AWAY_CATEGORIES
+    )
+
+
 _BY_ID: dict[str, IntentSpec] = {spec.intent_id: spec for spec in INTENT_CATALOG}
 
 
@@ -85,10 +116,13 @@ def intent_ids() -> list[str]:
 
 
 def intent_spec(intent_id: str) -> IntentSpec:
-    try:
-        return _BY_ID[intent_id]
-    except KeyError as error:
-        raise KeyError(f"unknown intent: {intent_id!r}") from error
+    spec = _BY_ID.get(intent_id)
+    if spec is not None:
+        return spec
+    for away in away_intent_specs():
+        if away.intent_id == intent_id:
+            return away
+    raise KeyError(f"unknown intent: {intent_id!r}")
 
 
 @lru_cache(maxsize=1)

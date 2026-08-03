@@ -19,7 +19,7 @@ GENERATION_ARTIFACTS: frozenset[str] = frozenset(
         "personal-process-package.json",
         "cadence-calendar.json",
         "batch-manifest.json",
-        "planned-habit-trace.json",
+        "planned-activity-trace.json",
         "horizon-scenario.json",
     }
 )

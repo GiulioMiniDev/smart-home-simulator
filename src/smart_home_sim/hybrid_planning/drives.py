@@ -1,6 +1,7 @@
 """Homeostatic drive state carried across the days of a horizon.
 
-The cadence calendar decides *which* habits are due on a day; nothing until now decided how the
+The cadence calendar decides *which* recurring activities are due on a day; nothing until now
+decided how the
 resident actually *felt* when the day started. Every day was generated in isolation from a fixed
 scaffold, so the substrate woke the resident at the same minute for the whole horizon, gave the
 same night length every night, and never produced a nocturnal event. A recogniser trained on that
@@ -55,7 +56,7 @@ _NIGHT_VISIT_MARGIN_MINUTES = 25.0
 _HUNGER_SATIATION_PER_MEAL = 0.25
 _SOCIAL_SATIATION_PER_CONTACT = 0.5
 # Above this, the resident reaches out even though nothing was on the calendar. The unplanned
-# contact is behaviour, not a habit occurrence, and the day generator labels it as such.
+# contact is behaviour, not a planned occurrence, and the day generator labels it as such.
 _UNPLANNED_SOCIAL_THRESHOLD = 0.55
 
 

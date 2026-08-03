@@ -33,7 +33,7 @@ _PERSONA = json.dumps(
 )
 _HABITS = json.dumps(
     {
-        "habits": [
+        "recurring_activities": [
             _h("morning coffee", "anchor", "daily", "early_morning"),
             _h("evening pill", "anchor", "daily", "evening"),
             _h("morning walk", "anchor", "daily", "morning"),
@@ -52,7 +52,7 @@ def _pipeline_client() -> LMStudioClient:
         text = " ".join(m["content"] for m in json.loads(body)["messages"]).lower()
         if "invent one coherent person" in text:
             reply = _PERSONA
-        elif "daily-habit portfolio" in text:
+        elif "daily-activity portfolio" in text:
             reply = _HABITS
         else:
             reply = "{}"
@@ -85,7 +85,7 @@ def test_run_generation_job_completes(tmp_path) -> None:
     run_dir = generation_run_dir(workspace, job.job_id)
     assert (run_dir / "batch-manifest.json").exists()
     assert (run_dir / "persona.json").exists()
-    assert (run_dir / "planned-habit-trace.json").exists()
+    assert (run_dir / "planned-activity-trace.json").exists()
     # generation output must NOT land under runs/ (reconcile would flag it as orphan)
     assert not (workspace.runs_path / job.job_id).exists()
     assert workspace.reconcile() == []

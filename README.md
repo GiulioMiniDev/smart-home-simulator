@@ -409,7 +409,7 @@ UV_NO_EDITABLE=1 uv run smart-home-sim generate-dataset \
 
 Il comando scrive persona, profilo comportamentale, mondo di pianificazione, process package,
 calendario di cadenza, gli scenari/piani/bundle giornalieri, il `batch-manifest.json` e la ground
-truth pianificata `planned-habit-trace.json`. **Non simula.** Per simulare:
+truth pianificata `planned-activity-trace.json`. **Non simula.** Per simulare:
 
 ```bash
 UV_NO_EDITABLE=1 uv run smart-home-sim simulate-batch generated/lucia/batch-manifest.json --output-dir generated/lucia-run

@@ -1,6 +1,7 @@
 """End-to-end local generation: one brief to a simulatable batch manifest (no simulation).
 
-Chains every stage — invent persona, author habits, build the world, author the process package,
+Chains every stage — invent persona, author recurring_activities, build the world, author the
+process package,
 roll the cadence calendar, optionally arrange days with the LLM, and merge into the batch manifest
 plus the planned habit-mining ground truth. All artifacts are written to one output directory. This
 is the reusable engine behind the CLI ``generate-dataset`` and the web generation job; it never
@@ -16,7 +17,6 @@ from pathlib import Path
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.hybrid_planning.cadence import build_cadence_calendar
 from smart_home_sim.hybrid_planning.drives import RhythmProfile
-from smart_home_sim.hybrid_planning.habits import generate_habits
 from smart_home_sim.hybrid_planning.horizon import HorizonResult, build_horizon
 from smart_home_sim.hybrid_planning.llm_days import generate_llm_day_plans
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient
@@ -25,12 +25,21 @@ from smart_home_sim.hybrid_planning.package_authoring import (
     author_process_package,
 )
 from smart_home_sim.hybrid_planning.persona import generate_persona
+from smart_home_sim.hybrid_planning.recurring_activities import generate_recurring_activities
 from smart_home_sim.hybrid_planning.world import build_planning_world
 
 ProgressCallback = Callable[[str, float, str], None]
 
 # Ordered stages, for progress reporting.
-STAGES: tuple[str, ...] = ("persona", "habits", "world", "package", "calendar", "days", "horizon")
+STAGES: tuple[str, ...] = (
+    "persona",
+    "recurring_activities",
+    "world",
+    "package",
+    "calendar",
+    "days",
+    "horizon",
+)
 
 
 def _emit(progress: ProgressCallback | None, index: int, message: str) -> None:
@@ -64,8 +73,8 @@ def run_generation(
     persona = generate_persona(brief, client, seed=seed).persona
     _write(output_dir, "persona.json", persona)
 
-    _emit(progress, 1, "Authoring habits")
-    profile = generate_habits(persona, client, seed=seed).profile
+    _emit(progress, 1, "Authoring recurring_activities")
+    profile = generate_recurring_activities(persona, client, seed=seed).profile
     _write(output_dir, "behavioral-profile.json", profile)
 
     _emit(progress, 2, "Building the planning world")

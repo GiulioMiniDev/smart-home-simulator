@@ -1,0 +1,267 @@
+{
+  "$defs": {
+    "AuthorType": {
+      "enum": [
+        "human",
+        "external_llm",
+        "rule_generator",
+        "import"
+      ],
+      "title": "AuthorType",
+      "type": "string"
+    },
+    "HabitComposition": {
+      "additionalProperties": false,
+      "description": "How much of one habit band a single activity accounts for, measured over the horizon.",
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "minutes": {
+          "minimum": 0,
+          "title": "Minutes",
+          "type": "number"
+        },
+        "share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share",
+          "type": "number"
+        }
+      },
+      "required": [
+        "intent",
+        "minutes",
+        "share"
+      ],
+      "title": "HabitComposition",
+      "type": "object"
+    },
+    "HabitObservation": {
+      "additionalProperties": false,
+      "description": "One habit band with the activity mix that actually landed inside it.\n\nThis is the shape of Table IV in the habit-segmentation paper: for the Aruba bin `05:15-07:00`\nthe sleeping activity accounts for about 80% of the band, the rest being other activities or\nunlabelled time. `unaccounted_share` is that remainder \u2014 minutes inside the band during which\nthe plan has the resident doing nothing the outline named.",
+      "properties": {
+        "habitId": {
+          "minLength": 1,
+          "title": "Habitid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "windowStart": {
+          "title": "Windowstart",
+          "type": "string"
+        },
+        "windowEnd": {
+          "title": "Windowend",
+          "type": "string"
+        },
+        "crossesMidnight": {
+          "title": "Crossesmidnight",
+          "type": "boolean"
+        },
+        "dayCount": {
+          "minimum": 0,
+          "title": "Daycount",
+          "type": "integer"
+        },
+        "totalMinutes": {
+          "minimum": 0,
+          "title": "Totalminutes",
+          "type": "number"
+        },
+        "composition": {
+          "items": {
+            "$ref": "#/$defs/HabitComposition"
+          },
+          "title": "Composition",
+          "type": "array"
+        },
+        "unaccountedMinutes": {
+          "minimum": 0,
+          "title": "Unaccountedminutes",
+          "type": "number"
+        },
+        "unaccountedShare": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Unaccountedshare",
+          "type": "number"
+        }
+      },
+      "required": [
+        "habitId",
+        "label",
+        "windowStart",
+        "windowEnd",
+        "crossesMidnight",
+        "dayCount",
+        "totalMinutes",
+        "unaccountedMinutes",
+        "unaccountedShare"
+      ],
+      "title": "HabitObservation",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "$ref": "#/$defs/AuthorType"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "generatorVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorversion"
+        },
+        "modelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        },
+        "generatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatedat"
+        },
+        "humanReviewed": {
+          "default": false,
+          "title": "Humanreviewed",
+          "type": "boolean"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer: the bands the outline\ndeclared, and the activity mix the generated horizon actually produced in each. It is derived\nfrom the plan, not from an execution, so it is the *planned* truth \u2014 deviations introduced by\nthe simulator belong to the execution trace.",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "habit_ground_truth",
+      "default": "habit_ground_truth",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "outlineId": {
+      "minLength": 1,
+      "title": "Outlineid",
+      "type": "string"
+    },
+    "residentId": {
+      "minLength": 1,
+      "title": "Residentid",
+      "type": "string"
+    },
+    "timeZone": {
+      "minLength": 1,
+      "title": "Timezone",
+      "type": "string"
+    },
+    "startDate": {
+      "format": "date",
+      "title": "Startdate",
+      "type": "string"
+    },
+    "endDate": {
+      "format": "date",
+      "title": "Enddate",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "habits": {
+      "items": {
+        "$ref": "#/$defs/HabitObservation"
+      },
+      "title": "Habits",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "outlineId",
+    "residentId",
+    "timeZone",
+    "startDate",
+    "endDate",
+    "seed",
+    "provenance"
+  ],
+  "title": "Smart Home Habit Ground Truth 1.0.0",
+  "type": "object"
+}

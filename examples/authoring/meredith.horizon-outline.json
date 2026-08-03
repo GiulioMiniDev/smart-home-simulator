@@ -1,0 +1,511 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "horizon_outline",
+  "outlineId": "meredith-merrino-long-island-8-months-2026-2027",
+  "title": "Meredith Merrino eight-month smart-home routine",
+  "residentId": "meredith",
+  "timeZone": "America/New_York",
+  "startDate": "2026-08-03",
+  "months": 8,
+  "world": {
+    "homeModel": {
+      "referenceId": "synthetic-long-island-flat-1",
+      "version": "1.0.0"
+    },
+    "locations": [
+      {
+        "locationId": "bedroom",
+        "kind": "room",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "bathroom",
+        "kind": "room",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "kitchen",
+        "kind": "room",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "living_room",
+        "kind": "room",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "balcony",
+        "kind": "room",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "outdoors",
+        "kind": "external",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "outside_salon",
+        "kind": "external",
+        "memberLocationIds": [],
+        "attributes": {}
+      },
+      {
+        "locationId": "home",
+        "kind": "composite",
+        "memberLocationIds": [
+          "bedroom",
+          "bathroom",
+          "kitchen",
+          "living_room",
+          "balcony"
+        ],
+        "attributes": {}
+      }
+    ],
+    "resources": [
+      {
+        "resourceId": "kitchen_stove",
+        "resourceType": "appliance",
+        "locationId": "kitchen",
+        "capacity": 1,
+        "attributes": {}
+      },
+      {
+        "resourceId": "washing_machine",
+        "resourceType": "appliance",
+        "locationId": "bathroom",
+        "capacity": 1,
+        "attributes": {}
+      },
+      {
+        "resourceId": "living_room_television",
+        "resourceType": "appliance",
+        "locationId": "living_room",
+        "capacity": 1,
+        "attributes": {}
+      }
+    ],
+    "externalPeople": [
+      {
+        "externalPersonId": "friend_group",
+        "displayName": "Saturday friends",
+        "relationshipToResidents": {
+          "meredith": "friends"
+        },
+        "attributes": {}
+      }
+    ],
+    "startLocationId": "bedroom",
+    "residentFacts": {
+      "at_home": true,
+      "posture": "lying"
+    },
+    "environmentFacts": {},
+    "resourceFacts": {}
+  },
+  "profile": {
+    "schemaVersion": "1.0.0",
+    "documentType": "behavioral_profile",
+    "profileId": "meredith-merrino-profile-1",
+    "personaId": "meredith",
+    "recurringActivities": [
+      {
+        "recurringActivityId": "morning_run",
+        "label": "Morning run",
+        "kind": "anchor",
+        "cadence": {
+          "period": "day",
+          "timesPerPeriod": 1,
+          "everyNPeriods": 1,
+          "weekdays": [],
+          "windowStart": "06:00",
+          "windowEnd": "08:00",
+          "jitterMinutes": 25
+        },
+        "miningDifficulty": "easy",
+        "intent": "evening_walk",
+        "note": "Runs before work; the catalog has no running intent, the action kind carries it."
+      },
+      {
+        "recurringActivityId": "breakfast_at_home",
+        "label": "Breakfast at home",
+        "kind": "anchor",
+        "cadence": {
+          "period": "day",
+          "timesPerPeriod": 1,
+          "everyNPeriods": 1,
+          "weekdays": [],
+          "windowStart": "07:00",
+          "windowEnd": "09:00",
+          "jitterMinutes": 20
+        },
+        "miningDifficulty": "easy",
+        "intent": "eat_breakfast",
+        "note": ""
+      },
+      {
+        "recurringActivityId": "dinner_at_home",
+        "label": "Dinner at home",
+        "kind": "anchor",
+        "cadence": {
+          "period": "day",
+          "timesPerPeriod": 1,
+          "everyNPeriods": 1,
+          "weekdays": [],
+          "windowStart": "19:30",
+          "windowEnd": "21:30",
+          "jitterMinutes": 35
+        },
+        "miningDifficulty": "easy",
+        "intent": "eat_dinner",
+        "note": ""
+      },
+      {
+        "recurringActivityId": "grocery_shopping",
+        "label": "Grocery shopping",
+        "kind": "contextual",
+        "cadence": {
+          "period": "week",
+          "timesPerPeriod": 1,
+          "everyNPeriods": 1,
+          "weekdays": [
+            "wednesday",
+            "saturday"
+          ],
+          "windowStart": "17:30",
+          "windowEnd": "19:30",
+          "jitterMinutes": 30
+        },
+        "miningDifficulty": "medium",
+        "intent": "buy_groceries",
+        "note": ""
+      },
+      {
+        "recurringActivityId": "laundry",
+        "label": "Laundry",
+        "kind": "contextual",
+        "cadence": {
+          "period": "week",
+          "timesPerPeriod": 2,
+          "everyNPeriods": 1,
+          "weekdays": [],
+          "windowStart": "18:00",
+          "windowEnd": "21:00",
+          "jitterMinutes": 30
+        },
+        "miningDifficulty": "medium",
+        "intent": "start_laundry",
+        "note": ""
+      },
+      {
+        "recurringActivityId": "evening_television",
+        "label": "Evening television",
+        "kind": "optional",
+        "cadence": {
+          "period": "day",
+          "timesPerPeriod": 1,
+          "everyNPeriods": 1,
+          "weekdays": [],
+          "windowStart": "20:30",
+          "windowEnd": "23:00",
+          "jitterMinutes": 45
+        },
+        "miningDifficulty": "hard",
+        "intent": "watch_television",
+        "note": "Skipped on late or social evenings; the softest signal in the profile."
+      },
+      {
+        "recurringActivityId": "aperitivo_with_friends",
+        "label": "Saturday aperitivo with friends",
+        "kind": "optional",
+        "cadence": {
+          "period": "week",
+          "timesPerPeriod": 1,
+          "everyNPeriods": 1,
+          "weekdays": [
+            "saturday"
+          ],
+          "windowStart": "18:30",
+          "windowEnd": "21:00",
+          "jitterMinutes": 30
+        },
+        "miningDifficulty": "medium",
+        "intent": "evening_walk",
+        "note": ""
+      },
+      {
+        "recurringActivityId": "long_phone_call_family",
+        "label": "Long call with family",
+        "kind": "rare",
+        "cadence": {
+          "period": "month",
+          "timesPerPeriod": 2,
+          "everyNPeriods": 1,
+          "weekdays": [],
+          "windowStart": "18:00",
+          "windowEnd": "21:00",
+          "jitterMinutes": 30
+        },
+        "miningDifficulty": "hard",
+        "intent": "phone_call",
+        "note": ""
+      }
+    ],
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "modelName": "GPT-5.6 Thinking",
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+      "generatedAt": "2026-08-03T10:00:00Z",
+      "humanReviewed": true,
+      "parameters": {}
+    }
+  },
+  "rhythm": {
+    "age": 45,
+    "health": [],
+    "chronotypeBedtime": "22:30"
+  },
+  "habits": [
+    {
+      "habitId": "night",
+      "label": "Night",
+      "windowStart": "22:30",
+      "windowEnd": "06:00",
+      "recurringActivityIds": [],
+      "note": "Wraps past midnight, which only a habit band may do."
+    },
+    {
+      "habitId": "morning_routine",
+      "label": "Morning routine",
+      "windowStart": "06:00",
+      "windowEnd": "09:00",
+      "recurringActivityIds": [
+        "morning_run",
+        "breakfast_at_home"
+      ],
+      "note": ""
+    },
+    {
+      "habitId": "late_afternoon",
+      "label": "Late afternoon errands",
+      "windowStart": "17:00",
+      "windowEnd": "19:30",
+      "recurringActivityIds": [
+        "grocery_shopping",
+        "laundry"
+      ],
+      "note": ""
+    },
+    {
+      "habitId": "evening",
+      "label": "Evening at home",
+      "windowStart": "19:30",
+      "windowEnd": "22:30",
+      "recurringActivityIds": [
+        "dinner_at_home",
+        "evening_television",
+        "long_phone_call_family"
+      ],
+      "note": ""
+    }
+  ],
+  "fixedCommitments": [
+    {
+      "commitmentId": "hair_salon_shift",
+      "label": "Hair salon",
+      "weekdays": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "startTime": "09:00",
+      "endTime": "17:00",
+      "intent": "work_shift",
+      "startDate": null,
+      "endDate": null,
+      "note": "Fixed by the employer, so the clock times are a fact about the world."
+    }
+  ],
+  "phases": [
+    {
+      "phaseId": "late_summer_heat",
+      "label": "Late-summer heat",
+      "startDate": "2026-08-03",
+      "endDate": "2026-09-06",
+      "activityOverrides": [
+        {
+          "recurringActivityId": "morning_run",
+          "suspended": false,
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "05:30",
+            "windowEnd": "07:00",
+            "jitterMinutes": 20
+          }
+        }
+      ],
+      "note": "Runs earlier to beat the heat."
+    },
+    {
+      "phaseId": "winter_indoors",
+      "label": "Winter",
+      "startDate": "2026-12-01",
+      "endDate": "2027-02-28",
+      "activityOverrides": [
+        {
+          "recurringActivityId": "morning_run",
+          "suspended": false,
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 3,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "06:30",
+            "windowEnd": "08:00",
+            "jitterMinutes": 30
+          }
+        },
+        {
+          "recurringActivityId": "aperitivo_with_friends",
+          "suspended": true,
+          "cadence": null
+        }
+      ],
+      "note": "Running drops to three times a week; the outdoor aperitivo stops."
+    }
+  ],
+  "events": [
+    {
+      "eventId": "dentist_autumn",
+      "label": "Dentist appointment",
+      "earliestDate": "2026-10-05",
+      "latestDate": "2026-10-30",
+      "occurrences": 1,
+      "windowStart": "09:00",
+      "windowEnd": "12:00",
+      "minimumMinutes": 45,
+      "maximumMinutes": 90,
+      "weekdays": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "intent": "evening_walk",
+      "displaces": [
+        {
+          "recurringActivityId": "morning_run",
+          "policy": "skip"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "eventId": "christmas_with_family",
+      "label": "Christmas at her family's",
+      "earliestDate": "2026-12-24",
+      "latestDate": "2026-12-26",
+      "occurrences": 3,
+      "windowStart": "10:00",
+      "windowEnd": "22:00",
+      "minimumMinutes": 300,
+      "maximumMinutes": 600,
+      "weekdays": [],
+      "intent": "evening_walk",
+      "displaces": [
+        {
+          "recurringActivityId": "dinner_at_home",
+          "policy": "skip"
+        },
+        {
+          "recurringActivityId": "evening_television",
+          "policy": "skip"
+        }
+      ],
+      "note": "Three consecutive days away; the home routine is displaced, not varied."
+    },
+    {
+      "eventId": "flu_week",
+      "label": "A week of flu",
+      "earliestDate": "2027-01-11",
+      "latestDate": "2027-01-17",
+      "occurrences": 5,
+      "windowStart": "08:00",
+      "windowEnd": "20:00",
+      "minimumMinutes": 240,
+      "maximumMinutes": 600,
+      "weekdays": [],
+      "intent": "rest_or_nap",
+      "displaces": [
+        {
+          "recurringActivityId": "morning_run",
+          "policy": "skip"
+        },
+        {
+          "recurringActivityId": "grocery_shopping",
+          "policy": "reschedule"
+        }
+      ],
+      "note": "The kind of disruption a recogniser should survive without unlearning."
+    },
+    {
+      "eventId": "spring_weekend_away",
+      "label": "Weekend away",
+      "earliestDate": "2027-03-05",
+      "latestDate": "2027-03-28",
+      "occurrences": 2,
+      "windowStart": "09:00",
+      "windowEnd": "21:00",
+      "minimumMinutes": 480,
+      "maximumMinutes": 720,
+      "weekdays": [
+        "saturday",
+        "sunday"
+      ],
+      "intent": "evening_walk",
+      "displaces": [
+        {
+          "recurringActivityId": "dinner_at_home",
+          "policy": "skip"
+        },
+        {
+          "recurringActivityId": "laundry",
+          "policy": "reschedule"
+        }
+      ],
+      "note": ""
+    }
+  ],
+  "provenance": {
+    "authorType": "external_llm",
+    "generatorName": "smart-home-simulator-external-llm-authoring",
+    "generatorVersion": "1.4.0",
+    "modelName": "GPT-5.6 Thinking",
+    "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+    "generatedAt": "2026-08-03T10:00:00Z",
+    "humanReviewed": true,
+    "parameters": {
+      "authoringAssumptions": [
+        "Meredith lives alone in a synthetic large Long Island flat.",
+        "Her work schedule is Monday to Friday, 09:00 to 17:00, at a nearby salon.",
+        "The morning run maps to the evening_walk intent; the action kind is running.",
+        "Concrete daily times, sleep debt and drive dynamics are the expander's job."
+      ]
+    }
+  },
+  "note": "Structure only: no day of this horizon is described here."
+}

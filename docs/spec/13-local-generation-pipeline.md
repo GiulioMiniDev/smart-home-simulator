@@ -45,7 +45,7 @@ containing it still passes the deterministic gate, otherwise the deterministic s
 | 4 | Process package authoring | optional | `personal-process-package.json` |
 | 5 | Cadence calendar | no | `cadence-calendar.json` |
 | 6 | Day arrangement | optional | in-memory day plans |
-| 7 | Horizon merge | no | `batch-manifest.json`, `planned-habit-trace.json`, `horizon-scenario.json`, per-day `scenarios/`, `plans/`, `bundles/` |
+| 7 | Horizon merge | no | `batch-manifest.json`, `planned-activity-trace.json`, `horizon-scenario.json`, per-day `scenarios/`, `plans/`, `bundles/` |
 
 ### 1. Persona
 
@@ -167,7 +167,7 @@ value a process model may reference. See `06-behavioral-authoring.md`.
 
 ## Ground truth separation
 
-The planned trace (`planned-habit-trace.json`) records which habit is due when, derived
+The planned trace (`planned-activity-trace.json`) records which habit is due when, derived
 deterministically from the frozen cadence calendar with no LLM and no simulation. The *realized*
 trace — what actually occurred — is recovered later from the simulation's oracle mapping. Keeping
 them as separate artifacts is what lets mining precision and recall be scored without leaking labels

@@ -10,6 +10,7 @@ from smart_home_sim.domain.plan import ObjectiveValues
 COMPILATION_ISSUE_CODES = frozenset(
     {
         "CANONICAL_PLAN_INVALID",
+        "COMPILATION_BUDGET_EXCEEDED",
         "CONTINGENCY_PLAN_INFEASIBLE",
         "CONTINGENCY_TARGET_NOT_SCHEDULED",
         "CROSS_BRANCH_DEPENDENCY",

@@ -8,9 +8,11 @@ home's entity capabilities are derived from the package's actions (so the home c
 ``assemble_scenario`` later combines a world with generated days and a window into a full scenario.
 
 NOTE (future extensibility): the apartment is a fixed, comprehensive standard template, with the
-persona injected as resident. Deliberate for now — distinctiveness lives in the habits, days, and
+persona injected as resident. Deliberate for now — distinctiveness lives in the recurring
+activities, days, and
 process package, not the ADL home. A later version may generate a per-persona world (tailoring
-locations/resources to the habits) behind this same ``PlanningWorld`` contract; keep that swap open.
+locations/resources to the recurring activities) behind this same ``PlanningWorld`` contract;
+keep that swap open.
 """
 
 from __future__ import annotations

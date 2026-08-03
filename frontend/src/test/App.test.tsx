@@ -78,9 +78,9 @@ describe("complete application routes", () => {
     overrides["/generation"] = () => response(record(), { status: 202 });
     overrides["/jobs/gen_1"] = () => response({ job: record() });
     overrides["/generation/gen_1/artifact/persona.json"] = { name: "Elena", age: 72, city: "Bologna" };
-    overrides["/generation/gen_1/artifact/behavioral-profile.json"] = { habits: [1, 2, 3] };
+    overrides["/generation/gen_1/artifact/behavioral-profile.json"] = { recurringActivities: [1, 2, 3] };
     overrides["/generation/gen_1/artifact/batch-manifest.json"] = { runs: [1, 2] };
-    overrides["/generation/gen_1/artifact/planned-habit-trace.json"] = { entries: [1, 2, 3, 4] };
+    overrides["/generation/gen_1/artifact/planned-activity-trace.json"] = { entries: [1, 2, 3, 4] };
     mount("/generate");
     fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "an elderly woman" } });
     fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
@@ -97,6 +97,52 @@ describe("complete application routes", () => {
     fireEvent.change(screen.getByLabelText("Person and case brief"), { target: { value: "brief" } });
     fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
     expect(await screen.findByText(/endpoint down/)).toBeInTheDocument();
+  });
+
+  it("expands a horizon outline in the application and reports what it produced", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: true, issues: [], expansion: { dayCount: 243, activityCount: 2535, habitBandCount: 5 } };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const outline = new File(["{}"], "outline.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
+    fireEvent.change(screen.getByLabelText("Horizon outline"), { target: { files: [outline] } });
+    fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
+    // The counts are the whole point of showing anything: a structure went in, days came out.
+    expect(await screen.findAllByText(/243 days, 2535 activities and 5 habit bands/)).not.toHaveLength(0);
+  });
+
+  it("shows the single sentence when an outline is refused before any day exists", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: false, message: "the rhythm emits these intents on its own and the process package must implement them too: sleep, wake_up" };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const outline = new File(["{}"], "outline.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
+    fireEvent.change(screen.getByLabelText("Horizon outline"), { target: { files: [outline] } });
+    fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
+    expect(await screen.findAllByText(/the rhythm emits these intents on its own/)).not.toHaveLength(0);
+  });
+
+  it("offers the horizon outline prompt apart, since its output is expanded rather than imported", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
+    const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    mount("/help");
+    await screen.findByRole("heading", { name: "Horizons longer than a month" });
+    fireEvent.change(screen.getByLabelText(/Person and case description/), { target: { value: "Nicoletta Palmi, 8 months" } });
+    const copyButtons = screen.getAllByRole("button", { name: "Copy prompt" });
+    fireEvent.click(copyButtons[2]);
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const prompt = writeText.mock.calls[0]?.[0] ?? "";
+    expect(prompt).toContain("Nicoletta Palmi, 8 months");
+    expect(prompt).toContain("generate-horizon-outline-1.0.0");
+    expect(prompt).toContain("Do not write the days of the horizon.");
+    expect(prompt).not.toContain("{{PERSON_AND_CASE_DESCRIPTION}}");
+    // The guide must say the response cannot be imported as it stands, or a reader will try.
+    expect(screen.getByText(/Its response is expanded, not imported as it stands/)).toBeInTheDocument();
+    expect(screen.getByText(/expand-outline/)).toBeInTheDocument();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
   });
 
   it("provides personalized simplified and Advanced prompts in the integrated guide", async () => {
@@ -482,9 +528,9 @@ describe("complete application routes", () => {
       "/generation": () => response(genJob, { status: 202 }),
       "/jobs/gen_1": { job: genJob },
       "/generation/gen_1/artifact/persona.json": { name: "Elena", age: 72, city: "Bologna" },
-      "/generation/gen_1/artifact/behavioral-profile.json": { habits: [1, 2, 3, 4, 5, 6, 7, 8] },
+      "/generation/gen_1/artifact/behavioral-profile.json": { recurringActivities: [1, 2, 3, 4, 5, 6, 7, 8] },
       "/generation/gen_1/artifact/batch-manifest.json": { runs: [1, 2] },
-      "/generation/gen_1/artifact/planned-habit-trace.json": { entries: [1, 2, 3] },
+      "/generation/gen_1/artifact/planned-activity-trace.json": { entries: [1, 2, 3] },
     };
     mount("/generate");
     await screen.findByText("No generation selected");
@@ -503,9 +549,9 @@ describe("complete application routes", () => {
       "/generations": [legacy],
       "/jobs/gen_old": { job: legacy },
       "/generation/gen_old/artifact/persona.json": { name: "Ada", age: 80, city: "Milan" },
-      "/generation/gen_old/artifact/behavioral-profile.json": { habits: [1] },
+      "/generation/gen_old/artifact/behavioral-profile.json": { recurringActivities: [1] },
       "/generation/gen_old/artifact/batch-manifest.json": { runs: [1] },
-      "/generation/gen_old/artifact/planned-habit-trace.json": { entries: [1] },
+      "/generation/gen_old/artifact/planned-activity-trace.json": { entries: [1] },
     };
     overrides = { ...artifacts, "/generation/gen_old/publish": () => response({ error: { message: "artifacts are gone" } }, { status: 409 }) };
     mount("/generate");

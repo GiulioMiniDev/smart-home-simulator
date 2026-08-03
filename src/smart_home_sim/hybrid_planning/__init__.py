@@ -1,4 +1,5 @@
-"""Optional local generation front-end: invent a persona, its habits, and simulatable days.
+"""Optional local generation front-end: invent a persona, its recurring activities, and simulatable
+days.
 
 This subsystem sits in front of Phase 1. It may call the existing validation, compilation,
 environment, and simulation services as gates, but those packages must not import it. Accepted
@@ -7,32 +8,24 @@ artifacts remain replayable and simulatable without LM Studio.
 
 from __future__ import annotations
 
+from smart_home_sim.hybrid_planning.activity_trace import (
+    ActivityTraceEntry,
+    PlannedActivityTrace,
+    build_planned_trace,
+)
 from smart_home_sim.hybrid_planning.cadence import (
+    ActivityOccurrence,
     CadenceCalendar,
     CadenceCalendarResult,
     CadenceError,
     CalendarDay,
-    HabitOccurrence,
     build_cadence_calendar,
 )
 from smart_home_sim.hybrid_planning.day_generation import (
     build_day_plan,
     build_day_scenario,
     build_day_scenarios,
-    habit_to_intent,
-)
-from smart_home_sim.hybrid_planning.habit_trace import (
-    HabitTraceEntry,
-    PlannedHabitTrace,
-    build_planned_trace,
-)
-from smart_home_sim.hybrid_planning.habits import (
-    BehavioralProfile,
-    Habit,
-    HabitsGenerationError,
-    HabitsGenerationResult,
-    generate_habits,
-    validate_portfolio,
+    label_to_intent,
 )
 from smart_home_sim.hybrid_planning.horizon import (
     HorizonError,
@@ -53,6 +46,20 @@ from smart_home_sim.hybrid_planning.lmstudio import (
     LMStudioUnavailableError,
     extract_json_value,
 )
+from smart_home_sim.hybrid_planning.outline import (
+    OUTLINE_SCHEMA_VERSION,
+    ActivityOverride,
+    Displacement,
+    FixedCommitment,
+    HabitGroundTruth,
+    HabitSegment,
+    HorizonAuthoringBundle,
+    HorizonOutline,
+    OutlineError,
+    OutlineEvent,
+    OutlinePhase,
+    OutlineWorld,
+)
 from smart_home_sim.hybrid_planning.package_authoring import (
     PackageAuthoringError,
     ProcessPackageResult,
@@ -67,6 +74,14 @@ from smart_home_sim.hybrid_planning.persona import (
     generate_persona,
 )
 from smart_home_sim.hybrid_planning.pipeline import STAGES, run_generation
+from smart_home_sim.hybrid_planning.recurring_activities import (
+    BehavioralProfile,
+    ProfileGenerationError,
+    ProfileGenerationResult,
+    RecurringActivity,
+    generate_recurring_activities,
+    validate_portfolio,
+)
 from smart_home_sim.hybrid_planning.world import (
     PlanningWorld,
     assemble_scenario,
@@ -75,21 +90,33 @@ from smart_home_sim.hybrid_planning.world import (
 
 __all__ = [
     "MAX_ROUTINE_ANCHORS",
+    "OUTLINE_SCHEMA_VERSION",
+    "HabitGroundTruth",
+    "HabitSegment",
     "BehavioralProfile",
+    "Displacement",
+    "FixedCommitment",
+    "ActivityOverride",
+    "HorizonAuthoringBundle",
+    "HorizonOutline",
+    "OutlineError",
+    "OutlineEvent",
+    "OutlinePhase",
+    "OutlineWorld",
     "CadenceCalendar",
     "CadenceCalendarResult",
     "CadenceError",
     "CalendarDay",
     "ChatMessage",
-    "Habit",
-    "HabitOccurrence",
-    "HabitsGenerationError",
-    "HabitsGenerationResult",
-    "HabitTraceEntry",
+    "RecurringActivity",
+    "ActivityOccurrence",
+    "ProfileGenerationError",
+    "ProfileGenerationResult",
+    "ActivityTraceEntry",
     "HorizonError",
     "HorizonResult",
     "LlmDaysResult",
-    "PlannedHabitTrace",
+    "PlannedActivityTrace",
     "build_horizon",
     "build_planned_trace",
     "generate_llm_day_plans",
@@ -114,9 +141,9 @@ __all__ = [
     "build_day_scenarios",
     "build_planning_world",
     "build_reference_package",
-    "habit_to_intent",
+    "label_to_intent",
     "extract_json_value",
-    "generate_habits",
+    "generate_recurring_activities",
     "generate_persona",
     "run_generation",
     "validate_portfolio",

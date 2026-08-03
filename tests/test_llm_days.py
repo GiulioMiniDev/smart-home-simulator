@@ -9,9 +9,8 @@ from typer.testing import CliRunner
 from smart_home_sim import cli
 from smart_home_sim.domain.models import AuthorType, Provenance
 from smart_home_sim.hybrid_planning import llm_days as ld
-from smart_home_sim.hybrid_planning.cadence import CadenceCalendar, CalendarDay, HabitOccurrence
+from smart_home_sim.hybrid_planning.cadence import ActivityOccurrence, CadenceCalendar, CalendarDay
 from smart_home_sim.hybrid_planning.day_generation import build_day_plan
-from smart_home_sim.hybrid_planning.habits import HabitKind, Weekday
 from smart_home_sim.hybrid_planning.intents import intent_ids
 from smart_home_sim.hybrid_planning.llm_days import (
     LlmDaysResult,
@@ -22,6 +21,7 @@ from smart_home_sim.hybrid_planning.llm_days import (
 )
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioConfig
 from smart_home_sim.hybrid_planning.persona import Persona
+from smart_home_sim.hybrid_planning.recurring_activities import RecurringActivityKind, Weekday
 from smart_home_sim.hybrid_planning.world import build_planning_world
 
 runner = CliRunner()
@@ -46,11 +46,11 @@ def _world():
     return build_planning_world(persona, now=_NOW)
 
 
-def _occ(label: str, target: str) -> HabitOccurrence:
-    return HabitOccurrence(
-        habit_id=label.replace(" ", "_"),
+def _occ(label: str, target: str) -> ActivityOccurrence:
+    return ActivityOccurrence(
+        recurring_activity_id=label.replace(" ", "_"),
         label=label,
-        kind=HabitKind.anchor,
+        kind=RecurringActivityKind.anchor,
         target_time=target,
         window_start="06:00",
         window_end="22:00",
@@ -93,7 +93,7 @@ _CANNED = json.dumps(
             {
                 "date": "2026-08-03",
                 "timeline": [
-                    {"intent": "eat_breakfast", "around": "07:30", "habit": "morning_coffee"},
+                    {"intent": "eat_breakfast", "around": "07:30", "activity": "morning_coffee"},
                     {"intent": "eat_lunch", "around": "12:30"},
                     {"intent": "watch_television", "around": "21:00"},
                 ],
@@ -102,7 +102,7 @@ _CANNED = json.dumps(
                 "date": "2026-08-04",
                 "timeline": [
                     {"intent": "eat_breakfast", "around": "08:00"},
-                    {"intent": "buy_groceries", "around": "10:30", "habit": "groceries"},
+                    {"intent": "buy_groceries", "around": "10:30", "activity": "groceries"},
                 ],
             },
         ]
@@ -150,14 +150,14 @@ def test_entries_from_timeline_filters_and_frames() -> None:
             {"intent": "bogus", "around": "10:00"},
             {"intent": "eat_breakfast", "around": "not-a-time"},
             "not a dict",
-            {"intent": "rest_or_nap", "around": "14:00", "habit": "h1"},
+            {"intent": "rest_or_nap", "around": "14:00", "activity": "h1"},
         ],
         vocabulary,
     )
     ids = [entry.intent_id for entry in entries]
     assert ids[0] == "wake_up" and ids[-1] == "sleep"
     assert ids[1:3] == ["eat_lunch", "rest_or_nap"]  # sorted by time, junk dropped
-    assert entries[2].habit_id == "h1"
+    assert entries[2].recurring_activity_id == "h1"
     assert _entries_from_timeline("not a list", vocabulary) == []
 
 

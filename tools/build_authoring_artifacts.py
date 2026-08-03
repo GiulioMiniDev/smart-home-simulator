@@ -380,9 +380,101 @@ def build_example() -> None:
     )
 
 
+# The outline prompt reuses the process-package half of 1.3.0 verbatim. It is extracted from the
+# frozen prompt rather than restated, so a change there cannot leave this one teaching the old
+# contract — the same reason the catalogs are embedded instead of retyped.
+OUTLINE_TEMPLATE_PATH = ROOT / "prompts/templates/generate-horizon-outline-1.0.0.template.md"
+OUTLINE_PROMPT_PATH = ROOT / "prompts/generate-horizon-outline-1.0.0.md"
+OUTLINE_BUNDLE_SCHEMA_PATH = ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json"
+REUSED_FROM_1_3_0 = ("## Personal ADL process-model rules", "## Required final consistency checks")
+
+
+def _section_span(prompt: str, start_heading: str, end_heading: str) -> str:
+    start = prompt.index(start_heading)
+    end = prompt.index(end_heading, start)
+    return prompt[start:end].rstrip() + "\n"
+
+
+def _render_activity_portfolio() -> str:
+    from smart_home_sim.hybrid_planning.recurring_activities import (
+        MIN_RECURRING_ACTIVITIES,
+        REQUIRED_KINDS,
+    )
+
+    lines = [
+        f"Author at least {MIN_RECURRING_ACTIVITIES} recurring activities, with at least "
+        "these counts "
+        "per kind "
+        "(the portfolio gate rejects an unbalanced profile):",
+        "",
+    ]
+    lines.extend(f"- `{kind}`: {count}" for kind, count in sorted(REQUIRED_KINDS.items()))
+    return "\n".join(lines) + "\n"
+
+
+def _render_catalog_rooms() -> str:
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+
+    rooms = sorted({spec.default_location for spec in INTENT_CATALOG})
+    listed = ", ".join(f"`{room}`" for room in rooms)
+    return (
+        "`world.locations` must declare every room the activity catalog places an intent in, "
+        f"under exactly these identifiers: {listed}. A missing one is rejected before any day "
+        "is built.\n"
+    )
+
+
+def _render_catalog_intents() -> str:
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+
+    lines = [
+        "Every `intent` must be one of the canonical intents below, spelled exactly. The room "
+        "given is where the activity catalog places it.",
+        "",
+    ]
+    lines.extend(
+        f"- `{spec.intent_id}` — {spec.default_location}"
+        for spec in sorted(INTENT_CATALOG, key=lambda item: item.intent_id)
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _render_rhythm_intents() -> str:
+    from smart_home_sim.hybrid_planning.day_generation import RHYTHM_EMITTED_INTENTS
+    from smart_home_sim.hybrid_planning.intents import intent_spec
+
+    lines = [
+        "The drive layer places these on its own — a wake and a night every day, plus a nap, a "
+        "nocturnal bathroom trip or an unplanned reach-out when the resident's state calls for "
+        "one:",
+        "",
+    ]
+    lines.extend(
+        f"- `{intent}` — {intent_spec(intent).label.lower()}"
+        for intent in sorted(RHYTHM_EMITTED_INTENTS)
+    )
+    return "\n".join(lines) + "\n"
+
+
+def build_outline_prompt() -> None:
+    frozen = PROMPT_1_3_PATH.read_text(encoding="utf-8")
+    prompt = OUTLINE_TEMPLATE_PATH.read_text(encoding="utf-8")
+    prompt = prompt.replace("{{ACTIVITY_PORTFOLIO}}", _render_activity_portfolio())
+    prompt = prompt.replace("{{CATALOG_ROOMS}}", _render_catalog_rooms())
+    prompt = prompt.replace("{{CATALOG_INTENTS}}", _render_catalog_intents())
+    prompt = prompt.replace("{{RHYTHM_INTENTS}}", _render_rhythm_intents())
+    prompt = prompt.replace("{{PROCESS_MODEL_SECTIONS}}", _section_span(frozen, *REUSED_FROM_1_3_0))
+    prompt = prompt.replace(
+        "{{OUTLINE_BUNDLE_SCHEMA_JSON}}", _compact_json(OUTLINE_BUNDLE_SCHEMA_PATH)
+    )
+    prompt = _embed_authoritative_artifacts(prompt)
+    OUTLINE_PROMPT_PATH.write_text(prompt, encoding="utf-8", newline="\n")
+
+
 def main() -> None:
     build_prompt()
     build_simplified_prompt()
+    build_outline_prompt()
     build_example()
 
 

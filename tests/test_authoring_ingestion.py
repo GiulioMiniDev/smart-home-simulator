@@ -544,3 +544,47 @@ def test_repaired_full_bundle_reenters_normal_ingestion(tmp_path: Path) -> None:
     report = ingest_authoring_file(repaired_path, tmp_path / "accepted")
     assert report.valid
     assert report.summary.error_count == 0
+
+
+def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None:
+    """The outline prompt embeds its schema and restates nothing it could restate wrongly.
+
+    Its habit portfolio, its room identifiers and its whole process-package half are rendered from
+    the code and from the frozen 1.3.0 prompt. A catalog that gains a room, or a portfolio gate
+    that changes its counts, is then a build failure here rather than a prompt that quietly teaches
+    the old contract — which is exactly how requirement 11 survived two versions unenforced.
+    """
+    prompt = (ROOT / "prompts/generate-horizon-outline-1.0.0.md").read_text(encoding="utf-8")
+    frozen = (ROOT / "prompts/generate-simulation-inputs-1.3.0.md").read_text(encoding="utf-8")
+
+    assert "{{PERSON_AND_CASE_DESCRIPTION}}" in prompt
+    assert "{{BUNDLE_SCHEMA_JSON}}" not in prompt
+    assert "{{CATALOG_INTENTS}}" not in prompt
+    assert "{{ACTIVITY_PORTFOLIO}}" not in prompt
+    assert "Return exactly one JSON object and nothing else." in prompt
+    assert "`promptTemplateVersion`: `generate-horizon-outline-1.0.0`" in prompt
+    assert "**Do not write the days of the horizon.**" in prompt
+
+    schema = json.loads(
+        (ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json").read_text(encoding="utf-8")
+    )
+    assert json.dumps(schema, ensure_ascii=False, sort_keys=True, separators=(",", ":")) in prompt
+
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+    from smart_home_sim.hybrid_planning.recurring_activities import (
+        MIN_RECURRING_ACTIVITIES,
+        REQUIRED_KINDS,
+    )
+
+    assert f"Author at least {MIN_RECURRING_ACTIVITIES} recurring activities" in prompt
+    for kind, count in REQUIRED_KINDS.items():
+        assert f"- `{kind}`: {count}" in prompt
+    for room in {spec.default_location for spec in INTENT_CATALOG}:
+        assert f"`{room}`" in prompt
+    # Every catalog intent is listed, so a habit can declare one instead of having it guessed.
+    for spec in INTENT_CATALOG:
+        assert f"- `{spec.intent_id}` — {spec.default_location}" in prompt
+
+    start = frozen.index("## Personal ADL process-model rules")
+    end = frozen.index("## Required final consistency checks", start)
+    assert frozen[start:end].rstrip() in prompt

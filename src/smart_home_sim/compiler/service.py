@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from smart_home_sim.compiler.issues import compilation_issue
 from smart_home_sim.compiler.solver import (
+    CompilationBudgetError,
     ScheduledValue,
     ScheduleSolver,
     SolverRangeError,
@@ -88,6 +89,33 @@ def compile_scenario(scenario: Scenario) -> CompilationResult:
             record for record in records if branch_by_activity[record.activity.activity_id] is None
         ]
         main_outcome = ScheduleSolver(scenario, axis, main_records).solve()
+    except CompilationBudgetError as error:
+        # The defect this exists for is not a wrong plan but an absent answer: a horizon whose
+        # canonicalisation never finishes used to hold the request open with no error and no
+        # progress. Reporting the budget turns that silence into something a researcher can read
+        # and act on.
+        return _failure_result(
+            scenario,
+            [
+                compilation_issue(
+                    "COMPILATION_BUDGET_EXCEEDED",
+                    "main_plan",
+                    "$",
+                    "Canonicalisation exceeded the compilation budget: the scenario needs more "
+                    "deterministic value-fixing probes than the compiler is allowed to spend. "
+                    "Shorten the horizon or widen the declared windows so fewer preferred values "
+                    "collide.",
+                    details={
+                        "probes": error.probes,
+                        "budget": error.budget,
+                        "activityCount": len(records),
+                        "dayCount": len(scenario.days),
+                    },
+                )
+            ],
+            solver_status=None,
+            objective_values=None,
+        )
     except TimePrecisionError as error:
         return _failure_result(
             scenario,

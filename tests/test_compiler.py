@@ -329,6 +329,7 @@ def test_invalid_generated_plan_is_rejected(monkeypatch: pytest.MonkeyPatch) -> 
 def test_compilation_issue_registry_is_closed() -> None:
     assert {
         "CANONICAL_PLAN_INVALID",
+        "COMPILATION_BUDGET_EXCEEDED",
         "CONTINGENCY_PLAN_INFEASIBLE",
         "CONTINGENCY_TARGET_NOT_SCHEDULED",
         "CROSS_BRANCH_DEPENDENCY",
@@ -341,3 +342,102 @@ def test_compilation_issue_registry_is_closed() -> None:
     } == COMPILATION_ISSUE_CODES
     with pytest.raises(ValueError, match="Unregistered compilation issue code"):
         compilation_issue("UNKNOWN", "input", "$", "unknown")
+
+
+def test_compilation_budget_turns_a_runaway_into_a_readable_error(monkeypatch) -> None:
+    """The defect this guards is silence, not a wrong plan.
+
+    The eight-month bundle that started this work needed 7 740 feasibility probes and produced no
+    error, no progress and no answer for thirteen hours: `MAX_DETERMINISTIC_TIME` bounds one probe
+    and every probe was individually quick. Only a budget on their total can see that, so the
+    budget is squeezed here to a value the smallest real scenario passes.
+    """
+    from smart_home_sim.compiler import solver as solver_module
+
+    monkeypatch.setattr(solver_module, "MAX_FEASIBILITY_PROBES", 1)
+    payload = _payload()
+
+    result = compile_payload(payload)
+
+    assert result.plan is None
+    issue = next(
+        item for item in result.report.issues if item.code == "COMPILATION_BUDGET_EXCEEDED"
+    )
+    assert issue.details["budget"] == 1
+    assert issue.details["dayCount"] == len(payload["days"])
+    assert "Shorten the horizon" in issue.message
+
+
+def _mutually_exclusive_preferences() -> dict[str, Any]:
+    """Two activities that each fit their preferred moment alone, but never together.
+
+    Both are mandatory, belong to the same resident and want the same hour with room to move.
+    Non-overlap therefore makes the pair infeasible while either one on its own is fine, which is
+    exactly the shape that yields a conflict core of size two.
+    """
+    payload = _payload()
+    template = copy.deepcopy(payload["days"][0]["activities"][1])
+    window = {
+        "earliest": "2026-10-12T09:00:00+02:00",
+        "preferred": "2026-10-12T10:00:00+02:00",
+        "latest": "2026-10-12T12:00:00+02:00",
+    }
+    duration = {"minimumMinutes": 60.0, "preferredMinutes": 60.0, "maximumMinutes": 60.0}
+    activities = []
+    for index, activity_id in enumerate(("clash_first", "clash_second")):
+        activity = copy.deepcopy(template)
+        activity.update(
+            {
+                "activityId": activity_id,
+                "startWindow": copy.deepcopy(window),
+                "duration": copy.deepcopy(duration),
+                "mandatory": True,
+                "canOverlapForActor": False,
+                "dependencyGroups": [],
+                "activation": {"mode": "always"},
+            }
+        )
+        activity.pop("endWindow", None)
+        activities.append(activity)
+        assert index < 2
+    payload["days"][0]["activities"] = activities
+    # The stock example pins a runtime event and a commitment to the activities just replaced.
+    payload["runtimeEventCandidates"] = []
+    payload["commitments"] = []
+    return payload
+
+
+def test_a_non_singleton_conflict_core_falls_to_bisection_and_keeps_the_policy(
+    monkeypatch,
+) -> None:
+    """The batch path cannot decide a mutual conflict; the order must, and this proves it does.
+
+    With both targets asserted the core names them both, and nothing in it says which one the
+    sequential policy would have kept. The bisection resolves that by finding where the feasible
+    prefix ends, so the earlier activity keeps its preferred moment and the later one yields —
+    which is what the frozen `priority-preference-1.0.0` order means.
+    """
+    from smart_home_sim.compiler import solver as solver_module
+
+    taken: list[int] = []
+    original = solver_module.ScheduleSolver._lock_by_bisection
+
+    def spy(self, pending, horizon=None):  # type: ignore[no-untyped-def]
+        taken.append(len(pending))
+        return original(self, pending, horizon)
+
+    monkeypatch.setattr(solver_module.ScheduleSolver, "_lock_by_bisection", spy)
+
+    result = compile_payload(_mutually_exclusive_preferences())
+
+    assert result.plan is not None, [issue.code for issue in result.report.issues]
+    assert taken, "a mutual conflict must reach the bisection branch"
+    scheduled = {
+        activity.source_activity_id: activity.scheduled_start
+        for activity in _activities(result.plan)
+    }
+    preferred = datetime.fromisoformat("2026-10-12T10:00:00+02:00")
+    assert scheduled["clash_first"] == preferred
+    assert scheduled["clash_second"] != preferred
+    # The two must not overlap, which is the constraint that made them exclusive to begin with.
+    assert abs((scheduled["clash_second"] - preferred).total_seconds()) >= 3600
