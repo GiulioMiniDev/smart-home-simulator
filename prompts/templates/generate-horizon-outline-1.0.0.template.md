@@ -82,7 +82,27 @@ what any downstream habit-mining evaluation is scored against. Author it accordi
 recurring activity, every event and every fixed commitment**, choosing the closest listed intent.
 An unlisted value is rejected, and so is an omitted one whose label matches nothing — a silent
 fallback would leave the scenario performing one activity while the process package implements
-another. A commitment is an absence, so its intent is one of the away intents below.
+another. A commitment is an absence, so its intent is one of the away intents above.
+
+**Never coin an intent.** The two lists above are the whole vocabulary; an identifier that is not
+in them does not exist no matter how ordinary it sounds. Expansion stops on the first one with
+
+> `declare an intent the activity catalog does not define: activity 'ra_cook_dinner' -> 'cook_dinner'`
+
+and nothing is imported. The failures are always the same shape — a plausible compound the catalog
+happens to spell differently, or a household task the catalog simply does not model:
+
+- there is **no** generic cooking intent. A meal is `prepare_light_dinner`, `prepare_simple_lunch`
+  or `weekly_meal_preparation`, and eating it is `eat_breakfast`, `eat_lunch` or `eat_dinner`;
+- there is **no** bathroom-cleaning and **no** vacuuming intent. Housework inside the dwelling is
+  `clean_kitchen` or `tidy_living_room_and_hallway`, and nothing else;
+- washing is `morning_toilet_and_wash`, `morning_toilet_and_shower` or `evening_hygiene`.
+
+When the case describes something the catalog has no intent for, do one of two things: carry it on
+the **nearest listed intent** and say so in the activity's `note`, or leave it out of the outline
+entirely. Both are correct. Inventing an identifier is not, and neither is inventing one in the
+process package: a binding or process model for an intent the outline cannot declare is dead weight
+the import rejects.
 
 The catalog is deliberately **home-centred**: it describes what happens inside the dwelling. Time
 spent away — work, school, appointments, sport, an outing — is not modelled as detailed activity,
@@ -161,6 +181,15 @@ Two rules:
 - **the night band may cross midnight.** For habits only, `windowStart` later than `windowEnd`
   means the band wraps, which is how a night from 22:30 to 06:15 is written.
 
+**The night band must open at least two hours before `rhythm.chronotypeBedtime`.** The chronotype is
+where the resident *tends*, not where she is put: the drive layer moves each night's lights-out up
+to 45 minutes earlier as sleep debt builds, and jitters it around that by a further half-hour or so.
+A band opening at 23:00 under a 23:15 chronotype therefore spends much of the horizon with the night
+starting before the band that is supposed to contain it — the sleep lands in the evening band, and
+the habit ground truth says the resident was reading when she was asleep. Nothing rejects this,
+which is exactly why it has to be authored correctly: give the night room on its early side, and end
+the evening band where the night begins.
+
 These bands are the answer sheet: a researcher's segmentation algorithm sees only a sensor log and
 has to recover both where the day divides and what runs in each division. Declare them as the
 person actually lives, not as a tidy grid.
@@ -169,6 +198,14 @@ person actually lives, not as a tidy grid.
 
 A horizon longer than a few weeks that contains no phases and no events is a single week repeated,
 and will be rejected in review. Use both.
+
+The horizon itself is the **half-open** span `[startDate, startDate + months)`: the day exactly
+`months` after `startDate` is the first day *past* the horizon, not its last day. With
+`startDate: 2026-08-04` and `months: 8` the horizon runs 2026-08-04 through **2027-04-03**, and
+2027-04-04 is out of range. Every date written anywhere in the outline — a phase's `startDate` and
+`endDate`, an event's `earliestDate` and `latestDate`, a fixed commitment's `startDate` and
+`endDate` — must fall inside that span. A commitment that runs to the end of the period ends on the
+last day inside the horizon; do not write the boundary day itself.
 
 `phases` are stretches over which the routine is not the baseline routine — a season, a course, a
 period of illness, a change of job. A phase either **suspends** a recurring activity or **replaces its
@@ -223,6 +260,21 @@ rejections for five missing models.
 
 {{PROCESS_MODEL_SECTIONS}}
 
+### What those rules mean on this path
+
+The section above is shared with the prompt that authors days directly, where a scenario already
+exists by the time the package is written. Here it does not: the expander builds the scenario from
+your outline after you answer. Two of its rules therefore have a different answer, and these are
+the ones that apply:
+
+- `sourceScenarioId` is your **`outline.outlineId`**, and `sourceScenarioVersion` is `1.0.0`. There
+  is no generated scenario to copy them from; the expander names the scenario after the outline,
+  and a package that guesses anything else is rejected as targeting a different scenario.
+- the catalog references are exactly the identifiers and versions of the three documents embedded
+  in this prompt. Do not carry over versions from another prompt: a package pointing at a catalog
+  that does not define an intent it binds is rejected, and so is one whose reference disagrees with
+  the catalog actually loaded.
+
 ## Required final consistency checks
 
 Before answering, verify all of the following:
@@ -235,12 +287,20 @@ Before answering, verify all of the following:
   exists in `outline.profile.recurringActivities`;
 - `habits` declares between three and six bands, none of them overlapping, and at most one of them
   crossing midnight;
+- the night band opens at least two hours before `rhythm.chronotypeBedtime`, and the evening band
+  ends where it opens;
 - no two overlapping phases override the same recurring activity;
-- every phase and event date falls inside the horizon;
+- every phase, event and fixed-commitment date falls inside the half-open horizon, so no date is
+  on or after `startDate + months`;
 - `world.locations` declares every room listed above under the activity catalog;
 - every resource's `locationId` and `startLocationId` resolve to declared locations, and
   `startLocationId` is not a composite;
-- every recurring activity, event and fixed commitment declares an `intent` the catalog defines;
+- every recurring activity, event and fixed commitment declares an `intent` copied character for
+  character from one of the two canonical lists, and every absence carries an away intent;
+- the process package binds only intents that appear in the outline, and every intent the outline
+  uses is bound;
+- `personalProcessPackage.sourceScenarioId` equals `outline.outlineId`, and the three catalog
+  references match the embedded documents exactly;
 - every band has `windowStart` strictly before `windowEnd`, and every duration range has its
   minimum at or below its maximum;
 - an event's `occurrences` does not exceed the number of eligible days in its window;

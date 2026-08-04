@@ -58,8 +58,10 @@ from smart_home_sim.hybrid_planning.cadence import (
 from smart_home_sim.hybrid_planning.day_generation import (
     DEFAULT_INTENT,
     RHYTHM_EMITTED_INTENTS,
+    at_offset,
     build_day_plan,
     label_to_intent,
+    window_around,
 )
 from smart_home_sim.hybrid_planning.drives import DayRhythm, RhythmProfile, plan_rhythms
 from smart_home_sim.hybrid_planning.horizon import _scheduled_drive_load
@@ -348,10 +350,7 @@ def _recurring_activity_id_of(activity: Activity) -> str | None:
 
 
 def _band(day_date: date, start: str, end: str, tz: ZoneInfo) -> tuple[datetime, datetime]:
-    midnight = datetime.combine(day_date, time.min, tz)
-    return midnight + timedelta(minutes=_to_minutes(start)), midnight + timedelta(
-        minutes=_to_minutes(end)
-    )
+    return at_offset(day_date, _to_minutes(start), tz), at_offset(day_date, _to_minutes(end), tz)
 
 
 def _wobble(
@@ -370,12 +369,9 @@ def _wobble(
         return activity
     preferred = activity.start_window.preferred
     if recurring is None:
-        flex = timedelta(minutes=MINIMUM_FLEX_MINUTES)
         return activity.model_copy(
             update={
-                "start_window": DateTimeWindow(
-                    earliest=preferred - flex, preferred=preferred, latest=preferred + flex
-                )
+                "start_window": window_around(preferred, timedelta(minutes=MINIMUM_FLEX_MINUTES))
             }
         )
 
@@ -393,9 +389,11 @@ def _wobble(
         # pushed an evening habit whose band closed at 22:30 past bedtime.
         preferred = max(earliest, min(preferred + timedelta(minutes=offset), latest))
     # The drives may have carried the occurrence outside its declared band; the band then follows
-    # the occurrence rather than contradicting it.
-    earliest = min(earliest, preferred - timedelta(minutes=MINIMUM_FLEX_MINUTES))
-    latest = max(latest, preferred + timedelta(minutes=MINIMUM_FLEX_MINUTES))
+    # the occurrence rather than contradicting it. The guard is built in real elapsed time so the
+    # band cannot end up straddling a DST transition on the wrong side of its own preferred moment.
+    guard = window_around(preferred, timedelta(minutes=MINIMUM_FLEX_MINUTES))
+    earliest = min(earliest, guard.earliest)
+    latest = max(latest, guard.latest)
     return activity.model_copy(
         update={
             "start_window": DateTimeWindow(earliest=earliest, preferred=preferred, latest=latest)
@@ -413,7 +411,7 @@ def _event_activity(
     # Start late enough that the shortest acceptable duration still ends inside the declared band.
     latest_start = max(low, high - event.minimum_minutes)
     start_minutes = rng.randint(low, latest_start)
-    moment = datetime.combine(placed.day, time.min, tz) + timedelta(minutes=start_minutes)
+    moment = at_offset(placed.day, start_minutes, tz)
     # An event without an explicit intent is mapped from its label, exactly as a habit is.
     intent = event.intent or label_to_intent(event.label)
     location = _intent_location(intent)
@@ -423,8 +421,8 @@ def _event_activity(
         )
     preferred = rng.randint(event.minimum_minutes, event.maximum_minutes)
     # Like a habit, an event is given its whole declared band, not a sliver around the draw.
-    earliest = datetime.combine(placed.day, time.min, tz) + timedelta(minutes=low)
-    latest = datetime.combine(placed.day, time.min, tz) + timedelta(minutes=latest_start)
+    earliest = at_offset(placed.day, low, tz)
+    latest = at_offset(placed.day, latest_start, tz)
     return Activity(
         activity_id=f"{placed.day.isoformat()}_{index:02d}_event_{event.event_id}",
         actor_id=actor_id,
@@ -516,11 +514,8 @@ def _commitment_activities(
         assert commitment.intent is not None  # guaranteed by _check_intents
         location = _intent_location(commitment.intent)
         assert location is not None
-        start = datetime.combine(day, time.min, tz) + timedelta(
-            minutes=_to_minutes(commitment.start_time)
-        )
+        start = at_offset(day, _to_minutes(commitment.start_time), tz)
         minutes = _to_minutes(commitment.end_time) - _to_minutes(commitment.start_time)
-        flex = timedelta(minutes=MINIMUM_FLEX_MINUTES)
         activities.append(
             Activity(
                 activity_id=f"{day.isoformat()}_{index + offset:02d}_commitment_"
@@ -528,9 +523,7 @@ def _commitment_activities(
                 actor_id=outline.resident_id,
                 intent=commitment.intent,
                 location_ids=[location],
-                start_window=DateTimeWindow(
-                    earliest=start - flex, preferred=start, latest=start + flex
-                ),
+                start_window=window_around(start, timedelta(minutes=MINIMUM_FLEX_MINUTES)),
                 duration=DurationRange(
                     minimum_minutes=minutes, preferred_minutes=minutes, maximum_minutes=minutes
                 ),

@@ -195,6 +195,7 @@ class ScheduleSolver:
         excluded_fixed_activity_ids: set[str] | None = None,
         default_start_anchors: dict[str, int] | None = None,
         forced_present_activity_ids: set[str] | None = None,
+        reported_activity_ids: set[str] | None = None,
     ) -> None:
         self.scenario = scenario
         self.axis = axis
@@ -203,11 +204,18 @@ class ScheduleSolver:
         self.excluded_fixed_activity_ids = excluded_fixed_activity_ids or set()
         self.default_start_anchors = default_start_anchors or {}
         self.forced_present_activity_ids = forced_present_activity_ids or set()
+        # None keeps the whole-model objective the single-solve path has always reported.
+        self.reported_activity_ids = reported_activity_ids
         self.model = cp_model.CpModel()
         self.variables: dict[str, ActivityVariables] = {}
         self.duration_deviations: list[cp_model.IntVar] = []
         self.temporal_deviations: list[cp_model.IntVar] = []
         self.effective_starts: list[cp_model.IntVar] = []
+        # The same terms again, keyed by activity, so a caller solving one window of a horizon can
+        # be told the objective of the days it keeps rather than of the days it looked at. Every
+        # component is a sum over activities, so the restriction is exact.
+        self.deviations_by_activity: dict[str, list[cp_model.IntVar]] = defaultdict(list)
+        self.effective_start_by_activity: dict[str, cp_model.IntVar] = {}
         self.resident_ids = {item.resident_id for item in scenario.residents}
         self.probe_count = 0
         self.commitments = {item.commitment_id: item for item in scenario.commitments}
@@ -382,18 +390,70 @@ class ScheduleSolver:
                 end=solver.value(variables.end),
                 selected_dependency_ids=tuple(sorted(selected)),
             )
-        objective_values = ObjectiveValues(
-            optional_priority_score=solver.value(objective_variables["optional_priority"]),
-            optional_activity_count=solver.value(objective_variables["optional_count"]),
-            duration_deviation_microseconds=solver.value(objective_variables["duration_deviation"]),
-            temporal_deviation_microseconds=solver.value(objective_variables["temporal_deviation"]),
-            scheduled_start_sum_microseconds=solver.value(objective_variables["start_sum"]),
+        objective_values = (
+            self._restricted_objective(solver, self.reported_activity_ids)
+            if self.reported_activity_ids is not None
+            else ObjectiveValues(
+                optional_priority_score=solver.value(objective_variables["optional_priority"]),
+                optional_activity_count=solver.value(objective_variables["optional_count"]),
+                duration_deviation_microseconds=solver.value(
+                    objective_variables["duration_deviation"]
+                ),
+                temporal_deviation_microseconds=solver.value(
+                    objective_variables["temporal_deviation"]
+                ),
+                scheduled_start_sum_microseconds=solver.value(objective_variables["start_sum"]),
+            )
         )
         return SolveOutcome(
             status=solver.status_name(status),
             values=values,
             omitted_activity_ids=tuple(sorted(omitted)),
             objective_values=objective_values,
+        )
+
+    def _track(self, activity_id: str, deviation: cp_model.IntVar) -> cp_model.IntVar:
+        """Record one objective term against its activity, and hand it back unchanged."""
+        self.deviations_by_activity[activity_id].append(deviation)
+        return deviation
+
+    def _restricted_objective(
+        self,
+        solver: cp_model.CpSolver,
+        activity_ids: set[str],
+    ) -> ObjectiveValues:
+        """The objective of ``activity_ids`` alone, read off the solved model.
+
+        Used when a window was solved with one day of lookahead: that day shapes the night before
+        it and must be in the model, but it belongs to the next window and would otherwise be
+        counted twice. Every component is a sum over activities, so dropping its terms is exact.
+        """
+        priority = 0
+        count = 0
+        deviation = 0
+        temporal = 0
+        start_sum = 0
+        for activity_id in sorted(activity_ids):
+            variables = self.variables[activity_id]
+            present = solver.value(variables.presence)
+            if not variables.record.activity.mandatory and present:
+                priority += variables.record.activity.priority
+                count += 1
+            start_sum += solver.value(self.effective_start_by_activity[activity_id])
+        # The two deviation totals are kept apart by which list the model summed them into.
+        duration_terms = {id(item) for item in self.duration_deviations}
+        for activity_id in sorted(activity_ids):
+            for term in self.deviations_by_activity.get(activity_id, ()):
+                if id(term) in duration_terms:
+                    deviation += solver.value(term)
+                else:
+                    temporal += solver.value(term)
+        return ObjectiveValues(
+            optional_priority_score=priority,
+            optional_activity_count=count,
+            duration_deviation_microseconds=deviation,
+            temporal_deviation_microseconds=temporal,
+            scheduled_start_sum_microseconds=start_sum,
         )
 
     def _declare_lock(self, request: LockRequest) -> cp_model.IntVar:
@@ -599,11 +659,14 @@ class ScheduleSolver:
                 )
                 end = self.model.new_int_var(0, self.axis.horizon, f"end__{activity_id}")
                 self.duration_deviations.append(
-                    self._conditional_deviation(
-                        duration,
-                        preferred_duration,
-                        presence,
-                        f"duration_deviation__{activity_id}",
+                    self._track(
+                        activity_id,
+                        self._conditional_deviation(
+                            duration,
+                            preferred_duration,
+                            presence,
+                            f"duration_deviation__{activity_id}",
+                        ),
                     )
                 )
             else:
@@ -616,19 +679,25 @@ class ScheduleSolver:
                 preferred_duration = max(1, preferred_end - preferred_start)
                 if activity.start_window is not None:
                     self.duration_deviations.append(
-                        self._conditional_deviation(
-                            duration,
-                            preferred_duration,
-                            presence,
-                            f"duration_deviation__{activity_id}",
+                        self._track(
+                            activity_id,
+                            self._conditional_deviation(
+                                duration,
+                                preferred_duration,
+                                presence,
+                                f"duration_deviation__{activity_id}",
+                            ),
                         )
                     )
                 self.temporal_deviations.append(
-                    self._conditional_deviation(
-                        end,
-                        preferred_end,
-                        presence,
-                        f"end_deviation__{activity_id}",
+                    self._track(
+                        activity_id,
+                        self._conditional_deviation(
+                            end,
+                            preferred_end,
+                            presence,
+                            f"end_deviation__{activity_id}",
+                        ),
                     )
                 )
 
@@ -654,11 +723,14 @@ class ScheduleSolver:
 
             if activity.start_window is not None:
                 self.temporal_deviations.append(
-                    self._conditional_deviation(
-                        start,
-                        preferred_start,
-                        presence,
-                        f"start_deviation__{activity_id}",
+                    self._track(
+                        activity_id,
+                        self._conditional_deviation(
+                            start,
+                            preferred_start,
+                            presence,
+                            f"start_deviation__{activity_id}",
+                        ),
                     )
                 )
             effective_start = self.model.new_int_var(
@@ -669,6 +741,7 @@ class ScheduleSolver:
             self.model.add(effective_start == start).only_enforce_if(presence)
             self.model.add(effective_start == 0).only_enforce_if(presence.negated())
             self.effective_starts.append(effective_start)
+            self.effective_start_by_activity[activity_id] = effective_start
             self.variables[activity_id] = ActivityVariables(
                 record=record,
                 presence=presence,

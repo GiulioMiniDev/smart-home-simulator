@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from smart_home_sim.compiler.solver import (
     CompilationBudgetError,
     ScheduledValue,
     ScheduleSolver,
+    SolveOutcome,
     SolverRangeError,
     SourceRecord,
     TimeAxis,
@@ -43,6 +45,19 @@ class CompilationResult:
     report: CompilationReport
 
 
+# Days a single solve covers once the horizon is long enough to be worth splitting.
+#
+# Canonicalisation costs one full solve of the *whole* model per value it fixes, and it fixes a
+# few per activity: measured on one generated case, 426 solves for 31 days, 1502 for 92, with the
+# cost of each solve growing linearly in the horizon too. Both factors are linear, so the product
+# is quadratic — 75s at one month, 13 minutes at three, and an extrapolated hour and a half at
+# eight. Solving a week at a time makes the per-solve cost independent of the horizon and brings
+# the total back to linear.
+COMPILATION_WINDOW_DAYS = 7
+# Below this the whole horizon is one cheap solve and splitting only adds boundaries.
+COMPILATION_WINDOW_THRESHOLD_DAYS = 45
+
+
 def canonical_sha256(value: Any) -> str:
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json", by_alias=True)
@@ -64,15 +79,122 @@ def compile_file(path: Path) -> CompilationResult:
     return compile_scenario(scenario)
 
 
-def compile_payload(payload: Any) -> CompilationResult:
+def compile_payload(
+    payload: Any,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> CompilationResult:
     validation_report = validate_payload(payload)
     if not validation_report.valid:
         return _invalid_input_result(validation_report)
     scenario = Scenario.model_validate_json(json.dumps(payload, separators=(",", ":")))
-    return compile_scenario(scenario)
+    return compile_scenario(scenario, on_progress)
 
 
-def compile_scenario(scenario: Scenario) -> CompilationResult:
+def _windows_are_safe(records: list[SourceRecord]) -> bool:
+    """Can this scenario be solved a window at a time without changing what the answer means?
+
+    Two activities on different days interact in exactly one way: an activity that is still
+    running when the next day begins, which here is the overnight sleep — 23 of one month's 31
+    nights end after midnight. That reaches only the following day, so carrying the previous
+    window's last day into the next solve as a fixed schedule preserves it.
+
+    A dependency does not have that shape. It can name any activity anywhere in the horizon, and a
+    predecessor the current window has not solved yet would silently drop its successor. The
+    generated horizons declare none, so rather than reason about which ones would be safe, the
+    split is simply refused when any exist.
+    """
+    return not any(record.activity.dependency_groups for record in records)
+
+
+def _solve_in_windows(
+    scenario: Scenario,
+    axis: TimeAxis,
+    records: list[SourceRecord],
+    on_progress: Callable[[int, int], None] | None = None,
+) -> SolveOutcome:
+    """Solve the horizon a window at a time, each one seeing the previous window's last day.
+
+    The objective is a sum over activities in every one of its five components, so adding the
+    windows up reproduces what the single solve reports.
+    """
+    by_day: dict[int, list[SourceRecord]] = defaultdict(list)
+    for record in records:
+        by_day[record.day_index].append(record)
+    ordered_days = sorted(by_day)
+
+    values: dict[str, ScheduledValue] = {}
+    omitted: list[str] = []
+    totals = [0, 0, 0, 0, 0]
+    for start in range(0, len(ordered_days), COMPILATION_WINDOW_DAYS):
+        window_days = ordered_days[start : start + COMPILATION_WINDOW_DAYS]
+        # One day of lookahead. Without it the window's last night is placed with nothing after it
+        # to push against, takes its full preferred length, and leaves the next morning — whose
+        # activities are mandatory and narrow — nowhere to go: the following window is then
+        # infeasible. The lookahead day is solved here and committed by the next window, so what
+        # that window fixes is a night it has already seen a feasible morning for.
+        after = start + COMPILATION_WINDOW_DAYS
+        lookahead = ordered_days[after : after + 1]
+        solved_days = [*window_days, *lookahead]
+        window_records = [record for day in solved_days for record in by_day[day]]
+        committed_ids = {
+            record.activity.activity_id for day in window_days for record in by_day[day]
+        }
+        # Only the day immediately before the window can still be occupying the resident when it
+        # opens; everything earlier has certainly finished and would just enlarge the model.
+        carried = {
+            activity_id: value
+            for activity_id, value in values.items()
+            if value.record.day_index == window_days[0] - 1
+        }
+        outcome = ScheduleSolver(
+            scenario,
+            axis,
+            window_records,
+            fixed_schedule=carried,
+            reported_activity_ids=committed_ids,
+        ).solve()
+        if outcome.failure is not None:
+            return outcome
+        assert outcome.objective_values is not None
+        values.update(
+            {
+                activity_id: value
+                for activity_id, value in outcome.values.items()
+                if activity_id in committed_ids
+            }
+        )
+        omitted.extend(
+            activity_id
+            for activity_id in outcome.omitted_activity_ids
+            if activity_id in committed_ids
+        )
+        totals = [
+            totals[0] + outcome.objective_values.optional_priority_score,
+            totals[1] + outcome.objective_values.optional_activity_count,
+            totals[2] + outcome.objective_values.duration_deviation_microseconds,
+            totals[3] + outcome.objective_values.temporal_deviation_microseconds,
+            totals[4] + outcome.objective_values.scheduled_start_sum_microseconds,
+        ]
+        if on_progress is not None:
+            on_progress(len(values) + len(omitted), len(records))
+    return SolveOutcome(
+        status="OPTIMAL",
+        values=values,
+        omitted_activity_ids=tuple(omitted),
+        objective_values=ObjectiveValues(
+            optional_priority_score=totals[0],
+            optional_activity_count=totals[1],
+            duration_deviation_microseconds=totals[2],
+            temporal_deviation_microseconds=totals[3],
+            scheduled_start_sum_microseconds=totals[4],
+        ),
+    )
+
+
+def compile_scenario(
+    scenario: Scenario,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> CompilationResult:
     records = activity_records(scenario)
     branch_by_activity, branch_records, preflight_issues = _classify_branches(records)
     if preflight_issues:
@@ -88,7 +210,12 @@ def compile_scenario(scenario: Scenario) -> CompilationResult:
         main_records = [
             record for record in records if branch_by_activity[record.activity.activity_id] is None
         ]
-        main_outcome = ScheduleSolver(scenario, axis, main_records).solve()
+        if len(scenario.days) > COMPILATION_WINDOW_THRESHOLD_DAYS and _windows_are_safe(
+            main_records
+        ):
+            main_outcome = _solve_in_windows(scenario, axis, main_records, on_progress)
+        else:
+            main_outcome = ScheduleSolver(scenario, axis, main_records).solve()
     except CompilationBudgetError as error:
         # The defect this exists for is not a wrong plan but an absent answer: a horizon whose
         # canonicalisation never finishes used to hold the request open with no error and no

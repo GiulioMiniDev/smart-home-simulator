@@ -124,6 +124,42 @@ describe("complete application routes", () => {
     expect(await screen.findAllByText(/the rhythm emits these intents on its own/)).not.toHaveLength(0);
   });
 
+  it("reports an import the server is still working on, and then one it has lost", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    // Never settles: the case the spinner could not tell apart from slow work.
+    overrides["/homes/home_1/horizon-outline?seed=1"] = () => new Promise<Response>(() => {});
+    let holding = true;
+    vi.stubGlobal("fetch", ((original) => (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input).replace(/^.*\/api/, "");
+      if (url.startsWith("/health")) {
+        return response({
+          status: "ok",
+          inFlight: holding ? 1 : 0,
+          operation: holding
+            ? { operationId: "op", method: "POST", path: "/horizon-outline", stage: "expanding 8 months into days", elapsedSeconds: 4 }
+            : null,
+        });
+      }
+      return original(input, init);
+    })(globalThis.fetch as typeof fetch));
+
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const outline = new File(["{}"], "outline.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
+    fireEvent.change(screen.getByLabelText("Horizon outline"), { target: { files: [outline] } });
+    fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
+
+    await vi.advanceTimersByTimeAsync(3500);
+    expect(await screen.findByText(/expanding 8 months into days/)).toBeInTheDocument();
+
+    holding = false;
+    await vi.advanceTimersByTimeAsync(12000);
+    expect(await screen.findByText(/no longer working on this request/)).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
   it("offers the horizon outline prompt apart, since its output is expanded rather than imported", async () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
     const writeText = vi.fn(async (_text: string): Promise<void> => undefined);

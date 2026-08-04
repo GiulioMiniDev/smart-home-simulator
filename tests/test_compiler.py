@@ -441,3 +441,50 @@ def test_a_non_singleton_conflict_core_falls_to_bisection_and_keeps_the_policy(
     assert scheduled["clash_second"] != preferred
     # The two must not overlap, which is the constraint that made them exclusive to begin with.
     assert abs((scheduled["clash_second"] - preferred).total_seconds()) >= 3600
+
+
+def test_window_split_reproduces_the_single_solve(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Splitting the horizon is an optimisation, so it may not change the plan.
+
+    Canonicalisation costs one solve of the whole model per value it fixes, which makes an eight
+    month import quadratic in the horizon and unusable. Solving a few days at a time removes the
+    horizon from the per-solve cost — but only if the answer is the one the single solve would
+    have given, since the plan hash is what every downstream guarantee is anchored to.
+
+    `mario_week` has dependencies, so the split refuses it on the real path; the guard is lifted
+    here because the point being tested is the equivalence, and that scenario is the one with a
+    frozen expected plan.
+    """
+    monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_THRESHOLD_DAYS", 10_000)
+    whole = compile_file(EXAMPLES / "valid/mario_week.json")
+
+    monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_THRESHOLD_DAYS", 0)
+    monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_DAYS", 2)
+    monkeypatch.setattr(compiler_service, "_windows_are_safe", lambda records: True)
+    windowed = compile_file(EXAMPLES / "valid/mario_week.json")
+
+    assert whole.plan is not None
+    assert windowed.plan is not None
+    assert windowed.plan.model_dump_json(by_alias=True) == whole.plan.model_dump_json(by_alias=True)
+    assert windowed.report.canonical_plan_sha256 == whole.report.canonical_plan_sha256
+
+
+def test_a_scenario_with_dependencies_is_not_split(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A dependency can name an activity in a window that has not been solved yet.
+
+    Its successor would be dropped rather than scheduled, silently, so the split declines instead
+    of reasoning about which dependencies happen to be safe.
+    """
+    monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_THRESHOLD_DAYS", 0)
+    calls: list[int] = []
+    original = compiler_service._solve_in_windows
+
+    def counting(*args: Any, **kwargs: Any) -> Any:
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(compiler_service, "_solve_in_windows", counting)
+    result = compile_file(EXAMPLES / "valid/mario_week.json")
+
+    assert result.plan is not None
+    assert calls == []

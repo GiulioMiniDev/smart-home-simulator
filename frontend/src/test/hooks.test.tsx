@@ -19,7 +19,10 @@ describe("resource and persistent-state hooks", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const { result } = renderHook(() => useResource("/value"));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.error).toMatchObject({ message: "Error: offline", status: 0 });
+    // A rejected fetch is the server being gone, and says so rather than repeating the browser's
+    // own wording for it.
+    expect(result.current.error).toMatchObject({ status: 0, code: "SERVER_UNREACHABLE" });
+    expect(result.current.error?.message).toContain("stopped responding");
   });
 
   it("keeps a disabled resource idle without issuing a request", async () => {

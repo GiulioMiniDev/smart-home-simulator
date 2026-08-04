@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import faulthandler
 import json
+import logging
 import os
 import secrets
 import tempfile
-from collections.abc import AsyncIterator
+import time
+import traceback
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from datetime import date as _date
 from pathlib import Path
 from typing import Annotated, Any
@@ -92,6 +98,52 @@ class ExportCreate(ExportRequest):
     model_config = ConfigDict(strict=False)
 
 
+log = logging.getLogger("smart_home_sim.web")
+
+
+@dataclass
+class _Operation:
+    """One request the server is currently holding, and how far into it the handler has got."""
+
+    method: str
+    path: str
+    started: float
+    stage: str = "starting"
+
+
+def _crash_log_path(workspace_root: Path) -> Path:
+    return workspace_root / "server-errors.log"
+
+
+def _append_crash_log(workspace_root: Path, entry: str) -> None:
+    """Best effort: a failure to record a failure must not replace the original one."""
+    try:
+        path = _crash_log_path(workspace_root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(f"\n===== {datetime.now(UTC).isoformat()} =====\n{entry}")
+    except OSError:  # pragma: no cover - the reply and the console still carry the error
+        log.warning("could not write the crash log", exc_info=True)
+
+
+def _enable_fault_traces(workspace_root: Path) -> None:
+    """Make a hard interpreter abort leave a Python traceback behind.
+
+    A stack overflow or a C-level `abort()` kills the process without unwinding, so no exception
+    handler runs and both the console and the reply stay empty — the operator sees a request that
+    never returns. `faulthandler` writes the stacks of every thread at that moment straight to a
+    file descriptor, which is the only thing that survives that kind of exit.
+    """
+    try:
+        path = _crash_log_path(workspace_root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Deliberately never closed: it has to outlive normal shutdown to catch a crash at exit.
+        handle = path.open("a", encoding="utf-8")
+        faulthandler.enable(file=handle, all_threads=True)
+    except (OSError, ValueError):  # pragma: no cover - stderr remains the fallback
+        faulthandler.enable(all_threads=True)
+
+
 def _static_root() -> Path | None:
     packaged = Path(__file__).parent / "static"
     source = Path(__file__).parents[3] / "frontend" / "dist"
@@ -103,6 +155,7 @@ def _static_root() -> Path | None:
 
 def create_app(workspace_root: Path, *, workspace_name: str = "Research workspace") -> FastAPI:
     workspace_root = workspace_root.resolve()
+    _enable_fault_traces(workspace_root)
     if (workspace_root / "workspace.sqlite3").exists():
         workspace = WorkspaceService.open(workspace_root)
     else:
@@ -141,6 +194,61 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             },
         )
 
+    @app.exception_handler(Exception)
+    async def unhandled_error(request: Request, error: Exception) -> JSONResponse:
+        """Turn a crash into one readable sentence in the browser and a traceback on disk.
+
+        Without this the browser gets an empty 500 and the operator gets nothing they can act on:
+        the console window scrolls away, and closing it takes the traceback with it. The reply
+        carries the exception type and message rather than the traceback, which stays in the log.
+        """
+        reference = secrets.token_hex(4)
+        log.exception("unhandled error %s on %s %s", reference, request.method, request.url.path)
+        _append_crash_log(
+            workspace_root,
+            f"{reference} {request.method} {request.url.path}\n"
+            + "".join(traceback.format_exception(error)),
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "UNHANDLED_SERVER_ERROR",
+                    "message": (
+                        f"{type(error).__name__}: {error}. The full traceback was written to "
+                        f"{_crash_log_path(workspace_root)} under reference {reference}."
+                    ),
+                    "reference": reference,
+                }
+            },
+        )
+
+    # What the server is busy with right now, keyed by an id the browser also holds. A long import
+    # is indistinguishable from a dead one from the outside, and that ambiguity is the whole
+    # problem: the operator is left watching a spinner with no way to tell which it is.
+    in_flight: dict[str, _Operation] = {}
+
+    @app.middleware("http")
+    async def track_in_flight(request: Request, call_next: Any) -> Any:
+        operation = request.headers.get("X-Operation-Id")
+        if operation is None:
+            return await call_next(request)
+        in_flight[operation] = _Operation(request.method, request.url.path, time.monotonic())
+        try:
+            return await call_next(request)
+        finally:
+            in_flight.pop(operation, None)
+
+    def stage_reporter(request: Request) -> Callable[[str], None]:
+        """Let a long handler name the step it is on, for whoever polls `/api/health`."""
+        running = in_flight.get(request.headers.get("X-Operation-Id") or "")
+
+        def report(name: str) -> None:
+            if running is not None:
+                running.stage = name
+
+        return report
+
     @app.middleware("http")
     async def local_only(request: Request, call_next: Any) -> Any:
         client = request.client.host if request.client else ""
@@ -162,6 +270,29 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             )
 
     secured = Depends(authorize)
+
+    @app.get("/api/health")
+    def health(operation: str | None = None) -> dict[str, Any]:
+        """Is the server alive, and is it still working on ``operation``?
+
+        Unauthenticated and free of any workspace access on purpose: this is what a client polls
+        while a request it has already sent is outstanding, so it has to answer even when the
+        thing it is reporting on is monopolising the application.
+        """
+        running = in_flight.get(operation or "")
+        return {
+            "status": "ok",
+            "operation": None
+            if running is None
+            else {
+                "operationId": operation,
+                "method": running.method,
+                "path": running.path,
+                "stage": running.stage,
+                "elapsedSeconds": round(time.monotonic() - running.started, 1),
+            },
+            "inFlight": len(in_flight),
+        }
 
     @app.get("/api/session")
     def session() -> dict[str, Any]:
@@ -256,9 +387,11 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
 
     @app.post("/api/homes/{home_id}/horizon-outline", dependencies=[secured])
     def import_horizon_outline(
-        home_id: str, request: dict[str, Any], seed: int = 0
+        home_id: str, request: dict[str, Any], http_request: Request, seed: int = 0
     ) -> dict[str, Any]:
-        return application.import_horizon_outline(home_id, request, seed=seed)
+        return application.import_horizon_outline(
+            home_id, request, seed=seed, on_stage=stage_reporter(http_request)
+        )
 
     @app.put("/api/homes/{home_id}/home-model", dependencies=[secured])
     def publish_home(home_id: str, request: ModelPublish) -> dict[str, Any]:

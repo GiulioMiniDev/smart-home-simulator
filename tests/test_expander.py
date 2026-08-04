@@ -24,6 +24,7 @@ from smart_home_sim.hybrid_planning.outline import (
     ActivityDisplacement,
     ActivityOverride,
     Displacement,
+    FixedCommitment,
     HorizonOutline,
     OutlineEvent,
     OutlinePhase,
@@ -35,6 +36,7 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     CadencePeriod,
     RecurringActivity,
     RecurringActivityKind,
+    Weekday,
 )
 
 _NOW = datetime(2026, 8, 2, 11, 54, tzinfo=UTC)
@@ -440,3 +442,70 @@ def test_a_package_missing_the_rhythm_intents_is_refused_once(
 
     with pytest.raises(ExpansionError, match="the rhythm emits these intents on its own"):
         expand_outline(_outline(), stripped, seed=1)
+
+
+def test_windows_stay_ordered_across_a_spring_forward_transition(
+    package: PersonalProcessPackage,
+) -> None:
+    """A window built by wall-clock arithmetic inverts itself on the day the clocks jump.
+
+    Europe/Rome moves 02:00 to 03:00 on 2027-03-28, so a nocturnal trip at 03:01 gets an earliest
+    edge of 02:46 — a local time that never happens, which ZoneInfo resolves with the offset from
+    *before* the jump. The edge then sits 45 minutes after the moment it is supposed to precede,
+    and the whole eight-month bundle is rejected for one day of it.
+    """
+    # 02:50 is inside the hour Europe/Rome skips, which is what makes the edges disagree: the
+    # earliest lands in the gap too and keeps the old offset, the latest clears it and takes the
+    # new one, so the window closes 45 minutes before it opens.
+    commitment = FixedCommitment(
+        commitment_id="night_shift",
+        label="Night shift",
+        weekdays=[Weekday.sunday],
+        start_time="02:50",
+        end_time="06:00",
+        intent="work_shift",
+    )
+    # An absence needs an away intent, and the shared fixture only binds the home catalog.
+    template = package.bindings[0]
+    covering = package.model_copy(
+        update={
+            "bindings": [
+                *package.bindings,
+                template.model_copy(
+                    update={"binding_id": "away__work_shift", "intent": "work_shift"}
+                ),
+            ]
+        }
+    )
+    result = expand_outline(
+        _outline(
+            time_zone="Europe/Rome",
+            start_date=date(2027, 3, 1),
+            months=1,
+            fixed_commitments=[commitment],
+        ),
+        covering,
+        seed=1,
+    )
+
+    transition = [day for day in result.bundle.scenario.days if day.date == date(2027, 3, 28)]
+    assert transition, "the horizon must cover the transition day"
+
+    # Compared as instants, deliberately. Two aware datetimes that share a tzinfo object are
+    # compared on their naive fields with the offset ignored, so an inverted window looks ordered
+    # in memory and `DateTimeWindow` accepts it; the contradiction only surfaces once the bundle
+    # has been through JSON and the edges carry fixed offsets instead. Asserting on the local
+    # values here would reproduce the same blind spot that let this reach an eight-month import.
+    inverted = [
+        activity.activity_id
+        for day in result.bundle.scenario.days
+        for activity in day.activities
+        if activity.start_window is not None
+        and not (
+            activity.start_window.earliest.astimezone(UTC)
+            <= activity.start_window.preferred.astimezone(UTC)
+            <= activity.start_window.latest.astimezone(UTC)
+        )
+    ]
+
+    assert inverted == []

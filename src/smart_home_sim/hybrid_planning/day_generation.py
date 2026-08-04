@@ -14,7 +14,7 @@ import hashlib
 import math
 import random
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from smart_home_sim.domain.models import (
@@ -417,9 +417,7 @@ def _activity(
         actor_id=actor_id,
         intent=intent_id,
         location_ids=[spec.default_location],
-        start_window=DateTimeWindow(
-            earliest=moment - _WINDOW_FLEX, preferred=moment, latest=moment + _WINDOW_FLEX
-        ),
+        start_window=window_around(moment, _WINDOW_FLEX),
         duration=DurationRange(minimum_minutes=low, preferred_minutes=pref, maximum_minutes=high),
         mandatory=not truncatable,
         allow_boundary_truncation=truncatable,
@@ -455,3 +453,33 @@ def _to_hhmm(total: int) -> str:
 def _at(day_date: date, hhmm: str, tz: ZoneInfo) -> datetime:
     hours, minutes = (int(part) for part in hhmm.split(":"))
     return datetime.combine(day_date, time(hours, minutes), tzinfo=tz)
+
+
+def at_offset(day_date: date, minutes: int, tz: ZoneInfo) -> datetime:
+    """``minutes`` of real elapsed time after local midnight.
+
+    The counterpart of `window_around` for the sites that build a moment from a minute count: two
+    offsets drawn from the same day stay in the order their numbers imply, which wall-clock addition
+    does not guarantee across a spring-forward transition.
+    """
+    midnight = datetime.combine(day_date, time.min, tzinfo=tz)
+    return (midnight.astimezone(UTC) + timedelta(minutes=minutes)).astimezone(tz)
+
+
+def window_around(moment: datetime, flex: timedelta) -> DateTimeWindow:
+    """A window of real elapsed time either side of ``moment``.
+
+    Adding a timedelta to an aware datetime is wall-clock arithmetic: the naive fields move and the
+    offset is re-derived afterwards. On the spring-forward day that produces edges naming local
+    times that never happen — 02:46 in a zone whose clock jumps 02:00 to 03:00 — which ZoneInfo
+    resolves with the *pre*-transition offset. The edge then sits after the moment it is supposed to
+    precede, and the window is rejected downstream for `earliest <= preferred <= latest`. Shifting
+    in UTC and converting back keeps the three edges ordered on every day of the year, and is what
+    a fifteen-minute window means anyway.
+    """
+    base = moment.astimezone(UTC)
+    return DateTimeWindow(
+        earliest=(base - flex).astimezone(moment.tzinfo),
+        preferred=moment,
+        latest=(base + flex).astimezone(moment.tzinfo),
+    )

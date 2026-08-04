@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -316,7 +317,46 @@ def prepare_authoring_repair_file(
     return AuthoringRepairPreparationResult(report=report, request=request)
 
 
-def validate_authoring_payload(payload: Any) -> AuthoringValidationResult:
+def _declared_catalog_version(
+    behavior_payload: Any,
+    field_name: str,
+    resolve: Callable[[str], Path],
+) -> str:
+    """The catalog version the package says it was written against.
+
+    Pinning this to the oldest built-in catalog, as it was, put one of the intents the drive layer
+    emits on its own out of reach: `phone_call` exists only from 1.2.0, and the expander *requires*
+    the package to bind every rhythm intent. Declaring 1.0.0 was then rejected for naming an intent
+    the loaded catalog does not define, and declaring 1.2.0 was rejected for not matching what was
+    loaded — no version of the document could pass. Honouring the declaration is what makes the two
+    checks agree.
+
+    An unrecognised version falls back rather than raising: a wrong reference is the behaviour
+    validator's finding to report, not a crash in the middle of loading its inputs.
+    """
+    default = "1.0.0"
+    if not isinstance(behavior_payload, dict):
+        return default
+    catalogs = behavior_payload.get("catalogs")
+    if not isinstance(catalogs, dict):
+        return default
+    reference = catalogs.get(field_name)
+    if not isinstance(reference, dict):
+        return default
+    version = reference.get("version")
+    if not isinstance(version, str):
+        return default
+    try:
+        resolve(version)
+    except ValueError:
+        return default
+    return version
+
+
+def validate_authoring_payload(
+    payload: Any,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> AuthoringValidationResult:
     envelope_issues = _validate_envelope(payload)
     bundle_version = (
         str(payload.get("schemaVersion"))
@@ -366,7 +406,7 @@ def validate_authoring_payload(payload: Any) -> AuthoringValidationResult:
             )
         )
     if scenario_report.valid:
-        compilation_result = compile_payload(scenario_payload)
+        compilation_result = compile_payload(scenario_payload, on_progress)
         compilation_plan = compilation_result.plan
         canonical_plan_sha256 = compilation_result.report.canonical_plan_sha256
         for item in compilation_result.report.issues:
@@ -383,9 +423,21 @@ def validate_authoring_payload(payload: Any) -> AuthoringValidationResult:
         behavior_report = validate_behavior_payloads(
             behavior_payload,
             scenario_payload,
-            _load_catalog(default_activity_catalog_path()),
+            _load_catalog(
+                default_activity_catalog_path(
+                    _declared_catalog_version(
+                        behavior_payload, "activityCatalog", default_activity_catalog_path
+                    )
+                )
+            ),
             _load_catalog(default_variable_catalog_path()),
-            _load_catalog(default_action_catalog_path()),
+            _load_catalog(
+                default_action_catalog_path(
+                    _declared_catalog_version(
+                        behavior_payload, "actionCatalog", default_action_catalog_path
+                    )
+                )
+            ),
         )
         for item in behavior_report.issues:
             issues.append(

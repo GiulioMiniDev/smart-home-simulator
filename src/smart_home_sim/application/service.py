@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 from pydantic import ValidationError
@@ -95,6 +96,7 @@ class ApplicationService:
         home_id: str,
         payload: dict[str, Any],
         seed: int = 0,
+        on_stage: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         """Expand one confirmed horizon outline and import the bundle it produces.
 
@@ -103,9 +105,18 @@ class ApplicationService:
         that here rather than only in the CLI is what lets a researcher stay in the application
         for a long horizon, and the result rejoins the ordinary path immediately — everything
         after this line is the same import an authored bundle goes through.
+
+        ``on_stage`` names the step now running. Eight months take minutes to validate and compile,
+        and a caller with no way to see which step it is in cannot tell slow from stuck.
         """
+
+        def stage(name: str) -> None:
+            if on_stage is not None:
+                on_stage(name)
+
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
+        stage("reading the outline")
         try:
             bundle = HorizonAuthoringBundle.model_validate_json(json.dumps(payload))
         except ValidationError as error:
@@ -117,17 +128,21 @@ class ApplicationService:
                     include_url=False, include_context=False, include_input=False
                 ),
             }
+        stage(f"expanding {bundle.outline.months} months into days")
         try:
-            expansion = expand_outline(
-                bundle.outline, bundle.personal_process_package, seed=seed
-            )
+            expansion = expand_outline(bundle.outline, bundle.personal_process_package, seed=seed)
         except ExpansionError as error:
             # One readable sentence rather than the hundreds of downstream rejections the same
             # defect produces once the days exist.
             return {"valid": False, "stage": "expansion", "message": str(error)}
 
+        stage(f"validating and compiling {expansion.day_count} days")
         imported = self.import_authoring_bundle(
-            home_id, json.loads(expansion.bundle.model_dump_json(by_alias=True))
+            home_id,
+            json.loads(expansion.bundle.model_dump_json(by_alias=True)),
+            on_progress=lambda done, total: stage(
+                f"compiling {expansion.day_count} days: {done} of {total} activities placed"
+            ),
         )
         return {
             **imported,
@@ -146,11 +161,12 @@ class ApplicationService:
         self,
         home_id: str,
         payload: dict[str, Any],
+        on_progress: Callable[[int, int], None] | None = None,
     ) -> dict[str, Any]:
         """Validate and publish one researcher-facing authoring bundle."""
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
-        result = validate_authoring_payload(payload)
+        result = validate_authoring_payload(payload, on_progress)
         issues = _issues(result.report.issues)
         self.workspace.replace_validation_issues(home_id, issues)
         if not result.report.valid:

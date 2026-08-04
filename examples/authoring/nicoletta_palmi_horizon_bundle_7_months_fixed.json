@@ -1,0 +1,3012 @@
+{
+  "documentType": "horizon_authoring_bundle",
+  "schemaVersion": "1.0.0",
+  "outline": {
+    "documentType": "horizon_outline",
+    "schemaVersion": "1.0.0",
+    "outlineId": "outline_nicoletta_palmi_2026_08_04_7m",
+    "title": "Seven-month smart-home horizon for Nicoletta Palmi",
+    "residentId": "resident_nicoletta_palmi",
+    "timeZone": "Europe/Rome",
+    "startDate": "2026-08-04",
+    "months": 7,
+    "note": "Home-centred outline for a healthy 42-year-old high-school professor living in a large villa near Rimini.",
+    "rhythm": {
+      "age": 42,
+      "chronotypeBedtime": "22:15",
+      "health": []
+    },
+    "world": {
+      "homeModel": {
+        "referenceId": "synthetic_large_villa_rimini",
+        "version": "1.0.0"
+      },
+      "locations": [
+        {
+          "locationId": "balcony",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Villa balcony and outdoor drying area"
+          }
+        },
+        {
+          "locationId": "bathroom",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Main bathroom"
+          }
+        },
+        {
+          "locationId": "bedroom",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Nicoletta's bedroom"
+          }
+        },
+        {
+          "locationId": "kitchen",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Large villa kitchen"
+          }
+        },
+        {
+          "locationId": "living_room",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Living room with television"
+          }
+        },
+        {
+          "locationId": "outdoors",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Generic outside-home area"
+          }
+        },
+        {
+          "locationId": "school",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Idioms High School in Rimini"
+          }
+        },
+        {
+          "locationId": "gym",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Local gym"
+          }
+        },
+        {
+          "locationId": "marina",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "description": "Rimini marina where her boat is kept"
+          }
+        },
+        {
+          "locationId": "home_indoor",
+          "kind": "composite",
+          "memberLocationIds": [
+            "bathroom",
+            "bedroom",
+            "kitchen",
+            "living_room"
+          ],
+          "attributes": {
+            "description": "All indoor villa rooms"
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resourceId": "bed",
+          "resourceType": "bed",
+          "locationId": "bedroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "television",
+          "resourceType": "television",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "cooking_station",
+          "resourceType": "cooking_appliance",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "washing_machine",
+          "resourceType": "laundry_appliance",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "clothesline",
+          "resourceType": "drying_support",
+          "locationId": "balcony",
+          "capacity": 1,
+          "attributes": {}
+        }
+      ],
+      "externalPeople": [],
+      "startLocationId": "bedroom",
+      "residentFacts": {
+        "age": 42,
+        "household": "single_person",
+        "health": {
+          "conditions": []
+        },
+        "mobility": {
+          "profile": "independent",
+          "walkingSpeedMetersPerSecond": 1.35
+        },
+        "preferences": {
+          "chronotype": "moderately_late",
+          "breakfastDrink": "coffee"
+        },
+        "occupation": "high_school_professor",
+        "at_home": true
+      },
+      "environmentFacts": {
+        "city": "Rimini",
+        "dwelling": "large_villa",
+        "near_city_center": true
+      },
+      "resourceFacts": {
+        "cooking_station": {
+          "available": true
+        },
+        "washing_machine": {
+          "available": true
+        },
+        "television": {
+          "available": true
+        }
+      }
+    },
+    "profile": {
+      "documentType": "behavioral_profile",
+      "schemaVersion": "1.0.0",
+      "profileId": "profile_nicoletta_palmi",
+      "personaId": "persona_nicoletta_palmi",
+      "recurringActivities": [
+        {
+          "recurringActivityId": "ra_breakfast",
+          "label": "Breakfast at home",
+          "kind": "anchor",
+          "intent": "eat_breakfast",
+          "miningDifficulty": "easy",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "06:45",
+            "windowEnd": "09:00",
+            "jitterMinutes": 15
+          },
+          "note": "Usually before leaving for school; later on weekends."
+        },
+        {
+          "recurringActivityId": "ra_medication",
+          "label": "Morning prescribed medication",
+          "kind": "anchor",
+          "intent": "take_morning_medication",
+          "miningDifficulty": "easy",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "07:00",
+            "windowEnd": "09:30",
+            "jitterMinutes": 10
+          },
+          "note": "Represents birth-control pill intake only on the prescribed days of her cycle."
+        },
+        {
+          "recurringActivityId": "ra_dinner",
+          "label": "Dinner at home",
+          "kind": "anchor",
+          "intent": "eat_dinner",
+          "miningDifficulty": "easy",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "18:45",
+            "windowEnd": "20:30",
+            "jitterMinutes": 20
+          },
+          "note": "Main evening meal."
+        },
+        {
+          "recurringActivityId": "ra_evening_hygiene",
+          "label": "Evening hygiene",
+          "kind": "anchor",
+          "intent": "evening_hygiene",
+          "miningDifficulty": "easy",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "20:15",
+            "windowEnd": "22:15",
+            "jitterMinutes": 15
+          },
+          "note": "Routine bathroom care before winding down."
+        },
+        {
+          "recurringActivityId": "ra_cook_dinner",
+          "label": "Cook dinner",
+          "kind": "contextual",
+          "intent": "prepare_light_dinner",
+          "miningDifficulty": "medium",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 5,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "17:45",
+            "windowEnd": "19:45",
+            "jitterMinutes": 30
+          },
+          "note": "She enjoys cooking; lighter preparation is used as the nearest canonical dinner-preparation intent."
+        },
+        {
+          "recurringActivityId": "ra_films",
+          "label": "Watch films or television",
+          "kind": "contextual",
+          "intent": "watch_television",
+          "miningDifficulty": "medium",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 4,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "20:00",
+            "windowEnd": "22:15",
+            "jitterMinutes": 35
+          },
+          "note": "Often a film on free evenings."
+        },
+        {
+          "recurringActivityId": "ra_gym",
+          "label": "Gym session",
+          "kind": "optional",
+          "intent": "indoor_light_exercise",
+          "miningDifficulty": "hard",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "tuesday",
+              "thursday",
+              "saturday"
+            ],
+            "windowStart": "16:00",
+            "windowEnd": "19:30",
+            "jitterMinutes": 75
+          },
+          "note": "Nearest supported intent; the actual gym is away from home and only the exercise pattern is represented."
+        },
+        {
+          "recurringActivityId": "ra_weekly_meal_prep",
+          "label": "Weekly meal preparation",
+          "kind": "optional",
+          "intent": "weekly_meal_preparation",
+          "miningDifficulty": "medium",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "sunday"
+            ],
+            "windowStart": "10:30",
+            "windowEnd": "14:00",
+            "jitterMinutes": 40
+          },
+          "note": "Batch preparation for the teaching week."
+        },
+        {
+          "recurringActivityId": "ra_tidy",
+          "label": "Tidy living room and hallway",
+          "kind": "optional",
+          "intent": "tidy_living_room_and_hallway",
+          "miningDifficulty": "medium",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "09:30",
+            "windowEnd": "18:30",
+            "jitterMinutes": 90
+          },
+          "note": "Flexible villa upkeep."
+        },
+        {
+          "recurringActivityId": "ra_laundry",
+          "label": "Start laundry",
+          "kind": "rare",
+          "intent": "start_laundry",
+          "miningDifficulty": "hard",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday",
+              "sunday"
+            ],
+            "windowStart": "08:30",
+            "windowEnd": "16:30",
+            "jitterMinutes": 100
+          },
+          "note": "Usually on a weekend."
+        },
+        {
+          "recurringActivityId": "ra_hang_laundry",
+          "label": "Hang laundry",
+          "kind": "rare",
+          "intent": "hang_laundry",
+          "miningDifficulty": "hard",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday",
+              "sunday"
+            ],
+            "windowStart": "10:00",
+            "windowEnd": "18:00",
+            "jitterMinutes": 110
+          },
+          "note": "Usually follows the weekly wash when weather permits."
+        }
+      ],
+      "provenance": {
+        "authorType": "external_llm",
+        "generatorName": "smart-home-simulator-external-llm-authoring",
+        "generatorVersion": "1.4.0",
+        "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+        "humanReviewed": false,
+        "modelName": "GPT-5.6 Thinking",
+        "generatedAt": "2026-08-04T17:03:00+02:00",
+        "parameters": {
+          "authoringAssumptions": [
+            "Nicoletta lives alone because no household members were specified.",
+            "The seven-month horizon starts on 2026-08-04 and ends on 2027-03-03 inclusive.",
+            "Her teaching commitment is modeled Monday through Friday from 08:00 to 14:00 during the school term, excluding a winter holiday phase.",
+            "Gym attendance is represented by the nearest supported canonical intent, indoor_light_exercise, because detailed away-from-home gym activity is outside the home-centred catalog.",
+            "Boat use is represented as bounded weekend leave-home events during warm weather because the catalog has no boating intent.",
+            "Birth-control medication is modeled as a daily morning medication routine, with the note that actual use follows her prescribed cycle.",
+            "The chronotype bedtime was set to 22:15 so deterministic sleep jitter cannot move a preferred sleep start into the following calendar date while retaining the activity under the previous day."
+          ]
+        }
+      }
+    },
+    "habits": [
+      {
+        "habitId": "habit_night",
+        "label": "Night and sleep",
+        "windowStart": "20:00",
+        "windowEnd": "06:30",
+        "recurringActivityIds": [],
+        "note": "Starts more than two hours before the 22:15 chronotype bedtime and keeps rhythm-generated sleep starts safely on the same calendar day."
+      },
+      {
+        "habitId": "habit_morning",
+        "label": "Morning preparation",
+        "windowStart": "06:30",
+        "windowEnd": "09:30",
+        "recurringActivityIds": [
+          "ra_breakfast",
+          "ra_medication"
+        ],
+        "note": "Breakfast and medication before school or a slower weekend start."
+      },
+      {
+        "habitId": "habit_day",
+        "label": "Daytime commitments and home tasks",
+        "windowStart": "09:30",
+        "windowEnd": "17:30",
+        "recurringActivityIds": [
+          "ra_weekly_meal_prep",
+          "ra_tidy",
+          "ra_laundry",
+          "ra_hang_laundry"
+        ],
+        "note": "Teaching dominates weekdays; household tasks occupy free days."
+      },
+      {
+        "habitId": "habit_evening",
+        "label": "Evening meal and leisure",
+        "windowStart": "17:30",
+        "windowEnd": "20:00",
+        "recurringActivityIds": [
+          "ra_gym",
+          "ra_cook_dinner",
+          "ra_dinner",
+          "ra_films"
+        ],
+        "note": "Exercise, cooking and dinner before the night band; later hygiene and quiet leisure may occur within the night transition."
+      }
+    ],
+    "fixedCommitments": [
+      {
+        "commitmentId": "fc_school_term",
+        "label": "Teaching shift at Idioms High School",
+        "weekdays": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday"
+        ],
+        "startTime": "08:00",
+        "endTime": "14:00",
+        "startDate": "2026-09-14",
+        "endDate": "2027-03-03",
+        "intent": "work_shift",
+        "note": "Regular school-day teaching hours; the winter-holiday phase suspends home routines but does not rewrite this commitment."
+      }
+    ],
+    "phases": [
+      {
+        "phaseId": "phase_late_summer",
+        "label": "Late-summer boat season",
+        "startDate": "2026-08-04",
+        "endDate": "2026-09-20",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_gym",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 1,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "tuesday",
+                "thursday"
+              ],
+              "windowStart": "16:30",
+              "windowEnd": "19:30",
+              "jitterMinutes": 65
+            }
+          }
+        ],
+        "note": "Warm weekends are more often reserved for the boat, so gym frequency decreases."
+      },
+      {
+        "phaseId": "phase_winter_routine",
+        "label": "Winter indoor routine",
+        "startDate": "2026-11-01",
+        "endDate": "2027-02-28",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_films",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 5,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "20:00",
+              "windowEnd": "22:15",
+              "jitterMinutes": 35
+            }
+          }
+        ],
+        "note": "Colder evenings increase indoor film and television time."
+      },
+      {
+        "phaseId": "phase_winter_holidays",
+        "label": "Winter school holidays",
+        "startDate": "2026-12-23",
+        "endDate": "2027-01-06",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_weekly_meal_prep",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 2,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "10:00",
+              "windowEnd": "16:00",
+              "jitterMinutes": 70
+            }
+          },
+          {
+            "recurringActivityId": "ra_breakfast",
+            "suspended": false,
+            "cadence": {
+              "period": "day",
+              "timesPerPeriod": 1,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "08:00",
+              "windowEnd": "10:30",
+              "jitterMinutes": 30
+            }
+          }
+        ],
+        "note": "Later mornings and more cooking while school is closed."
+      }
+    ],
+    "events": [
+      {
+        "eventId": "event_boat_weekends",
+        "label": "Weekend boat outing",
+        "earliestDate": "2026-08-08",
+        "latestDate": "2026-09-20",
+        "occurrences": 5,
+        "weekdays": [
+          "saturday",
+          "sunday"
+        ],
+        "windowStart": "08:00",
+        "windowEnd": "20:00",
+        "minimumMinutes": 300,
+        "maximumMinutes": 660,
+        "intent": "leave_home",
+        "displaces": [
+          {
+            "recurringActivityId": "ra_gym",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_tidy",
+            "policy": "reschedule"
+          },
+          {
+            "recurringActivityId": "ra_laundry",
+            "policy": "reschedule"
+          }
+        ],
+        "note": "Represents leaving home for a warm-weather day on her boat; boating itself is outside the catalog."
+      },
+      {
+        "eventId": "event_family_holiday_dinner",
+        "label": "Holiday dinner away from home",
+        "earliestDate": "2026-12-24",
+        "latestDate": "2026-12-26",
+        "occurrences": 1,
+        "weekdays": [],
+        "windowStart": "17:00",
+        "windowEnd": "23:00",
+        "minimumMinutes": 180,
+        "maximumMinutes": 360,
+        "intent": "leave_home",
+        "displaces": [
+          {
+            "recurringActivityId": "ra_cook_dinner",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_dinner",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_films",
+            "policy": "skip"
+          }
+        ],
+        "note": "A seasonal social dinner outside the villa; represented by the nearest canonical absence intent because the catalog does not provide a generic relative-dinner intent consistently across its declarations."
+      },
+      {
+        "eventId": "event_autumn_deep_tidy",
+        "label": "Seasonal villa reorganization",
+        "earliestDate": "2026-10-10",
+        "latestDate": "2026-10-31",
+        "occurrences": 1,
+        "weekdays": [
+          "saturday",
+          "sunday"
+        ],
+        "windowStart": "09:00",
+        "windowEnd": "17:00",
+        "minimumMinutes": 120,
+        "maximumMinutes": 240,
+        "intent": "tidy_living_room_and_hallway",
+        "displaces": [
+          {
+            "recurringActivityId": "ra_tidy",
+            "policy": "skip"
+          }
+        ],
+        "note": "A larger seasonal tidying session using the nearest supported housekeeping intent."
+      }
+    ],
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+      "humanReviewed": false,
+      "modelName": "GPT-5.6 Thinking",
+      "generatedAt": "2026-08-04T17:03:00+02:00",
+      "parameters": {
+        "authoringAssumptions": [
+          "Nicoletta lives alone because no household members were specified.",
+          "The seven-month horizon starts on 2026-08-04 and ends on 2027-03-03 inclusive.",
+          "Her teaching commitment is modeled Monday through Friday from 08:00 to 14:00 during the school term, excluding a winter holiday phase.",
+          "Gym attendance is represented by the nearest supported canonical intent, indoor_light_exercise, because detailed away-from-home gym activity is outside the home-centred catalog.",
+          "Boat use is represented as bounded weekend leave-home events during warm weather because the catalog has no boating intent.",
+          "Birth-control medication is modeled as a daily morning medication routine, with the note that actual use follows her prescribed cycle.",
+          "The chronotype bedtime was set to 22:15 so deterministic sleep jitter cannot move a preferred sleep start into the following calendar date while retaining the activity under the previous day."
+        ]
+      }
+    }
+  },
+  "personalProcessPackage": {
+    "documentType": "personal_process_package",
+    "schemaVersion": "1.0.0",
+    "packageId": "ppp_nicoletta_palmi_2026_08_04_7m",
+    "packageVersion": "1.0.0",
+    "sourceScenarioId": "scenario_nicoletta_palmi_2026_08_04_7m",
+    "sourceScenarioVersion": "1.0.0",
+    "language": "en",
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+      "humanReviewed": false,
+      "modelName": "GPT-5.6 Thinking",
+      "generatedAt": "2026-08-04T17:03:00+02:00",
+      "parameters": {
+        "authoringAssumptions": [
+          "Nicoletta lives alone because no household members were specified.",
+          "The seven-month horizon starts on 2026-08-04 and ends on 2027-03-03 inclusive.",
+          "Her teaching commitment is modeled Monday through Friday from 08:00 to 14:00 during the school term, excluding a winter holiday phase.",
+          "Gym attendance is represented by the nearest supported canonical intent, indoor_light_exercise, because detailed away-from-home gym activity is outside the home-centred catalog.",
+          "Boat use is represented as bounded weekend leave-home events during warm weather because the catalog has no boating intent.",
+          "Birth-control medication is modeled as a daily morning medication routine, with the note that actual use follows her prescribed cycle.",
+          "The chronotype bedtime was set to 22:15 so deterministic sleep jitter cannot move a preferred sleep start into the following calendar date while retaining the activity under the previous day."
+        ]
+      }
+    },
+    "catalogs": {
+      "activityCatalog": {
+        "catalogId": "smart_home_activity_catalog",
+        "version": "1.0.0"
+      },
+      "variableCatalog": {
+        "catalogId": "smart_home_variable_catalog",
+        "version": "1.0.0"
+      },
+      "actionCatalog": {
+        "catalogId": "smart_home_action_catalog",
+        "version": "1.0.0"
+      }
+    },
+    "processModels": [
+      {
+        "processModelId": "pm_eat_breakfast",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Eat breakfast",
+        "description": "Eat breakfast",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "breakfast_meal"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_take_morning_medication",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Take morning medication",
+        "description": "Take morning medication",
+        "implementedComponents": [
+          "take_medication"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "morning_medication"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "manage_medication",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "take"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "morning_medication"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Eat dinner",
+        "description": "Eat dinner",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "dinner_meal"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_evening_hygiene",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Evening hygiene",
+        "description": "Evening hygiene",
+        "implementedComponents": [
+          "personal_hygiene"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "evening_hygiene"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_prepare_light_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Prepare light dinner",
+        "description": "Prepare light dinner",
+        "implementedComponents": [
+          "prepare_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "dinner_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n5",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n6",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "light_dinner"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n7",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n8",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "dinner_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "n5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n5",
+            "targetNodeId": "n6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n6",
+            "targetNodeId": "n7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n7",
+            "targetNodeId": "n8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n8",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_watch_television",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Watch television",
+        "description": "Watch television",
+        "implementedComponents": [
+          "watch_media"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "television"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "leisure",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "film_or_television"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n5",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "television"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "n5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n5",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_indoor_light_exercise",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Indoor light exercise",
+        "description": "Indoor light exercise",
+        "implementedComponents": [
+          "exercise"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "exercise",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "light_gym_training"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_weekly_meal_preparation",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Weekly meal preparation",
+        "description": "Weekly meal preparation",
+        "implementedComponents": [
+          "prepare_food",
+          "portion_food",
+          "store_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_prep_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n5",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n6",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "weekly_batch_meals"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n7",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n8",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_prep_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n9",
+            "kind": "action",
+            "actionType": "organize",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "prepared_food_portions"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n10",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_food_portions"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n11",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n12",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_food_portions"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n13",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "n5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n5",
+            "targetNodeId": "n6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n6",
+            "targetNodeId": "n7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n7",
+            "targetNodeId": "n8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n8",
+            "targetNodeId": "n9",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n9",
+            "targetNodeId": "n10",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n10",
+            "targetNodeId": "n11",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n11",
+            "targetNodeId": "n12",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n12",
+            "targetNodeId": "n13",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n13",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_tidy_living_room_and_hallway",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Tidy living room and hallway",
+        "description": "Tidy living room and hallway",
+        "implementedComponents": [
+          "tidy_area"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "organize",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "living_room_and_hallway"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_start_laundry",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Start laundry",
+        "description": "Start laundry",
+        "implementedComponents": [
+          "collect_laundry",
+          "load_laundry",
+          "start_laundry"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "collect"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "load"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "start"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_hang_laundry",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Hang laundry",
+        "description": "Hang laundry",
+        "implementedComponents": [
+          "hang_laundry"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "hang"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_work_shift",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Work shift",
+        "description": "Work shift",
+        "implementedComponents": [
+          "work"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "perform_work",
+            "arguments": {
+              "mode": {
+                "source": "literal",
+                "value": "classroom_teaching"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_leave_home",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Leave home",
+        "description": "Leave home",
+        "implementedComponents": [
+          "leave_home"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "leave_home",
+            "arguments": {},
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_morning_toilet_and_wash",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Morning toilet and wash",
+        "description": "Morning toilet and wash",
+        "implementedComponents": [
+          "use_toilet",
+          "wash_face"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "use_toilet"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "bathroom_faucet"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "wash_face"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n5",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "bathroom_faucet"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "n5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n5",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_phone_call",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Phone call",
+        "description": "Phone call",
+        "implementedComponents": [
+          "phone_call"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "communicate",
+            "arguments": {
+              "channel": {
+                "source": "literal",
+                "value": "phone"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_rest_or_nap",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Rest or nap",
+        "description": "Rest or nap",
+        "implementedComponents": [
+          "rest",
+          "nap"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "rest"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n5",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "nap"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "n4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n4",
+            "targetNodeId": "n5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n5",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_sleep",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Sleep",
+        "description": "Sleep",
+        "implementedComponents": [
+          "sleep"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "night_sleep"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_wake_up",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_nicoletta_palmi",
+        "title": "Wake up",
+        "description": "Wake up",
+        "implementedComponents": [
+          "wake_up"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "n1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "n3",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "bedroom_exit"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": [],
+            "duration": null,
+            "maxIterations": null
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "n1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n1",
+            "targetNodeId": "n2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n2",
+            "targetNodeId": "n3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "n3",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "bind_eat_breakfast",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "eat_breakfast",
+        "processModelId": "pm_eat_breakfast",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_take_morning_medication",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "take_morning_medication",
+        "processModelId": "pm_take_morning_medication",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_eat_dinner",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "eat_dinner",
+        "processModelId": "pm_eat_dinner",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_evening_hygiene",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "evening_hygiene",
+        "processModelId": "pm_evening_hygiene",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_prepare_light_dinner",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "prepare_light_dinner",
+        "processModelId": "pm_prepare_light_dinner",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_watch_television",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "watch_television",
+        "processModelId": "pm_watch_television",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_indoor_light_exercise",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "indoor_light_exercise",
+        "processModelId": "pm_indoor_light_exercise",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_weekly_meal_preparation",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "weekly_meal_preparation",
+        "processModelId": "pm_weekly_meal_preparation",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_tidy_living_room_and_hallway",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "tidy_living_room_and_hallway",
+        "processModelId": "pm_tidy_living_room_and_hallway",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_start_laundry",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "start_laundry",
+        "processModelId": "pm_start_laundry",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_hang_laundry",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "hang_laundry",
+        "processModelId": "pm_hang_laundry",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_work_shift",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "work_shift",
+        "processModelId": "pm_work_shift",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_leave_home",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "leave_home",
+        "processModelId": "pm_leave_home",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_morning_toilet_and_wash",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "morning_toilet_and_wash",
+        "processModelId": "pm_morning_toilet_and_wash",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_phone_call",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "phone_call",
+        "processModelId": "pm_phone_call",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_rest_or_nap",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "rest_or_nap",
+        "processModelId": "pm_rest_or_nap",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_sleep",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "sleep",
+        "processModelId": "pm_sleep",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "bind_wake_up",
+        "residentId": "resident_nicoletta_palmi",
+        "intent": "wake_up",
+        "processModelId": "pm_wake_up",
+        "applicability": [],
+        "fallback": true
+      }
+    ]
+  }
+}

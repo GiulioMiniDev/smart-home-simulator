@@ -37,8 +37,56 @@ async function requestWithSession(path: string, options: RequestInit = {}): Prom
   return fetch(`/api${path}`, { ...options, headers: refreshedHeaders });
 }
 
+/** The server accepted the connection and then vanished, or was never there. */
+export const SERVER_UNREACHABLE = "SERVER_UNREACHABLE";
+
+export type ServerHealth = {
+  status: string;
+  inFlight: number;
+  operation: {
+    operationId: string;
+    method: string;
+    path: string;
+    stage: string;
+    elapsedSeconds: number;
+  } | null;
+};
+
+/**
+ * Is the local server alive, and does it still have `operationId` in hand?
+ *
+ * Unauthenticated and deliberately independent of `api`: it is polled while another request is
+ * outstanding, so it must not fail for the same reason that request might.
+ */
+export async function health(operationId?: string): Promise<ServerHealth | null> {
+  try {
+    const query = operationId ? `?operation=${encodeURIComponent(operationId)}` : "";
+    const response = await fetch(`/api/health${query}`);
+    if (!response.ok) return null;
+    return (await response.json()) as ServerHealth;
+  } catch {
+    return null;
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await requestWithSession(path, options);
+  let response: Response;
+  try {
+    response = await requestWithSession(path, options);
+  } catch (reason) {
+    // A session bootstrap that answered with an HTTP error already knows what went wrong; only a
+    // rejected fetch means the connection itself never completed — the server exited mid-request,
+    // or it was never running. Left as a bare TypeError that surfaces as "Failed to fetch", which
+    // says nothing about which side stopped.
+    if (reason instanceof ApiError) throw reason;
+    throw new ApiError(
+      "The local server stopped responding, so the request never completed. It may have crashed — "
+        + "check the console window it was started from, and server-errors.log in the workspace "
+        + "folder.",
+      0,
+      SERVER_UNREACHABLE,
+    );
+  }
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as
       | { error?: { code?: string; message?: string }; detail?: { code?: string; message?: string } }

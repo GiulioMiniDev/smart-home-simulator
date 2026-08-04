@@ -170,6 +170,22 @@ p { color: var(--text-soft); line-height: 1.55; }
 .notice { align-items: center; margin-bottom: 1rem; }
 .notice span { flex: 1; }
 .notice-success { border-color: color-mix(in oklch, var(--green) 35%, var(--line)); background: var(--green-soft); color: var(--green); }
+.operation-panel { display: grid; gap: .55rem; margin-bottom: 1rem; padding: .9rem 1rem; border: 1px solid color-mix(in oklch, var(--indigo) 35%, var(--line)); border-radius: var(--radius); background: color-mix(in oklch, var(--indigo) 7%, var(--surface)); }
+.operation-panel > div { display: flex; align-items: center; gap: .6rem; color: var(--indigo); }
+.operation-panel strong { flex: 1; color: var(--text); font-size: .88rem; }
+.operation-panel p { margin: 0; color: var(--text-soft); font-size: .82rem; }
+.operation-panel small { color: var(--text-faint); font-size: .74rem; }
+.operation-elapsed { font: 700 .78rem "Cascadia Code", monospace; font-variant-numeric: tabular-nums; }
+.operation-hint code { padding: .05rem .3rem; border-radius: 3px; background: var(--surface-cool); font-size: .95em; }
+.operation-track { overflow: hidden; height: 4px; border-radius: 99px; background: var(--surface-cool); }
+/* Indeterminate on purpose: the server reports the step it is on, never a percentage, and a bar
+   that invented one would be the same false reassurance as a spinner. */
+.operation-track i { display: block; width: 35%; height: 100%; border-radius: inherit; background: var(--indigo); animation: operation-sweep 1.5s ease-in-out infinite; }
+@keyframes operation-sweep { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+.operation-panel-lost { border-color: color-mix(in oklch, var(--red) 40%, var(--line)); background: var(--red-soft); }
+.operation-panel-lost > div { color: var(--red); }
+@media (prefers-reduced-motion: reduce) { .operation-track i { animation: none; width: 100%; margin-left: 0; opacity: .45; } }
+
 .validation-summary { display: grid; grid-template-columns: minmax(190px, .45fr) 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; border: 1px solid color-mix(in oklch, var(--amber) 40%, var(--line)); border-radius: var(--radius); background: var(--amber-soft); }
 .validation-summary h2 { margin: 0; font-size: 1rem; }
 .validation-summary > div:last-child { display: grid; gap: .35rem; }

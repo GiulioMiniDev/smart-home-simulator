@@ -35,9 +35,9 @@ import {
   ZoomOut,
   Maximize2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, download, eventSourceUrl } from "./api";
+import { api, download, eventSourceUrl, health } from "./api";
 import {
   Breadcrumbs,
   EmptyState,
@@ -552,6 +552,95 @@ function GeneratePage() {
   );
 }
 
+/**
+ * What the browser knows about a request it has sent and not yet got back.
+ *
+ * `reading` and `sending` are local facts. `working` is the server confirming it still holds the
+ * operation, and is the only phase that can report a stage. `lost` is the case that used to be
+ * indistinguishable from the others: the request is gone and nothing is ever coming back.
+ */
+type OperationProgress = {
+  operationId: string;
+  label: string;
+  phase: "reading" | "sending" | "working" | "lost";
+  startedAt: number;
+  elapsed: number;
+  stage?: string;
+  serverElapsed?: number;
+  reason?: string;
+};
+
+const HEALTH_POLL_MS = 3000;
+// A finished handler leaves the in-flight table before its reply has finished being written, so a
+// single miss means nothing. Three consecutive ones, six seconds apart from the answer, do.
+const MISSES_BEFORE_LOST = 3;
+
+function useOperationWatch(
+  progress: OperationProgress | undefined,
+  setProgress: Dispatch<SetStateAction<OperationProgress | undefined>>,
+) {
+  const misses = useRef(0);
+  const operationId = progress?.operationId;
+  const settled = progress?.phase === "lost";
+  useEffect(() => {
+    if (!operationId || settled) return;
+    misses.current = 0;
+    let cancelled = false;
+    let sincePoll = 0;
+    const patch = (change: Partial<OperationProgress>) =>
+      setProgress((current) => (current?.operationId === operationId ? { ...current, ...change } : current));
+
+    const timer = window.setInterval(() => {
+      patch({ elapsed: Math.round((Date.now() - (progress?.startedAt ?? Date.now())) / 1000) });
+      sincePoll += 1000;
+      if (sincePoll < HEALTH_POLL_MS) return;
+      sincePoll = 0;
+      void health(operationId).then((state) => {
+        if (cancelled) return;
+        if (state === null) {
+          patch({ phase: "lost", reason: "The server is not answering at all — the process is gone." });
+          return;
+        }
+        if (state.operation) {
+          misses.current = 0;
+          patch({ phase: "working", stage: state.operation.stage, serverElapsed: state.operation.elapsedSeconds });
+          return;
+        }
+        misses.current += 1;
+        if (misses.current >= MISSES_BEFORE_LOST) {
+          patch({
+            phase: "lost",
+            reason: "The server is answering but is no longer working on this request, so no reply is coming.",
+          });
+        }
+      });
+    }, 1000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [operationId, settled, progress?.startedAt, setProgress]);
+}
+
+function OperationPanel({ progress }: { progress: OperationProgress }) {
+  const spent = `${progress.elapsed}s`;
+  const description =
+    progress.phase === "reading" ? "Reading the file in the browser"
+      : progress.phase === "sending" ? "Sent to the server, waiting for it to pick the request up"
+        : progress.phase === "working" ? (progress.stage ?? "The server is working on it")
+          : (progress.reason ?? "The request was lost.");
+  return (
+    <section className={`operation-panel${progress.phase === "lost" ? " operation-panel-lost" : ""}`} role="status" aria-live="polite">
+      <div>
+        {progress.phase === "lost" ? <AlertCircle size={18} /> : <Clock3 size={18} />}
+        <strong>{progress.label}</strong>
+        <span className="operation-elapsed">{spent}</span>
+      </div>
+      <p>{description}</p>
+      {progress.phase !== "lost" && <div className="operation-track" aria-hidden="true"><i /></div>}
+      {progress.phase === "working" && <small>The server confirmed it is alive and {progress.serverElapsed ?? progress.elapsed}s into this request.</small>}
+      {progress.phase === "lost" && <p className="operation-hint">Check the console window the simulator was started from, and <code>server-errors.log</code> in the workspace folder. Nothing was imported.</p>}
+    </section>
+  );
+}
+
 function HomePage() {
   const { homeId = "" } = useParams();
   const resource = useResource<HomeDetail>(`/homes/${homeId}`);
@@ -562,7 +651,9 @@ function HomePage() {
   const [scenarioFile, setScenarioFile] = useState<File>();
   const [behaviorFile, setBehaviorFile] = useState<File>();
   const [working, setWorking] = useState(false);
+  const [progress, setProgress] = useState<OperationProgress>();
   const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
+  useOperationWatch(progress, setProgress);
   const [homeDraft, setHomeDraft] = useState<HomeModel>();
   const [sensorDraft, setSensorDraft] = useState<SensorModel>();
   const [history, setHistory] = useState<Array<{ home?: HomeModel; sensor?: SensorModel }>>([]);
@@ -581,12 +672,17 @@ function HomePage() {
   const activeJob = detail.jobs.find((job) => !terminal.has(job.status));
   const inputResident = detail.residents.find((resident) => resident.scenarioArtifactId && resident.behaviorArtifactId);
 
-  const submitAuthoring = async (path: string, body: () => Promise<Record<string, unknown>>) => {
+  const submitAuthoring = async (path: string, body: () => Promise<Record<string, unknown>>, label: string) => {
+    const operationId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     setWorking(true); setNotice(undefined);
+    setProgress({ operationId, label, phase: "reading", startedAt: Date.now(), elapsed: 0 });
     try {
+      const payload = JSON.stringify(await body());
+      setProgress((current) => current?.operationId === operationId ? { ...current, phase: "sending" } : current);
       const result = await api<{ valid: boolean; issues?: ImportIssue[]; message?: string; expansion?: { dayCount: number; activityCount: number; habitBandCount: number }; bundleArtifact?: { artifactId: string } }>(`/homes/${homeId}/${path}`, {
         method: "POST",
-        body: JSON.stringify(await body()),
+        body: payload,
+        headers: { "X-Operation-Id": operationId },
       });
       // An outline can be refused before any day exists, and then there are no per-activity
       // issues to summarize — only one sentence saying what the structure got wrong.
@@ -599,22 +695,22 @@ function HomePage() {
         await resource.reload();
       }
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
-    finally { setWorking(false); }
+    finally { setWorking(false); setProgress(undefined); }
   };
   const importBundle = async () => {
     if (!bundleFile) return;
-    await submitAuthoring("authoring-bundle", () => readJson(bundleFile));
+    await submitAuthoring("authoring-bundle", () => readJson(bundleFile), "Validating the authoring bundle");
   };
   const importOutline = async () => {
     if (!outlineFile) return;
-    await submitAuthoring("horizon-outline?seed=1", () => readJson(outlineFile));
+    await submitAuthoring("horizon-outline?seed=1", () => readJson(outlineFile), "Expanding and importing the outline");
   };
   const importAdvancedInputs = async () => {
     if (!scenarioFile || !behaviorFile) return;
     await submitAuthoring("authoring", async () => ({
       scenario: await readJson(scenarioFile),
       personal_process_package: await readJson(behaviorFile),
-    }));
+    }), "Validating the Advanced import");
   };
   const startRun = async () => {
     if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
@@ -700,6 +796,7 @@ function HomePage() {
       <Breadcrumbs items={[{ label: "Homes", to: "/homes" }, { label: detail.home.name }]} />
       <PageHeader eyebrow="Environment workspace" title={detail.home.name} description={detail.home.description || "Executable spatial model and resident context"} actions={<><StatusBadge status={activeJob?.status ?? (homeDraft ? "valid" : "draft")} /><button className="button primary" disabled={!inputResident || !!activeJob || working} onClick={() => void startRun()}><Play size={16} /> Run simulation</button></>} />
       {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}<span>{notice.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button></div>}
+      {progress && <OperationPanel progress={progress} />}
       {!!detail.issues?.length && <section className="validation-summary" aria-labelledby="validation-issues-title"><div><p className="eyebrow">Persisted validation</p><h2 id="validation-issues-title">Resolve {detail.issues.length} authoritative issue{detail.issues.length === 1 ? "" : "s"}</h2></div><div>{detail.issues.map((issue, index) => <button key={`${issue.code}-${issue.path}-${index}`} onClick={() => { const target = issue.graphicalReference?.elementId; if (target && !target.startsWith("index:")) setSelectedId(target); if (issue.graphicalReference?.surface === "sensor") setTab("sensors"); else if (issue.graphicalReference?.surface === "home") setTab("home"); }}><AlertCircle size={16} /><span><strong>{issue.message}</strong><small>{issue.code} · {issue.path}</small></span></button>)}</div></section>}
       {activeJob && <section className="active-run-bar"><div><StatusBadge status={activeJob.status} /><strong>{activeJob.progress.message}</strong></div><ProgressBar value={activeJob.progress.percent} label={activeJob.progress.phase} /><Link to={`/simulations/${activeJob.jobId}`} className="button secondary">Open live detail</Link></section>}
       <div className="tabs" role="tablist" aria-label="Home sections">

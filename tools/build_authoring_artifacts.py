@@ -425,16 +425,33 @@ def _render_catalog_rooms() -> str:
 
 
 def _render_catalog_intents() -> str:
-    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+    # Both halves of what `intent_spec` accepts are rendered. Listing only the home intents while
+    # the prose asks for "one of the away intents below" is what made an author coin its own.
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG, away_intent_specs
 
     lines = [
         "Every `intent` must be one of the canonical intents below, spelled exactly. The room "
-        "given is where the activity catalog places it.",
+        "given is where the activity catalog places it. These two lists are exhaustive: an "
+        "identifier outside them does not exist, however reasonable it looks.",
+        "",
+        "**Inside the home:**",
         "",
     ]
     lines.extend(
         f"- `{spec.intent_id}` — {spec.default_location}"
         for spec in sorted(INTENT_CATALOG, key=lambda item: item.intent_id)
+    )
+    lines.extend(
+        [
+            "",
+            "**Away from home** — the only intents an absence may carry, whether it is a fixed "
+            "commitment, a recurring activity or an event:",
+            "",
+        ]
+    )
+    lines.extend(
+        f"- `{spec.intent_id}` — {spec.default_location}"
+        for spec in sorted(away_intent_specs(), key=lambda item: item.intent_id)
     )
     return "\n".join(lines) + "\n"
 
@@ -456,6 +473,24 @@ def _render_rhythm_intents() -> str:
     return "\n".join(lines) + "\n"
 
 
+# The catalogs the outline path actually runs against.
+#
+# `PLACEHOLDERS` pins the legacy 1.0.0 documents, which are right for the frozen prompts that were
+# written against them and wrong here: the expander requires the package to implement every intent
+# the drive layer emits, and `phone_call` is not in the 1.0.0 activity catalog. Embedding it handed
+# the author a vocabulary that could not satisfy the contract — declaring 1.0.0 was rejected for an
+# intent the catalog does not define, and declaring the version that defines it was rejected for
+# disagreeing with what the prompt showed. These are the same versions the local pipeline emits.
+OUTLINE_PLACEHOLDERS = {
+    "{{ACTIVITY_CATALOG_JSON}}": CATALOG_DIR
+    / f"activity-catalog-{SIMPLIFIED_ACTIVITY_CATALOG_VERSION}.json",
+    "{{VARIABLE_CATALOG_JSON}}": CATALOG_DIR
+    / f"variable-catalog-{SIMPLIFIED_VARIABLE_CATALOG_VERSION}.json",
+    "{{ACTION_CATALOG_JSON}}": CATALOG_DIR
+    / f"action-catalog-{SIMPLIFIED_ACTION_CATALOG_VERSION}.json",
+}
+
+
 def build_outline_prompt() -> None:
     frozen = PROMPT_1_3_PATH.read_text(encoding="utf-8")
     prompt = OUTLINE_TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -467,7 +502,11 @@ def build_outline_prompt() -> None:
     prompt = prompt.replace(
         "{{OUTLINE_BUNDLE_SCHEMA_JSON}}", _compact_json(OUTLINE_BUNDLE_SCHEMA_PATH)
     )
-    prompt = _embed_authoritative_artifacts(prompt)
+    for placeholder, path in OUTLINE_PLACEHOLDERS.items():
+        prompt = prompt.replace(placeholder, _compact_json(path))
+    unresolved = [item for item in OUTLINE_PLACEHOLDERS if item in prompt]
+    if unresolved:
+        raise RuntimeError(f"Unresolved outline prompt placeholders: {unresolved}")
     OUTLINE_PROMPT_PATH.write_text(prompt, encoding="utf-8", newline="\n")
 
 

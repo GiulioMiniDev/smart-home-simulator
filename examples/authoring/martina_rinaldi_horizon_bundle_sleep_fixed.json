@@ -1,0 +1,3335 @@
+{
+  "documentType": "horizon_authoring_bundle",
+  "schemaVersion": "1.0.0",
+  "outline": {
+    "documentType": "horizon_outline",
+    "schemaVersion": "1.0.0",
+    "outlineId": "outline_martina_rinaldi_20260804_8m",
+    "title": "Otto mesi di vita domestica di Martina Rinaldi",
+    "residentId": "resident_martina_rinaldi",
+    "timeZone": "Europe/Rome",
+    "startDate": "2026-08-04",
+    "months": 8,
+    "note": "Profilo sintetico home-centred per habit mining.",
+    "world": {
+      "homeModel": {
+        "referenceId": "synthetic_apartment_balcony_v1",
+        "version": "1.0.0"
+      },
+      "locations": [
+        {
+          "locationId": "bedroom",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Camera da letto"
+          }
+        },
+        {
+          "locationId": "bathroom",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Bagno"
+          }
+        },
+        {
+          "locationId": "kitchen",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Cucina"
+          }
+        },
+        {
+          "locationId": "living_room",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Soggiorno con scrivania"
+          }
+        },
+        {
+          "locationId": "balcony",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Piccolo balcone"
+          }
+        },
+        {
+          "locationId": "outdoors",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Esterno"
+          }
+        },
+        {
+          "locationId": "home_indoor",
+          "kind": "composite",
+          "memberLocationIds": [
+            "bedroom",
+            "bathroom",
+            "kitchen",
+            "living_room"
+          ],
+          "attributes": {
+            "label": "Interno dell'abitazione"
+          }
+        }
+      ],
+      "startLocationId": "bedroom",
+      "resources": [
+        {
+          "resourceId": "bed",
+          "resourceType": "bed",
+          "locationId": "bedroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "desk",
+          "resourceType": "work_desk",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "sofa",
+          "resourceType": "sofa",
+          "locationId": "living_room",
+          "capacity": 2,
+          "attributes": {}
+        },
+        {
+          "resourceId": "television",
+          "resourceType": "television",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "moka",
+          "resourceType": "coffee_maker",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "refrigerator",
+          "resourceType": "refrigerator",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "washing_machine",
+          "resourceType": "washing_machine",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "vacuum_cleaner",
+          "resourceType": "vacuum_cleaner",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "cat_bowl",
+          "resourceType": "pet_feeding_bowl",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {
+            "pet": "Milo"
+          }
+        }
+      ],
+      "externalPeople": [
+        {
+          "externalPersonId": "friend_generic",
+          "displayName": "Un'amica",
+          "relationshipToResidents": {
+            "resident_martina_rinaldi": "friend"
+          },
+          "attributes": {}
+        }
+      ],
+      "residentFacts": {
+        "name": "Martina Rinaldi",
+        "age": 31,
+        "occupation": "graphic designer freelance",
+        "household": "lives alone",
+        "pet": "cat named Milo",
+        "mobilityProfile": "ordinary",
+        "chronotype": "intermediate",
+        "preferredBreakfastDrink": "coffee"
+      },
+      "resourceFacts": {},
+      "environmentFacts": {
+        "corridorLightSometimesLeftOn": true
+      }
+    },
+    "profile": {
+      "documentType": "behavioral_profile",
+      "schemaVersion": "1.0.0",
+      "profileId": "profile_martina_rinaldi_home",
+      "personaId": "persona_martina_rinaldi",
+      "recurringActivities": [
+        {
+          "recurringActivityId": "ra_breakfast",
+          "label": "Colazione con caffè",
+          "kind": "anchor",
+          "intent": "eat_breakfast",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "07:30",
+            "windowEnd": "09:15",
+            "jitterMinutes": 15
+          },
+          "miningDifficulty": "easy",
+          "note": "Colazione regolare dopo il risveglio."
+        },
+        {
+          "recurringActivityId": "ra_work",
+          "label": "Lavoro freelance alla scrivania",
+          "kind": "anchor",
+          "intent": "work_shift",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 5,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "windowStart": "09:00",
+            "windowEnd": "18:30",
+            "jitterMinutes": 45
+          },
+          "miningDifficulty": "medium",
+          "note": "Sessione principale di lavoro da casa."
+        },
+        {
+          "recurringActivityId": "ra_prepare_lunch",
+          "label": "Preparazione pranzo semplice",
+          "kind": "anchor",
+          "intent": "prepare_simple_lunch",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 5,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ],
+            "windowStart": "12:15",
+            "windowEnd": "14:15",
+            "jitterMinutes": 25
+          },
+          "miningDifficulty": "easy",
+          "note": "Pasta, insalata o avanzi."
+        },
+        {
+          "recurringActivityId": "ra_lunch",
+          "label": "Pranzo",
+          "kind": "anchor",
+          "intent": "eat_lunch",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "12:30",
+            "windowEnd": "14:30",
+            "jitterMinutes": 25
+          },
+          "miningDifficulty": "easy",
+          "note": "Pranzo generalmente intorno alle 13."
+        },
+        {
+          "recurringActivityId": "ra_cook_dinner",
+          "label": "Preparazione della cena",
+          "kind": "anchor",
+          "intent": "prepare_light_dinner",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 6,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "18:45",
+            "windowEnd": "21:00",
+            "jitterMinutes": 35
+          },
+          "miningDifficulty": "medium",
+          "note": "Cena quasi sempre cucinata in casa; una sera può essere ordinata."
+        },
+        {
+          "recurringActivityId": "ra_dinner",
+          "label": "Cena",
+          "kind": "anchor",
+          "intent": "eat_dinner",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "19:15",
+            "windowEnd": "21:45",
+            "jitterMinutes": 30
+          },
+          "miningDifficulty": "easy",
+          "note": "Cena serale a casa."
+        },
+        {
+          "recurringActivityId": "ra_clean_kitchen",
+          "label": "Riordino rapido della cucina",
+          "kind": "contextual",
+          "intent": "clean_kitchen",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 6,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "08:15",
+            "windowEnd": "22:00",
+            "jitterMinutes": 70
+          },
+          "miningDifficulty": "medium",
+          "note": "Può avvenire dopo colazione o dopo cena."
+        },
+        {
+          "recurringActivityId": "ra_evening_hygiene",
+          "label": "Igiene serale",
+          "kind": "anchor",
+          "intent": "evening_hygiene",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "21:15",
+            "windowEnd": "23:15",
+            "jitterMinutes": 20
+          },
+          "miningDifficulty": "easy",
+          "note": "Routine prima di dormire."
+        },
+        {
+          "recurringActivityId": "ra_start_laundry",
+          "label": "Avvio lavatrice",
+          "kind": "contextual",
+          "intent": "start_laundry",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "wednesday",
+              "saturday"
+            ],
+            "windowStart": "14:30",
+            "windowEnd": "19:00",
+            "jitterMinutes": 80
+          },
+          "miningDifficulty": "medium",
+          "note": "Una o due lavatrici, spesso nel pomeriggio."
+        },
+        {
+          "recurringActivityId": "ra_hang_laundry",
+          "label": "Stendere il bucato",
+          "kind": "contextual",
+          "intent": "hang_laundry",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "wednesday",
+              "saturday"
+            ],
+            "windowStart": "15:30",
+            "windowEnd": "20:30",
+            "jitterMinutes": 90
+          },
+          "miningDifficulty": "hard",
+          "note": "Segue il bucato, con orario variabile."
+        },
+        {
+          "recurringActivityId": "ra_tidy",
+          "label": "Riordino soggiorno e corridoio",
+          "kind": "contextual",
+          "intent": "tidy_living_room_and_hallway",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 4,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "14:30",
+            "windowEnd": "20:00",
+            "jitterMinutes": 100
+          },
+          "miningDifficulty": "medium",
+          "note": "Piccoli riordini durante le pause."
+        },
+        {
+          "recurringActivityId": "ra_read_rest",
+          "label": "Lettura e riposo sul divano",
+          "kind": "optional",
+          "intent": "read_and_rest",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 4,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "20:15",
+            "windowEnd": "23:30",
+            "jitterMinutes": 75
+          },
+          "miningDifficulty": "hard",
+          "note": "Alternativa alla televisione."
+        },
+        {
+          "recurringActivityId": "ra_tv",
+          "label": "Serie televisive e TV di sottofondo",
+          "kind": "optional",
+          "intent": "watch_television",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 6,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "19:45",
+            "windowEnd": "23:45",
+            "jitterMinutes": 80
+          },
+          "miningDifficulty": "medium",
+          "note": "Spesso resta accesa anche come sottofondo."
+        },
+        {
+          "recurringActivityId": "ra_exercise",
+          "label": "Esercizio leggero in casa",
+          "kind": "optional",
+          "intent": "indoor_light_exercise",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "17:30",
+            "windowEnd": "20:30",
+            "jitterMinutes": 90
+          },
+          "miningDifficulty": "hard",
+          "note": "Attività leggera e non rigida."
+        },
+        {
+          "recurringActivityId": "ra_meal_prep",
+          "label": "Preparazione pasti settimanale",
+          "kind": "rare",
+          "intent": "weekly_meal_preparation",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "sunday"
+            ],
+            "windowStart": "10:30",
+            "windowEnd": "16:30",
+            "jitterMinutes": 75
+          },
+          "miningDifficulty": "medium",
+          "note": "Porzioni più abbondanti per i giorni successivi."
+        },
+        {
+          "recurringActivityId": "ra_vacuum",
+          "label": "Aspirapolvere e spolvero",
+          "kind": "rare",
+          "intent": "tidy_living_room_and_hallway",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday"
+            ],
+            "windowStart": "09:00",
+            "windowEnd": "13:00",
+            "jitterMinutes": 45
+          },
+          "miningDifficulty": "easy",
+          "note": "Pulizia più impegnativa del sabato. Intent canonico approssimato alla sistemazione domestica generale."
+        },
+        {
+          "recurringActivityId": "ra_bathroom_clean",
+          "label": "Pulizia del bagno",
+          "kind": "rare",
+          "intent": "tidy_living_room_and_hallway",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday"
+            ],
+            "windowStart": "09:30",
+            "windowEnd": "13:30",
+            "jitterMinutes": 55
+          },
+          "miningDifficulty": "easy",
+          "note": "Pulizia settimanale del bagno. Il catalogo canonico non offre un intent dedicato alla pulizia del bagno; viene usata la sistemazione domestica generale."
+        }
+      ],
+      "provenance": {
+        "authorType": "external_llm",
+        "generatedAt": "2026-08-04T08:56:00+02:00",
+        "generatorName": "smart-home-simulator-external-llm-authoring",
+        "generatorVersion": "1.4.0",
+        "humanReviewed": false,
+        "modelName": "GPT-5.6 Thinking",
+        "parameters": {
+          "authoringAssumptions": [
+            "L'orizzonte dura otto mesi a partire dal 2026-08-04, poiché la descrizione non specifica durata o data iniziale.",
+            "Martina è in buona salute, non assume farmaci abituali e ha mobilità ordinaria.",
+            "Il lavoro freelance si svolge prevalentemente alla scrivania del soggiorno nei giorni feriali, con orari flessibili.",
+            "Le attività non rappresentate nel catalogo, come aprire le finestre, nutrire il gatto, annaffiare le piante e mettere il telefono in carica, sono assorbite nelle attività domestiche più vicine senza essere dichiarate come fatti osservati separati.",
+            "Le uscite sociali non sono modellate come routine dettagliate per evitare assenze duplicate e perché il catalogo è home-centred.",
+            "La frequenza delle pulizie, del bucato e del tempo libero è stimata conservativamente dalla descrizione.",
+            "Chronotype bedtime adjusted from 23:15 to 22:30 and the night habit starts at 22:15 to prevent rhythm-generated sleep from crossing midnight while remaining assigned to the previous day."
+          ]
+        },
+        "promptTemplateVersion": "generate-horizon-outline-1.0.0"
+      }
+    },
+    "rhythm": {
+      "age": 31,
+      "health": [],
+      "chronotypeBedtime": "22:30"
+    },
+    "fixedCommitments": [],
+    "habits": [
+      {
+        "habitId": "habit_night",
+        "label": "Notte",
+        "windowStart": "22:15",
+        "windowEnd": "07:30",
+        "recurringActivityIds": [],
+        "note": "Sonno e risveglio sono prodotti dal ritmo; la fascia anticipata lascia margine al posizionatore senza oltrepassare la mezzanotte."
+      },
+      {
+        "habitId": "habit_morning",
+        "label": "Mattina domestica e avvio del lavoro",
+        "windowStart": "07:30",
+        "windowEnd": "12:00",
+        "recurringActivityIds": [
+          "ra_breakfast",
+          "ra_clean_kitchen",
+          "ra_work",
+          "ra_vacuum",
+          "ra_bathroom_clean"
+        ],
+        "note": ""
+      },
+      {
+        "habitId": "habit_midday",
+        "label": "Pranzo e pausa centrale",
+        "windowStart": "12:00",
+        "windowEnd": "14:30",
+        "recurringActivityIds": [
+          "ra_prepare_lunch",
+          "ra_lunch",
+          "ra_work",
+          "ra_meal_prep"
+        ],
+        "note": ""
+      },
+      {
+        "habitId": "habit_afternoon",
+        "label": "Lavoro, pause e faccende",
+        "windowStart": "14:30",
+        "windowEnd": "19:00",
+        "recurringActivityIds": [
+          "ra_work",
+          "ra_start_laundry",
+          "ra_hang_laundry",
+          "ra_tidy",
+          "ra_exercise",
+          "ra_meal_prep"
+        ],
+        "note": ""
+      },
+      {
+        "habitId": "habit_evening",
+        "label": "Cena e relax serale",
+        "windowStart": "19:00",
+        "windowEnd": "22:15",
+        "recurringActivityIds": [
+          "ra_cook_dinner",
+          "ra_dinner",
+          "ra_clean_kitchen",
+          "ra_read_rest",
+          "ra_tv",
+          "ra_evening_hygiene"
+        ],
+        "note": ""
+      }
+    ],
+    "phases": [
+      {
+        "phaseId": "phase_late_summer",
+        "label": "Fine estate e uso frequente del balcone",
+        "startDate": "2026-08-04",
+        "endDate": "2026-09-20",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_hang_laundry",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 2,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "wednesday",
+                "saturday"
+              ],
+              "windowStart": "15:00",
+              "windowEnd": "20:30",
+              "jitterMinutes": 110
+            }
+          },
+          {
+            "recurringActivityId": "ra_exercise",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 1,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "18:30",
+              "windowEnd": "21:00",
+              "jitterMinutes": 100
+            }
+          }
+        ],
+        "note": "Con il caldo diminuisce l'esercizio indoor e il bucato viene gestito più liberamente."
+      },
+      {
+        "phaseId": "phase_autumn_workload",
+        "label": "Periodo di consegne autunnali",
+        "startDate": "2026-10-05",
+        "endDate": "2026-11-15",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_work",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 5,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "windowStart": "08:45",
+              "windowEnd": "20:00",
+              "jitterMinutes": 65
+            }
+          },
+          {
+            "recurringActivityId": "ra_tidy",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 2,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "17:00",
+              "windowEnd": "20:30",
+              "jitterMinutes": 120
+            }
+          }
+        ],
+        "note": "Più ore alla scrivania e meno piccoli riordini durante le pause."
+      },
+      {
+        "phaseId": "phase_winter_home",
+        "label": "Routine invernale più domestica",
+        "startDate": "2026-12-01",
+        "endDate": "2027-02-28",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_exercise",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 3,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "17:00",
+              "windowEnd": "20:30",
+              "jitterMinutes": 80
+            }
+          },
+          {
+            "recurringActivityId": "ra_read_rest",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 5,
+              "everyNPeriods": 1,
+              "weekdays": [],
+              "windowStart": "20:00",
+              "windowEnd": "22:00",
+              "jitterMinutes": 65
+            }
+          }
+        ],
+        "note": "Aumentano esercizio leggero e lettura in casa."
+      }
+    ],
+    "events": [
+      {
+        "eventId": "event_pre_holiday_deep_clean",
+        "label": "Pulizia approfondita prima delle feste",
+        "intent": "tidy_living_room_and_hallway",
+        "earliestDate": "2026-12-18",
+        "latestDate": "2026-12-23",
+        "occurrences": 1,
+        "weekdays": [],
+        "windowStart": "09:00",
+        "windowEnd": "18:00",
+        "minimumMinutes": 60,
+        "maximumMinutes": 150,
+        "displaces": [
+          {
+            "recurringActivityId": "ra_tidy",
+            "policy": "skip"
+          }
+        ],
+        "note": "Sessione straordinaria di pulizia domestica. Intent canonico approssimato alla sistemazione domestica generale."
+      },
+      {
+        "eventId": "event_deadline_recovery_mealprep",
+        "label": "Preparazione pasti dopo una consegna intensa",
+        "intent": "weekly_meal_preparation",
+        "earliestDate": "2026-11-16",
+        "latestDate": "2026-11-22",
+        "occurrences": 1,
+        "weekdays": [],
+        "windowStart": "10:00",
+        "windowEnd": "18:00",
+        "minimumMinutes": 75,
+        "maximumMinutes": 180,
+        "displaces": [
+          {
+            "recurringActivityId": "ra_cook_dinner",
+            "policy": "skip"
+          }
+        ],
+        "note": "Recupero organizzativo dopo il picco di lavoro."
+      }
+    ],
+    "provenance": {
+      "authorType": "external_llm",
+      "generatedAt": "2026-08-04T08:56:00+02:00",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "humanReviewed": false,
+      "modelName": "GPT-5.6 Thinking",
+      "parameters": {
+        "authoringAssumptions": [
+          "L'orizzonte dura otto mesi a partire dal 2026-08-04, poiché la descrizione non specifica durata o data iniziale.",
+          "Martina è in buona salute, non assume farmaci abituali e ha mobilità ordinaria.",
+          "Il lavoro freelance si svolge prevalentemente alla scrivania del soggiorno nei giorni feriali, con orari flessibili.",
+          "Le attività non rappresentate nel catalogo, come aprire le finestre, nutrire il gatto, annaffiare le piante e mettere il telefono in carica, sono assorbite nelle attività domestiche più vicine senza essere dichiarate come fatti osservati separati.",
+          "Le uscite sociali non sono modellate come routine dettagliate per evitare assenze duplicate e perché il catalogo è home-centred.",
+          "La frequenza delle pulizie, del bucato e del tempo libero è stimata conservativamente dalla descrizione.",
+          "Gli intent non inclusi nella whitelist canonica sono stati ricondotti ai più vicini intent ammessi: cook_dinner→prepare_light_dinner; vacuum_and_dust_apartment e clean_bathroom→tidy_living_room_and_hallway.",
+          "Chronotype bedtime adjusted from 23:15 to 22:30 and the night habit starts at 22:15 to prevent rhythm-generated sleep from crossing midnight while remaining assigned to the previous day."
+        ]
+      },
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0"
+    }
+  },
+  "personalProcessPackage": {
+    "documentType": "personal_process_package",
+    "schemaVersion": "1.0.0",
+    "packageId": "ppp_martina_rinaldi_20260804",
+    "packageVersion": "1.0.0",
+    "sourceScenarioId": "scenario_martina_rinaldi_20260804_8m",
+    "sourceScenarioVersion": "1.0.0",
+    "language": "it",
+    "provenance": {
+      "authorType": "external_llm",
+      "generatedAt": "2026-08-04T08:56:00+02:00",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "humanReviewed": false,
+      "modelName": "GPT-5.6 Thinking",
+      "parameters": {
+        "authoringAssumptions": [
+          "L'orizzonte dura otto mesi a partire dal 2026-08-04, poiché la descrizione non specifica durata o data iniziale.",
+          "Martina è in buona salute, non assume farmaci abituali e ha mobilità ordinaria.",
+          "Il lavoro freelance si svolge prevalentemente alla scrivania del soggiorno nei giorni feriali, con orari flessibili.",
+          "Le attività non rappresentate nel catalogo, come aprire le finestre, nutrire il gatto, annaffiare le piante e mettere il telefono in carica, sono assorbite nelle attività domestiche più vicine senza essere dichiarate come fatti osservati separati.",
+          "Le uscite sociali non sono modellate come routine dettagliate per evitare assenze duplicate e perché il catalogo è home-centred.",
+          "La frequenza delle pulizie, del bucato e del tempo libero è stimata conservativamente dalla descrizione.",
+          "Gli intent non inclusi nella whitelist canonica sono stati ricondotti ai più vicini intent ammessi: cook_dinner→prepare_light_dinner; vacuum_and_dust_apartment e clean_bathroom→tidy_living_room_and_hallway.",
+          "Chronotype bedtime adjusted from 23:15 to 22:30 and the night habit starts at 22:15 to prevent rhythm-generated sleep from crossing midnight while remaining assigned to the previous day."
+        ]
+      },
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0"
+    },
+    "catalogs": {
+      "activityCatalog": {
+        "catalogId": "smart_home_activity_catalog",
+        "version": "1.0.0"
+      },
+      "variableCatalog": {
+        "catalogId": "smart_home_variable_catalog",
+        "version": "1.0.0"
+      },
+      "actionCatalog": {
+        "catalogId": "smart_home_action_catalog",
+        "version": "1.0.0"
+      }
+    },
+    "processModels": [
+      {
+        "processModelId": "pm_clean_kitchen",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Clean Kitchen",
+        "description": "Modello personale di Martina per clean kitchen.",
+        "implementedComponents": [
+          "clean_surface"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "cleaning_tool"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "clean",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "room_surface"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "cleaning_tool"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_breakfast",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Eat Breakfast",
+        "description": "Modello personale di Martina per eat breakfast.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Eat Dinner",
+        "description": "Modello personale di Martina per eat dinner.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_lunch",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Eat Lunch",
+        "description": "Modello personale di Martina per eat lunch.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_evening_hygiene",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Evening Hygiene",
+        "description": "Modello personale di Martina per evening hygiene.",
+        "implementedComponents": [
+          "personal_hygiene"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "evening_hygiene"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_hang_laundry",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Hang Laundry",
+        "description": "Modello personale di Martina per hang laundry.",
+        "implementedComponents": [
+          "hang_laundry"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "hang"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_indoor_light_exercise",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Indoor Light Exercise",
+        "description": "Modello personale di Martina per indoor light exercise.",
+        "implementedComponents": [
+          "exercise"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "exercise",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "indoor_light"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_morning_toilet_and_wash",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Morning Toilet And Wash",
+        "description": "Modello personale di Martina per morning toilet and wash.",
+        "implementedComponents": [
+          "use_toilet",
+          "wash_face"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "use_toilet"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "bathroom_tap"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "wash_face"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "bathroom_tap"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_phone_call",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Phone Call",
+        "description": "Modello personale di Martina per phone call.",
+        "implementedComponents": [
+          "phone_call"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "communicate",
+            "arguments": {
+              "channel": {
+                "source": "literal",
+                "value": "phone"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_prepare_simple_lunch",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Prepare Simple Lunch",
+        "description": "Modello personale di Martina per prepare simple lunch.",
+        "implementedComponents": [
+          "prepare_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "prepare_simple_lunch"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_read_and_rest",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Read And Rest",
+        "description": "Modello personale di Martina per read and rest.",
+        "implementedComponents": [
+          "read",
+          "rest"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "leisure",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "reading"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "rest"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_rest_or_nap",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Rest Or Nap",
+        "description": "Modello personale di Martina per rest or nap.",
+        "implementedComponents": [
+          "rest",
+          "nap"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "rest"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "nap"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_sleep",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Sleep",
+        "description": "Modello personale di Martina per sleep.",
+        "implementedComponents": [
+          "sleep"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "sleep"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_start_laundry",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Start Laundry",
+        "description": "Modello personale di Martina per start laundry.",
+        "implementedComponents": [
+          "collect_laundry",
+          "load_laundry",
+          "start_laundry"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "collect"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "load"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "start"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_tidy_living_room_and_hallway",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Tidy Living Room And Hallway",
+        "description": "Modello personale di Martina per tidy living room and hallway.",
+        "implementedComponents": [
+          "tidy_area"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "organize",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "living_area"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_wake_up",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Wake Up",
+        "description": "Modello personale di Martina per wake up.",
+        "implementedComponents": [
+          "wake_up"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_watch_television",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Watch Television",
+        "description": "Modello personale di Martina per watch television.",
+        "implementedComponents": [
+          "watch_media"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "television"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "leisure",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "television"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "television"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_weekly_meal_preparation",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Weekly Meal Preparation",
+        "description": "Modello personale di Martina per weekly meal preparation.",
+        "implementedComponents": [
+          "prepare_food",
+          "portion_food",
+          "store_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "weekly_meal_preparation"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "organize",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "prepared_food_portions"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a9",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_food"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a10",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a11",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_food"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a12",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "a9",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a9",
+            "targetNodeId": "a10",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a10",
+            "targetNodeId": "a11",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a11",
+            "targetNodeId": "a12",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a12",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_work_shift",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Work Shift",
+        "description": "Modello personale di Martina per work shift.",
+        "implementedComponents": [
+          "work"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "perform_work",
+            "arguments": {
+              "mode": {
+                "source": "literal",
+                "value": "freelance_design"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_prepare_light_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_martina_rinaldi",
+        "title": "Preparazione di una cena leggera",
+        "description": "Martina si sposta in cucina e prepara una cena leggera usando una sequenza domestica coerente.",
+        "implementedComponents": [
+          "prepare_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "move",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "food_storage"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "cook_dinner"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "meal_ingredients"
+              }
+            },
+            "durationWeight": 1.0,
+            "preconditions": [],
+            "effects": []
+          },
+          {
+            "nodeId": "end",
+            "kind": "end",
+            "arguments": {},
+            "preconditions": [],
+            "effects": []
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "move",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "move",
+            "targetNodeId": "a1",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "end",
+            "isDefault": false
+          }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "binding_clean_kitchen",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "clean_kitchen",
+        "processModelId": "pm_clean_kitchen",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_eat_breakfast",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "eat_breakfast",
+        "processModelId": "pm_eat_breakfast",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_eat_dinner",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "eat_dinner",
+        "processModelId": "pm_eat_dinner",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_eat_lunch",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "eat_lunch",
+        "processModelId": "pm_eat_lunch",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_evening_hygiene",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "evening_hygiene",
+        "processModelId": "pm_evening_hygiene",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_hang_laundry",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "hang_laundry",
+        "processModelId": "pm_hang_laundry",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_indoor_light_exercise",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "indoor_light_exercise",
+        "processModelId": "pm_indoor_light_exercise",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_morning_toilet_and_wash",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "morning_toilet_and_wash",
+        "processModelId": "pm_morning_toilet_and_wash",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_phone_call",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "phone_call",
+        "processModelId": "pm_phone_call",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_prepare_simple_lunch",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "prepare_simple_lunch",
+        "processModelId": "pm_prepare_simple_lunch",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_read_and_rest",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "read_and_rest",
+        "processModelId": "pm_read_and_rest",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_rest_or_nap",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "rest_or_nap",
+        "processModelId": "pm_rest_or_nap",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_sleep",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "sleep",
+        "processModelId": "pm_sleep",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_start_laundry",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "start_laundry",
+        "processModelId": "pm_start_laundry",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_tidy_living_room_and_hallway",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "tidy_living_room_and_hallway",
+        "processModelId": "pm_tidy_living_room_and_hallway",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_wake_up",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "wake_up",
+        "processModelId": "pm_wake_up",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_watch_television",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "watch_television",
+        "processModelId": "pm_watch_television",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_weekly_meal_preparation",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "weekly_meal_preparation",
+        "processModelId": "pm_weekly_meal_preparation",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_work_shift",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "work_shift",
+        "processModelId": "pm_work_shift",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_prepare_light_dinner",
+        "residentId": "resident_martina_rinaldi",
+        "intent": "prepare_light_dinner",
+        "processModelId": "pm_prepare_light_dinner",
+        "applicability": [],
+        "fallback": true
+      }
+    ]
+  }
+}
