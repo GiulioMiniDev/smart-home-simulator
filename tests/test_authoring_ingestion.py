@@ -227,7 +227,11 @@ def test_existing_output_directory_is_never_modified(tmp_path: Path) -> None:
     report = ingest_authoring_file(EXAMPLE, output_dir)
 
     assert not report.valid
-    assert [item.code for item in report.issues] == ["OUTPUT_DIRECTORY_EXISTS"]
+    # Errors only: the report also carries content warnings about the bundle itself, which are
+    # true whether or not publishing succeeded and are not what rejected it.
+    assert [item.code for item in report.issues if item.severity == "error"] == [
+        "OUTPUT_DIRECTORY_EXISTS"
+    ]
     assert sentinel.read_text(encoding="utf-8") == "user data"
     assert sorted(path.name for path in output_dir.iterdir()) == ["keep.txt"]
 
@@ -245,7 +249,11 @@ def test_publish_failure_removes_temporary_artifacts(
     report = ingest_authoring_file(EXAMPLE, output_dir)
 
     assert not report.valid
-    assert [item.code for item in report.issues] == ["OUTPUT_WRITE_ERROR"]
+    # Errors only: the report also carries content warnings about the bundle itself, which are
+    # true whether or not publishing succeeded and are not what rejected it.
+    assert [item.code for item in report.issues if item.severity == "error"] == [
+        "OUTPUT_WRITE_ERROR"
+    ]
     assert not output_dir.exists()
     assert list(tmp_path.glob(".result.tmp-*")) == []
 

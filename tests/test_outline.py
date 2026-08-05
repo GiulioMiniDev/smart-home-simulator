@@ -531,9 +531,7 @@ def test_habit_bands_may_not_overlap() -> None:
 
 
 def test_only_a_habit_band_may_cross_midnight() -> None:
-    night = HabitSegment(
-        habit_id="night", label="Night", window_start="22:30", window_end="06:15"
-    )
+    night = HabitSegment(habit_id="night", label="Night", window_start="22:30", window_end="06:15")
 
     assert night.crosses_midnight
     assert night.minute_spans() == [(22 * 60 + 30, 24 * 60), (0, 6 * 60 + 15)]

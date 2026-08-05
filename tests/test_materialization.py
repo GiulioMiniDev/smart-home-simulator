@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -96,9 +97,12 @@ def test_home_generation_rejects_incompatible_or_empty_sources() -> None:
     assert empty_result.report.issues[0].code == "NO_PRIMITIVE_LOCATION"
 
 
+# Contact counts follow the furniture, not the script: every container is instrumented whether or
+# not the authored behaviour ever opens it, so this golden home yields five rather than the three
+# its process models happen to touch.
 @pytest.mark.parametrize(
     ("preset", "expected_pir", "expected_contact", "expected_temperature"),
-    [("minimal", 1, 1, 1), ("room_coverage", 6, 3, 6), ("dense", 12, 3, 6)],
+    [("minimal", 1, 1, 1), ("room_coverage", 6, 5, 6), ("dense", 12, 5, 6)],
 )
 def test_sensor_deployment_presets_are_valid_and_projectable(
     preset: str, expected_pir: int, expected_contact: int, expected_temperature: int
@@ -388,3 +392,115 @@ def test_the_way_out_of_the_flat_starts_where_the_front_door_is() -> None:
         assert not any(
             item.buffer(door_point.approach_radius_meters).covers(point) for item in blocking
         )
+
+
+def test_the_ideal_profile_deploys_no_failures_and_the_realistic_one_does() -> None:
+    """A generated deployment used to be immortal: 244 healthy days out of 244.
+
+    The projector has always silenced a sensor inside a declared failure window; nothing ever
+    declared one. `ideal` keeps that behaviour, because the frozen examples are compared byte for
+    byte and a study that wants clean data should be able to ask for it.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+
+    ideal = deploy_sensors(bundle, SensorDeploymentPolicy(preset="room_coverage"))
+    assert ideal.sensor_model is not None
+    assert all(not sensor.failure_windows for sensor in ideal.sensor_model.sensors)
+
+    realistic = deploy_sensors(bundle, SensorDeploymentPolicy.realistic())
+    repeated = deploy_sensors(bundle, SensorDeploymentPolicy.realistic())
+    assert realistic.sensor_model is not None
+    assert realistic == repeated
+
+    window = bundle.scenario.simulation_window
+    for sensor in realistic.sensor_model.sensors:
+        for outage in sensor.failure_windows:
+            assert window.start <= outage.starts_at < outage.ends_at <= window.end
+        # The contract refuses overlaps, so the merge has to hold on every draw.
+        starts = [item.starts_at for item in sensor.failure_windows]
+        assert starts == sorted(starts)
+
+
+def test_outage_counts_and_durations_are_drawn_rather_than_rounded() -> None:
+    """Replacing perfect health with perfectly uniform faults would be its own tell.
+
+    Rounding the rate gave every sensor of an eight-month horizon exactly four outages of exactly
+    five hours. Counts are Poisson and durations spread, so some nodes stay lucky and some lose a
+    weekend.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from smart_home_sim.materialization.service import _failure_windows
+
+    policy = SensorDeploymentPolicy.realistic()
+    start = datetime(2026, 8, 4, tzinfo=UTC)
+    end = start + timedelta(days=243)
+    identifiers = [f"pir_room_{index}" for index in range(12)]
+
+    per_sensor = [
+        _failure_windows(name, seed=1, policy=policy, start=start, end=end) for name in identifiers
+    ]
+    counts = {len(windows) for windows in per_sensor}
+    durations = {
+        round((item.ends_at - item.starts_at).total_seconds() / 3600, 1)
+        for windows in per_sensor
+        for item in windows
+        if item.ends_at != end
+    }
+
+    assert len(counts) > 1, f"every sensor drew the same number of outages: {counts}"
+    assert len(durations) > 1, "every outage lasted exactly as long as every other"
+
+
+def test_functional_zones_split_a_room_where_room_coverage_cannot() -> None:
+    """One sensor per room reports every activity of that room as the same event.
+
+    The room where the resident spends her day then swallows the log: on one eight-month horizon
+    the single kitchen sensor produced 67.3% of all observations while the balcony managed 0.3 a
+    day. Adding sensors alone does not help — `dense` gives each of them the whole room as
+    coverage, so they report the same thing twice. Restricted coverage is what makes two sensors
+    in one room say different things.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+
+    rooms = deploy_sensors(bundle, SensorDeploymentPolicy(preset="room_coverage"))
+    dense = deploy_sensors(bundle, SensorDeploymentPolicy(preset="dense"))
+    zones = deploy_sensors(bundle, SensorDeploymentPolicy(preset="functional_zones"))
+    assert zones.sensor_model is not None
+    assert rooms.sensor_model is not None
+    assert dense.sensor_model is not None
+
+    def coverage_area(result: Any) -> float:
+        areas = []
+        for sensor in result.sensor_model.sensors:
+            if sensor.sensor_type != "pir":
+                continue
+            xs = [vertex.x for vertex in sensor.coverage.vertices]
+            ys = [vertex.y for vertex in sensor.coverage.vertices]
+            areas.append((max(xs) - min(xs)) * (max(ys) - min(ys)))
+        return sum(areas) / len(areas)
+
+    # `dense` doubles the sensors without narrowing what any of them sees.
+    assert coverage_area(dense) == pytest.approx(coverage_area(rooms))
+    assert coverage_area(zones) < coverage_area(rooms)
+
+    # Every interaction point still belongs to exactly one sensor: a zone nobody covers is an
+    # activity that stopped being observed.
+    by_region: dict[str, list[Any]] = defaultdict(list)
+    for sensor in zones.sensor_model.sensors:
+        if sensor.sensor_type == "pir":
+            by_region[sensor.region_ids[0]].append(sensor)
+    for point in bundle.home_model.interaction_points:
+        covering = [
+            sensor
+            for sensor in by_region.get(point.region_id, [])
+            if _covers(sensor.coverage, point.position)
+        ]
+        if by_region.get(point.region_id):
+            assert covering, f"{point.interaction_point_id} is covered by no sensor"
+
+
+def _covers(coverage: Any, position: Any) -> bool:
+    xs = [vertex.x for vertex in coverage.vertices]
+    ys = [vertex.y for vertex in coverage.vertices]
+    return min(xs) <= position.x <= max(xs) and min(ys) <= position.y <= max(ys)

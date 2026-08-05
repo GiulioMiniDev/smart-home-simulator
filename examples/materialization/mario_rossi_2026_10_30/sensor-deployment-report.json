@@ -5,18 +5,18 @@
   "success": true,
   "preset": "room_coverage",
   "policyVersion": "1.1.0",
-  "policySha256": "df0536c06a95fdd1372b4a0c28485054c4fcd61e695a972661b87be9be7631f3",
+  "policySha256": "2fa84f22116e011cb9e95900e2e186b73730e5d1cf4e14c0a0b318be42f3281d",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
   "sourceBundleSha256": "3598118ffda69229687745a779d44e303f0a631291287fcada42589a44562fbe",
   "sourceHomeSha256": "8671196a390cf2073ee7e1fa4651c5399b3a008fa63774adcf46e27d91e4b216",
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
-  "sensorModelSha256": "976daef0dbd82c91c5c42712dea1181dcfc10e502fe8fd98613b8b5cc1e63b8d",
+  "sensorModelSha256": "de505c16eee5bacf89c8de600ae318b58b591e0a8df2fd6e0b9d55bf9b4751e0",
   "issues": [],
   "summary": {
-    "sensorCount": 15,
+    "sensorCount": 17,
     "pirCount": 6,
-    "contactCount": 3,
+    "contactCount": 5,
     "temperatureCount": 6,
     "errorCount": 0
   }

@@ -90,6 +90,55 @@ def compile_payload(
     return compile_scenario(scenario, on_progress)
 
 
+def _locate_infeasible_day(
+    scenario: Scenario,
+    axis: TimeAxis,
+    records: list[SourceRecord],
+) -> tuple[SourceRecord, list[SourceRecord]] | None:
+    """The first day that cannot be scheduled even on its own, and what it was asked to hold.
+
+    "The scheduling constraints are infeasible" over an eight-month horizon says nothing an author
+    can act on: the offending day has been located twice by hand now, both times a single date out
+    of 243 where a long away event and the meals it forgot to displace were required at once. A day
+    that fails in isolation fails inside any horizon containing it, so trying them one at a time
+    finds the culprit exactly — and only ever runs when the compilation has already failed.
+    """
+    by_day: dict[int, list[SourceRecord]] = defaultdict(list)
+    for record in records:
+        by_day[record.day_index].append(record)
+    for day_index in sorted(by_day):
+        day_records = by_day[day_index]
+        if ScheduleSolver(scenario, axis, day_records).solve().failure == "infeasible":
+            return day_records[0], day_records
+    return None
+
+
+def _infeasible_day_details(
+    scenario: Scenario,
+    axis: TimeAxis,
+    records: list[SourceRecord],
+) -> dict[str, Any]:
+    located = _locate_infeasible_day(scenario, axis, records)
+    if located is None:
+        return {}
+    first, day_records = located
+    mandatory = [
+        {
+            "activityId": record.activity.activity_id,
+            "intent": record.activity.intent,
+            "minimumMinutes": record.activity.duration.minimum_minutes
+            if record.activity.duration is not None
+            else None,
+        }
+        for record in sorted(day_records, key=lambda item: item.activity_index)
+        if record.activity.mandatory
+    ]
+    return {
+        "infeasibleDate": first.day.date.isoformat(),
+        "mandatoryActivities": mandatory,
+    }
+
+
 def _windows_are_safe(records: list[SourceRecord]) -> bool:
     """Can this scenario be solved a window at a time without changing what the answer means?
 
@@ -285,6 +334,11 @@ def compile_scenario(
             "main_plan",
             "MAIN_PLAN_INFEASIBLE",
             main_outcome.model_error,
+            details=(
+                _infeasible_day_details(scenario, axis, main_records)
+                if main_outcome.failure == "infeasible"
+                else None
+            ),
         )
     assert main_outcome.objective_values is not None
 
@@ -715,7 +769,23 @@ def _solver_failure_result(
 ) -> CompilationResult:
     if failure == "infeasible":
         code = infeasible_code
-        message = "The scheduling constraints are infeasible."
+        date = (details or {}).get("infeasibleDate")
+        mandatory = (details or {}).get("mandatoryActivities") or []
+        message = (
+            "The scheduling constraints are infeasible."
+            if date is None
+            else (
+                f"The scheduling constraints are infeasible on {date}, which cannot be scheduled "
+                f"even on its own: {len(mandatory)} mandatory activities are required at once, "
+                + ", ".join(
+                    f"{item['intent']} ({item['minimumMinutes']:g} min)"
+                    if item["minimumMinutes"] is not None
+                    else str(item["intent"])
+                    for item in mandatory
+                )
+                + ". A long absence has to displace the recurring activities it covers."
+            )
+        )
     elif failure == "model_invalid":
         code = "SOLVER_MODEL_INVALID"
         message = model_error or "CP-SAT rejected the scheduling model."

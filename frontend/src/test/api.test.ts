@@ -51,9 +51,15 @@ describe("local API client", () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:test"), revokeObjectURL: vi.fn() });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("data", { status: 200, headers: { "Content-Disposition": "attachment; filename*=UTF-8''evidence.csv" } })));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     await download("/file", "fallback.csv");
     expect(click).toHaveBeenCalled();
+    // Not yet: revoking on the line after `click()` is a race the browser loses on anything large,
+    // and the download dies silently. A 30 MB export archive is exactly the size that loses it.
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(61_000);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:test");
+    vi.useRealTimers();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("data", { status: 200, headers: { "Content-Disposition": "attachment; filename=plain.csv" } })));
     await download("/plain", "fallback.csv");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("data", { status: 200 })));

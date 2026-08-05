@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -488,3 +488,37 @@ def test_a_scenario_with_dependencies_is_not_split(monkeypatch: pytest.MonkeyPat
 
     assert result.plan is not None
     assert calls == []
+
+
+def test_an_infeasible_horizon_names_the_day_that_cannot_be_scheduled() -> None:
+    """ "The scheduling constraints are infeasible" over 243 days is not actionable.
+
+    The offending date has had to be located by hand twice, both times one day out of an eight-month
+    horizon where a long absence and the meals it forgot to displace were required at once. A day
+    that fails in isolation fails inside any horizon containing it, so the compiler can say which.
+    """
+    payload = _payload()
+    original = payload["days"][0]["activities"][0]
+    clash = copy.deepcopy(original)
+    clash["activityId"] = "clashing_activity"
+    # A window it can move inside, so scenario validation cannot call it a fixed overlap, and yet
+    # nowhere in that window is free: the first activity occupies all of it.
+    earliest = datetime.fromisoformat(original["startWindow"]["earliest"])
+    clash["startWindow"] = {
+        "earliest": earliest.isoformat(),
+        "preferred": (earliest + timedelta(minutes=10)).isoformat(),
+        "latest": (earliest + timedelta(minutes=20)).isoformat(),
+    }
+    clash["requiredResources"] = []
+    payload["days"][0]["activities"].append(clash)
+
+    result = compile_payload(payload)
+
+    assert result.plan is None
+    infeasible = [item for item in result.report.issues if item.code == "MAIN_PLAN_INFEASIBLE"]
+    assert len(infeasible) == 1
+    assert infeasible[0].details["infeasibleDate"] == payload["days"][0]["date"]
+    assert "cannot be scheduled even on its own" in infeasible[0].message
+    assert {item["activityId"] for item in infeasible[0].details["mandatoryActivities"]} >= {
+        "clashing_activity"
+    }

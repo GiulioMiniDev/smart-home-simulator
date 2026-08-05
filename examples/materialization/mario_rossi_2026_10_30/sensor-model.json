@@ -414,6 +414,64 @@
       "closedValue": false
     },
     {
+      "sensorId": "contact_wardrobe",
+      "position": {
+        "x": 5.0391,
+        "y": 4.9268
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.0,
+        "falseNegativeProbability": 0.0,
+        "falsePositiveProbabilityPerDay": 0.0,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "contact",
+      "entityId": "wardrobe",
+      "fact": "open",
+      "actionTypes": [],
+      "actionTrigger": "ended",
+      "pulseMilliseconds": 1000.0,
+      "pulseLogSigma": 0.0,
+      "openValue": true,
+      "closedValue": false
+    },
+    {
+      "sensorId": "contact_washing_machine",
+      "position": {
+        "x": 6.9291,
+        "y": 6.5219
+      },
+      "timing": {
+        "latencyMilliseconds": 0.0,
+        "clockJitterMilliseconds": 0.0,
+        "cooldownMilliseconds": 0.0,
+        "clockDriftPpm": 0.0
+      },
+      "errorModel": {
+        "dropoutProbability": 0.0,
+        "falseNegativeProbability": 0.0,
+        "falsePositiveProbabilityPerDay": 0.0,
+        "measurementNoiseStandardDeviation": 0.0
+      },
+      "failureWindows": [],
+      "sensorType": "contact",
+      "entityId": "washing_machine",
+      "fact": "open",
+      "actionTypes": [],
+      "actionTrigger": "ended",
+      "pulseMilliseconds": 1000.0,
+      "pulseLogSigma": 0.0,
+      "openValue": true,
+      "closedValue": false
+    },
+    {
       "sensorId": "temperature_bedroom",
       "position": {
         "x": 3.00455,

@@ -122,6 +122,16 @@ Declare each absence **exactly once**, choosing the form that fits:
 Do not describe the same absence twice. A `work_shift` recurring activity *and* a fixed commitment for the same
 teaching hours put the resident at work twice over.
 
+**The resident must leave the house on a recurring basis, not only for events.** Declare at least
+two *recurring* activities that happen outdoors — the weekly shop, a walk, an errand — with a
+cadence that fits the person. An outline whose only outings are two or three events describes
+someone who does not go out: one eight-month horizon produced sixteen door crossings in total,
+against the several a day a real household records, and the front door is the single most
+informative sensor in the home. Note that `buy_groceries` and `evening_walk` are outdoor intents
+even though they appear in the home-centred list above: **what places an activity outside is its
+room, `outdoors`, not the list it is printed in.** Every one of them takes the resident through the
+door and back.
+
 For each recurring activity:
 
 - `cadence.period`, `timesPerPeriod` and `everyNPeriods` state how often it recurs; `weekdays`
@@ -227,6 +237,15 @@ what becomes of that occurrence:
 
 One event routinely needs both policies at once, which is why the choice is made per habit.
 
+**An absence displaces everything it covers, meals included.** Work out the hours the event can
+occupy — its window plus its `minimumMinutes` — and name in `displaces` *every* recurring activity
+whose band falls inside them. Chores are the easy half and the one everybody remembers; the meals
+are the half that gets forgotten, and they are mandatory, so forgetting them does not produce an
+odd day but an impossible one. A weekend trip of 480 to 840 minutes that displaced the shopping,
+the batch cooking, the laundry and the tidying — but not lunch or dinner — required the resident to
+be away for fourteen hours and to cook at home in the middle of them; the whole eight-month horizon
+was rejected for that one Sunday.
+
 ## The world
 
 `outline.world` declares where the routine happens. It is stated once for the whole horizon.
@@ -240,6 +259,30 @@ composite.
 
 `homeModel` is a synthetic versioned reference; the executable home is materialised later from
 these declared locations.
+
+### Furnish every room the resident works in
+
+{{FURNITURE_CATALOG}}
+
+**A room is furnished when the objects its activities use are declared.** The materialiser builds
+exactly what `world.resources` names and, for every role nothing provides, substitutes one
+placeholder per room — an object with no footprint, no contact sensor and no position of its own.
+Nothing about that substitution is visible in the output, so a thin inventory is not a small
+omission that shows up later: it silently deletes the sensor evidence.
+
+One generated eight-month horizon declared five objects for an entire flat — a bed, a washing
+machine, a moka, a desk and a television. Its kitchen therefore had no stove, no sink, no fridge and
+no table, so seven intents and 705 hours of cooking, eating and cleaning all executed at the same
+placeholder point. Two consequences, both fatal to the dataset: that room's single motion sensor
+carried **66.5% of the whole log**, and the home ended up with **one contact sensor** — the front
+door — because contact sensors attach to objects that open, and there were none.
+
+So, before writing `resources`, go through the recurring activities room by room and ask what each
+one physically touches. Cooking needs a `stove`, a `sink` and a `refrigerator`; eating needs a
+`table` and a `chair`; washing needs a `shower` or a `washbasin` and a `toilet`; dressing needs a
+`wardrobe`; cleaning needs a `storage_cabinet`. **A kitchen with fewer than three objects is a
+mistake, not a minimalist flat.** Give each one a `resourceId` of your choosing, a `resourceType`
+from the list above, and the `locationId` of the room it stands in.
 
 ## The rhythm
 
@@ -293,6 +336,8 @@ Before answering, verify all of the following:
 - every phase, event and fixed-commitment date falls inside the half-open horizon, so no date is
   on or after `startDate + months`;
 - `world.locations` declares every room listed above under the activity catalog;
+- every room the recurring activities work in declares the objects those activities touch, with a
+  `resourceType` from the furniture list — a kitchen with fewer than three is unfurnished;
 - every resource's `locationId` and `startLocationId` resolve to declared locations, and
   `startLocationId` is not a composite;
 - every recurring activity, event and fixed commitment declares an `intent` copied character for
@@ -304,8 +349,12 @@ Before answering, verify all of the following:
 - every band has `windowStart` strictly before `windowEnd`, and every duration range has its
   minimum at or below its maximum;
 - an event's `occurrences` does not exceed the number of eligible days in its window;
+- every event displaces each recurring activity whose band falls inside the hours it can occupy,
+  the meals included;
 - the process package implements every intent the recurring activities, events and commitments
   imply, **and** the intents the rhythm adds by itself, listed above;
+- every `take_item` or `put_item` of a stored role opens and closes its container, so the fridge is
+  not the only object in the home a contact sensor ever observes;
 - the process package satisfies the
   action state continuity rules above.
 

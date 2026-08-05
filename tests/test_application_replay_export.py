@@ -26,9 +26,13 @@ PROJECT_ROOT = Path(__file__).parents[1]
 SOURCE = PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30"
 
 
-@pytest.fixture(scope="module")
-def completed_workspace(tmp_path_factory: pytest.TempPathFactory) -> tuple[WorkspaceService, str]:
-    root = tmp_path_factory.mktemp("application-run") / "workspace"
+def _completed_workspace(root: Path) -> tuple[WorkspaceService, str]:
+    """One imported run, ready to replay or export.
+
+    A function rather than only a fixture because the module fixture is shared and one test
+    deliberately corrupts a file in it, which puts the workspace into diagnostic mode: a test that
+    needs to write afterwards has to bring its own.
+    """
     workspace = WorkspaceService.create(root, "Replay")
     home = workspace.create_home("Mario")
     job = workspace.create_job("simulation", home_id=home.home_id, seed=123)
@@ -47,6 +51,11 @@ def completed_workspace(tmp_path_factory: pytest.TempPathFactory) -> tuple[Works
         result_reference=job.job_id,
     )
     return workspace, job.job_id
+
+
+@pytest.fixture(scope="module")
+def completed_workspace(tmp_path_factory: pytest.TempPathFactory) -> tuple[WorkspaceService, str]:
+    return _completed_workspace(tmp_path_factory.mktemp("application-run") / "workspace")
 
 
 def test_ground_truth_diary_observable_and_oracle_views(
@@ -104,7 +113,13 @@ def test_streaming_export_formats_manifest_and_integrity(
         .read_text(encoding="utf-8")
         .splitlines()[0]
     )
-    assert not ({"residentId", "activityExecutionId", "actionExecutionId"} & set(first_record))
+    # `quality` belongs with them: a column stating which of its own readings the noise model
+    # disturbed is an admission no real sensor log makes, and an evaluator reading it is being
+    # handed part of the answer. It stays in the internal log; it does not ship.
+    assert not (
+        {"residentId", "activityExecutionId", "actionExecutionId", "quality"} & set(first_record)
+    )
+    assert {"sensorId", "observedAt", "measurement", "value"} <= set(first_record)
 
     corrupt = workspace.exports_path / manifest.files[0].relative_path
     corrupt.write_text("corrupt", encoding="utf-8")
@@ -314,3 +329,34 @@ def test_the_export_offers_every_role_the_backend_defines() -> None:
         "missing from the UI": sorted(set(ROLE_SOURCES) - requested),
         "unknown to the backend": sorted(requested - set(ROLE_SOURCES)),
     }
+
+
+def test_an_identical_export_is_reused_rather_than_written_again(tmp_path: Path) -> None:
+    """Exporting is deterministic, so a second identical request needs no second copy.
+
+    Each click on the download button was writing another full dataset: one workspace that had
+    exported eleven times held 4.5 GB, of which roughly four were duplicates of the same run.
+    """
+    workspace, run_id = _completed_workspace(tmp_path / "workspace")
+    service = ExportService(workspace)
+    request = ExportRequest(
+        run_id=run_id, formats=[ExportFormat.jsonl], roles=["observable", "activities"]
+    )
+
+    first = service.export(request)
+    again = service.export(request)
+
+    assert again.export_id == first.export_id
+    assert len(list(workspace.exports_path.glob("export_*"))) == 1
+
+    # A different request is a different dataset and still gets its own directory.
+    other = service.export(
+        ExportRequest(run_id=run_id, formats=[ExportFormat.csv], roles=["observable"])
+    )
+    assert other.export_id != first.export_id
+
+    # And deleting the files is how the space is reclaimed: the next export rebuilds them.
+    shutil.rmtree(workspace.exports_path / first.export_id)
+    rebuilt = service.export(request)
+    assert rebuilt.export_id != first.export_id
+    assert (workspace.exports_path / rebuilt.export_id / "manifest.json").is_file()

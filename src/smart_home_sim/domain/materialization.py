@@ -51,7 +51,10 @@ class SensorDeploymentPolicy(ContractModel):
     schema_version: Literal["1.0.0"] = "1.0.0"
     document_type: Literal["sensor_deployment_policy"] = "sensor_deployment_policy"
     policy_version: Literal["1.1.0", "1.2.0"] = "1.1.0"
-    preset: Literal["minimal", "room_coverage", "dense"] = "room_coverage"
+    # `dense` gives every sensor of a room the whole room as coverage, so a second one reports
+    # the same events twice; `functional_zones` splits the room and gives each sensor a slice,
+    # which is what makes two sensors in one room say different things.
+    preset: Literal["minimal", "room_coverage", "dense", "functional_zones"] = "room_coverage"
     observation_profile: Literal["ideal", "realistic", "adverse"] = "ideal"
     pir_hold_milliseconds: float = Field(default=5_000, gt=0)
     pir_hold_log_sigma: float = Field(default=0.0, ge=0, le=2)
@@ -77,6 +80,13 @@ class SensorDeploymentPolicy(ContractModel):
     false_negative_probability: float = Field(default=0.0, ge=0, le=1)
     false_positive_probability_per_day: float = Field(default=0.0, ge=0, le=1)
     temperature_noise_standard_deviation: float = Field(default=0.0, ge=0)
+    # Deployment mortality. A real installation is not a set of devices that all work for the whole
+    # study: batteries die, gateways drop nodes for an afternoon. The projector already silences a
+    # sensor inside a declared failure window; without these, no window is ever declared and a
+    # generated eight-month run has 244 flawless days out of 244.
+    battery_death_probability_per_year: float = Field(default=0.0, ge=0, le=1)
+    transient_outages_per_year: float = Field(default=0.0, ge=0, le=365)
+    transient_outage_hours: float = Field(default=6.0, gt=0, le=72)
 
     @model_validator(mode="after")
     def check_policy_version(self) -> Self:
@@ -88,7 +98,9 @@ class SensorDeploymentPolicy(ContractModel):
     def realistic(
         cls,
         *,
-        preset: Literal["minimal", "room_coverage", "dense"] = "room_coverage",
+        preset: Literal["minimal", "room_coverage", "dense", "functional_zones"] = (
+            "functional_zones"
+        ),
     ) -> Self:
         """Research default calibrated to the order of magnitude of CASAS sensors."""
         return cls(
@@ -111,7 +123,11 @@ class SensorDeploymentPolicy(ContractModel):
             temperature_seasonal_coupling=0.45,
             # CASAS-style threshold reporting, with a slow heartbeat so quiet rooms stay alive.
             temperature_reporting_mode="on_change",
-            temperature_report_threshold_celsius=0.5,
+            # One quantisation step: report any change the device can actually represent. At 0.5 the
+            # threshold never tripped — 96.5% of the intervals in an eight-month run were the hourly
+            # heartbeat, with a spread of 0.3 s, which identifies the log as generated from the
+            # interval histogram alone. At one step the same run reports on real movement.
+            temperature_report_threshold_celsius=0.1,
             temperature_heartbeat_seconds=3_600,
             clock_drift_ppm_spread=40.0,
             use_city_climate=True,
@@ -120,13 +136,19 @@ class SensorDeploymentPolicy(ContractModel):
             false_negative_probability=0.02,
             false_positive_probability_per_day=0.15,
             temperature_noise_standard_deviation=0.12,
+            # Roughly one node lost per deployment-year, and an outage every couple of months.
+            battery_death_probability_per_year=0.12,
+            transient_outages_per_year=6.0,
+            transient_outage_hours=5.0,
         )
 
     @classmethod
     def adverse(
         cls,
         *,
-        preset: Literal["minimal", "room_coverage", "dense"] = "room_coverage",
+        preset: Literal["minimal", "room_coverage", "dense", "functional_zones"] = (
+            "functional_zones"
+        ),
     ) -> Self:
         return cls(
             **{
@@ -137,6 +159,9 @@ class SensorDeploymentPolicy(ContractModel):
                 "false_positive_probability_per_day": 0.75,
                 "temperature_noise_standard_deviation": 0.35,
                 "clock_jitter_milliseconds": 1_000,
+                "battery_death_probability_per_year": 0.35,
+                "transient_outages_per_year": 24.0,
+                "transient_outage_hours": 11.0,
             }
         )
 

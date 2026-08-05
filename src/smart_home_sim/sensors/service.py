@@ -288,7 +288,11 @@ def _pir_candidates(
             continue
         pulse_at = action.started_at
         pulse_index = 0
-        while pulse_at <= action.ended_at:
+        # Strictly before the end: a pulse starting exactly on `ended_at` has its OFF clamped to
+        # the same instant, and a zero-length pulse is both meaningless and, until the
+        # reconciliation was hardened below, fatal — one of them latched a sensor ON for the
+        # remaining twenty-five days of a month.
+        while pulse_at < action.ended_at:
             group_id = f"{action.action_execution_id}:pir:{pulse_index}"
             hold = timedelta(
                 milliseconds=_lognormal_milliseconds(
@@ -568,19 +572,24 @@ def _temperature_candidates(
                 # in both terms and cancels, so this alone pins the indoor mean to baseline all
                 # year. seasonalCoupling re-injects the share of the seasonal swing that a room
                 # actually follows.
+                # The envelope only: what the room drifts towards as the weather moves it.
                 target = (
                     sensor.baseline_celsius
                     + sensor.room_offset_celsius
                     + 0.32 * (outdoor - climate_mean)
                     + sensor.seasonal_coupling * (climate_mean - annual_mean)
-                    + source_adjustment
                 )
                 if sensor.thermal_time_constant_hours > 0:
                     alpha = 1 - math.exp(-interval / (sensor.thermal_time_constant_hours * 3600))
                     current += alpha * (target - current)
                 else:
                     current = target
-                value = current
+                # Local heat sits *outside* the envelope's lag. A four-hour time constant is right
+                # for a room following the outdoor climate and wrong for a shower: filtered with
+                # everything else, a 0.5 °C source moved a fifteen-minute sample by 0.03 °C, so no
+                # threshold ever tripped and every reading a run produced was the hourly heartbeat.
+                # Steam reaches the sensor now; the walls take the afternoon.
+                value = current + source_adjustment
             else:
                 local_hour = sample_at.hour + sample_at.minute / 60 + sample_at.second / 3600
                 daily_component = TEMPERATURE_DAILY_AMPLITUDE_CELSIUS * math.sin(
@@ -802,12 +811,18 @@ def _reconcile_binary_candidates(
     for at in sorted(by_time):
         batch = by_time[at]
         was_on = bool(active_groups)
-        for candidate in batch:
-            if candidate.value == off_value and candidate.group_id is not None:
-                active_groups.discard(candidate.group_id)
+        # Opens before closes, so a group that opens and closes on the same instant cancels itself
+        # instead of leaking. With closes first, its close found nothing to remove and its open
+        # stayed in the set for good: the sensor read ON for the rest of the horizon and every
+        # later transition was swallowed as "already on". One such pulse cost a kitchen sensor
+        # 15 228 of its 18 604 candidates. The order is otherwise immaterial — a close and an
+        # unrelated open at the same instant leave the sensor on either way.
         for candidate in batch:
             if candidate.value == on_value and candidate.group_id is not None:
                 active_groups.add(candidate.group_id)
+        for candidate in batch:
+            if candidate.value == off_value and candidate.group_id is not None:
+                active_groups.discard(candidate.group_id)
         is_on = bool(active_groups)
         if was_on == is_on:
             continue

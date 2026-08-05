@@ -81,6 +81,11 @@ class GenerationStart(ApiModel):
         return value
 
 
+class RevealRequest(ApiModel):
+    kind: Literal["workspace", "exports", "runs", "export", "run"]
+    identifier: str = Field(default="", max_length=120)
+
+
 class ModelPublish(ApiModel):
     model: dict[str, Any]
 
@@ -144,6 +149,35 @@ def _enable_fault_traces(workspace_root: Path) -> None:
         faulthandler.enable(all_threads=True)
 
 
+def _quieten_client_disconnects(loop: asyncio.AbstractEventLoop) -> None:
+    """Stop Windows' proactor from printing a traceback for a connection the client already closed.
+
+    Downloading a 49 MB archive ends with the browser dropping the socket as soon as it has the
+    bytes. The proactor event loop then calls `shutdown()` on a socket that is already gone and
+    raises inside `_call_connection_lost`, which asyncio reports as an unhandled callback
+    exception — a full traceback in the console for a request that succeeded.
+
+    It matters because this server tells its operator to read that console: a crash log worth
+    checking is worth keeping free of routine noise, or the one traceback that means something gets
+    scrolled past with the others. Narrow on purpose — only a socket error, only from that
+    callback; everything else still goes through asyncio's own reporting.
+    """
+    default = loop.get_exception_handler()
+
+    def handler(active_loop: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
+        exception = context.get("exception")
+        source = repr(context.get("handle", ""))
+        if isinstance(exception, OSError) and "_call_connection_lost" in source:
+            log.debug("client closed the connection during teardown: %s", exception)
+            return
+        if default is not None:
+            default(active_loop, context)
+        else:
+            active_loop.default_exception_handler(context)
+
+    loop.set_exception_handler(handler)
+
+
 def _static_root() -> Path | None:
     packaged = Path(__file__).parent / "static"
     source = Path(__file__).parents[3] / "frontend" / "dist"
@@ -168,6 +202,7 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        _quieten_client_disconnects(asyncio.get_running_loop())
         yield
         jobs.shutdown()
 

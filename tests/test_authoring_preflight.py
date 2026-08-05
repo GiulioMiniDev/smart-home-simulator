@@ -11,9 +11,16 @@ from smart_home_sim.authoring.preflight import (
     _is_definitely_false,
     _join,
     _resolve_arguments,
+    validate_away_round_trips,
+    validate_rooms_are_furnished,
+    validate_the_resident_goes_out,
 )
 from smart_home_sim.compiler.service import compile_payload
-from smart_home_sim.domain.behavior import EffectOperation, ProcessNode
+from smart_home_sim.domain.behavior import (
+    EffectOperation,
+    PersonalProcessPackage,
+    ProcessNode,
+)
 from smart_home_sim.domain.models import Scenario
 
 ROOT = Path(__file__).parents[1]
@@ -67,3 +74,171 @@ def test_activity_location_argument_is_resolved_from_canonical_activity() -> Non
 
     assert resolved is not None
     assert activity.location_ids[0] in resolved.values()
+
+
+def _package_with(model_nodes: list[dict[str, object]], intent: str) -> PersonalProcessPackage:
+    """Smallest package that binds one intent to one model with the given actions."""
+    nodes: list[dict[str, object]] = [{"nodeId": "start", "kind": "start"}]
+    nodes.extend({**node, "durationWeight": 1.0} for node in model_nodes)
+    nodes.append({"nodeId": "end", "kind": "end"})
+    identifiers = [node["nodeId"] for node in nodes]
+    # Strict mode: on a dict the enums are not coerced, so the payload goes through JSON.
+    return PersonalProcessPackage.model_validate_json(
+        json.dumps(
+            {
+                "packageId": "package",
+                "packageVersion": "1.0.0",
+                "sourceScenarioId": "scenario",
+                "sourceScenarioVersion": "1.0.0",
+                "language": "en",
+                "provenance": {"authorType": "human", "generatedAt": "2026-08-04T10:00:00+00:00"},
+                "catalogs": {
+                    "activityCatalog": {"catalogId": "a", "version": "1.2.0"},
+                    "variableCatalog": {"catalogId": "v", "version": "1.0.0"},
+                    "actionCatalog": {"catalogId": "c", "version": "1.1.0"},
+                },
+                "processModels": [
+                    {
+                        "processModelId": "pm",
+                        "processModelVersion": "1.0.0",
+                        "residentId": "resident",
+                        "title": "Model",
+                        "description": "Model",
+                        "implementedComponents": ["travel"],
+                        "nodes": nodes,
+                        "edges": [
+                            {"sourceNodeId": left, "targetNodeId": right}
+                            for left, right in zip(identifiers, identifiers[1:], strict=False)
+                        ],
+                    }
+                ],
+                "bindings": [
+                    {
+                        "bindingId": "binding",
+                        "residentId": "resident",
+                        "intent": intent,
+                        "processModelId": "pm",
+                    }
+                ],
+            }
+        )
+    )
+
+
+def test_an_away_activity_that_never_opens_the_door_is_reported() -> None:
+    """`work_shift` implemented as sitting at a desk passes every other gate.
+
+    The resident then spends the horizon indoors: one generated eight-month run produced zero
+    `leave_home` actions and 74 door events against roughly 3.9 a day in CASAS Aruba, and nothing
+    reported it.
+    """
+    package = _package_with(
+        [
+            {"nodeId": "a1", "kind": "action", "actionType": "change_posture"},
+            {"nodeId": "a2", "kind": "action", "actionType": "perform_work"},
+        ],
+        "work_shift",
+    )
+
+    findings = validate_away_round_trips(package)
+
+    assert len(findings) == 1
+    assert "without ever leaving the home" in findings[0].message
+    assert findings[0].details["leaveHome"] == 0
+
+
+def test_leaving_without_returning_is_reported_where_it_happens() -> None:
+    """Unbalanced, the model leaves `resident.at_home` stuck.
+
+    Every later outing then fails a precondition that is deterministically false, which is
+    reported against those later activities rather than against the model that broke the state.
+    """
+    package = _package_with(
+        [
+            {"nodeId": "a1", "kind": "action", "actionType": "move_to"},
+            {"nodeId": "a2", "kind": "action", "actionType": "leave_home"},
+        ],
+        "leave_home",
+    )
+
+    findings = validate_away_round_trips(package)
+
+    assert len(findings) == 1
+    assert "round trip" in findings[0].message
+    assert (findings[0].details["leaveHome"], findings[0].details["enterHome"]) == (1, 0)
+
+
+def test_a_balanced_round_trip_and_a_home_intent_are_left_alone() -> None:
+    round_trip = _package_with(
+        [
+            {"nodeId": "a1", "kind": "action", "actionType": "leave_home"},
+            {"nodeId": "a2", "kind": "action", "actionType": "travel_to"},
+            {"nodeId": "a3", "kind": "action", "actionType": "enter_home"},
+        ],
+        "work_shift",
+    )
+    indoors = _package_with(
+        [{"nodeId": "a1", "kind": "action", "actionType": "prepare_food"}],
+        "eat_breakfast",
+    )
+
+    assert validate_away_round_trips(round_trip) == []
+    assert validate_away_round_trips(indoors) == []
+
+
+def _scenario_with_outings(count: int) -> Scenario:
+    """The frozen week with `count` of its activities moved outdoors."""
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    moved = 0
+    for day in payload["days"]:
+        for activity in day["activities"]:
+            activity["intent"] = "evening_walk" if moved < count else "read_and_rest"
+            moved += 1
+    return Scenario.model_validate_json(json.dumps(payload))
+
+
+def test_a_horizon_whose_resident_never_goes_out_is_flagged() -> None:
+    """The door is the most informative sensor in the home, and it was observing nothing.
+
+    An outline declaring no outdoor recurring activity produced sixteen crossings across eight
+    months, all of them from events. A warning rather than a rejection: a housebound resident is a
+    legitimate subject, producing one by accident is not.
+    """
+    findings = validate_the_resident_goes_out(_scenario_with_outings(0))
+
+    assert len(findings) == 1
+    assert findings[0].details["outings"] == 0
+    assert "housebound" in findings[0].message
+
+
+def test_a_resident_who_goes_out_weekly_is_left_alone() -> None:
+    scenario = _scenario_with_outings(7)
+
+    assert validate_the_resident_goes_out(scenario) == []
+
+
+def test_a_furnished_scenario_passes_and_a_stripped_one_does_not() -> None:
+    """The repo's own hand-authored week declares a fridge, a sink, a stove and a kettle.
+
+    Outline-generated homes have been arriving with a single object per room, and nothing said so:
+    the generator quietly substitutes a placeholder with no footprint and no contact sensor, so a
+    kitchen holding seven intents put its entire signal on one point.
+    """
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    furnished = Scenario.model_validate_json(json.dumps(payload))
+    assert [
+        finding.details["room"]
+        for finding in validate_rooms_are_furnished(furnished)
+        if finding.details["room"] == "kitchen"
+    ] == []
+
+    stripped = json.loads(json.dumps(payload))
+    stripped["resources"] = [
+        resource for resource in stripped["resources"] if resource["locationId"] != "kitchen"
+    ]
+    findings = validate_rooms_are_furnished(Scenario.model_validate_json(json.dumps(stripped)))
+
+    kitchen = [item for item in findings if item.details["room"] == "kitchen"]
+    assert len(kitchen) == 1
+    assert kitchen[0].details["declaredResources"] == []
+    assert "placeholder" in kitchen[0].message

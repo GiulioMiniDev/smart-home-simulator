@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import shutil
 from pathlib import Path
@@ -9,6 +10,7 @@ from fastapi.testclient import TestClient
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobStatus
 from smart_home_sim.web import create_app
+from smart_home_sim.web.app import _quieten_client_disconnects
 
 PROJECT_ROOT = Path(__file__).parents[1]
 
@@ -209,3 +211,44 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         ) as response:
             stream = "".join(response.iter_text())
         assert "event: done" in stream
+
+
+def test_client_disconnect_noise_is_quietened_but_real_failures_are_not() -> None:
+    """A finished download ends with the browser dropping the socket.
+
+    Windows' proactor then calls `shutdown()` on a socket that is already gone and asyncio prints a
+    full traceback for a request that succeeded. This server tells its operator to read that
+    console, so routine noise there is not cosmetic: it is what makes the one traceback that
+    matters get scrolled past with the rest.
+    """
+
+    class Handle:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def __repr__(self) -> str:
+            return f"<Handle {self.name}(None)>"
+
+    async def exercise() -> list[dict[str, object]]:
+        loop = asyncio.get_running_loop()
+        reported: list[dict[str, object]] = []
+        loop.set_exception_handler(lambda _, context: reported.append(context))
+        _quieten_client_disconnects(loop)
+
+        teardown = Handle("_ProactorBasePipeTransport._call_connection_lost")
+        loop.call_exception_handler(
+            {"exception": ConnectionResetError(10054, "closed by peer"), "handle": teardown}
+        )
+        assert reported == [], "teardown noise must not reach the console"
+
+        loop.call_exception_handler(
+            {"exception": ConnectionResetError(10054, "closed"), "handle": Handle("elsewhere")}
+        )
+        loop.call_exception_handler({"exception": ValueError("a real defect"), "handle": teardown})
+        return reported
+
+    reported = asyncio.run(exercise())
+
+    # The same socket error from another callback, and a real defect from that one, both survive.
+    assert len(reported) == 2
+    assert isinstance(reported[-1]["exception"], ValueError)

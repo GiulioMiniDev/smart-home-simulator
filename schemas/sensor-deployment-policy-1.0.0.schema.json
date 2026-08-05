@@ -29,7 +29,8 @@
       "enum": [
         "minimal",
         "room_coverage",
-        "dense"
+        "dense",
+        "functional_zones"
       ],
       "title": "Preset",
       "type": "string"
@@ -193,6 +194,27 @@
       "default": 0.0,
       "minimum": 0,
       "title": "Temperaturenoisestandarddeviation",
+      "type": "number"
+    },
+    "batteryDeathProbabilityPerYear": {
+      "default": 0.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Batterydeathprobabilityperyear",
+      "type": "number"
+    },
+    "transientOutagesPerYear": {
+      "default": 0.0,
+      "maximum": 365,
+      "minimum": 0,
+      "title": "Transientoutagesperyear",
+      "type": "number"
+    },
+    "transientOutageHours": {
+      "default": 6.0,
+      "exclusiveMinimum": 0,
+      "maximum": 72,
+      "title": "Transientoutagehours",
       "type": "number"
     }
   },

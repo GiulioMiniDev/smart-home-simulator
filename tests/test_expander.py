@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -509,3 +510,37 @@ def test_windows_stay_ordered_across_a_spring_forward_transition(
     ]
 
     assert inverted == []
+
+
+def test_the_declared_kind_decides_what_a_crowded_day_may_drop(
+    package: PersonalProcessPackage,
+) -> None:
+    """`kind` used to reach nothing: every expanded activity came out mandatory.
+
+    An author marking the television optional was declaring it to no one, and a day holding a long
+    evening event had no give at all — a six-hour visit plus a mandatory television, reading and
+    hygiene is a contradiction, and the compiler rejected the whole horizon with
+    `MAIN_PLAN_INFEASIBLE` for one day of it.
+    """
+    result = expand_outline(_outline(), package, seed=1)
+
+    by_activity = {
+        activity.recurring_activity_id: activity.kind
+        for activity in _outline().profile.recurring_activities
+    }
+    mandatory_by_kind: dict[RecurringActivityKind, set[bool]] = defaultdict(set)
+    for day in result.bundle.scenario.days:
+        for activity in day.activities:
+            identifier = next(
+                (
+                    label.removeprefix("activity:")
+                    for label in activity.labels
+                    if label.startswith("activity:")
+                ),
+                None,
+            )
+            if identifier in by_activity:
+                mandatory_by_kind[by_activity[identifier]].add(activity.mandatory)
+
+    assert mandatory_by_kind[RecurringActivityKind.anchor] == {True}
+    assert mandatory_by_kind[RecurringActivityKind.optional] == {False}

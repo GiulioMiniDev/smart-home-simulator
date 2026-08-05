@@ -76,7 +76,11 @@ from smart_home_sim.hybrid_planning.outline import (
     OutlineWorld,
 )
 from smart_home_sim.hybrid_planning.package_authoring import ACTIVITY_CATALOG_VERSION
-from smart_home_sim.hybrid_planning.recurring_activities import BehavioralProfile, RecurringActivity
+from smart_home_sim.hybrid_planning.recurring_activities import (
+    BehavioralProfile,
+    RecurringActivity,
+    RecurringActivityKind,
+)
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
 
 GENERATOR_NAME = "smart-home-sim.hybrid_planning.expander"
@@ -102,6 +106,16 @@ RESCHEDULE_SEARCH_DAYS = 7
 # room and is skipped when it does not. On a napping profile that means the occasional day with
 # two — which is what a short night on top of a nap routine actually looks like.
 RHYTHM_OWNED_INTENTS = frozenset({"wake_up", "sleep"})
+
+# Kinds whose occurrences the scheduler may drop when a day cannot hold them all.
+#
+# `kind` used to reach nothing: every expanded activity was mandatory, so an author declaring the
+# television optional was declaring it to no one. A day with a long evening event then had no
+# give — a six-hour visit to relatives on New Year's Eve, plus a mandatory television, reading and
+# hygiene, is not a schedule but a contradiction, and the horizon was rejected whole for it.
+# Anchors and contextual habits stay mandatory: those are the skeleton of the day, and a day that
+# cannot fit them is genuinely over-constrained and should say so.
+_SACRIFICIAL_KINDS = frozenset({RecurringActivityKind.optional, RecurringActivityKind.rare})
 
 # The 24 intents `INTENT_CATALOG` exposes are the *in-home* alphabet: each carries a room and a
 # reference process model, and they are what a habit inside the dwelling performs.
@@ -396,7 +410,8 @@ def _wobble(
     latest = max(latest, guard.latest)
     return activity.model_copy(
         update={
-            "start_window": DateTimeWindow(earliest=earliest, preferred=preferred, latest=latest)
+            "start_window": DateTimeWindow(earliest=earliest, preferred=preferred, latest=latest),
+            "mandatory": recurring.kind not in _SACRIFICIAL_KINDS,
         }
     )
 

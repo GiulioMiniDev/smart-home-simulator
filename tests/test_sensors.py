@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -26,8 +27,10 @@ from smart_home_sim.domain.sensors import (
 from smart_home_sim.sensors import project_sensor_files
 from smart_home_sim.sensors import project_sensors as project_sensors_with_bundle
 from smart_home_sim.sensors.service import (
+    Candidate,
     _climate_parameters,
     _daily_climate_mean,
+    _reconcile_binary_candidates,
     _scenario_city,
 )
 
@@ -674,3 +677,72 @@ def test_on_change_threshold_must_not_sit_below_quantization() -> None:
             report_threshold_celsius=0.1,
             sources=[TemperatureSource(entity_id="stove", fact="active", delta_celsius=1.0)],
         )
+
+
+def test_a_heat_source_moves_the_room_now_not_in_four_hours(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    """Local heat must not be filtered by the envelope's thermal lag.
+
+    The four-hour time constant describes a room following the outdoor climate. Applied to a
+    shower as well, it turned a 0.5 °C source into a 0.03 °C step on a fifteen-minute sample, so
+    the reporting threshold never tripped: 96.5% of the intervals in an eight-month run were the
+    hourly heartbeat, with a spread of 0.3 s. A log whose interval histogram is a single spike is
+    identifiable as generated without looking at anything else.
+
+    The measurable consequence is the size of the step a source produces, so that is what is
+    asserted: filtered, it is a rounding error; unfiltered, it is most of the source.
+    """
+    base = _seasonal_temperature(sensor_model)
+    reporting = base.model_copy(
+        update={"reporting_mode": "periodic", "thermal_time_constant_hours": 4.0}
+    )
+    result = project_sensors(trace, _realistic_model(sensor_model, reporting))
+    assert result.observable_log is not None
+
+    values = [float(item.value) for item in result.observable_log.records]
+    steps = [abs(b - a) for a, b in zip(values, values[1:], strict=False)]
+    assert steps, "the sensor must report more than once"
+    source_delta = reporting.sources[0].delta_celsius
+    # The source ramps over several samples, so no single step carries all of it. What matters
+    # is the order of magnitude: unfiltered this run steps 0.6 °C, filtered it steps 0.1 °C,
+    # which is one quantisation unit and indistinguishable from rounding.
+    assert max(steps) >= source_delta / 6
+
+
+def test_a_zero_length_pulse_does_not_latch_the_sensor_forever() -> None:
+    """A group that opens and closes on the same instant must cancel, not leak.
+
+    The reconciliation processed closes before opens, so such a group's close found nothing to
+    remove and its open stayed in the active set for good: from that instant the sensor read ON
+    and every later transition was swallowed as "already on". One pulse cost a kitchen sensor
+    15 228 of its 18 604 candidates and twenty-five of the month's thirty-one days, silently — the
+    log simply stopped, with no failure window and no issue to explain it.
+    """
+    moment = datetime(2026, 10, 30, 8, 0, tzinfo=UTC)
+
+    def pulse(group: str, value: str, at: datetime) -> Candidate:
+        return Candidate(
+            at=at,
+            value=value,
+            measurement="motion",
+            unit=None,
+            origin="simulated_cause",
+            cause_type="action_execution",
+            cause_ids=(group,),
+            group_id=group,
+        )
+
+    candidates = [
+        # The degenerate one: opens and closes at the same instant.
+        pulse("degenerate", "ON", moment),
+        pulse("degenerate", "OFF", moment),
+        # An ordinary pulse afterwards, which must still be reported.
+        pulse("later", "ON", moment + timedelta(seconds=30)),
+        pulse("later", "OFF", moment + timedelta(seconds=34)),
+    ]
+
+    reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+    assert [item.value for item in reconciled] == ["ON", "OFF"]
+    assert reconciled[0].at == moment + timedelta(seconds=30)

@@ -174,6 +174,16 @@ Declare each absence **exactly once**, choosing the form that fits:
 Do not describe the same absence twice. A `work_shift` recurring activity *and* a fixed commitment for the same
 teaching hours put the resident at work twice over.
 
+**The resident must leave the house on a recurring basis, not only for events.** Declare at least
+two *recurring* activities that happen outdoors — the weekly shop, a walk, an errand — with a
+cadence that fits the person. An outline whose only outings are two or three events describes
+someone who does not go out: one eight-month horizon produced sixteen door crossings in total,
+against the several a day a real household records, and the front door is the single most
+informative sensor in the home. Note that `buy_groceries` and `evening_walk` are outdoor intents
+even though they appear in the home-centred list above: **what places an activity outside is its
+room, `outdoors`, not the list it is printed in.** Every one of them takes the resident through the
+door and back.
+
 For each recurring activity:
 
 - `cadence.period`, `timesPerPeriod` and `everyNPeriods` state how often it recurs; `weekdays`
@@ -279,6 +289,15 @@ what becomes of that occurrence:
 
 One event routinely needs both policies at once, which is why the choice is made per habit.
 
+**An absence displaces everything it covers, meals included.** Work out the hours the event can
+occupy — its window plus its `minimumMinutes` — and name in `displaces` *every* recurring activity
+whose band falls inside them. Chores are the easy half and the one everybody remembers; the meals
+are the half that gets forgotten, and they are mandatory, so forgetting them does not produce an
+odd day but an impossible one. A weekend trip of 480 to 840 minutes that displaced the shopping,
+the batch cooking, the laundry and the tidying — but not lunch or dinner — required the resident to
+be away for fourteen hours and to cook at home in the middle of them; the whole eight-month horizon
+was rejected for that one Sunday.
+
 ## The world
 
 `outline.world` declares where the routine happens. It is stated once for the whole horizon.
@@ -293,6 +312,48 @@ composite.
 
 `homeModel` is a synthetic versioned reference; the executable home is materialised later from
 these declared locations.
+
+### Furnish every room the resident works in
+
+`world.resources` declares the objects the home contains. Use these `resourceType` values, spelled exactly: they are the only ones that bind to anything, and the roles beside each are what that piece of furniture can be used for.
+
+- `bed` — sleeping_area
+- `chair` — consumption_area, dining_seat
+- `moka_coffee_maker` — coffee_equipment
+- `radio` — media
+- `refrigerator` — coffee_and_breakfast_storage, food_storage, ingredients, prepared_food_portions, prepared_meal
+- `shower` — personal_care_fixture, shower_water
+- `sink` — drinking_water_source, food_preparation_area, sink_faucet, washing_area
+- `sofa` — rest_area, seating
+- `storage_cabinet` — cleaning_product_storage, cleaning_products, household_storage, household_supplies, medication, medication_cabinet, medication_storage
+- `stove` — cooking_appliance, food_preparation_area
+- `table` — consumption_area, dining_area
+- `television` — media
+- `toilet` — personal_care_fixture
+- `wardrobe` — clothes, clothing_storage, laundry_collection, laundry_storage, used_clothing
+- `washbasin` — personal_care_fixture, washing_area
+- `washing_machine` — laundry, laundry_equipment
+
+
+**A room is furnished when the objects its activities use are declared.** The materialiser builds
+exactly what `world.resources` names and, for every role nothing provides, substitutes one
+placeholder per room — an object with no footprint, no contact sensor and no position of its own.
+Nothing about that substitution is visible in the output, so a thin inventory is not a small
+omission that shows up later: it silently deletes the sensor evidence.
+
+One generated eight-month horizon declared five objects for an entire flat — a bed, a washing
+machine, a moka, a desk and a television. Its kitchen therefore had no stove, no sink, no fridge and
+no table, so seven intents and 705 hours of cooking, eating and cleaning all executed at the same
+placeholder point. Two consequences, both fatal to the dataset: that room's single motion sensor
+carried **66.5% of the whole log**, and the home ended up with **one contact sensor** — the front
+door — because contact sensors attach to objects that open, and there were none.
+
+So, before writing `resources`, go through the recurring activities room by room and ask what each
+one physically touches. Cooking needs a `stove`, a `sink` and a `refrigerator`; eating needs a
+`table` and a `chair`; washing needs a `shower` or a `washbasin` and a `toilet`; dressing needs a
+`wardrobe`; cleaning needs a `storage_cabinet`. **A kitchen with fewer than three objects is a
+mistake, not a minimalist flat.** Give each one a `resourceId` of your choosing, a `resourceType`
+from the list above, and the `locationId` of the room it stands in.
 
 ## The rhythm
 
@@ -497,6 +558,18 @@ construction rules while walking it:
    starts at home, `false` otherwise. Do not leave it implicit.
 2. `leave_home` and `enter_home` strictly alternate. Never emit two consecutive `leave_home`
    actions and never emit two consecutive `enter_home` actions across the whole ledger.
+   **An away activity is a round trip inside one model.** A model bound to an away intent leaves
+   the home and comes back before its `end` node: `leave_home -> travel_to -> ... -> enter_home`.
+   Split across two models it is not a round trip but a wager on ordering, and the two failures
+   this produces are the most common defects in authored packages:
+   - **Leaving without returning.** `resident.at_home` stays false for the rest of the horizon, so
+     *every later outing* fails a precondition that is now deterministically false. The rejection
+     is reported against those later activities, weeks away, and never names the model at fault.
+   - **Never leaving at all.** A `work_shift` implemented as `move_to -> change_posture ->
+     perform_work` describes working at a desk at home. It passes every gate and the resident then
+     spends the whole horizon indoors: one eight-month run produced zero `leave_home` actions and
+     74 door events, where a real home records several a day. If the intent says the resident is
+     out, the model must take her out.
 3. Every `put_item(role)` is preceded on every incoming path by a `take_item` with the exact
    same role. `take_item` is the only action in this catalog that grants a carrying fact, so a
    `put_item` whose role was never taken is always deterministically false. Do not take
@@ -508,6 +581,19 @@ construction rules while walking it:
    so are `activate(target)` and `deactivate(target)`. A container left open at the end of one
    activity makes the next `open` of that same container deterministically false, on every
    later day.
+   **Anything stored inside something is reached by opening it.** Wrap the `take_item` or
+   `put_item` in `open(container) -> ... -> close(container)` whenever the role names one of these:
+
+   - `refrigerator` — `coffee_and_breakfast_storage`, `food_storage`, `ingredients`, `prepared_food_portions`, `prepared_meal`
+   - `storage_cabinet` — `cleaning_product_storage`, `cleaning_products`, `household_storage`, `household_supplies`, `medication`, `medication_cabinet`, `medication_storage`
+   - `wardrobe` — `clothes`, `clothing_storage`, `laundry_collection`, `laundry_storage`, `used_clothing`
+
+   This is what a contact sensor observes, and it is the difference between a home that reports its
+   cupboards and one that does not. In one generated eight-month horizon every `open` and `close` in
+   the whole log had a single target — the fridge — because the cleaning products, the medication
+   and the clothes were taken straight out of closed furniture. The flat ended up with **two**
+   contact sensors where a comparable real deployment has four to six, and the cabinets it did
+   contain were invisible for eight months.
 6. Do not change the target or the role between the two halves of a `take_item`/`put_item`,
    `open`/`close` or `activate`/`deactivate` pair.
 
@@ -567,6 +653,8 @@ Before answering, verify all of the following:
 - every phase, event and fixed-commitment date falls inside the half-open horizon, so no date is
   on or after `startDate + months`;
 - `world.locations` declares every room listed above under the activity catalog;
+- every room the recurring activities work in declares the objects those activities touch, with a
+  `resourceType` from the furniture list — a kitchen with fewer than three is unfurnished;
 - every resource's `locationId` and `startLocationId` resolve to declared locations, and
   `startLocationId` is not a composite;
 - every recurring activity, event and fixed commitment declares an `intent` copied character for
@@ -578,8 +666,12 @@ Before answering, verify all of the following:
 - every band has `windowStart` strictly before `windowEnd`, and every duration range has its
   minimum at or below its maximum;
 - an event's `occurrences` does not exceed the number of eligible days in its window;
+- every event displaces each recurring activity whose band falls inside the hours it can occupy,
+  the meals included;
 - the process package implements every intent the recurring activities, events and commitments
   imply, **and** the intents the rhythm adds by itself, listed above;
+- every `take_item` or `put_item` of a stored role opens and closes its container, so the fridge is
+  not the only object in the home a contact sensor ever observes;
 - the process package satisfies the
   action state continuity rules above.
 

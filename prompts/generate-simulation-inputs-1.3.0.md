@@ -280,6 +280,18 @@ construction rules while walking it:
    starts at home, `false` otherwise. Do not leave it implicit.
 2. `leave_home` and `enter_home` strictly alternate. Never emit two consecutive `leave_home`
    actions and never emit two consecutive `enter_home` actions across the whole ledger.
+   **An away activity is a round trip inside one model.** A model bound to an away intent leaves
+   the home and comes back before its `end` node: `leave_home -> travel_to -> ... -> enter_home`.
+   Split across two models it is not a round trip but a wager on ordering, and the two failures
+   this produces are the most common defects in authored packages:
+   - **Leaving without returning.** `resident.at_home` stays false for the rest of the horizon, so
+     *every later outing* fails a precondition that is now deterministically false. The rejection
+     is reported against those later activities, weeks away, and never names the model at fault.
+   - **Never leaving at all.** A `work_shift` implemented as `move_to -> change_posture ->
+     perform_work` describes working at a desk at home. It passes every gate and the resident then
+     spends the whole horizon indoors: one eight-month run produced zero `leave_home` actions and
+     74 door events, where a real home records several a day. If the intent says the resident is
+     out, the model must take her out.
 3. Every `put_item(role)` is preceded on every incoming path by a `take_item` with the exact
    same role. `take_item` is the only action in this catalog that grants a carrying fact, so a
    `put_item` whose role was never taken is always deterministically false. Do not take
@@ -291,6 +303,19 @@ construction rules while walking it:
    so are `activate(target)` and `deactivate(target)`. A container left open at the end of one
    activity makes the next `open` of that same container deterministically false, on every
    later day.
+   **Anything stored inside something is reached by opening it.** Wrap the `take_item` or
+   `put_item` in `open(container) -> ... -> close(container)` whenever the role names one of these:
+
+   - `refrigerator` — `coffee_and_breakfast_storage`, `food_storage`, `ingredients`, `prepared_food_portions`, `prepared_meal`
+   - `storage_cabinet` — `cleaning_product_storage`, `cleaning_products`, `household_storage`, `household_supplies`, `medication`, `medication_cabinet`, `medication_storage`
+   - `wardrobe` — `clothes`, `clothing_storage`, `laundry_collection`, `laundry_storage`, `used_clothing`
+
+   This is what a contact sensor observes, and it is the difference between a home that reports its
+   cupboards and one that does not. In one generated eight-month horizon every `open` and `close` in
+   the whole log had a single target — the fridge — because the cleaning products, the medication
+   and the clothes were taken straight out of closed furniture. The flat ended up with **two**
+   contact sensors where a comparable real deployment has four to six, and the cabinets it did
+   contain were invisible for eight months.
 6. Do not change the target or the role between the two halves of a `take_item`/`put_item`,
    `open`/`close` or `activate`/`deactivate` pair.
 
@@ -339,6 +364,8 @@ Before answering, verify internally that:
   satisfies its catalog precondition in the chronological ledger, across activities and days;
 - every `travel` component performed away from home carries the mandatory
   `move_to_capability(home_entrance) -> enter_home` bridge;
+- every `take_item` or `put_item` of a stored role opens and closes its container, so the
+  fridge is not the only object in the home a contact sensor ever observes;
 - output provenance is truthful and the JSON is complete.
 
 The deterministic project ingestion runs scenario validation, full plan compilation and

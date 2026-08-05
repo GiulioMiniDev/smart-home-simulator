@@ -46,7 +46,9 @@ ACTION_STATE_CHECKS = (
     "  satisfies its catalog precondition in the chronological ledger, across activities and "
     "days;\n"
     "- every `travel` component performed away from home carries the mandatory\n"
-    "  `move_to_capability(home_entrance) -> enter_home` bridge;"
+    "  `move_to_capability(home_entrance) -> enter_home` bridge;\n"
+    "- every `take_item` or `put_item` of a stored role opens and closes its container, so the\n"
+    "  fridge is not the only object in the home a contact sensor ever observes;"
 )
 
 # The simplified prompt is the one a local model actually receives, so the sections that enumerate
@@ -139,6 +141,7 @@ def build_prompt() -> None:
         ACTION_STATE_FRAGMENT.read_text(encoding="utf-8")
         .strip()
         .replace("{{ACTION_STATE_CONTRACT}}", _render_action_state_contract(action_catalog))
+        .replace("{{CONTAINER_ROLES}}", _render_container_roles())
     )
     prompt_1_3 = prompt_1_2.replace("1.2.0", "1.3.0")
     prompt_1_3 = _insert_before(
@@ -456,6 +459,45 @@ def _render_catalog_intents() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_container_roles() -> str:
+    """Roles whose provider is a piece of furniture with a door, rendered from the alias map.
+
+    A `take_item` on one of these without an `open` is what left an eight-month log with the fridge
+    as the only object ever opened, and the flat with two contact sensors instead of six.
+    """
+    from smart_home_sim.materialization.service import RESOURCE_ROLE_ALIASES
+
+    containers = ("refrigerator", "storage_cabinet", "wardrobe")
+    lines = []
+    for resource_type in containers:
+        roles = sorted(RESOURCE_ROLE_ALIASES[resource_type])
+        lines.append(f"   - `{resource_type}` — {', '.join(f'`{role}`' for role in roles)}")
+    return "\n".join(lines)
+
+
+def _render_furniture_catalog() -> str:
+    """The furniture the materialiser knows how to bind, and what each piece provides.
+
+    Rendered from `RESOURCE_ROLE_ALIASES` rather than restated, for the same reason the intents are:
+    a `resourceType` outside this map satisfies no role, so every activity that wanted one falls to
+    the per-room placeholder — silently.
+    """
+    from smart_home_sim.materialization.service import RESOURCE_ROLE_ALIASES
+
+    lines = [
+        "`world.resources` declares the objects the home contains. Use these `resourceType` "
+        "values, spelled exactly: they are the only ones that bind to anything, and the roles "
+        "beside each are what that piece of furniture can be used for.",
+        "",
+    ]
+    for resource_type, roles in sorted(RESOURCE_ROLE_ALIASES.items()):
+        served = sorted(role for role in roles if role != resource_type)
+        lines.append(
+            f"- `{resource_type}` — {', '.join(served)}" if served else f"- `{resource_type}`"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _render_rhythm_intents() -> str:
     from smart_home_sim.hybrid_planning.day_generation import RHYTHM_EMITTED_INTENTS
     from smart_home_sim.hybrid_planning.intents import intent_spec
@@ -497,6 +539,7 @@ def build_outline_prompt() -> None:
     prompt = prompt.replace("{{ACTIVITY_PORTFOLIO}}", _render_activity_portfolio())
     prompt = prompt.replace("{{CATALOG_ROOMS}}", _render_catalog_rooms())
     prompt = prompt.replace("{{CATALOG_INTENTS}}", _render_catalog_intents())
+    prompt = prompt.replace("{{FURNITURE_CATALOG}}", _render_furniture_catalog())
     prompt = prompt.replace("{{RHYTHM_INTENTS}}", _render_rhythm_intents())
     prompt = prompt.replace("{{PROCESS_MODEL_SECTIONS}}", _section_span(frozen, *REUSED_FROM_1_3_0))
     prompt = prompt.replace(

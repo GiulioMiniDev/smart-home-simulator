@@ -26,5 +26,8 @@
   "dropoutProbability": 0.0,
   "falseNegativeProbability": 0.0,
   "falsePositiveProbabilityPerDay": 0.0,
-  "temperatureNoiseStandardDeviation": 0.0
+  "temperatureNoiseStandardDeviation": 0.0,
+  "batteryDeathProbabilityPerYear": 0.0,
+  "transientOutagesPerYear": 0.0,
+  "transientOutageHours": 6.0
 }

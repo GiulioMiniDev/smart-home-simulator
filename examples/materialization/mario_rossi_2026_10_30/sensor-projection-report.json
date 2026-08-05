@@ -15,7 +15,7 @@
   "sourceTraceSemanticDigest": "77fa069f7f9ffcaf31609761bda0d485361c963a1fc461e0c036adc4b1288fd6",
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
-  "sensorModelSha256": "976daef0dbd82c91c5c42712dea1181dcfc10e502fe8fd98613b8b5cc1e63b8d",
+  "sensorModelSha256": "de505c16eee5bacf89c8de600ae318b58b591e0a8df2fd6e0b9d55bf9b4751e0",
   "observableLogSha256": "4f2da87569dd4efdb1e80ccbb77be47e8e509d3fc1148cba0e97fa22602751f3",
   "oracleMappingSha256": "8f31ed895ac4fff9caa389ddd5303e1908650902a5ce4bfd638f1cc730dfca9b",
   "projectedAt": "2026-11-02T06:52:00+01:00",
@@ -121,6 +121,28 @@
       "noisyObservationCount": 0
     },
     {
+      "sensorId": "contact_wardrobe",
+      "candidateCount": 0,
+      "observationCount": 0,
+      "dropoutCount": 0,
+      "falseNegativeCount": 0,
+      "cooldownSuppressedCount": 0,
+      "failureSuppressedCount": 0,
+      "falsePositiveCount": 0,
+      "noisyObservationCount": 0
+    },
+    {
+      "sensorId": "contact_washing_machine",
+      "candidateCount": 0,
+      "observationCount": 0,
+      "dropoutCount": 0,
+      "falseNegativeCount": 0,
+      "cooldownSuppressedCount": 0,
+      "failureSuppressedCount": 0,
+      "falsePositiveCount": 0,
+      "noisyObservationCount": 0
+    },
+    {
       "sensorId": "temperature_bedroom",
       "candidateCount": 316,
       "observationCount": 316,
@@ -188,7 +210,7 @@
     }
   ],
   "summary": {
-    "sensorCount": 15,
+    "sensorCount": 17,
     "candidateCount": 7036,
     "observationCount": 6856,
     "dropoutCount": 0,

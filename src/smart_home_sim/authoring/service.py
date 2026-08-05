@@ -12,7 +12,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from smart_home_sim.authoring.preflight import validate_deterministic_preconditions
+from smart_home_sim.authoring.preflight import (
+    validate_away_round_trips,
+    validate_deterministic_preconditions,
+    validate_rooms_are_furnished,
+    validate_the_resident_goes_out,
+)
 from smart_home_sim.behavior.service import (
     default_action_catalog_path,
     default_activity_catalog_path,
@@ -450,6 +455,47 @@ def validate_authoring_payload(
                     details=item.details,
                 )
             )
+        if behavior_report.valid:
+            # Structural, so it runs whether or not the horizon compiled: an away intent that never
+            # opens the door, or opens it without closing it, is wrong before any day exists.
+            for finding in validate_away_round_trips(
+                PersonalProcessPackage.model_validate_json(json.dumps(behavior_payload))
+            ):
+                issues.append(
+                    _authoring_issue(
+                        "AWAY_INTENT_NOT_A_ROUND_TRIP",
+                        "behavior",
+                        _prefix_path("$.personalProcessPackage", finding.path),
+                        finding.message,
+                        details=finding.details,
+                    )
+                )
+        if scenario_report.valid:
+            parsed_scenario = Scenario.model_validate_json(json.dumps(scenario_payload))
+            for finding in validate_rooms_are_furnished(parsed_scenario):
+                issues.append(
+                    _authoring_issue(
+                        "ROOM_HAS_NO_FURNITURE",
+                        "scenario",
+                        _prefix_path("$.scenario", finding.path),
+                        finding.message,
+                        severity="warning",
+                        details=finding.details,
+                    )
+                )
+            for finding in validate_the_resident_goes_out(parsed_scenario):
+                issues.append(
+                    _authoring_issue(
+                        "RESIDENT_NEVER_LEAVES_HOME",
+                        "scenario",
+                        _prefix_path("$.scenario", finding.path),
+                        finding.message,
+                        # A warning: a housebound resident is a legitimate subject, but producing
+                        # one by accident throws away the most informative sensor in the home.
+                        severity="warning",
+                        details=finding.details,
+                    )
+                )
         if behavior_report.valid and compilation_plan is not None:
             scenario = Scenario.model_validate_json(json.dumps(scenario_payload))
             package = PersonalProcessPackage.model_validate_json(json.dumps(behavior_payload))

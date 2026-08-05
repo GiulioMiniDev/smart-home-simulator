@@ -17,7 +17,7 @@ from smart_home_sim.domain.behavior import (
     ValueSource,
     VariableCatalog,
 )
-from smart_home_sim.domain.models import DayPlan, Scenario
+from smart_home_sim.domain.models import DayPlan, LocationKind, Scenario
 from smart_home_sim.domain.plan import CanonicalActivity, CanonicalPlan
 
 _UNKNOWN = object()
@@ -323,4 +323,186 @@ def validate_deterministic_preconditions(
                 del state[fact]
         for fact, value in next_state.items():
             state[f"{prefix}{fact}" if fact.startswith("resident.") else fact] = value
+    return findings
+
+
+def validate_away_round_trips(package: PersonalProcessPackage) -> list[PreflightFinding]:
+    """An activity performed away from home has to bring the resident back.
+
+    `leave_home` requires `resident.at_home` to be true and `enter_home` requires it to be false,
+    so a model that leaves without returning does not merely describe an odd day: it leaves the
+    fact stuck, and *every later outing* fails a precondition that is now deterministically false.
+    On one authored horizon that surfaced as five `DETERMINISTIC_PRECONDITION_FAILED` findings
+    against events weeks apart, none of which named the model that had actually broken the state.
+
+    The mirror image is just as wrong and much quieter. A model bound to an away intent that never
+    leaves at all — `work_shift` implemented as sitting down at a desk — is accepted by every gate,
+    and the resident then spends the whole horizon indoors: one generated eight-month run contains
+    zero `leave_home` actions and 74 door events, against roughly 3.9 a day in CASAS Aruba. Nothing
+    reported it, because nothing was looking.
+
+    Both are structural, so both are caught here rather than after a horizon has been expanded.
+    """
+    from smart_home_sim.hybrid_planning.intents import intent_spec
+
+    def is_outdoors(intent: str) -> bool:
+        """Where the catalog puts the activity, not which list the intent came from.
+
+        Two mechanisms used to decide this and they disagreed. `away_intent_specs` selects by
+        category — travel, work, social_visit — while the room comes from `default_location`, and
+        `evening_walk` and `buy_groceries` sit `outdoors` under categories the first one does not
+        collect. They slipped through: a horizon where the resident shopped weekly and walked most
+        evenings produced sixteen door crossings in eight months, all of them from two events.
+        The room is the fact that matters, so the room decides.
+        """
+        try:
+            return intent_spec(intent).default_location == "outdoors"
+        except KeyError:
+            return False
+
+    models = {model.process_model_id: model for model in package.process_models}
+    findings: list[PreflightFinding] = []
+    for index, binding in enumerate(package.bindings):
+        if not is_outdoors(binding.intent):
+            continue
+        model = models.get(binding.process_model_id)
+        if model is None:
+            continue
+        leaves = sum(1 for node in model.nodes if node.action_type == "leave_home")
+        enters = sum(1 for node in model.nodes if node.action_type == "enter_home")
+        if leaves == enters and leaves > 0:
+            continue
+        if leaves == 0 and enters == 0:
+            message = (
+                f"Process model {model.process_model_id!r} implements the away intent "
+                f"{binding.intent!r} without ever leaving the home. The resident stays indoors, "
+                "the door is never observed, and the absence is invisible to any sensor."
+            )
+        else:
+            message = (
+                f"Process model {model.process_model_id!r} leaves the home {leaves} time(s) and "
+                f"returns {enters} time(s). An away activity is a round trip: unbalanced, it "
+                "leaves 'resident.at_home' stuck and every later outing fails its precondition."
+            )
+        findings.append(
+            PreflightFinding(
+                path=f"$.bindings[{index}].processModelId",
+                message=message,
+                details={
+                    "intent": binding.intent,
+                    "processModelId": model.process_model_id,
+                    "leaveHome": leaves,
+                    "enterHome": enters,
+                },
+            )
+        )
+    return findings
+
+
+def validate_the_resident_goes_out(scenario: Scenario) -> list[PreflightFinding]:
+    """Does this horizon ever take the resident through the front door on a routine?
+
+    A warning rather than a rejection, because a housebound resident is a legitimate — and
+    research-relevant — subject. What is not legitimate is producing one by accident, which is what
+    kept happening: an outline declaring no outdoor recurring activity at all yielded sixteen door
+    crossings across eight months, every one of them from an event, while a real household records
+    several a day. The front door is the single most informative sensor in a smart home, and a
+    horizon that never uses it has thrown that channel away without anyone deciding to.
+    """
+    from smart_home_sim.hybrid_planning.intents import intent_spec
+
+    def outdoors(intent: str) -> bool:
+        try:
+            return intent_spec(intent).default_location == "outdoors"
+        except KeyError:
+            return False
+
+    outings = sum(
+        1 for day in scenario.days for activity in day.activities if outdoors(activity.intent)
+    )
+    days = max(len(scenario.days), 1)
+    per_week = 7 * outings / days
+    if per_week >= 1:
+        return []
+    return [
+        PreflightFinding(
+            path="$.days",
+            message=(
+                f"The resident leaves the home {outings} time(s) across {days} days — fewer than "
+                "once a week. Declare recurring outdoor activities such as a weekly shop or a "
+                "walk: without them the door sensor observes almost nothing, and the horizon "
+                "describes someone housebound."
+            ),
+            details={"outings": outings, "days": days, "outingsPerWeek": round(per_week, 3)},
+        )
+    ]
+
+
+# A room hosting at least this many distinct intents is somewhere the resident works, not passes
+# through, and needs more than one object to work with.
+_BUSY_ROOM_INTENTS = 3
+
+
+def validate_rooms_are_furnished(scenario: Scenario) -> list[PreflightFinding]:
+    """Does every busy room contain the objects its activities need?
+
+    The home generator materialises the resources the scenario declares and fabricates one
+    `generated_environment_service` per room for everything else — a provider with no footprint and
+    no contact sensor. Nothing reports the substitution, so a kitchen declaring a single moka
+    absorbed seven intents and 705 hours of cooking, eating and cleaning against one phantom point.
+
+    The consequences are not subtle. Every one of those hours retriggered the same motion sensor,
+    which ended up carrying 66.5% of an entire eight-month dataset; and contact sensors attach to
+    objects that open, so a kitchen with no fridge and no cupboards contributed none. The whole
+    house had one contact sensor where CASAS Aruba has four.
+
+    Caught here, on the scenario, because it costs an author one line to fix and costs a run eight
+    months to discover.
+    """
+    # Rooms only. `outdoors` hosts the shopping and the walks and is furnished by the world, not by
+    # the resident; a composite is a grouping and owns nothing of its own.
+    rooms = {
+        location.location_id
+        for location in scenario.locations
+        if location.kind is LocationKind.room
+    }
+    intents_by_room: dict[str, set[str]] = defaultdict(set)
+    activities_by_room: dict[str, int] = defaultdict(int)
+    for day in scenario.days:
+        for activity in day.activities:
+            for location in activity.location_ids[:1]:
+                if location not in rooms:
+                    continue
+                intents_by_room[location].add(activity.intent)
+                activities_by_room[location] += 1
+
+    resources_by_room: dict[str, list[str]] = defaultdict(list)
+    for resource in scenario.resources:
+        resources_by_room[resource.location_id].append(resource.resource_id)
+
+    findings: list[PreflightFinding] = []
+    for room in sorted(intents_by_room):
+        intents = intents_by_room[room]
+        declared = resources_by_room.get(room, [])
+        if len(intents) < _BUSY_ROOM_INTENTS or len(declared) > 1:
+            continue
+        findings.append(
+            PreflightFinding(
+                path="$.resources",
+                message=(
+                    f"Room {room!r} hosts {len(intents)} distinct intents across "
+                    f"{activities_by_room[room]} activities but declares "
+                    f"{len(declared)} object(s): {', '.join(declared) or 'none'}. Everything else "
+                    "will run against a generated placeholder with no footprint and no contact "
+                    "sensor, concentrating the room's whole signal on one point. Declare the "
+                    "furniture the activities use."
+                ),
+                details={
+                    "room": room,
+                    "intents": sorted(intents),
+                    "activities": activities_by_room[room],
+                    "declaredResources": sorted(declared),
+                },
+            )
+        )
     return findings

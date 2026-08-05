@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import shutil
 import tempfile
 from collections import defaultdict
 from collections.abc import Callable
-from math import ceil
+from datetime import datetime, timedelta
+from math import ceil, sqrt
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +58,7 @@ from smart_home_sim.domain.sensors import (
     ContactSensor,
     PirSensor,
     SensorErrorModel,
+    SensorFailureWindow,
     SensorModel,
     SensorTiming,
     TemperatureSensor,
@@ -741,6 +744,145 @@ def generate_home(
     return HomeGenerationResult(report=report, home=home)
 
 
+# Furniture a deployment fits a contact sensor to: everything with a door or a lid, the front door
+# aside since it is handled on its own. Keyed on the resource type the author declared, so the
+# inventory follows the home rather than the behaviour.
+CONTACT_INSTRUMENTED_TYPES = frozenset(
+    {"refrigerator", "storage_cabinet", "wardrobe", "washing_machine"}
+)
+
+# Interaction points a single motion sensor is expected to cover. A worktop, a sink and a stove
+# standing together are one zone; the table across the room is another.
+_POINTS_PER_ZONE = 3
+_MAX_ZONES_PER_ROOM = 4
+
+
+def _functional_zones(
+    region: HomeRegion,
+    points: list[InteractionPoint],
+) -> list[tuple[Point2D, Polygon2D]]:
+    """Split a room into bands across its longer axis, one motion sensor per occupied band.
+
+    One sensor per room reports every one of that room's activities as the same event, and the room
+    where the resident spends her day then swallows the dataset: on one eight-month horizon the
+    single kitchen sensor produced 67.3% of all observations while the balcony managed 0.3 a day.
+    Adding sensors alone does not fix it — the `dense` preset gives each of them the whole room as
+    coverage, so they report the same thing twice. What differentiates them is *restricted*
+    coverage, which is only meaningful once the room contains distinct places to stand: a kitchen
+    with nine interaction points has zones, a kitchen with a moka does not.
+
+    A grid rather than bands across one axis. Bands were tried first and separated too little: a
+    kitchen is furnished along its walls, so the fridge and the stove fell in the same strip and one
+    sensor still carried 63% of the log. Cutting both axes puts an appliance run and the table in
+    different cells. Reproducible from the geometry alone — no seed, no iteration, no tie to break.
+    """
+    xs = [vertex.x for vertex in region.boundary.vertices]
+    ys = [vertex.y for vertex in region.boundary.vertices]
+    minimum_x, maximum_x = min(xs), max(xs)
+    minimum_y, maximum_y = min(ys), max(ys)
+
+    zones = max(1, min(_MAX_ZONES_PER_ROOM, ceil(len(points) / _POINTS_PER_ZONE)))
+    columns = ceil(sqrt(zones))
+    rows = ceil(zones / columns)
+    width = (maximum_x - minimum_x) / columns
+    height = (maximum_y - minimum_y) / rows
+
+    placed: list[tuple[Point2D, Polygon2D]] = []
+    for row in range(rows):
+        for column in range(columns):
+            left = minimum_x + column * width
+            bottom = minimum_y + row * height
+            members = [
+                point
+                for point in points
+                # The far edge belongs to the last cell, so every point lands in exactly one.
+                if left <= point.position.x <= left + width
+                and bottom <= point.position.y <= bottom + height
+                and (column == 0 or point.position.x > left)
+                and (row == 0 or point.position.y > bottom)
+            ]
+            if not members:
+                continue
+            placed.append(
+                (
+                    Point2D(
+                        x=round(sum(item.position.x for item in members) / len(members), 4),
+                        y=round(sum(item.position.y for item in members) / len(members), 4),
+                    ),
+                    _rectangle(left, bottom, width, height),
+                )
+            )
+    return placed or [(_center(region.boundary), region.boundary)]
+
+
+def _poisson(fraction: float, mean: float) -> int:
+    """Inverse-transform sample of a Poisson count from one uniform fraction."""
+    if mean <= 0:
+        return 0
+    probability = math.exp(-mean)
+    cumulative = probability
+    count = 0
+    while fraction > cumulative and count < 200:
+        count += 1
+        probability *= mean / count
+        cumulative += probability
+    return count
+
+
+def _failure_windows(
+    sensor_id: str,
+    *,
+    seed: int,
+    policy: SensorDeploymentPolicy,
+    start: datetime,
+    end: datetime,
+) -> list[SensorFailureWindow]:
+    """When this node is off the air, decided once per sensor from the seed.
+
+    Two mechanisms, because they leave different marks in the data. A transient outage is a hole:
+    the sensor stops for an afternoon and comes back, and an algorithm that assumes continuous
+    coverage reads it as the resident having gone out. A battery death is a horizon: the node
+    reports nothing from that moment on, and every conclusion about that room afterwards rests on
+    the sensors that are left.
+
+    Both are ordinary in a real deployment and absent from every run this simulator has produced —
+    244 days out of 244 with every device healthy. Drawn from stable fractions rather than a
+    stream, so a sensor's fate depends on its own identity and not on how many sensors precede it.
+    """
+    span_years = max((end - start).total_seconds() / (365.25 * 86_400), 1e-9)
+    windows: list[tuple[datetime, datetime]] = []
+
+    death_probability = 1 - (1 - policy.battery_death_probability_per_year) ** span_years
+    if _stable_fraction(str(seed), sensor_id, "battery-death") < death_probability:
+        # Never in the opening tenth: a node that dies immediately is indistinguishable from one
+        # that was never deployed, and says nothing a shorter horizon would not have said.
+        position = 0.1 + 0.9 * _stable_fraction(str(seed), sensor_id, "battery-death-at")
+        windows.append((start + (end - start) * position, end))
+
+    # Poisson rather than the rate rounded off. Rounding gave every sensor of an eight-month run
+    # exactly four outages, which is its own tell: real counts spread, and some nodes are simply
+    # lucky. The durations spread for the same reason — a dropped packet and a router left off over
+    # a weekend are both "an outage".
+    expected = policy.transient_outages_per_year * span_years
+    outages = _poisson(_stable_fraction(str(seed), sensor_id, "outage-count"), expected)
+    for index in range(outages):
+        position = _stable_fraction(str(seed), sensor_id, f"outage-at:{index}")
+        spread = _stable_fraction(str(seed), sensor_id, f"outage-for:{index}")
+        duration = timedelta(hours=policy.transient_outage_hours * (0.25 + 2.5 * spread**2))
+        opens = start + max(end - start - duration, timedelta(0)) * position
+        windows.append((opens, min(opens + duration, end)))
+
+    # The contract refuses overlapping windows, and an outage inside a dead node's silence is not
+    # a second event anyway: merge whatever collides.
+    merged: list[tuple[datetime, datetime]] = []
+    for opens, closes in sorted(windows):
+        if merged and opens <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], closes))
+        else:
+            merged.append((opens, closes))
+    return [SensorFailureWindow(starts_at=opens, ends_at=closes) for opens, closes in merged]
+
+
 def deploy_sensors(
     bundle: SimulationBundle,
     policy: SensorDeploymentPolicy | None = None,
@@ -771,7 +913,34 @@ def deploy_sensors(
             clock_drift_ppm=round(drift, 6),
         )
 
+    points_by_region: dict[str, list[InteractionPoint]] = defaultdict(list)
+    for point in home.interaction_points:
+        points_by_region[point.region_id].append(point)
+
     for region in selected:
+        if policy.preset == "functional_zones":
+            zones = _functional_zones(region, points_by_region.get(region.region_id, []))
+            for number, (position, coverage) in enumerate(zones, start=1):
+                sensor_id = (
+                    f"pir_{region.region_id}_{number}"
+                    if len(zones) > 1
+                    else (f"pir_{region.region_id}")
+                )
+                sensors.append(
+                    PirSensor(
+                        sensor_id=sensor_id,
+                        position=position,
+                        region_ids=[region.region_id],
+                        coverage=coverage,
+                        hold_milliseconds=policy.pir_hold_milliseconds,
+                        hold_log_sigma=policy.pir_hold_log_sigma,
+                        timing=sensor_timing(
+                            sensor_id, cooldown_milliseconds=policy.pir_cooldown_milliseconds
+                        ),
+                        error_model=pir_error,
+                    )
+                )
+            continue
         positions = [_center(region.boundary)]
         if policy.preset == "dense":
             vertices = region.boundary.vertices
@@ -800,16 +969,20 @@ def deploy_sensors(
                 )
             )
     entities = {item.entity_id: item for item in home.entities}
-    state_contact_entity_ids = {
-        capability.provider_id
-        for binding in bundle.action_bindings
-        if binding.action_type in {"open", "close"}
-        for capability in binding.capability_bindings
-        if capability.provider_type == "entity"
-        and not capability.provider_id.startswith("service_")
-        and capability.provider_id != "entrance_door"
-    }
-    contact_entities = [entities[entity_id] for entity_id in sorted(state_contact_entity_ids)]
+    # Instrumented because they have a door, not because the script happens to open them.
+    #
+    # These used to be derived from the action bindings: a cupboard nobody opened in the authored
+    # behaviour got no sensor at all. That is wrong twice over. An installer fits the reed switch
+    # before the study begins, so eight months of silence from the medicine cabinet *is a
+    # measurement* — here it was indistinguishable from never having been instrumented. And the
+    # sensor list itself became a summary of the resident's habits: reading `contact_wardrobe` in
+    # the inventory told you the wardrobe gets used before you looked at a single event, which is
+    # the same oracle leak as shipping the noise model in the observable log.
+    contact_entities = [
+        entity
+        for entity in sorted(home.entities, key=lambda item: item.entity_id)
+        if entity.entity_type in CONTACT_INSTRUMENTED_TYPES
+    ]
     if policy.preset == "minimal":
         contact_entities = []
     points = {item.interaction_point_id: item.position for item in home.interaction_points}
@@ -904,6 +1077,23 @@ def deploy_sensors(
                 ),
             )
         )
+    if policy.battery_death_probability_per_year > 0 or policy.transient_outages_per_year > 0:
+        window = bundle.scenario.simulation_window
+        sensors = [
+            sensor.model_copy(
+                update={
+                    "failure_windows": _failure_windows(
+                        sensor.sensor_id,
+                        seed=bundle.seed,
+                        policy=policy,
+                        start=window.start,
+                        end=window.end,
+                    )
+                }
+            )
+            for sensor in sensors
+        ]
+
     model = SensorModel(
         sensor_model_id=f"{home.home_id}__{policy.preset}__sensors",
         sensor_model_version="1.2.0" if policy.policy_version == "1.2.0" else "1.1.0",

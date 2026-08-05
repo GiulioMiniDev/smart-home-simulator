@@ -37,6 +37,10 @@ async function requestWithSession(path: string, options: RequestInit = {}): Prom
   return fetch(`/api${path}`, { ...options, headers: refreshedHeaders });
 }
 
+// How long a started download keeps its object URL. Long enough for the browser to have taken the
+// bytes, short enough that the blob does not sit in memory for the session.
+const RELEASE_DOWNLOAD_AFTER_MS = 60_000;
+
 /** The server accepted the connection and then vanished, or was never there. */
 export const SERVER_UNREACHABLE = "SERVER_UNREACHABLE";
 
@@ -117,8 +121,14 @@ export async function download(path: string, fallbackName: string): Promise<void
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  // Attached, and the object URL released later. Revoking it on the line after `click()` is a race
+  // the browser loses on anything large: the download has been asked for but not yet started
+  // reading, so invalidating the URL kills it silently. A small file wins the race and a 30 MB
+  // export archive does not, which is why this only ever failed on the complete dataset.
+  document.body.append(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), RELEASE_DOWNLOAD_AFTER_MS);
 }
 
 export function clearSession(): void {

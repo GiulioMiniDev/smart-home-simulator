@@ -42,6 +42,19 @@ ROLE_SOURCES: dict[str, tuple[str, str]] = {
     "habit_ground_truth": ("scenario", "extensions.habitGroundTruth.habits.item"),
 }
 
+# Fields the pipeline keeps internally but must not publish, by export role.
+#
+# `quality` says whether the noise model disturbed a reading. It is legitimate inside the
+# simulator — the replay view uses it — but no real sensor log contains a column declaring which
+# of its own readings are unreliable. Shipping it in the observable half hands the evaluator part
+# of the answer: on one eight month run, 27.7% of readings arrived pre-labelled as noisy. It stays
+# in `observable-sensor-log.json`, whose 1.0.0 contract is frozen and whose consumers rely on it,
+# and is withheld from the dataset a researcher receives. The oracle keeps carrying the causal
+# story, which is where an admission of noise belongs.
+WITHHELD_FIELDS: dict[str, frozenset[str]] = {
+    "observable": frozenset({"quality"}),
+}
+
 TIME_FIELDS = (
     "observedAt",
     "actualStart",
@@ -82,15 +95,20 @@ def _record_time(record: dict[str, Any]) -> datetime | None:
 
 
 def _filtered(
-    records: Iterable[dict[str, Any]], request: ExportRequest
+    records: Iterable[dict[str, Any]], request: ExportRequest, role: str = ""
 ) -> Iterator[dict[str, Any]]:
+    withheld = WITHHELD_FIELDS.get(role, frozenset())
     for record in records:
         at = _record_time(record)
         if at is not None and request.include_start and at < request.include_start:
             continue
         if at is not None and request.include_end and at > request.include_end:
             continue
-        yield record
+        yield (
+            {key: value for key, value in record.items() if key not in withheld}
+            if withheld
+            else record
+        )
 
 
 def _jsonl(path: Path, records: Iterable[dict[str, Any]]) -> int:
@@ -198,7 +216,34 @@ class ExportService:
     def __init__(self, workspace: WorkspaceService) -> None:
         self.workspace = workspace
 
+    def _reusable_export(self, request: ExportRequest) -> ExportManifest | None:
+        """The identical export of the same run, if one is still on disk.
+
+        Exporting is deterministic: the same run and the same request produce the same files. So a
+        second request for them was writing a second copy — clicking the download button twice cost
+        half a gigabyte, and a workspace that had exported eleven times was holding 4.5 GB of which
+        roughly 4 was duplicates.
+
+        Falls through when the directory has been deleted, which is how a researcher reclaims the
+        space: the next export simply rebuilds it.
+        """
+        with self.workspace.transaction() as connection:
+            rows = connection.execute(
+                """SELECT export_id FROM exports
+                   WHERE run_id = ? AND request_json = ?
+                   ORDER BY created_at DESC""",
+                (request.run_id, request.model_dump_json(by_alias=True)),
+            ).fetchall()
+        for row in rows:
+            manifest_path = self.workspace.exports_path / row["export_id"] / "manifest.json"
+            if manifest_path.is_file():
+                return ExportManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+        return None
+
     def export(self, request: ExportRequest) -> ExportManifest:
+        existing = self._reusable_export(request)
+        if existing is not None:
+            return existing
         artifacts = self.workspace.run_artifacts(request.run_id)
         # A merged horizon run has no single bundle — its days were bundled and executed
         # independently — so its horizon manifest carries the equivalent source provenance.
@@ -228,7 +273,7 @@ class ExportService:
                 source_path = self.workspace.artifact_path(source.artifact_id)
                 for output_format in request.formats:
                     output = staging / f"{role}.{output_format.value}"
-                    records = _filtered(_items(source_path, prefix), request)
+                    records = _filtered(_items(source_path, prefix), request, role)
                     if output_format is ExportFormat.jsonl:
                         count = _jsonl(output, records)
                         media_type = "application/x-ndjson"
@@ -324,12 +369,19 @@ class ExportService:
         return manifest
 
     def archive_export(self, export_id: str) -> Path:
-        self.verify_manifest(export_id)
         export_dir = (self.workspace.exports_path / export_id).resolve()
         zip_path = (self.workspace.exports_path / f"{export_id}.zip").resolve()
         if not zip_path.is_file():
+            # Verified when the archive is built, not on every request for it. A complete dataset is
+            # a third of a gigabyte across thirty-odd files, so re-hashing all of it to hand back an
+            # archive that already exists is work nobody asked for; the archive itself is registered
+            # as an artifact and carries its own digest.
+            self.verify_manifest(export_id)
             temporary = zip_path.with_name(f".{zip_path.name}.{uuid4().hex}.tmp")
-            with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
+            # Level 1 rather than the default 6: on one 350 MB export the archive took 6.3 s at
+            # level 6 and 3.3 s at level 1, for 33 MB instead of 26. Half the wait before the
+            # browser sees its first byte is worth 7 MB on a local download.
+            with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
                 for entry in sorted(export_dir.rglob("*")):
                     if entry.is_file():
                         archive.write(entry, arcname=f"{export_id}/{entry.relative_to(export_dir)}")
