@@ -506,3 +506,74 @@ def validate_rooms_are_furnished(scenario: Scenario) -> list[PreflightFinding]:
             )
         )
     return findings
+
+
+# Somewhere a person can plausibly settle for a while. A corridor with a shoe cabinet is not.
+_DWELLABLE_RESOURCE_TYPES = frozenset(
+    {"armchair", "bed", "bench", "chair", "couch", "recliner", "sofa", "stool"}
+)
+
+
+def validate_activities_do_not_park_the_resident(
+    scenario: Scenario, package: PersonalProcessPackage
+) -> list[PreflightFinding]:
+    """Where does a process model leave the resident standing when it ends?
+
+    Whatever room the last action reaches is where she stays until the next activity moves her,
+    and that is most of a day. On one authored horizon eight of twenty-two models ended with
+    `move_to hallway`, so the resident spent 4.1 hours a day standing in a corridor furnished with
+    a shoe cabinet.
+
+    Nothing reported it because standing still used to be invisible: motion pulses came only from
+    movements and from catalogued actions, so a parked resident emitted nothing and the corridor
+    looked quiet. Once presence began to register, those two corridor sensors carried 23% of the
+    whole dataset — the defect had been there all along, silently distorting where the resident
+    was, and only the sensor model had been hiding it.
+
+    A warning, not a rejection: ending in a hallway is fine when the next activity starts there.
+    Ending *every* activity there is an author having declined to say where the resident lives
+    between them.
+    """
+    dwellable_rooms = {
+        resource.location_id
+        for resource in scenario.resources
+        if resource.resource_type in _DWELLABLE_RESOURCE_TYPES
+    }
+    rooms = {
+        location.location_id
+        for location in scenario.locations
+        if location.kind is LocationKind.room
+    }
+
+    findings: list[PreflightFinding] = []
+    for index, model in enumerate(package.process_models):
+        terminal = {edge.source_node_id for edge in model.edges if edge.target_node_id == "end"}
+        nodes = {node.node_id: node for node in model.nodes}
+        for node_id in sorted(terminal):
+            node = nodes.get(node_id)
+            if node is None or node.action_type != "move_to":
+                continue
+            argument = node.arguments.get("destination")
+            destination = getattr(argument, "value", None) if argument is not None else None
+            if not isinstance(destination, str):
+                continue
+            if destination not in rooms or destination in dwellable_rooms:
+                continue
+            findings.append(
+                PreflightFinding(
+                    path=f"$.processModels[{index}].nodes",
+                    message=(
+                        f"Process model {model.process_model_id!r} ends by moving the resident to "
+                        f"{destination!r}, which declares nothing to sit or lie on. She stays "
+                        "there until the next activity moves her, so a room meant to be crossed "
+                        "becomes where she spends her day and its sensors dominate the log. End "
+                        "the model where she would actually settle, or leave her where she is."
+                    ),
+                    details={
+                        "processModelId": model.process_model_id,
+                        "destination": destination,
+                        "nodeId": node_id,
+                    },
+                )
+            )
+    return findings

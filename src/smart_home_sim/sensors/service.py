@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import bisect
 import hashlib
 import json
 import math
 import random
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -16,8 +18,12 @@ from shapely.geometry import Point as ShapelyPoint
 from shapely.ops import nearest_points, unary_union
 
 from smart_home_sim.compiler.service import canonical_sha256
-from smart_home_sim.domain.environment import SimulationBundle
-from smart_home_sim.domain.execution import ExecutionTrace, StateTransition
+from smart_home_sim.domain.environment import Point2D, SimulationBundle
+from smart_home_sim.domain.execution import (
+    ExecutionTrace,
+    MovementExecution,
+    StateTransition,
+)
 from smart_home_sim.domain.sensors import (
     ContactSensor,
     ObservableSensorLog,
@@ -72,6 +78,22 @@ PIR_ACTIVITY_ACTION_TYPES = frozenset(
 )
 PIR_RETRIGGER_MEAN_SECONDS = 18.0
 PIR_RETRIGGER_LOG_SIGMA = 0.6
+# A passive infrared sensor answers "is a warm body moving in front of me", not "is the resident
+# executing a catalogued action". Pulses used to come only from movements and from the action types
+# above, so a resident who was simply *there* — asleep, sitting between activities, waiting — was
+# invisible: the bedroom produced 1.4 events per hour of occupancy against Aruba's 158, and the
+# corridor where she stands between activities produced 11. Presence pulses close that gap.
+#
+# The rate is keyed on posture because that is what governs how much a still person moves: someone
+# lying down shifts every few minutes, someone seated fidgets, someone on their feet almost always
+# trips a detector. These are plausibility anchors, not values fitted to any one house.
+PIR_PRESENCE_MEAN_SECONDS = {"lying": 360.0, "sitting": 90.0}
+PIR_PRESENCE_DEFAULT_MEAN_SECONDS = 45.0
+PIR_PRESENCE_LOG_SIGMA = 0.7
+# Floor on how close together two distinguishable shifts of one body can be. A property of the
+# person, not of any device, now that the pulse train is drawn once and shared: a sensor's own
+# hold only decides how long its output stays high afterwards.
+PIR_MOTION_REFRACTORY_SECONDS = 2.0
 TEMPERATURE_DAILY_AMPLITUDE_CELSIUS = 1.0
 TEMPERATURE_QUANTUM_CELSIUS = 0.5
 
@@ -92,6 +114,10 @@ class Candidate:
     group_start: bool = False
     applies_cooldown: bool = True
     applies_false_negative: bool = True
+    # Set when measurement noise has already been folded into `value`. A thermometer decides
+    # whether to report from what it actually read, so for on-change temperature the noise is
+    # applied at sampling time and the projection stage must not add a second helping.
+    noise_applied: bool = False
 
 
 @dataclass
@@ -188,10 +214,158 @@ def _causal_context(
     return (), (), ()
 
 
+@dataclass(frozen=True)
+class _MotionPulse:
+    """One instant at which a body moved somewhere, before any sensor is consulted.
+
+    Motion happens to the *resident*, not to a device: whoever can see her sees the same shift of
+    the same body at the same moment. Drawing the pulse train separately inside each sensor made
+    the detectors statistically independent, so two overlapping cones covering one person fired at
+    unrelated times. Measured against CASAS Aruba, more than one sensor fires within two seconds
+    29.5% of the time there and 5.1% here — even though the resident stands under two coverages
+    32.5% of the time. The geometry was already right; only the correlation was missing.
+    """
+
+    at: datetime
+    until: datetime
+    position: Point2D
+    region_id: str
+    key: str
+    cause_type: str
+    cause_ids: tuple[str, ...]
+    resident_ids: tuple[str, ...]
+    activity_ids: tuple[str, ...]
+    action_ids: tuple[str, ...]
+
+
+def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_MotionPulse]:
+    """Every instant the resident moved, from manipulating something or from simply being there.
+
+    Built once per trace and shared by every sensor, which is what makes overlapping coverage
+    behave like overlapping coverage.
+    """
+    entities = {item.entity_id: item for item in bundle.home_model.entities}
+    points = {item.interaction_point_id: item for item in bundle.home_model.interaction_points}
+    postures_by_actor = _postures(trace)
+    by_actor_actions: dict[str, list[Any]] = defaultdict(list)
+    for action in trace.action_executions:
+        by_actor_actions[action.actor_id].append(action)
+    for series in by_actor_actions.values():
+        series.sort(key=lambda item: item.started_at)
+
+    pulses: list[_MotionPulse] = []
+
+    # Working at something: the hands move, and fast.
+    retrigger: dict[str, random.Random] = {}
+    for action in trace.action_executions:
+        if action.action_type not in PIR_ACTIVITY_ACTION_TYPES or action.status != "completed":
+            continue
+        entity = next(
+            (
+                entities[provider_id]
+                for provider_id in action.provider_ids
+                if provider_id in entities
+            ),
+            None,
+        )
+        point = points.get(entity.interaction_point_id) if entity is not None else None
+        if point is None:
+            continue
+        stream = retrigger.setdefault(
+            action.actor_id, _stream(trace.seed, f"actor:{action.actor_id}", "activity-motion")
+        )
+        at = action.started_at
+        index = 0
+        # Strictly before the end: a pulse starting exactly on `ended_at` has its OFF clamped to
+        # the same instant, and a zero-length pulse is both meaningless and, until the
+        # reconciliation was hardened below, fatal — one of them latched a sensor ON for the
+        # remaining twenty-five days of a month.
+        while at < action.ended_at:
+            pulses.append(
+                _MotionPulse(
+                    at=at,
+                    until=action.ended_at,
+                    position=point.position,
+                    region_id=point.region_id,
+                    key=f"{action.action_execution_id}:pir:{index}",
+                    cause_type="action_execution",
+                    cause_ids=(action.action_execution_id,),
+                    resident_ids=(action.actor_id,),
+                    activity_ids=(action.activity_execution_id,),
+                    action_ids=(action.action_execution_id,),
+                )
+            )
+            index += 1
+            interval = stream.lognormvariate(
+                math.log(PIR_RETRIGGER_MEAN_SECONDS) - PIR_RETRIGGER_LOG_SIGMA**2 / 2,
+                PIR_RETRIGGER_LOG_SIGMA,
+            )
+            at += timedelta(seconds=max(PIR_MOTION_REFRACTORY_SECONDS, min(60.0, interval)))
+
+    # Simply being there: still, but never perfectly still.
+    presence: dict[str, random.Random] = {}
+    for dwell_index, dwell in enumerate(_dwells(trace)):
+        stream = presence.setdefault(
+            dwell.actor_id, _stream(trace.seed, f"actor:{dwell.actor_id}", "presence-motion")
+        )
+        at = dwell.started_at
+        index = 0
+        while at < dwell.ended_at:
+            # The oracle must name an executed cause. A body shifting in bed is not a modelled
+            # inter-room movement, but there is almost always an action running — sleeping,
+            # waiting, resting — which the whitelist above simply refused to look at. Naming it
+            # keeps every observation traceable to what the resident was doing, which is the whole
+            # point of the observable/oracle split. Only in a true gap between activities does the
+            # pulse fall back to the movement that parked her here.
+            ongoing = _ongoing_action(by_actor_actions[dwell.actor_id], at)
+            if ongoing is not None:
+                cause_type = "action_execution"
+                cause_ids: tuple[str, ...] = (ongoing.action_execution_id,)
+                activity_ids: tuple[str, ...] = (ongoing.activity_execution_id,)
+                action_ids: tuple[str, ...] = (ongoing.action_execution_id,)
+            else:
+                cause_type = "movement"
+                cause_ids = (dwell.movement_id,)
+                activity_ids = ()
+                action_ids = ()
+            pulses.append(
+                _MotionPulse(
+                    at=at,
+                    until=dwell.ended_at,
+                    position=dwell.position,
+                    region_id=dwell.region_id,
+                    key=f"dwell:{dwell_index}:{index}",
+                    cause_type=cause_type,
+                    cause_ids=cause_ids,
+                    resident_ids=(dwell.actor_id,),
+                    activity_ids=activity_ids,
+                    action_ids=action_ids,
+                )
+            )
+            index += 1
+            # Re-read the posture at every pulse. Sampling it once, when the dwell begins, made the
+            # whole night run at the standing rate: the resident walks into the bedroom on her feet
+            # and lies down a moment *later*, so the posture at the dwell's first instant is never
+            # the one she holds for the following eight hours.
+            mean_seconds = PIR_PRESENCE_MEAN_SECONDS.get(
+                _posture_at(postures_by_actor[dwell.actor_id], at),
+                PIR_PRESENCE_DEFAULT_MEAN_SECONDS,
+            )
+            interval = stream.lognormvariate(
+                math.log(mean_seconds) - PIR_PRESENCE_LOG_SIGMA**2 / 2,
+                PIR_PRESENCE_LOG_SIGMA,
+            )
+            at += timedelta(seconds=max(PIR_MOTION_REFRACTORY_SECONDS, interval))
+
+    pulses.sort(key=lambda item: (item.at, item.key))
+    return pulses
+
+
 def _pir_candidates(
     trace: ExecutionTrace,
     bundle: SimulationBundle,
     sensor: PirSensor,
+    motion: list[_MotionPulse],
     *,
     enhanced: bool,
 ) -> list[Candidate]:
@@ -265,82 +439,142 @@ def _pir_candidates(
     if not enhanced:
         return candidates
 
-    entities = {item.entity_id: item for item in bundle.home_model.entities}
-    points = {item.interaction_point_id: item for item in bundle.home_model.interaction_points}
-    retrigger = _stream(trace.seed, sensor.sensor_id, "activity-pir-timing")
-    for action in trace.action_executions:
-        if action.action_type not in PIR_ACTIVITY_ACTION_TYPES or action.status != "completed":
-            continue
-        entity = next(
-            (
-                entities[provider_id]
-                for provider_id in action.provider_ids
-                if provider_id in entities
-            ),
-            None,
-        )
-        point = points.get(entity.interaction_point_id) if entity is not None else None
-        if (
-            point is None
-            or point.region_id not in sensor.region_ids
-            or not coverage.covers(ShapelyPoint(point.position.x, point.position.y))
+    # One shared motion timeline, many detectors. Each sensor answers only the geometric question
+    # — was that shift of that body inside my coverage — so two overlapping cones now report the
+    # same instant, which is what a pair of real detectors does and what independent per-sensor
+    # draws could never produce. Overlaps with each other are harmless: the binary reconciliation
+    # collapses them into one coherent ON/OFF stream.
+    for pulse in motion:
+        if pulse.region_id not in sensor.region_ids or not coverage.covers(
+            ShapelyPoint(pulse.position.x, pulse.position.y)
         ):
             continue
-        pulse_at = action.started_at
-        pulse_index = 0
-        # Strictly before the end: a pulse starting exactly on `ended_at` has its OFF clamped to
-        # the same instant, and a zero-length pulse is both meaningless and, until the
-        # reconciliation was hardened below, fatal — one of them latched a sensor ON for the
-        # remaining twenty-five days of a month.
-        while pulse_at < action.ended_at:
-            group_id = f"{action.action_execution_id}:pir:{pulse_index}"
-            hold = timedelta(
-                milliseconds=_lognormal_milliseconds(
-                    trace,
-                    sensor.sensor_id,
-                    f"pir-hold:{group_id}",
-                    sensor.hold_milliseconds,
-                    sensor.hold_log_sigma,
+        group_id = f"{pulse.key}:{sensor.sensor_id}"
+        hold = timedelta(
+            milliseconds=_lognormal_milliseconds(
+                trace,
+                sensor.sensor_id,
+                f"pir-hold:{group_id}",
+                sensor.hold_milliseconds,
+                sensor.hold_log_sigma,
+            )
+        )
+        common = dict(
+            origin="simulated_cause",
+            cause_type=pulse.cause_type,
+            cause_ids=pulse.cause_ids,
+            resident_ids=pulse.resident_ids,
+            activity_ids=pulse.activity_ids,
+            action_ids=pulse.action_ids,
+            group_id=group_id,
+        )
+        candidates.extend(
+            [
+                Candidate(
+                    at=pulse.at,
+                    value="ON",
+                    measurement="motion",
+                    unit=None,
+                    group_start=True,
+                    **common,
+                ),
+                Candidate(
+                    at=min(pulse.at + hold, pulse.until),
+                    value="OFF",
+                    measurement="motion",
+                    unit=None,
+                    applies_cooldown=False,
+                    applies_false_negative=False,
+                    **common,
+                ),
+            ]
+        )
+    return candidates
+
+
+@dataclass
+class _Dwell:
+    """Where an actor stayed put, and for how long, between two movements."""
+
+    actor_id: str
+    position: Point2D
+    region_id: str
+    started_at: datetime
+    ended_at: datetime
+    posture: str
+    movement_id: str
+
+
+def _posture_at(postures: list[tuple[datetime, str]], moment: datetime) -> str:
+    """Last posture the actor adopted before `moment`, or standing if none is recorded yet."""
+    index = bisect.bisect_right(postures, (moment, "￿")) - 1
+    return postures[index][1] if index >= 0 else "standing"
+
+
+def _postures(trace: ExecutionTrace) -> dict[str, list[tuple[datetime, str]]]:
+    """Each actor's posture changes, in order, so a moment can be looked up by bisection."""
+    postures: dict[str, list[tuple[datetime, str]]] = defaultdict(list)
+    for action in trace.action_executions:
+        if action.action_type != "change_posture":
+            continue
+        value = action.resolved_arguments.get("posture")
+        if isinstance(value, str):
+            postures[action.actor_id].append((action.ended_at, value))
+    for series in postures.values():
+        series.sort()
+    return postures
+
+
+def _ongoing_action(actions: list[Any], moment: datetime) -> Any | None:
+    """Innermost action of one actor covering `moment`, latest start wins. `actions` is sorted."""
+    index = bisect.bisect_right([item.started_at for item in actions], moment) - 1
+    while index >= 0:
+        action = actions[index]
+        if action.ended_at > moment:
+            return action
+        # Actions of one actor nest rather than interleave, but a sibling that already finished can
+        # sit between `moment` and the one still running, so keep walking back a short way.
+        if (moment - action.ended_at).total_seconds() > 3600:
+            break
+        index -= 1
+    return None
+
+
+def _dwells(trace: ExecutionTrace) -> list[_Dwell]:
+    """Reconstruct where each actor was standing still, from the gaps between their movements.
+
+    A movement says where the resident went; nothing said where she *remained*, which is most of a
+    day. The final waypoint of one movement and the start of the next bracket a stretch during
+    which she is at a fixed point — asleep, seated, or waiting — and a detector covering that point
+    keeps firing throughout it.
+    """
+    by_actor: dict[str, list[MovementExecution]] = defaultdict(list)
+    for movement in trace.movements:
+        by_actor[movement.actor_id].append(movement)
+    postures = _postures(trace)
+
+    dwells: list[_Dwell] = []
+    for actor_id, movements in by_actor.items():
+        movements = sorted(movements, key=lambda item: item.started_at)
+        for index, movement in enumerate(movements):
+            last = movement.waypoints[-1]
+            ends_at = (
+                movements[index + 1].started_at if index + 1 < len(movements) else trace.ended_at
+            )
+            if ends_at <= movement.ended_at:
+                continue
+            dwells.append(
+                _Dwell(
+                    actor_id=actor_id,
+                    position=last.position,
+                    region_id=last.region_id,
+                    started_at=movement.ended_at,
+                    ended_at=ends_at,
+                    posture=_posture_at(postures[actor_id], movement.ended_at),
+                    movement_id=movement.movement_id,
                 )
             )
-            common = dict(
-                origin="simulated_cause",
-                cause_type="action_execution",
-                cause_ids=(action.action_execution_id,),
-                resident_ids=(action.actor_id,),
-                activity_ids=(action.activity_execution_id,),
-                action_ids=(action.action_execution_id,),
-                group_id=group_id,
-            )
-            candidates.extend(
-                [
-                    Candidate(
-                        at=pulse_at,
-                        value="ON",
-                        measurement="motion",
-                        unit=None,
-                        group_start=True,
-                        **common,
-                    ),
-                    Candidate(
-                        at=min(pulse_at + hold, action.ended_at),
-                        value="OFF",
-                        measurement="motion",
-                        unit=None,
-                        applies_cooldown=False,
-                        applies_false_negative=False,
-                        **common,
-                    ),
-                ]
-            )
-            pulse_index += 1
-            interval = retrigger.lognormvariate(
-                math.log(PIR_RETRIGGER_MEAN_SECONDS) - PIR_RETRIGGER_LOG_SIGMA**2 / 2,
-                PIR_RETRIGGER_LOG_SIGMA,
-            )
-            minimum_interval = sensor.hold_milliseconds / 1000 + 0.5
-            pulse_at += timedelta(seconds=max(minimum_interval, min(60.0, interval)))
-    return candidates
+    return dwells
 
 
 def _contact_candidates(trace: ExecutionTrace, sensor: ContactSensor) -> list[Candidate]:
@@ -533,6 +767,7 @@ def _temperature_candidates(
     trace: ExecutionTrace,
     bundle: SimulationBundle,
     sensor: TemperatureSensor,
+    seed: int,
     *,
     enhanced: bool,
 ) -> list[Candidate]:
@@ -554,6 +789,10 @@ def _temperature_candidates(
         source_adjustment = 0.0
         last_reported_value: float | None = None
         last_reported_at: datetime | None = None
+        # Same named stream the projection stage used to draw from, so a run that applies the
+        # noise here consumes it here instead — never in both places.
+        sampling_noise = _stream(seed, sensor.sensor_id, "measurement-noise")
+        noise_deviation = sensor.error_model.measurement_noise_standard_deviation
         while sample_at <= trace.ended_at:
             sample_transition: StateTransition | None = None
             while delta_index < len(deltas) and deltas[delta_index].at <= sample_at:
@@ -596,6 +835,13 @@ def _temperature_candidates(
                     2 * math.pi * (local_hour - 9) / 24
                 )
                 value = current + daily_component
+            # The firmware compares readings, and a reading carries the sensing element's noise.
+            # Applying it downstream in the projection made the device decide on a clean signal it
+            # never saw: the modelled envelope drifts by less than the 0.1 °C threshold over an
+            # hour, so half of every run's readings were bare heartbeats. Drawing here costs one
+            # variate per *sample* rather than per emitted record, which is what a real node does.
+            if noise_deviation > 0:
+                value += sampling_noise.gauss(0, noise_deviation)
             value = round(value / sensor.quantization_celsius) * sensor.quantization_celsius
             if sensor.reporting_mode == "on_change" and not _should_report(
                 value,
@@ -633,6 +879,7 @@ def _temperature_candidates(
                     value=round(value, 6),
                     measurement="temperature",
                     unit="celsius",
+                    noise_applied=noise_deviation > 0,
                     **common,
                 )
             )
@@ -857,16 +1104,17 @@ def _sensor_candidates(
     bundle: SimulationBundle,
     sensor: SensorDefinition,
     seed: int,
+    motion: list[_MotionPulse],
     *,
     enhanced: bool,
     realistic: bool,
 ) -> list[Candidate]:
     if isinstance(sensor, PirSensor):
-        nominal = _pir_candidates(trace, bundle, sensor, enhanced=enhanced)
+        nominal = _pir_candidates(trace, bundle, sensor, motion, enhanced=enhanced)
     elif isinstance(sensor, ContactSensor):
         nominal = _contact_candidates(trace, sensor)
     else:
-        nominal = _temperature_candidates(trace, bundle, sensor, enhanced=enhanced)
+        nominal = _temperature_candidates(trace, bundle, sensor, seed, enhanced=enhanced)
     candidates = sorted(
         [
             *nominal,
@@ -891,6 +1139,7 @@ def _project_sensor(
     bundle: SimulationBundle,
     sensor: SensorDefinition,
     seed: int,
+    motion: list[_MotionPulse],
     *,
     enhanced: bool,
     realistic: bool,
@@ -900,6 +1149,7 @@ def _project_sensor(
         bundle,
         sensor,
         seed,
+        motion,
         enhanced=enhanced,
         realistic=realistic,
     )
@@ -962,12 +1212,13 @@ def _project_sensor(
             + drift_milliseconds
         )
         value = candidate.value
-        noisy = candidate.origin == "false_positive"
+        noisy = candidate.origin == "false_positive" or candidate.noise_applied
         standard_deviation = sensor.error_model.measurement_noise_standard_deviation
         if (
             isinstance(sensor, TemperatureSensor)
             and isinstance(value, (int, float))
             and standard_deviation > 0
+            and not candidate.noise_applied
         ):
             noisy_value = float(value) + measurement_noise.gauss(0, standard_deviation)
             value = round(
@@ -1217,12 +1468,16 @@ def project_sensors(
     links: list[OracleObservationLink] = []
     sensor_summaries: list[SensorProjectionSensorSummary] = []
     try:
+        # Once for the whole home, before any sensor: the resident's motion is a fact about her,
+        # and every detector that can see a given shift must report that same instant.
+        motion = _motion_pulses(trace, bundle) if enhanced else []
         for sensor in model.sensors:
             sensor_records, sensor_links, counters = _project_sensor(
                 trace,
                 bundle,
                 sensor,
                 trace.seed,
+                motion,
                 enhanced=enhanced,
                 realistic=realistic,
             )

@@ -1,0 +1,4409 @@
+{
+  "documentType": "horizon_authoring_bundle",
+  "schemaVersion": "1.0.0",
+  "outline": {
+    "documentType": "horizon_outline",
+    "schemaVersion": "1.0.0",
+    "outlineId": "elena_moretti_horizon_2026_2027",
+    "title": "Un anno domestico di Elena Moretti",
+    "residentId": "resident_elena_moretti",
+    "timeZone": "Europe/Rome",
+    "startDate": "2026-08-05",
+    "months": 12,
+    "note": "Outline annuale strutturale; i giorni concreti sono demandati all'espansore deterministico.",
+    "world": {
+      "homeModel": {
+        "referenceId": "synthetic_elena_apartment_1970s",
+        "version": "1.0.0"
+      },
+      "locations": [
+        {
+          "locationId": "balcony",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Balcone ampio"
+          }
+        },
+        {
+          "locationId": "bathroom",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Bagno"
+          }
+        },
+        {
+          "locationId": "bedroom",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Camera da letto",
+            "targetTemperatureC": 18
+          }
+        },
+        {
+          "locationId": "kitchen",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Cucina"
+          }
+        },
+        {
+          "locationId": "living_room",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Soggiorno"
+          }
+        },
+        {
+          "locationId": "outdoors",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Esterno generico"
+          }
+        },
+        {
+          "locationId": "study",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Studio domestico senza cibo"
+          }
+        },
+        {
+          "locationId": "hallway",
+          "kind": "room",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Corridoio"
+          }
+        },
+        {
+          "locationId": "supermarket",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Supermercato"
+          }
+        },
+        {
+          "locationId": "neighborhood_route",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Percorso di quartiere"
+          }
+        },
+        {
+          "locationId": "relative_home",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Casa di parenti"
+          }
+        },
+        {
+          "locationId": "neighborhood_bar",
+          "kind": "external",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Locale di quartiere"
+          }
+        },
+        {
+          "locationId": "home_entrance",
+          "kind": "transit",
+          "memberLocationIds": [],
+          "attributes": {
+            "label": "Ingresso di casa"
+          }
+        },
+        {
+          "locationId": "home_indoor",
+          "kind": "composite",
+          "memberLocationIds": [
+            "balcony",
+            "bathroom",
+            "bedroom",
+            "kitchen",
+            "living_room",
+            "study",
+            "hallway"
+          ],
+          "attributes": {
+            "label": "Spazi interni domestici"
+          }
+        }
+      ],
+      "startLocationId": "bedroom",
+      "resources": [
+        {
+          "resourceId": "bed_main",
+          "resourceType": "bed",
+          "locationId": "bedroom",
+          "capacity": 1,
+          "attributes": {
+            "comfort": "memory_foam_pillow"
+          }
+        },
+        {
+          "resourceId": "wardrobe_main",
+          "resourceType": "wardrobe",
+          "locationId": "bedroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "bedroom_chair",
+          "resourceType": "chair",
+          "locationId": "bedroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_fridge",
+          "resourceType": "refrigerator",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_stove",
+          "resourceType": "stove",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_sink",
+          "resourceType": "sink",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_table",
+          "resourceType": "table",
+          "locationId": "kitchen",
+          "capacity": 2,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_chair_1",
+          "resourceType": "chair",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_chair_2",
+          "resourceType": "chair",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_storage",
+          "resourceType": "storage_cabinet",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "kitchen_moka",
+          "resourceType": "moka_coffee_maker",
+          "locationId": "kitchen",
+          "capacity": 1,
+          "attributes": {
+            "note": "Usata saltuariamente; la bevanda preferita resta il tè."
+          }
+        },
+        {
+          "resourceId": "living_sofa",
+          "resourceType": "sofa",
+          "locationId": "living_room",
+          "capacity": 3,
+          "attributes": {}
+        },
+        {
+          "resourceId": "living_table",
+          "resourceType": "table",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "living_chair",
+          "resourceType": "chair",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "living_television",
+          "resourceType": "television",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {
+            "note": "Non usata come sottofondo."
+          }
+        },
+        {
+          "resourceId": "living_radio",
+          "resourceType": "radio",
+          "locationId": "living_room",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "bath_toilet",
+          "resourceType": "toilet",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "bath_shower",
+          "resourceType": "shower",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "bath_washbasin",
+          "resourceType": "washbasin",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "bath_washing_machine",
+          "resourceType": "washing_machine",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "bath_storage",
+          "resourceType": "storage_cabinet",
+          "locationId": "bathroom",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "study_table",
+          "resourceType": "table",
+          "locationId": "study",
+          "capacity": 1,
+          "attributes": {
+            "note": "Scrivania regolabile in altezza."
+          }
+        },
+        {
+          "resourceId": "study_chair",
+          "resourceType": "chair",
+          "locationId": "study",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "hall_storage",
+          "resourceType": "storage_cabinet",
+          "locationId": "hallway",
+          "capacity": 1,
+          "attributes": {
+            "note": "Telefono e oggetti da uscita."
+          }
+        },
+        {
+          "resourceId": "balcony_chair",
+          "resourceType": "chair",
+          "locationId": "balcony",
+          "capacity": 1,
+          "attributes": {}
+        },
+        {
+          "resourceId": "balcony_table",
+          "resourceType": "table",
+          "locationId": "balcony",
+          "capacity": 1,
+          "attributes": {}
+        }
+      ],
+      "externalPeople": [
+        {
+          "externalPersonId": "relative_anna",
+          "displayName": "Anna",
+          "relationshipToResidents": {
+            "resident_elena_moretti": "sorella"
+          },
+          "attributes": {}
+        },
+        {
+          "externalPersonId": "friend_lucia",
+          "displayName": "Lucia",
+          "relationshipToResidents": {
+            "resident_elena_moretti": "amica"
+          },
+          "attributes": {}
+        }
+      ],
+      "residentFacts": {
+        "at_home": true,
+        "age": 34,
+        "household": "single_person",
+        "mobility": {
+          "profile": "independent",
+          "walkingSpeedMetersPerSecond": 1.25
+        },
+        "preferences": {
+          "chronotype": "morning_leaning",
+          "breakfastDrink": "tea"
+        },
+        "health": {
+          "conditions": [
+            "chronic_cervicalgia",
+            "tendency_to_low_blood_pressure",
+            "mild_lactose_intolerance"
+          ]
+        },
+        "fatigue": 0.25,
+        "hunger": 0.2,
+        "stress": 0.25,
+        "socialNeed": 0.35,
+        "foodInventory": {
+          "status": "adequate"
+        },
+        "medicationAvailableDoses": 0
+      },
+      "environmentFacts": {
+        "dwellingFloor": 3,
+        "buildingPeriod": "1970s",
+        "largeBalconies": true
+      },
+      "resourceFacts": {}
+    },
+    "profile": {
+      "documentType": "behavioral_profile",
+      "schemaVersion": "1.0.0",
+      "profileId": "profile_elena_moretti_1",
+      "personaId": "persona_elena_moretti",
+      "recurringActivities": [
+        {
+          "recurringActivityId": "ra_morning_shower",
+          "label": "Toilette e doccia mattutina",
+          "kind": "anchor",
+          "intent": "morning_toilet_and_shower",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "07:00",
+            "windowEnd": "08:45",
+            "jitterMinutes": 10
+          },
+          "miningDifficulty": "easy",
+          "note": "Doccia tiepida per la pressione tendenzialmente bassa."
+        },
+        {
+          "recurringActivityId": "ra_breakfast",
+          "label": "Colazione rituale",
+          "kind": "anchor",
+          "intent": "eat_breakfast",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "07:20",
+            "windowEnd": "09:10",
+            "jitterMinutes": 8
+          },
+          "miningDifficulty": "easy",
+          "note": "Tè nero Assam e pane di segale; il dettaglio alimentare è rappresentato dal più vicino intento canonico."
+        },
+        {
+          "recurringActivityId": "ra_prepare_lunch",
+          "label": "Preparazione pranzo semplice",
+          "kind": "anchor",
+          "intent": "prepare_simple_lunch",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "11:45",
+            "windowEnd": "14:00",
+            "jitterMinutes": 25
+          },
+          "miningDifficulty": "medium",
+          "note": "Pranzo semplice compatibile con giornate di lavoro flessibili."
+        },
+        {
+          "recurringActivityId": "ra_lunch",
+          "label": "Pranzo",
+          "kind": "anchor",
+          "intent": "eat_lunch",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "12:15",
+            "windowEnd": "14:30",
+            "jitterMinutes": 20
+          },
+          "miningDifficulty": "easy",
+          "note": "Consumato fuori dallo studio per rispettare la regola senza briciole."
+        },
+        {
+          "recurringActivityId": "ra_postural_exercise",
+          "label": "Stretching e yoga posturale",
+          "kind": "contextual",
+          "intent": "indoor_light_exercise",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "16:30",
+            "windowEnd": "18:00",
+            "jitterMinutes": 12
+          },
+          "miningDifficulty": "easy",
+          "note": "Sessione di circa quindici minuti per la cervicalgia."
+        },
+        {
+          "recurringActivityId": "ra_evening_tidy",
+          "label": "Riordino di fine lavoro",
+          "kind": "contextual",
+          "intent": "tidy_living_room_and_hallway",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "18:30",
+            "windowEnd": "20:00",
+            "jitterMinutes": 18
+          },
+          "miningDifficulty": "easy",
+          "note": "Include il riallineamento dei cuscini; il piano cucina è modellato separatamente."
+        },
+        {
+          "recurringActivityId": "ra_clean_kitchen",
+          "label": "Pulizia rapida della cucina",
+          "kind": "contextual",
+          "intent": "clean_kitchen",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 4,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "monday",
+              "wednesday",
+              "friday",
+              "sunday"
+            ],
+            "windowStart": "18:20",
+            "windowEnd": "20:15",
+            "jitterMinutes": 30
+          },
+          "miningDifficulty": "medium",
+          "note": "Mantiene il piano cucina sgombro."
+        },
+        {
+          "recurringActivityId": "ra_prepare_dinner",
+          "label": "Preparazione cena leggera",
+          "kind": "anchor",
+          "intent": "prepare_light_dinner",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "19:15",
+            "windowEnd": "21:20",
+            "jitterMinutes": 25
+          },
+          "miningDifficulty": "medium",
+          "note": "Cena leggera, spesso senza latticini."
+        },
+        {
+          "recurringActivityId": "ra_dinner",
+          "label": "Cena",
+          "kind": "anchor",
+          "intent": "eat_dinner",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "20:00",
+            "windowEnd": "21:45",
+            "jitterMinutes": 18
+          },
+          "miningDifficulty": "easy",
+          "note": "Cena domestica salvo eventi serali."
+        },
+        {
+          "recurringActivityId": "ra_evening_hygiene",
+          "label": "Igiene serale",
+          "kind": "anchor",
+          "intent": "evening_hygiene",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "21:15",
+            "windowEnd": "22:50",
+            "jitterMinutes": 20
+          },
+          "miningDifficulty": "easy",
+          "note": "Routine breve prima della lettura."
+        },
+        {
+          "recurringActivityId": "ra_read_rest",
+          "label": "Lettura cartacea e decompressione",
+          "kind": "optional",
+          "intent": "read_and_rest",
+          "cadence": {
+            "period": "day",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [],
+            "windowStart": "21:00",
+            "windowEnd": "22:45",
+            "jitterMinutes": 28
+          },
+          "miningDifficulty": "medium",
+          "note": "Niente schermi; lettura cartacea per ridurre il mind-wandering."
+        },
+        {
+          "recurringActivityId": "ra_groceries",
+          "label": "Spesa settimanale",
+          "kind": "contextual",
+          "intent": "buy_groceries",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 1,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday"
+            ],
+            "windowStart": "09:00",
+            "windowEnd": "13:30",
+            "jitterMinutes": 55
+          },
+          "miningDifficulty": "medium",
+          "note": "Acquisto di alimenti e prodotti domestici."
+        },
+        {
+          "recurringActivityId": "ra_evening_walk",
+          "label": "Passeggiata serale",
+          "kind": "optional",
+          "intent": "evening_walk",
+          "cadence": {
+            "period": "week",
+            "timesPerPeriod": 3,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "tuesday",
+              "thursday",
+              "sunday"
+            ],
+            "windowStart": "17:45",
+            "windowEnd": "20:30",
+            "jitterMinutes": 50
+          },
+          "miningDifficulty": "hard",
+          "note": "Uscita flessibile, ridotta nei mesi freddi."
+        },
+        {
+          "recurringActivityId": "ra_start_laundry",
+          "label": "Avvio lavatrice",
+          "kind": "rare",
+          "intent": "start_laundry",
+          "cadence": {
+            "period": "month",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday"
+            ],
+            "windowStart": "09:00",
+            "windowEnd": "12:30",
+            "jitterMinutes": 70
+          },
+          "miningDifficulty": "hard",
+          "note": "Bucato ordinario."
+        },
+        {
+          "recurringActivityId": "ra_hang_laundry",
+          "label": "Stendere il bucato",
+          "kind": "rare",
+          "intent": "hang_laundry",
+          "cadence": {
+            "period": "month",
+            "timesPerPeriod": 2,
+            "everyNPeriods": 1,
+            "weekdays": [
+              "saturday"
+            ],
+            "windowStart": "10:00",
+            "windowEnd": "14:00",
+            "jitterMinutes": 80
+          },
+          "miningDifficulty": "hard",
+          "note": "Sfrutta gli ampi balconi."
+        }
+      ],
+      "provenance": {
+        "authorType": "external_llm",
+        "generatorName": "smart-home-simulator-external-llm-authoring",
+        "generatorVersion": "1.4.0",
+        "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+        "humanReviewed": false,
+        "modelName": "GPT-5.6 Thinking",
+        "generatedAt": "2026-08-05T16:32:00+02:00",
+        "parameters": {
+          "authoringAssumptions": [
+            "Elena vive da sola; questo non era dichiarato esplicitamente ed è stato assunto per mantenere il caso conservativo.",
+            "La routine di lavoro freelance avviene prevalentemente nello studio domestico ma non è modellata come attività dettagliata, perché il catalogo è home-centred e non dispone di un intento specifico per il lavoro da remoto.",
+            "La spesa viene effettuata una volta a settimana e le uscite serali sono occasionali; frequenze e finestre sono state inferite in modo coerente con uno stile di vita prevalentemente casalingo.",
+            "La cervicalgia è gestita con esercizio posturale quotidiano; non sono stati inferiti farmaci abituali.",
+            "Il cronotipo è stato impostato con tendenza al sonno alle 22:45, coerente con sveglia abituale intorno alle 07:15."
+          ]
+        }
+      }
+    },
+    "rhythm": {
+      "age": 34,
+      "health": [
+        "chronic_cervicalgia",
+        "tendency_to_low_blood_pressure",
+        "mild_lactose_intolerance"
+      ],
+      "chronotypeBedtime": "22:45"
+    },
+    "habits": [
+      {
+        "habitId": "habit_night",
+        "label": "Notte e transizione al sonno",
+        "windowStart": "20:30",
+        "windowEnd": "07:00",
+        "recurringActivityIds": [
+          "ra_evening_hygiene",
+          "ra_read_rest"
+        ],
+        "note": "La fascia apre oltre due ore prima del cronotipo per assorbire anticipo e jitter del sonno."
+      },
+      {
+        "habitId": "habit_morning",
+        "label": "Avvio luminoso della giornata",
+        "windowStart": "07:00",
+        "windowEnd": "11:00",
+        "recurringActivityIds": [
+          "ra_morning_shower",
+          "ra_breakfast",
+          "ra_groceries",
+          "ra_start_laundry"
+        ],
+        "note": "Sveglia e sonno sono generati dal ritmo, non dichiarati come ricorrenze."
+      },
+      {
+        "habitId": "habit_midday",
+        "label": "Pranzo e pausa centrale",
+        "windowStart": "11:00",
+        "windowEnd": "15:00",
+        "recurringActivityIds": [
+          "ra_prepare_lunch",
+          "ra_lunch",
+          "ra_hang_laundry"
+        ],
+        "note": ""
+      },
+      {
+        "habitId": "habit_afternoon",
+        "label": "Lavoro profondo e cura posturale",
+        "windowStart": "15:00",
+        "windowEnd": "18:30",
+        "recurringActivityIds": [
+          "ra_postural_exercise",
+          "ra_evening_walk"
+        ],
+        "note": "Il lavoro remoto resta contesto non dettagliato; l'attività osservabile è la sessione posturale."
+      },
+      {
+        "habitId": "habit_evening",
+        "label": "Chiusura dello studio e riordino",
+        "windowStart": "18:30",
+        "windowEnd": "20:30",
+        "recurringActivityIds": [
+          "ra_evening_tidy",
+          "ra_clean_kitchen",
+          "ra_prepare_dinner",
+          "ra_dinner",
+          "ra_evening_walk"
+        ],
+        "note": ""
+      }
+    ],
+    "phases": [
+      {
+        "phaseId": "phase_winter_indoor",
+        "label": "Inverno più domestico",
+        "startDate": "2026-11-15",
+        "endDate": "2027-02-28",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_evening_walk",
+            "suspended": true,
+            "cadence": null
+          },
+          {
+            "recurringActivityId": "ra_postural_exercise",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 6,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "sunday"
+              ],
+              "windowStart": "16:15",
+              "windowEnd": "18:15",
+              "jitterMinutes": 20
+            }
+          }
+        ],
+        "note": "Le passeggiate vengono sostituite da maggiore esercizio leggero in casa."
+      },
+      {
+        "phaseId": "phase_deadline_spring",
+        "label": "Consegna editoriale intensa",
+        "startDate": "2027-03-01",
+        "endDate": "2027-04-15",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_read_rest",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 4,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "monday",
+                "wednesday",
+                "friday",
+                "sunday"
+              ],
+              "windowStart": "21:10",
+              "windowEnd": "22:45",
+              "jitterMinutes": 40
+            }
+          }
+        ],
+        "note": "La lettura serale resta presente ma meno frequente durante una consegna impegnativa."
+      },
+      {
+        "phaseId": "phase_spring_walks",
+        "label": "Ripresa delle passeggiate primaverili",
+        "startDate": "2027-04-16",
+        "endDate": "2027-06-30",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_evening_walk",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 5,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "monday",
+                "tuesday",
+                "thursday",
+                "saturday",
+                "sunday"
+              ],
+              "windowStart": "17:30",
+              "windowEnd": "20:30",
+              "jitterMinutes": 55
+            }
+          }
+        ],
+        "note": "Più uscite con luce serale."
+      },
+      {
+        "phaseId": "phase_summer_heat",
+        "label": "Estate e orari più tardi",
+        "startDate": "2027-07-01",
+        "endDate": "2027-08-04",
+        "activityOverrides": [
+          {
+            "recurringActivityId": "ra_evening_walk",
+            "suspended": false,
+            "cadence": {
+              "period": "week",
+              "timesPerPeriod": 3,
+              "everyNPeriods": 1,
+              "weekdays": [
+                "tuesday",
+                "thursday",
+                "sunday"
+              ],
+              "windowStart": "19:00",
+              "windowEnd": "21:45",
+              "jitterMinutes": 65
+            }
+          }
+        ],
+        "note": "Passeggiate spostate nelle ore meno calde."
+      }
+    ],
+    "events": [
+      {
+        "eventId": "event_social_drinks",
+        "label": "Aperitivo con un'amica",
+        "intent": "social_drink_out",
+        "earliestDate": "2026-09-01",
+        "latestDate": "2027-07-31",
+        "occurrences": 4,
+        "weekdays": [
+          "friday",
+          "saturday"
+        ],
+        "windowStart": "18:30",
+        "windowEnd": "23:30",
+        "minimumMinutes": 180,
+        "maximumMinutes": 300,
+        "displaces": [
+          {
+            "recurringActivityId": "ra_evening_tidy",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_clean_kitchen",
+            "policy": "reschedule"
+          },
+          {
+            "recurringActivityId": "ra_prepare_dinner",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_dinner",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_evening_hygiene",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_read_rest",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_evening_walk",
+            "policy": "skip"
+          }
+        ],
+        "note": "Assenza serale completa con rientro a casa nello stesso evento."
+      },
+      {
+        "eventId": "event_relative_dinner",
+        "label": "Visita a parenti con cena",
+        "intent": "visit_relative_and_have_dinner",
+        "earliestDate": "2026-10-01",
+        "latestDate": "2027-06-30",
+        "occurrences": 3,
+        "weekdays": [
+          "saturday",
+          "sunday"
+        ],
+        "windowStart": "12:00",
+        "windowEnd": "23:30",
+        "minimumMinutes": 360,
+        "maximumMinutes": 600,
+        "displaces": [
+          {
+            "recurringActivityId": "ra_groceries",
+            "policy": "reschedule"
+          },
+          {
+            "recurringActivityId": "ra_prepare_lunch",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_lunch",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_postural_exercise",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_evening_tidy",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_clean_kitchen",
+            "policy": "reschedule"
+          },
+          {
+            "recurringActivityId": "ra_prepare_dinner",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_dinner",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_evening_hygiene",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_read_rest",
+            "policy": "skip"
+          },
+          {
+            "recurringActivityId": "ra_evening_walk",
+            "policy": "skip"
+          }
+        ],
+        "note": "L'evento è una lunga assenza familiare dal primo pomeriggio fino alla sera, comprende il pasto fuori casa e rinvia la spesa settimanale al primo giorno utile."
+      }
+    ],
+    "fixedCommitments": [],
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+      "humanReviewed": false,
+      "modelName": "GPT-5.6 Thinking",
+      "generatedAt": "2026-08-05T16:32:00+02:00",
+      "parameters": {
+        "authoringAssumptions": [
+          "Elena vive da sola; questo non era dichiarato esplicitamente ed è stato assunto per mantenere il caso conservativo.",
+          "La routine di lavoro freelance avviene prevalentemente nello studio domestico ma non è modellata come attività dettagliata, perché il catalogo è home-centred e non dispone di un intento specifico per il lavoro da remoto.",
+          "La spesa viene effettuata una volta a settimana e le uscite serali sono occasionali; frequenze e finestre sono state inferite in modo coerente con uno stile di vita prevalentemente casalingo.",
+          "La cervicalgia è gestita con esercizio posturale quotidiano; non sono stati inferiti farmaci abituali.",
+          "Il cronotipo è stato impostato con tendenza al sonno alle 22:45, coerente con sveglia abituale intorno alle 07:15."
+        ]
+      }
+    }
+  },
+  "personalProcessPackage": {
+    "documentType": "personal_process_package",
+    "schemaVersion": "1.0.0",
+    "packageId": "ppp_elena_moretti_annual",
+    "packageVersion": "1.0.0",
+    "sourceScenarioId": "elena_moretti_horizon_2026_2027",
+    "sourceScenarioVersion": "1.0.0",
+    "language": "it",
+    "provenance": {
+      "authorType": "external_llm",
+      "generatorName": "smart-home-simulator-external-llm-authoring",
+      "generatorVersion": "1.4.0",
+      "promptTemplateVersion": "generate-horizon-outline-1.0.0",
+      "humanReviewed": false,
+      "modelName": "GPT-5.6 Thinking",
+      "generatedAt": "2026-08-05T16:32:00+02:00",
+      "parameters": {
+        "authoringAssumptions": [
+          "Elena vive da sola; questo non era dichiarato esplicitamente ed è stato assunto per mantenere il caso conservativo.",
+          "La routine di lavoro freelance avviene prevalentemente nello studio domestico ma non è modellata come attività dettagliata, perché il catalogo è home-centred e non dispone di un intento specifico per il lavoro da remoto.",
+          "La spesa viene effettuata una volta a settimana e le uscite serali sono occasionali; frequenze e finestre sono state inferite in modo coerente con uno stile di vita prevalentemente casalingo.",
+          "La cervicalgia è gestita con esercizio posturale quotidiano; non sono stati inferiti farmaci abituali.",
+          "Il cronotipo è stato impostato con tendenza al sonno alle 22:45, coerente con sveglia abituale intorno alle 07:15."
+        ]
+      }
+    },
+    "catalogs": {
+      "activityCatalog": {
+        "catalogId": "smart_home_activity_catalog",
+        "version": "1.2.0"
+      },
+      "variableCatalog": {
+        "catalogId": "smart_home_variable_catalog",
+        "version": "1.0.0"
+      },
+      "actionCatalog": {
+        "catalogId": "smart_home_action_catalog",
+        "version": "1.1.0"
+      }
+    },
+    "processModels": [
+      {
+        "processModelId": "pm_morning_toilet_and_shower",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Morning Toilet And Shower",
+        "description": "Processo personale di Elena per morning_toilet_and_shower.",
+        "implementedComponents": [
+          "use_toilet",
+          "shower"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "use_toilet",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "shower_water",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "lukewarm_shower",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "shower_water",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_breakfast",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Eat Breakfast",
+        "description": "Processo personale di Elena per eat_breakfast.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_prepare_simple_lunch",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Prepare Simple Lunch",
+        "description": "Processo personale di Elena per prepare_simple_lunch. The ingredients role is returned after preparation so take_item and put_item remain state-continuous; prepare_food separately produces the prepared meal.",
+        "implementedComponents": [
+          "prepare_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "ingredients",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "simple_lunch",
+                "index": null,
+                "variableId": null
+              },
+              "outputRole": {
+                "source": "literal",
+                "value": "prepared_meal",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 3
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a9",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "ingredients",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "a10",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "a9",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a9",
+            "targetNodeId": "a10",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a10",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_prepare_light_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Prepare Light Dinner",
+        "description": "Processo personale di Elena per prepare_light_dinner. The ingredients role is returned after preparation so take_item and put_item remain state-continuous; prepare_food separately produces the prepared meal.",
+        "implementedComponents": [
+          "prepare_food"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "ingredients",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "prepare_food",
+            "arguments": {
+              "mealKind": {
+                "source": "literal",
+                "value": "light_dinner",
+                "index": null,
+                "variableId": null
+              },
+              "outputRole": {
+                "source": "literal",
+                "value": "prepared_meal",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 3
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "cooking_appliance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a9",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "ingredients",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "a10",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "a9",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a9",
+            "targetNodeId": "a10",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a10",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_lunch",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Eat Lunch",
+        "description": "Processo personale di Elena per eat_lunch.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2.5
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_eat_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Eat Dinner",
+        "description": "Processo personale di Elena per eat_dinner.",
+        "implementedComponents": [
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2.5
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_indoor_light_exercise",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Indoor Light Exercise",
+        "description": "Processo personale di Elena per indoor_light_exercise.",
+        "implementedComponents": [
+          "exercise"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "exercise",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "postural_yoga",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 3
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_tidy_living_room_and_hallway",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Tidy Living Room And Hallway",
+        "description": "Processo personale di Elena per tidy_living_room_and_hallway.",
+        "implementedComponents": [
+          "tidy_area"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "organize",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "living_room_and_hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_clean_kitchen",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Clean Kitchen",
+        "description": "Processo personale di Elena per clean_kitchen.",
+        "implementedComponents": [
+          "clean_surface"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "storage_cabinet",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "cleaning_products",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "storage_cabinet",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "clean",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "kitchen_surfaces",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "storage_cabinet",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "cleaning_products",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "storage_cabinet",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_evening_hygiene",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Evening Hygiene",
+        "description": "Processo personale di Elena per evening_hygiene.",
+        "implementedComponents": [
+          "personal_hygiene"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "evening_hygiene",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_read_and_rest",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Read And Rest",
+        "description": "Processo personale di Elena per read_and_rest.",
+        "implementedComponents": [
+          "read",
+          "rest"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "leisure",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "paper_book_reading",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "decompression",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_buy_groceries",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Buy Groceries",
+        "description": "Processo personale di Elena per buy_groceries.",
+        "implementedComponents": [
+          "shop",
+          "carry_purchases"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "leave_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "supermarket",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "shop",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "weekly_groceries",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 3
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "take_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "purchases",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "enter_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "kitchen",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a9",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a10",
+            "kind": "action",
+            "actionType": "put_item",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "purchases",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a11",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "refrigerator",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "a9",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a9",
+            "targetNodeId": "a10",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a10",
+            "targetNodeId": "a11",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a11",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_evening_walk",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Evening Walk",
+        "description": "Processo personale di Elena per evening_walk.",
+        "implementedComponents": [
+          "walk"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "leave_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "neighborhood_route",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "exercise",
+            "arguments": {
+              "kind": {
+                "source": "literal",
+                "value": "outdoor_walk",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 3
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "enter_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "living_room",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_start_laundry",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Start Laundry",
+        "description": "Processo personale di Elena per start_laundry.",
+        "implementedComponents": [
+          "collect_laundry",
+          "load_laundry",
+          "start_laundry"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "bedroom",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "open",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "wardrobe",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "close",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "wardrobe",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "collect",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "load",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "start",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_hang_laundry",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Hang Laundry",
+        "description": "Processo personale di Elena per hang_laundry.",
+        "implementedComponents": [
+          "hang_laundry"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "laundry_step",
+            "arguments": {
+              "operation": {
+                "source": "literal",
+                "value": "hang",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 3
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "living_room",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_morning_toilet_and_wash",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Morning Toilet And Wash",
+        "description": "Processo personale di Elena per morning_toilet_and_wash.",
+        "implementedComponents": [
+          "use_toilet",
+          "wash_face"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "use_toilet",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "activate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "washbasin_water",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "personal_care",
+            "arguments": {
+              "procedure": {
+                "source": "literal",
+                "value": "wash_face",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "deactivate",
+            "arguments": {
+              "target": {
+                "source": "literal",
+                "value": "washbasin_water",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_phone_call",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Phone Call",
+        "description": "Processo personale di Elena per phone_call.",
+        "implementedComponents": [
+          "phone_call"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "communicate",
+            "arguments": {
+              "channel": {
+                "source": "literal",
+                "value": "phone",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_rest_or_nap",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Rest Or Nap",
+        "description": "Processo personale di Elena per rest_or_nap.",
+        "implementedComponents": [
+          "rest",
+          "nap"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "rest",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "nap",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_sleep",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Sleep",
+        "description": "Processo personale di Elena per sleep.",
+        "implementedComponents": [
+          "sleep"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "activity_location",
+                "index": 0,
+                "value": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "lying",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "wait",
+            "arguments": {
+              "purpose": {
+                "source": "literal",
+                "value": "sleep",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 8
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "bedroom_exit",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_wake_up",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Wake Up",
+        "description": "Processo personale di Elena per wake_up.",
+        "implementedComponents": [
+          "wake_up"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "bedroom_exit",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.8
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_social_drink_out",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Social Drink Out",
+        "description": "Processo personale di Elena per social_drink_out.",
+        "implementedComponents": [
+          "socialize_in_person",
+          "consume_drink"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "leave_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "neighborhood_bar",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "communicate",
+            "arguments": {
+              "channel": {
+                "source": "literal",
+                "value": "in_person",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "drink",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "enter_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      },
+      {
+        "processModelId": "pm_visit_relative_and_have_dinner",
+        "processModelVersion": "1.0.0",
+        "residentId": "resident_elena_moretti",
+        "title": "Visit Relative And Have Dinner",
+        "description": "Processo personale di Elena per visit_relative_and_have_dinner.",
+        "implementedComponents": [
+          "socialize_in_person",
+          "consume_meal"
+        ],
+        "nodes": [
+          {
+            "nodeId": "start",
+            "kind": "start"
+          },
+          {
+            "nodeId": "a1",
+            "kind": "action",
+            "actionType": "move_to_capability",
+            "arguments": {
+              "targetRole": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.5
+          },
+          {
+            "nodeId": "a2",
+            "kind": "action",
+            "actionType": "leave_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a3",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "relative_home",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a4",
+            "kind": "action",
+            "actionType": "communicate",
+            "arguments": {
+              "channel": {
+                "source": "literal",
+                "value": "in_person",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2
+          },
+          {
+            "nodeId": "a5",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "sitting",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a6",
+            "kind": "action",
+            "actionType": "consume",
+            "arguments": {
+              "itemRole": {
+                "source": "literal",
+                "value": "prepared_meal",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 2.5
+          },
+          {
+            "nodeId": "a7",
+            "kind": "action",
+            "actionType": "change_posture",
+            "arguments": {
+              "posture": {
+                "source": "literal",
+                "value": "standing",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a8",
+            "kind": "action",
+            "actionType": "travel_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "home_entrance",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 1.5
+          },
+          {
+            "nodeId": "a9",
+            "kind": "action",
+            "actionType": "enter_home",
+            "arguments": {},
+            "durationWeight": 0.4
+          },
+          {
+            "nodeId": "a10",
+            "kind": "action",
+            "actionType": "move_to",
+            "arguments": {
+              "destination": {
+                "source": "literal",
+                "value": "hallway",
+                "index": null,
+                "variableId": null
+              }
+            },
+            "durationWeight": 0.6
+          },
+          {
+            "nodeId": "end",
+            "kind": "end"
+          }
+        ],
+        "edges": [
+          {
+            "sourceNodeId": "start",
+            "targetNodeId": "a1",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a1",
+            "targetNodeId": "a2",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a2",
+            "targetNodeId": "a3",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a3",
+            "targetNodeId": "a4",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a4",
+            "targetNodeId": "a5",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a5",
+            "targetNodeId": "a6",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a6",
+            "targetNodeId": "a7",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a7",
+            "targetNodeId": "a8",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a8",
+            "targetNodeId": "a9",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a9",
+            "targetNodeId": "a10",
+            "condition": null,
+            "isDefault": false
+          },
+          {
+            "sourceNodeId": "a10",
+            "targetNodeId": "end",
+            "condition": null,
+            "isDefault": false
+          }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "binding_morning_toilet_and_shower",
+        "residentId": "resident_elena_moretti",
+        "intent": "morning_toilet_and_shower",
+        "processModelId": "pm_morning_toilet_and_shower",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_eat_breakfast",
+        "residentId": "resident_elena_moretti",
+        "intent": "eat_breakfast",
+        "processModelId": "pm_eat_breakfast",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_prepare_simple_lunch",
+        "residentId": "resident_elena_moretti",
+        "intent": "prepare_simple_lunch",
+        "processModelId": "pm_prepare_simple_lunch",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_prepare_light_dinner",
+        "residentId": "resident_elena_moretti",
+        "intent": "prepare_light_dinner",
+        "processModelId": "pm_prepare_light_dinner",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_eat_lunch",
+        "residentId": "resident_elena_moretti",
+        "intent": "eat_lunch",
+        "processModelId": "pm_eat_lunch",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_eat_dinner",
+        "residentId": "resident_elena_moretti",
+        "intent": "eat_dinner",
+        "processModelId": "pm_eat_dinner",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_indoor_light_exercise",
+        "residentId": "resident_elena_moretti",
+        "intent": "indoor_light_exercise",
+        "processModelId": "pm_indoor_light_exercise",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_tidy_living_room_and_hallway",
+        "residentId": "resident_elena_moretti",
+        "intent": "tidy_living_room_and_hallway",
+        "processModelId": "pm_tidy_living_room_and_hallway",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_clean_kitchen",
+        "residentId": "resident_elena_moretti",
+        "intent": "clean_kitchen",
+        "processModelId": "pm_clean_kitchen",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_evening_hygiene",
+        "residentId": "resident_elena_moretti",
+        "intent": "evening_hygiene",
+        "processModelId": "pm_evening_hygiene",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_read_and_rest",
+        "residentId": "resident_elena_moretti",
+        "intent": "read_and_rest",
+        "processModelId": "pm_read_and_rest",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_buy_groceries",
+        "residentId": "resident_elena_moretti",
+        "intent": "buy_groceries",
+        "processModelId": "pm_buy_groceries",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_evening_walk",
+        "residentId": "resident_elena_moretti",
+        "intent": "evening_walk",
+        "processModelId": "pm_evening_walk",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_start_laundry",
+        "residentId": "resident_elena_moretti",
+        "intent": "start_laundry",
+        "processModelId": "pm_start_laundry",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_hang_laundry",
+        "residentId": "resident_elena_moretti",
+        "intent": "hang_laundry",
+        "processModelId": "pm_hang_laundry",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_morning_toilet_and_wash",
+        "residentId": "resident_elena_moretti",
+        "intent": "morning_toilet_and_wash",
+        "processModelId": "pm_morning_toilet_and_wash",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_phone_call",
+        "residentId": "resident_elena_moretti",
+        "intent": "phone_call",
+        "processModelId": "pm_phone_call",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_rest_or_nap",
+        "residentId": "resident_elena_moretti",
+        "intent": "rest_or_nap",
+        "processModelId": "pm_rest_or_nap",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_sleep",
+        "residentId": "resident_elena_moretti",
+        "intent": "sleep",
+        "processModelId": "pm_sleep",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_wake_up",
+        "residentId": "resident_elena_moretti",
+        "intent": "wake_up",
+        "processModelId": "pm_wake_up",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_social_drink_out",
+        "residentId": "resident_elena_moretti",
+        "intent": "social_drink_out",
+        "processModelId": "pm_social_drink_out",
+        "applicability": [],
+        "fallback": true
+      },
+      {
+        "bindingId": "binding_visit_relative_and_have_dinner",
+        "residentId": "resident_elena_moretti",
+        "intent": "visit_relative_and_have_dinner",
+        "processModelId": "pm_visit_relative_and_have_dinner",
+        "applicability": [],
+        "fallback": true
+      }
+    ]
+  }
+}

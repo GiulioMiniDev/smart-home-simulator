@@ -18,6 +18,8 @@ from smart_home_sim.domain.execution import (
 )
 from smart_home_sim.domain.models import ConditionOperator
 from smart_home_sim.simulation.service import (
+    EXECUTION_PACE_MAX_FACTOR,
+    EXECUTION_PACE_MIN_FACTOR,
     NamedRandomStreams,
     ResourceCoordinator,
     SimulationEngine,
@@ -311,8 +313,14 @@ def test_engine_suspends_and_resumes_live_action_after_resource_preemption(bundl
     )
     assert low_execution.status == "deviated"
     assert low_action.status == "completed"
-    assert low_execution.actual_end - low_execution.actual_start == timedelta(minutes=10)
-    assert low_action.ended_at - low_action.started_at == timedelta(minutes=7, seconds=30)
+    # Execution pace scales the planned durations, so pin what preemption is actually about: the
+    # suspension neither stretches the activity nor truncates the resumed action. Each is checked
+    # against its own planned length because the phase split rounds and an action is floored by
+    # its movement time, so the two do not scale by exactly the same factor.
+    executed_seconds = (low_execution.actual_end - low_execution.actual_start).total_seconds()
+    action_seconds = (low_action.ended_at - low_action.started_at).total_seconds()
+    assert 600 * EXECUTION_PACE_MIN_FACTOR <= executed_seconds <= 600 * EXECUTION_PACE_MAX_FACTOR
+    assert 450 * EXECUTION_PACE_MIN_FACTOR <= action_seconds <= 450 * EXECUTION_PACE_MAX_FACTOR
 
 
 @pytest.mark.parametrize(
@@ -526,3 +534,38 @@ def test_engine_failure_never_returns_partial_trace(bundle, monkeypatch) -> None
     result = simulate_bundle(bundle)
     assert result.trace is None
     assert result.report.issues[0].code == "SIMULATION_FAILED"
+
+
+def test_execution_pace_breaks_whole_minute_durations(bundle: SimulationBundle) -> None:
+    """Realised durations must not all be whole minutes.
+
+    Plans are authored in minutes, and while execution reproduced them exactly every activity in
+    an exported log lasted a whole number of minutes: `(actualEnd - actualStart) % 60 == 0` held
+    for 4819 of 4821 activities in a year-long run. One modulo told a reader the log was generated.
+    Pace makes the plan the intention rather than the stopwatch, so the realised duration lands
+    off the grid while staying centred on what was planned.
+    """
+    result = simulate_bundle(bundle)
+    assert result.trace is not None
+    durations = [
+        item.actual_end - item.actual_start
+        for item in result.trace.activity_executions
+        if item.actual_end > item.actual_start
+    ]
+    assert len(durations) > 10
+    microseconds = [
+        item.days * 86_400_000_000 + item.seconds * 1_000_000 + item.microseconds
+        for item in durations
+    ]
+    assert not any(value % 60_000_000 == 0 for value in microseconds)
+    planned = [
+        item.planned_end - item.planned_start
+        for item in result.trace.activity_executions
+        if item.actual_end > item.actual_start
+    ]
+    # Centred on the plan, not drifting away from it.
+    ratio = sum(microseconds) / sum(
+        item.days * 86_400_000_000 + item.seconds * 1_000_000 + item.microseconds
+        for item in planned
+    )
+    assert 0.85 <= ratio <= 1.15

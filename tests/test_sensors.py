@@ -30,6 +30,7 @@ from smart_home_sim.sensors.service import (
     Candidate,
     _climate_parameters,
     _daily_climate_mean,
+    _dwells,
     _reconcile_binary_candidates,
     _scenario_city,
 )
@@ -746,3 +747,104 @@ def test_a_zero_length_pulse_does_not_latch_the_sensor_forever() -> None:
 
     assert [item.value for item in reconciled] == ["ON", "OFF"]
     assert reconciled[0].at == moment + timedelta(seconds=30)
+
+
+def test_on_change_temperature_decides_on_the_reading_it_actually_took(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    """Measurement noise must reach the reporting threshold, not be painted on afterwards.
+
+    A thermometer compares readings, and a reading carries the sensing element's noise. While the
+    noise was applied downstream in the projection, the threshold saw a clean signal the device had
+    never observed: against the modelled envelope, which drifts by well under 0.1 °C in an hour,
+    nothing ever tripped and half of every run's readings were bare heartbeats.
+
+    The signal here is nearly flat — fixed profile, no thermal dynamics, a source that never
+    activates — so past the shallow daily curve the only thing that can move a reading is the
+    noise. Deciding on the noisy value leaves 7% of intervals at the heartbeat; deciding on the
+    clean one leaves 36%, and the sensor reports five times less often.
+    """
+    source = next(item for item in sensor_model.sensors if isinstance(item, TemperatureSensor))
+    flat = source.model_copy(
+        update={
+            "climate_profile": "fixed",
+            "thermal_time_constant_hours": 0.0,
+            "seasonal_coupling": 0.0,
+            "reporting_mode": "on_change",
+            "report_threshold_celsius": 0.1,
+            "quantization_celsius": 0.1,
+            "heartbeat_seconds": 3_600.0,
+            "error_model": SensorErrorModel(measurement_noise_standard_deviation=0.12),
+            "timing": SensorTiming(),
+            "sources": [
+                TemperatureSource(
+                    entity_id=source.sources[0].entity_id,
+                    fact=source.sources[0].fact,
+                    active_value="never-matches-any-state",
+                    delta_celsius=0.5,
+                    sample_interval_seconds=900.0,
+                )
+            ],
+        }
+    )
+    model = _one_sensor_model(sensor_model, flat).model_copy(
+        update={"sensor_model_version": "1.2.0"}
+    )
+    result = project_sensors(trace, model)
+    assert result.observable_log is not None
+    stamps = [item.observed_at for item in result.observable_log.records]
+    assert len(stamps) > 2
+    intervals = [
+        (later - earlier).total_seconds()
+        for earlier, later in zip(stamps[:-1], stamps[1:], strict=True)
+    ]
+    heartbeats = [value for value in intervals if value >= 3_500]
+    # With the noise downstream this is 100%: the flat signal never crosses the threshold.
+    assert len(heartbeats) / len(intervals) < 0.25
+    assert min(intervals) == pytest.approx(900, abs=1)
+
+
+def test_pir_reports_a_resident_who_is_present_without_acting(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    """Occupancy alone must produce motion events, or a sleeping resident is invisible.
+
+    Pulses used to come only from movements and from a whitelist of action types. Everything else
+    — sleeping, waiting, sitting between activities — emitted nothing, so the bedroom produced 1.4
+    events per hour of occupancy against Aruba's 158 and a third of the day was observable only as
+    an absence of events elsewhere.
+
+    The longest dwell in this trace is a night in bed, lying down, inside `pir_bedroom_01`'s
+    coverage: the hardest case, because lying still is the least motion a present body produces.
+    """
+    dwells = _dwells(trace)
+    night = max(dwells, key=lambda item: item.ended_at - item.started_at)
+    assert night.posture == "lying"
+    assert (night.ended_at - night.started_at).total_seconds() > 6 * 3600
+
+    bedroom = next(
+        item
+        for item in sensor_model.sensors
+        if isinstance(item, PirSensor) and item.sensor_id == "pir_bedroom_01"
+    )
+    model = _one_sensor_model(sensor_model, bedroom).model_copy(
+        update={"sensor_model_version": "1.2.0"}
+    )
+    result = project_sensors(trace, model)
+    assert result.observable_log is not None
+    during_night = [
+        item
+        for item in result.observable_log.records
+        if night.started_at <= item.observed_at < night.ended_at
+    ]
+    hours = (night.ended_at - night.started_at).total_seconds() / 3600
+    # Without presence pulses this is zero: nothing at all is emitted for eight hours in bed.
+    assert len(during_night) / hours > 10
+
+    # Every observation still names what the resident was doing — the observable/oracle split is
+    # the point of the dataset, and presence must not open a hole in it.
+    assert result.oracle_mapping is not None
+    identifiers = {item.observation_id for item in during_night}
+    linked = [item for item in result.oracle_mapping.links if item.observation_id in identifiers]
+    assert len(linked) == len(during_night)
+    assert all(item.cause_ids for item in linked if item.origin != "false_positive")

@@ -755,6 +755,17 @@ CONTACT_INSTRUMENTED_TYPES = frozenset(
 # standing together are one zone; the table across the room is another.
 _POINTS_PER_ZONE = 3
 _MAX_ZONES_PER_ROOM = 4
+# Nobody installs two motion detectors a metre apart. Counting only interaction points did exactly
+# that: a small bathroom packed with fixtures — toilet, shower, basin, machine, cabinet — hit the
+# cap of four, where CASAS Aruba covers its bathroom with one, and the room then reported 2.9 times
+# Aruba's rate per hour of occupancy. Floor the area a single zone is allowed to shrink to.
+_MINIMUM_ZONE_AREA_SQUARE_METRES = 6.0
+# Real detection cones overlap; a grid of disjoint cells means exactly one sensor ever sees the
+# resident. Measured, Aruba fires more than one sensor within two seconds 29.5% of the time
+# (1.45 distinct sensors on average) against 3.4% here (1.04) — which is most of why a synthetic
+# kitchen produces a quarter of the events per hour of presence that a real one does. Each cell is
+# grown by this fraction of its own size on every side, so neighbours share their borders.
+_ZONE_OVERLAP_FRACTION = 0.28
 
 
 def _functional_zones(
@@ -781,11 +792,19 @@ def _functional_zones(
     minimum_x, maximum_x = min(xs), max(xs)
     minimum_y, maximum_y = min(ys), max(ys)
 
-    zones = max(1, min(_MAX_ZONES_PER_ROOM, ceil(len(points) / _POINTS_PER_ZONE)))
+    # How many places there are to stand, then how many a room this size can physically hold.
+    area = max(0.0, (maximum_x - minimum_x) * (maximum_y - minimum_y))
+    affordable = max(1, int(area // _MINIMUM_ZONE_AREA_SQUARE_METRES))
+    zones = max(1, min(_MAX_ZONES_PER_ROOM, affordable, ceil(len(points) / _POINTS_PER_ZONE)))
     columns = ceil(sqrt(zones))
     rows = ceil(zones / columns)
     width = (maximum_x - minimum_x) / columns
     height = (maximum_y - minimum_y) / rows
+    # Cells stay disjoint for *assigning* points — every interaction point belongs to exactly one
+    # sensor, which is what makes the zones distinguishable — while the coverage polygon that
+    # decides detection is grown past them.
+    margin_x = width * _ZONE_OVERLAP_FRACTION
+    margin_y = height * _ZONE_OVERLAP_FRACTION
 
     placed: list[tuple[Point2D, Polygon2D]] = []
     for row in range(rows):
@@ -809,7 +828,13 @@ def _functional_zones(
                         x=round(sum(item.position.x for item in members) / len(members), 4),
                         y=round(sum(item.position.y for item in members) / len(members), 4),
                     ),
-                    _rectangle(left, bottom, width, height),
+                    _rectangle(
+                        max(minimum_x, left - margin_x),
+                        max(minimum_y, bottom - margin_y),
+                        min(maximum_x, left + width + margin_x) - max(minimum_x, left - margin_x),
+                        min(maximum_y, bottom + height + margin_y)
+                        - max(minimum_y, bottom - margin_y),
+                    ),
                 )
             )
     return placed or [(_center(region.boundary), region.boundary)]

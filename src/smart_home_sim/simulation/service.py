@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 from collections import Counter, defaultdict
 from collections.abc import Generator, Iterable
@@ -72,6 +73,18 @@ from smart_home_sim.validation.service import (
 
 SUPPORTED_BUNDLE_VERSION = "1.0.0"
 MINUTE_US = 60_000_000
+# A plan states twenty-five minutes; the person takes twenty-three and a half, or twenty-seven.
+# Without this the realised duration equals the planned one exactly, so every activity in the log
+# lasts a whole number of minutes and `(actualEnd - actualStart) % 60 == 0` has no exceptions —
+# a synthetic fingerprint one modulo finds. Lognormal keeps the plan as the central tendency and
+# scales the deviation with the activity's length.
+EXECUTION_PACE_SIGMA = 0.10
+# The bound is a tanh squash rather than a clamp. A hard clamp maps every extreme draw onto the
+# same two factors, and an exact factor times a whole-minute plan lands back on a whole minute —
+# reintroducing, for the ~1% of activities that hit the bound, the very fingerprint this removes.
+EXECUTION_PACE_LOG_LIMIT = 0.262
+EXECUTION_PACE_MIN_FACTOR = math.exp(-EXECUTION_PACE_LOG_LIMIT)
+EXECUTION_PACE_MAX_FACTOR = math.exp(EXECUTION_PACE_LOG_LIMIT)
 
 
 class SimulationFailure(RuntimeError):
@@ -758,6 +771,20 @@ class SimulationEngine:
             )
         )
 
+    def _paced_duration(self, activity_id: str, intended_us: int) -> int:
+        """Scale a planned duration by how fast this execution actually went.
+
+        The plan is the intention, not the stopwatch. Drawing per source activity keeps the run
+        deterministic under replay and independent of how many activities precede this one.
+        """
+        if EXECUTION_PACE_SIGMA <= 0 or intended_us <= 0:
+            return intended_us
+        stream = self.streams.stream(f"execution-pace:{activity_id}")
+        drawn = stream.gauss(0.0, EXECUTION_PACE_SIGMA)
+        limit = EXECUTION_PACE_LOG_LIMIT
+        factor = math.exp(limit * math.tanh(drawn / limit))
+        return max(1, int(round(intended_us * factor)))
+
     def _process_model_id(self, activity_id: str) -> str:
         binding = next(
             (
@@ -1370,8 +1397,9 @@ class SimulationEngine:
                 model, self.state, actor_id, day, self.bundle, self.variable_catalog
             )
             phase_weights = [max(node.duration_weight or 1 for node in phase) for phase in phases]
-            intended = (
-                activity.duration_microseconds + self.extension_us[activity.source_activity_id]
+            intended = self._paced_duration(
+                activity.source_activity_id,
+                activity.duration_microseconds + self.extension_us[activity.source_activity_id],
             )
             total_weight = sum(phase_weights)
             occurrences: Counter[str] = Counter()

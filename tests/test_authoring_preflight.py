@@ -11,6 +11,7 @@ from smart_home_sim.authoring.preflight import (
     _is_definitely_false,
     _join,
     _resolve_arguments,
+    validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
@@ -242,3 +243,57 @@ def test_a_furnished_scenario_passes_and_a_stripped_one_does_not() -> None:
     assert len(kitchen) == 1
     assert kitchen[0].details["declaredResources"] == []
     assert "placeholder" in kitchen[0].message
+
+
+def test_a_model_that_ends_in_a_bare_corridor_is_flagged() -> None:
+    """Where a process model stops is where the resident stays until something moves her.
+
+    On one authored horizon eight of twenty-two models ended with `move_to hallway`, and the
+    resident spent 4.1 hours a day standing in a corridor furnished with a shoe cabinet. It went
+    unnoticed for as long as standing still emitted nothing; once motion registered presence, those
+    two corridor sensors carried 23% of the dataset.
+
+    The repo's own hand-authored week is the negative control: its models leave the resident in
+    rooms she can actually occupy, and must stay silent.
+    """
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    scenario = Scenario.model_validate_json(json.dumps(payload))
+    behavior = json.loads(
+        (ROOT / "examples/behavior/mario_rossi_week_2026_10_12.behavior-1.1.0.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    package = PersonalProcessPackage.model_validate_json(json.dumps(behavior))
+    assert validate_activities_do_not_park_the_resident(scenario, package) == []
+
+    # A corridor holding only a cabinet, and a model that ends by walking into it.
+    parked = json.loads(json.dumps(payload))
+    parked["locations"].append({"locationId": "hallway", "kind": "room", "memberLocationIds": []})
+    parked["resources"].append(
+        {
+            "resourceId": "hall_storage",
+            "resourceType": "storage_cabinet",
+            "locationId": "hallway",
+            "capacity": 1,
+            "attributes": {},
+        }
+    )
+    stranded = json.loads(json.dumps(behavior))
+    model = stranded["processModels"][0]
+    terminal = next(
+        edge["sourceNodeId"] for edge in model["edges"] if edge["targetNodeId"] == "end"
+    )
+    node = next(item for item in model["nodes"] if item["nodeId"] == terminal)
+    node["kind"] = "action"
+    node["actionType"] = "move_to"
+    node["arguments"] = {
+        "destination": {"source": "literal", "value": "hallway", "index": None, "variableId": None}
+    }
+
+    findings = validate_activities_do_not_park_the_resident(
+        Scenario.model_validate_json(json.dumps(parked)),
+        PersonalProcessPackage.model_validate_json(json.dumps(stranded)),
+    )
+    assert len(findings) == 1
+    assert findings[0].details["destination"] == "hallway"
+    assert findings[0].details["processModelId"] == model["processModelId"]

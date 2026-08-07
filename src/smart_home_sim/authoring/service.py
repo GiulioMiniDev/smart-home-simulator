@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from smart_home_sim.authoring.preflight import (
+    validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
     validate_deterministic_preconditions,
     validate_rooms_are_furnished,
@@ -483,6 +484,23 @@ def validate_authoring_payload(
                         details=finding.details,
                     )
                 )
+            if behavior_report.valid:
+                # Needs both halves: the models say where the resident is left, the scenario says
+                # whether there is anything there to be left with.
+                for finding in validate_activities_do_not_park_the_resident(
+                    parsed_scenario,
+                    PersonalProcessPackage.model_validate_json(json.dumps(behavior_payload)),
+                ):
+                    issues.append(
+                        _authoring_issue(
+                            "ACTIVITY_PARKS_RESIDENT_IN_A_CROSSING",
+                            "behavior",
+                            _prefix_path("$.personalProcessPackage", finding.path),
+                            finding.message,
+                            severity="warning",
+                            details=finding.details,
+                        )
+                    )
             for finding in validate_the_resident_goes_out(parsed_scenario):
                 issues.append(
                     _authoring_issue(
