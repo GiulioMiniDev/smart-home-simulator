@@ -6,6 +6,7 @@ import zipfile
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
+from xml.etree import ElementTree
 from xml.sax.saxutils import XMLGenerator
 
 import pytest
@@ -16,6 +17,7 @@ from smart_home_sim.application.export import (
     _filtered,
     _items,
     _record_time,
+    _xes,
     _xes_attribute,
 )
 from smart_home_sim.application.replay import ReplayService
@@ -125,6 +127,111 @@ def test_streaming_export_formats_manifest_and_integrity(
     corrupt.write_text("corrupt", encoding="utf-8")
     with pytest.raises(WorkspaceError, match="integrity checks"):
         service.verify_manifest(manifest.export_id)
+
+
+def test_xes_carries_a_day_per_trace_and_the_standard_extension_keys(tmp_path: Path) -> None:
+    """The three keys a process miner reads, on a log cut into cases it can compare.
+
+    Every one of these assertions stands for a way the export used to open in ProM without
+    complaint and teach an algorithm nothing: one trace for the whole run, the timestamp filed
+    under `observedAt` where nothing looks for it, no lifecycle to pair a start with its
+    completion, and every sensor firing named after its `measurement` so that 72k PIR events
+    arrived as one indistinguishable activity.
+    """
+    observable = [
+        {"observationId": "o1", "sensorId": "pir_kitchen", "measurement": "motion", "value": 1.0},
+        {"observationId": "o2", "sensorId": "pir_bedroom", "measurement": "motion", "value": 1.0},
+        {"observationId": "o3", "sensorId": "pir_kitchen", "measurement": "motion", "value": 1.0},
+    ]
+    # Deliberately out of order inside the day: the second reading closes after the third opens.
+    for record, stamp in zip(
+        observable,
+        ("2026-07-24T23:59:00+02:00", "2026-07-25T08:00:00+02:00", "2026-07-25T07:00:00+02:00"),
+        strict=True,
+    ):
+        record["observedAt"] = stamp
+
+    path = tmp_path / "observable.xes"
+    assert _xes(path, "observable", observable, "job_1") == 3
+    log = ElementTree.parse(path).getroot()
+    namespace = "{http://www.xes-standard.org/}"
+
+    assert [item.get("prefix") for item in log.findall(f"{namespace}extension")] == [
+        "concept",
+        "time",
+        "lifecycle",
+        "org",
+    ]
+    assert len(log.findall(f"{namespace}classifier")) == 2
+    traces = log.findall(f"{namespace}trace")
+    assert [
+        trace.find(f"{namespace}string[@key='concept:name']").get("value") for trace in traces
+    ] == ["2026-07-24", "2026-07-25"]
+    second = traces[1].findall(f"{namespace}event")
+    assert [
+        event.find(f"{namespace}date[@key='time:timestamp']").get("value") for event in second
+    ] == ["2026-07-25T07:00:00+02:00", "2026-07-25T08:00:00+02:00"]
+    assert [
+        event.find(f"{namespace}string[@key='concept:name']").get("value") for event in second
+    ] == ["pir_kitchen", "pir_bedroom"]
+    assert all(
+        event.find(f"{namespace}string[@key='lifecycle:transition']").get("value") == "complete"
+        for event in second
+    )
+    # The observable half stays blind: naming the resident here would hand over the oracle.
+    assert second[0].find(f"{namespace}string[@key='org:resource']") is None
+
+    # An interval record becomes the standard start/complete pair, counted once.
+    activity = {
+        "activityExecutionId": "a1",
+        "intent": "eat_breakfast",
+        "actorId": "francesca_verdi",
+        "actualStart": "2026-07-24T08:00:00+02:00",
+        "actualEnd": "2026-07-24T08:20:00+02:00",
+    }
+    paired = tmp_path / "activities.xes"
+    assert _xes(paired, "activities", [activity], "job_1") == 1
+    events = ElementTree.parse(paired).getroot().findall(f".//{namespace}event")
+    assert [
+        event.find(f"{namespace}string[@key='lifecycle:transition']").get("value")
+        for event in events
+    ] == ["start", "complete"]
+    assert {
+        event.find(f"{namespace}string[@key='concept:instance']").get("value") for event in events
+    } == {"a1"}
+    assert (
+        events[0].find(f"{namespace}string[@key='org:resource']").get("value") == "francesca_verdi"
+    )
+
+
+def test_xes_falls_back_for_undated_roles_and_rejects_disordered_sources(tmp_path: Path) -> None:
+    # `oracle` is a join table keyed by observation, not a log: no timestamp, so no day to cut.
+    links = [{"observationId": "o1", "causeType": "trace"}, {"observationId": "o2"}]
+    undated = tmp_path / "oracle.xes"
+    assert _xes(undated, "oracle", links, "job_1") == 2
+    namespace = "{http://www.xes-standard.org/}"
+    log = ElementTree.parse(undated).getroot()
+    trace = log.find(f"{namespace}trace")
+    assert len(log.findall(f"{namespace}trace")) == 1
+    # The `<global>` block still declares the key; no event carries a value for it.
+    assert trace.find(f".//{namespace}date[@key='time:timestamp']") is None
+
+    assert _xes(tmp_path / "empty.xes", "observable", [], "job_1") == 0
+
+    mixed = [
+        {"sensorId": "pir_kitchen", "observedAt": "2026-07-24T08:00:00+02:00"},
+        {"sensorId": "pir_bedroom"},
+    ]
+    with pytest.raises(WorkspaceError, match="with and without a timestamp"):
+        _xes(tmp_path / "mixed.xes", "observable", mixed, "job_1")
+
+    revisited = [
+        {"sensorId": "a", "observedAt": "2026-07-24T08:00:00+02:00"},
+        {"sensorId": "b", "observedAt": "2026-07-25T08:00:00+02:00"},
+        {"sensorId": "c", "observedAt": "2026-07-24T09:00:00+02:00"},
+    ]
+    with pytest.raises(WorkspaceError, match="not in chronological order"):
+        _xes(tmp_path / "disordered.xes", "observable", revisited, "job_1")
 
 
 def test_replay_requires_complete_run_artifacts(tmp_path: Path) -> None:

@@ -8,7 +8,9 @@ import shutil
 import tempfile
 import zipfile
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from datetime import datetime
+from itertools import chain
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -63,6 +65,98 @@ TIME_FIELDS = (
     "evaluatedAt",
     "plannedStart",
 )
+
+# Rendered as `<date>` in XES rather than `<string>`. A superset of TIME_FIELDS, which cannot grow
+# to hold the closing timestamps: `_record_time` takes the first match as *the* time of a record,
+# so adding `actualEnd` there would silently change which records a windowed export keeps.
+DATE_FIELDS = frozenset(TIME_FIELDS) | {
+    "actualEnd",
+    "endedAt",
+    "plannedEnd",
+    "time:timestamp",
+}
+
+XES_EXTENSIONS = (
+    ("Concept", "concept", "http://www.xes-standard.org/concept.xesext"),
+    ("Time", "time", "http://www.xes-standard.org/time.xesext"),
+    ("Lifecycle", "lifecycle", "http://www.xes-standard.org/lifecycle.xesext"),
+    ("Organizational", "org", "http://www.xes-standard.org/org.xesext"),
+)
+
+XES_CLASSIFIERS = (
+    ("Activity", "concept:name"),
+    ("Activity and transition", "concept:name lifecycle:transition"),
+)
+
+
+@dataclass(frozen=True)
+class XesProfile:
+    """How one export role becomes an XES event stream.
+
+    The three keys a process miner actually reads — `concept:name`, `time:timestamp`,
+    `lifecycle:transition` — are not in the data under those names, so each role has to say which
+    of its own fields play those parts. Getting this wrong does not produce an invalid file, it
+    produces a valid file that no algorithm can learn anything from, which is worse because the
+    tool opens it without complaining.
+    """
+
+    name_fields: tuple[str, ...]
+    start_fields: tuple[str, ...]
+    end_fields: tuple[str, ...] = ()
+    instance_fields: tuple[str, ...] = ()
+    resource_fields: tuple[str, ...] = ()
+
+
+# Roles whose shape has not been pinned down — the ones a run often leaves empty. Ordered guesses,
+# so that an unexpected role still exports something a miner can open.
+GENERIC_PROFILE = XesProfile(
+    name_fields=("intent", "actionType", "kind", "fact", "operation", "measurement"),
+    start_fields=TIME_FIELDS,
+    end_fields=("actualEnd", "endedAt"),
+    instance_fields=("activityExecutionId", "actionExecutionId", "movementId", "transitionId"),
+    resource_fields=("actorId", "subjectId"),
+)
+
+XES_PROFILES: dict[str, XesProfile] = {
+    "observable": XesProfile(
+        # Named after the sensor, not after `measurement`. Across a ninety-three day export the
+        # latter takes three values — motion, temperature, contact — so it collapses 72k PIR
+        # firings into a single activity and hands a miner a log with nothing to discover. The
+        # sensor is the unit of observable behaviour here, exactly as M003 is in CASAS Aruba.
+        name_fields=("sensorId",),
+        start_fields=("observedAt",),
+        instance_fields=("observationId",),
+    ),
+    "activities": XesProfile(
+        name_fields=("intent",),
+        start_fields=("actualStart", "plannedStart"),
+        end_fields=("actualEnd",),
+        instance_fields=("activityExecutionId",),
+        resource_fields=("actorId",),
+    ),
+    "actions": XesProfile(
+        name_fields=("actionType",),
+        start_fields=("startedAt",),
+        end_fields=("endedAt",),
+        instance_fields=("actionExecutionId",),
+        resource_fields=("actorId",),
+    ),
+    "movements": XesProfile(
+        # Where the resident arrived: a trajectory log whose events are all called `move_to`
+        # describes no trajectory.
+        name_fields=("destinationRegionId",),
+        start_fields=("startedAt",),
+        end_fields=("endedAt",),
+        instance_fields=("movementId",),
+        resource_fields=("actorId",),
+    ),
+    "state_transitions": XesProfile(
+        name_fields=("fact",),
+        start_fields=("at",),
+        instance_fields=("transitionId",),
+        resource_fields=("subjectId",),
+    ),
+}
 
 
 def _digest(path: Path) -> str:
@@ -159,7 +253,7 @@ def _xes_attribute(xml: XMLGenerator, key: str, value: Any) -> None:
     elif isinstance(value, (int, float)):
         tag = "float"
         rendered = str(value)
-    elif key in TIME_FIELDS and isinstance(value, str):
+    elif key in DATE_FIELDS and isinstance(value, str):
         tag = "date"
         rendered = value
     else:
@@ -173,43 +267,191 @@ def _xes_attribute(xml: XMLGenerator, key: str, value: Any) -> None:
     xml.endElement(tag)
 
 
+def _field(record: dict[str, Any], fields: Iterable[str]) -> Any:
+    for name in fields:
+        value = record.get(name)
+        if value is not None and value != "":
+            return value
+    return None
+
+
+def _xes_moments(record: dict[str, Any], profile: XesProfile) -> list[tuple[str, str]]:
+    """The one or two XES events a record becomes, as (timestamp, lifecycle transition).
+
+    A record that spans an interval becomes the standard pair, because that is the only encoding
+    the tooling understands: `sessionSegmentation.py` in the activity-segmentation reference reads
+    `lifecycle:transition` directly and pairs each `start` with the `complete` that follows it.
+    A closing timestamp equal to the opening one is a point in time wearing an interval's clothes,
+    and emitting the pair for it would invent a duration the simulator never produced.
+    """
+    start = _field(record, profile.start_fields)
+    if not isinstance(start, str):
+        return []
+    end = _field(record, profile.end_fields)
+    if isinstance(end, str) and end != start:
+        return [(start, "start"), (end, "complete")]
+    return [(start, "complete")]
+
+
+def _xes_event(
+    xml: XMLGenerator,
+    record: dict[str, Any],
+    profile: XesProfile,
+    role: str,
+    moment: tuple[str, str] | None,
+) -> None:
+    xml.startElement("event", {})
+    _xes_attribute(xml, "concept:name", _field(record, profile.name_fields) or role)
+    _xes_attribute(xml, "concept:instance", _field(record, profile.instance_fields))
+    if moment is not None:
+        _xes_attribute(xml, "time:timestamp", moment[0])
+        _xes_attribute(xml, "lifecycle:transition", moment[1])
+    _xes_attribute(xml, "org:resource", _field(record, profile.resource_fields))
+    for key, value in record.items():
+        _xes_attribute(xml, key, value)
+    xml.endElement("event")
+
+
+def _xes_header(xml: XMLGenerator, role: str, run_id: str) -> None:
+    xml.startElement(
+        "log",
+        {
+            "xes.version": "1.0",
+            "xes.features": "nested-attributes",
+            "xmlns": "http://www.xes-standard.org/",
+        },
+    )
+    # Order is fixed by the standard: extensions, globals, classifiers, attributes, traces.
+    for name, prefix, uri in XES_EXTENSIONS:
+        xml.startElement("extension", {"name": name, "prefix": prefix, "uri": uri})
+        xml.endElement("extension")
+    xml.startElement("global", {"scope": "trace"})
+    _xes_attribute(xml, "concept:name", "__INVALID__")
+    xml.endElement("global")
+    xml.startElement("global", {"scope": "event"})
+    _xes_attribute(xml, "concept:name", "__INVALID__")
+    _xes_attribute(xml, "time:timestamp", "1970-01-01T00:00:00+00:00")
+    _xes_attribute(xml, "lifecycle:transition", "complete")
+    xml.endElement("global")
+    for name, keys in XES_CLASSIFIERS:
+        xml.startElement("classifier", {"name": name, "keys": keys})
+        xml.endElement("classifier")
+    _xes_attribute(xml, "concept:name", f"{run_id}:{role}")
+    _xes_attribute(xml, "lifecycle:model", "standard")
+
+
 def _xes(path: Path, role: str, records: Iterable[dict[str, Any]], run_id: str) -> int:
+    """One XES log, one trace per calendar day.
+
+    The case notion is the day, which is what makes the file usable at all. Everything used to go
+    into a single trace named after the run: valid XES, and worthless, because a log with one case
+    has no variants to compare and the Inductive Miner returns the input back as a straight line.
+    Habit segmentation in particular works by contrasting how different days behave in the same
+    slot of the clock, so the day has to be the case.
+
+    Days are cut at local midnight. A record that opens before midnight and closes after it stays
+    whole, in the trace of the day it opened — a case should not be torn in half mid-activity.
+    Habits that straddle midnight are handled downstream, where the discretisation algorithm
+    already treats the twenty-four hours as a circle and merges the last slot with the first.
+
+    The returned count is records consumed, not events written, so that the manifest agrees across
+    formats. An interval record contributes two events to the file and one to this number.
+    """
+    profile = XES_PROFILES.get(role, GENERIC_PROFILE)
+    iterator = iter(records)
+    first = next(iterator, None)
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         xml = XMLGenerator(handle, encoding="utf-8", short_empty_elements=True)
         xml.startDocument()
-        xml.startElement(
-            "log",
-            {
-                "xes.version": "1.0",
-                "xes.features": "nested-attributes",
-                "xmlns": "http://www.xes-standard.org/",
-            },
-        )
-        _xes_attribute(xml, "concept:name", f"{run_id}:{role}")
-        xml.startElement("trace", {})
-        _xes_attribute(xml, "concept:name", run_id)
+        _xes_header(xml, role, run_id)
         count = 0
-        for record in records:
-            xml.startElement("event", {})
-            event_name = next(
-                (
-                    record[name]
-                    for name in ("intent", "actionType", "measurement", "operation", "kind")
-                    if record.get(name) is not None
-                ),
-                role,
+        if first is not None:
+            count = (
+                _xes_dated_traces(xml, chain([first], iterator), profile, role)
+                if _xes_moments(first, profile)
+                # No timestamp anywhere in the record: the role is a join table (`oracle`) or a
+                # snapshot (`final_state`), not a log. There is no day to cut it into, so it keeps
+                # the old single-trace shape and simply carries no Time extension values.
+                else _xes_undated_trace(xml, chain([first], iterator), profile, role, run_id)
             )
-            _xes_attribute(xml, "concept:name", event_name)
-            for key, value in record.items():
-                _xes_attribute(xml, key, value)
-            xml.endElement("event")
-            count += 1
-        xml.endElement("trace")
         xml.endElement("log")
         xml.endDocument()
         handle.flush()
         os.fsync(handle.fileno())
     return count
+
+
+def _xes_undated_trace(
+    xml: XMLGenerator,
+    records: Iterable[dict[str, Any]],
+    profile: XesProfile,
+    role: str,
+    run_id: str,
+) -> int:
+    xml.startElement("trace", {})
+    _xes_attribute(xml, "concept:name", run_id)
+    count = 0
+    for record in records:
+        _xes_event(xml, record, profile, role, None)
+        count += 1
+    xml.endElement("trace")
+    return count
+
+
+def _xes_dated_traces(
+    xml: XMLGenerator,
+    records: Iterable[dict[str, Any]],
+    profile: XesProfile,
+    role: str,
+) -> int:
+    """Write one trace per day, buffering a single day at a time.
+
+    Buffering is unavoidable: an interval record emits its `complete` after events that opened
+    later, so a trace can only be ordered once the day is closed. It is bounded by a day's records
+    — roughly 1,300 for an observable log — not by the export, which runs to millions.
+    """
+    count = 0
+    current: str | None = None
+    closed: set[str] = set()
+    buffer: list[tuple[datetime, int, int, tuple[str, str], dict[str, Any]]] = []
+    for record in records:
+        moments = _xes_moments(record, profile)
+        if not moments:
+            raise WorkspaceError(f"export role '{role}' has records with and without a timestamp")
+        day = datetime.fromisoformat(moments[0][0]).date().isoformat()
+        if day != current:
+            if current is not None:
+                _xes_flush(xml, current, buffer, profile, role)
+                buffer = []
+                closed.add(current)
+            # The sources are written in chronological order and the day is derived from that
+            # order, so a day coming back after it was closed means the ordering assumption this
+            # function rests on is broken. Failing beats writing a log with two traces per day.
+            if day in closed:
+                raise WorkspaceError(f"export role '{role}' is not in chronological order")
+            current = day
+        for index, moment in enumerate(moments):
+            buffer.append((datetime.fromisoformat(moment[0]), count, index, moment, record))
+        count += 1
+    if current is not None:
+        _xes_flush(xml, current, buffer, profile, role)
+    return count
+
+
+def _xes_flush(
+    xml: XMLGenerator,
+    day: str,
+    buffer: list[tuple[datetime, int, int, tuple[str, str], dict[str, Any]]],
+    profile: XesProfile,
+    role: str,
+) -> None:
+    xml.startElement("trace", {})
+    _xes_attribute(xml, "concept:name", day)
+    # Sorted on the timestamp, then on the order the records arrived: two events at the same
+    # instant must come out the same way on every export, or the digest stops being reproducible.
+    for _, _, _, moment, record in sorted(buffer, key=lambda item: item[:3]):
+        _xes_event(xml, record, profile, role, moment)
+    xml.endElement("trace")
 
 
 class ExportService:
