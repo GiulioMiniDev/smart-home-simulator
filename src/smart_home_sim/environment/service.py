@@ -937,6 +937,89 @@ def build_bundle_files(
     return BundleBuildResult(report=report, bundle=bundle)
 
 
+def rebind_bundle_home(bundle: SimulationBundle, home: HomeModel) -> BundleBuildResult:
+    """Re-gate an already accepted bundle against a different home model.
+
+    A researcher who moves the fridge or widens the corridor changes where the resident can stand
+    and how long it takes to get there — nothing about the scenario, the canonical plan or the
+    behaviour package. So only the home-dependent gates are paid again: home validation, scenario
+    compatibility, action bindings, kinematics and routes. Re-running ``build_bundle_files`` would
+    additionally recompile the scenario to re-prove a plan digest that no edit here can touch,
+    which for a horizon of hundreds of days means hundreds of CP-SAT solves to learn nothing.
+
+    The result is a full bundle, not a patch: its home digest is recomputed, so a run made from an
+    approved plan carries provenance that matches what it actually executed.
+    """
+    issues = list(validate_home_model(home).issues)
+    issues.extend(_scenario_compatibility(home, bundle.scenario))
+    if issues:
+        return BundleBuildResult(
+            report=EnvironmentValidationReport.from_issues(
+                _sort_issues(issues), home=home, home_sha256=canonical_sha256(home)
+            )
+        )
+
+    package = bundle.behavior_package
+    action_catalog = ActionCatalog.model_validate_json(
+        default_action_catalog_path(package.catalogs.action_catalog.version).read_text()
+    )
+    variable_catalog = VariableCatalog.model_validate_json(
+        default_variable_catalog_path().read_text()
+    )
+    action_bindings, binding_issues = _build_action_bindings(
+        home, bundle.scenario, package, action_catalog, variable_catalog
+    )
+    issues.extend(binding_issues)
+    kinematics = _resolved_kinematics(home, bundle.scenario)
+    route_checks, route_issues = _validate_routes(home, bundle.scenario, kinematics)
+    issues.extend(route_issues)
+    if issues:
+        return BundleBuildResult(
+            report=EnvironmentValidationReport.from_issues(
+                _sort_issues(issues),
+                home=home,
+                home_sha256=canonical_sha256(home),
+                action_binding_count=len(action_bindings),
+                route_check_count=route_checks,
+            )
+        )
+
+    digests = [
+        digest
+        for digest in bundle.digests
+        if digest.artifact_id != bundle.home_model.home_id
+        or digest.version != bundle.home_model.home_version
+    ]
+    digests.append(
+        ArtifactDigest(
+            artifact_id=home.home_id,
+            version=home.home_version,
+            sha256=canonical_sha256(home),
+        )
+    )
+    behavior_marker = (
+        "" if package.package_version == "1.0.0" else f"__behavior_{package.package_version}"
+    )
+    rebound = bundle.model_copy(
+        update={
+            "bundle_id": (f"{bundle.scenario.scenario_id}__{home.home_id}{behavior_marker}__1.0.0"),
+            "home_model": home,
+            "digests": digests,
+            "resident_kinematics": kinematics,
+            "action_bindings": action_bindings,
+        }
+    )
+    report = EnvironmentValidationReport.from_issues(
+        [],
+        home=home,
+        home_sha256=canonical_sha256(home),
+        bundle_sha256=canonical_sha256(rebound),
+        action_binding_count=len(action_bindings),
+        route_check_count=route_checks,
+    )
+    return BundleBuildResult(report=report, bundle=rebound)
+
+
 @lru_cache(maxsize=4)
 def _compiled_plan_digest(scenario_json: str) -> str:
     scenario = Scenario.model_validate_json(scenario_json)

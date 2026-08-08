@@ -134,6 +134,46 @@ il mapping separato verso la causa simulata. **Replay** ricontrolla il digest se
 prima di registrare la sessione. Le esportazioni mantengono la stessa separazione e includono
 un manifest con seed, versioni, conteggi, relazioni, dimensioni e digest.
 
+La planimetria che le policy producono è una **proposta**, non una decisione. L'applicazione la
+mostra come *Recommended* — stanze, arredi e sensori disegnati sul piano — subito dopo la
+generazione e sulla pagina della casa, con due sole risposte possibili: confermarla così com'è
+oppure aprirla e modificarla, trascinando e ridimensionando stanze, mobili e PIR e regolandone la
+copertura direttamente sul disegno. Il disegno è **l'abitazione**: supermercato, bar, casa del
+parente e il pianerottolo dichiarato come `transit` restano regioni del modello — servono a
+collocare il residente quando è fuori — ma vengono materializzati a decine di metri dal piano e
+deciderebbero il viewport lasciando l'appartamento illeggibile in un angolo, così compaiono solo
+attivando *External places* (e durante il replay, finché la traiettoria è fuori casa).
+L'appartenenza non dipende dal nome né dal tipo della regione ma da come ci si arriva: è casa una
+stanza, o ciò che una porta o un passaggio collega a una stanza — mai un link di transito. Il
+balcone, il terrazzo e una veranda restano quindi stanze della planimetria, come sono nel modello.
+
+Il disegno è una **pianta**, non un diagramma delle regioni: l'involucro dell'appartamento è
+tracciato più spesso dei tramezzi, le porte sono varchi veri nel muro con anta e arco di apertura,
+e ogni stanza porta nome e superficie calcolata. Muri e aperture sono derivati dagli stessi dati che
+usa il simulatore — i bordi condivisi fra regioni e i due portali che ogni connessione dichiara ai
+lati del muro — quindi non c'è un secondo modello da tenere allineato. Anche la **porta di casa** è disegnata, pur non esistendo come apertura nel modello: uscire è un
+link di transito e la porta è l'entità a cui si legano `enter_home` e `leave_home`, quindi il piano
+la ricava da lì — l'entità che dichiara quelle operazioni — e traccia il varco sul muro perimetrale
+della sua stanza più vicino al punto di interazione, con apertura verso l'esterno ed etichetta.
+Il livello sensori è disegnato per essere letto: ogni famiglia ha la sua forma e il suo colore —
+onde di movimento per il PIR, coppia di contatti per il reed, termometro per la temperatura — la
+copertura di un PIR compare solo quando è selezionato (trenta rettangoli traslucidi sovrapposti non
+dicono nulla di nessuno), e arredi e provider si attenuano perché sotto un impianto sono contesto.
+L'etichetta della stanza si alza quando il livello è attivo, perché la policy mette il sensore di
+temperatura esattamente al centro della stanza, dov'era la scritta.
+Si naviga trascinando la
+pianta e con la rotellina, che zooma verso il puntatore; i pulsanti restano per l'uso da tastiera,
+e la barra di navigazione si richiude a icone quando alla pianta serve larghezza.
+In modifica si sposta solo ciò che è già selezionato: su una pianta che riempie la tela un
+trascinamento è quasi sempre un tentativo di guardarsi intorno, e un muro spostato per sbaglio
+finirebbe pubblicato. Dal momento in cui il ricercatore risponde, quel modello **è**
+la casa: ogni run successiva lo esegue invece di rigenerarlo dalla policy, sia per una casa
+ordinaria sia per un orizzonte generato, dove il piano approvato viene ri-legato a ogni giornata
+già compilata. I gate non cambiano: un piano approvato attraversa le stesse validazioni M4 e M6 di
+uno generato e, se non le supera, la run fallisce esplicitamente anziché tornare in silenzio alla
+proposta. Il razionale è in
+[ADR-020](docs/decisions/ADR-020-researcher-approved-plan-as-run-input.md).
+
 Se l'avvio trova un file mancante o corrotto, il workspace entra in modalità diagnostica:
 consultazione e archivio restano disponibili, mentre nuove pubblicazioni e job vengono
 bloccati. I job rimasti `running` dopo un arresto diventano `interrupted`; una cancellazione
@@ -469,6 +509,7 @@ simulazione si avvia come qualsiasi altra run.
 - [Freeze della proiezione sensoriale 1.0.0](docs/decisions/ADR-014-freeze-sensor-projection-1.0.0.md)
 - [Materializzazione scenario-first di casa e sensori](docs/decisions/ADR-015-scenario-first-environment-materialization.md)
 - [Applicazione locale e workspace SQLite](docs/decisions/ADR-016-local-application-and-sqlite-workspace.md)
+- [Planimetria rivista come input della run](docs/decisions/ADR-020-researcher-approved-plan-as-run-input.md)
 - [Design: pianificazione ibrida locale](docs/plans/2026-07-22-hybrid-local-planning-design.md)
 - [Design: ground truth delle abitudini](docs/plans/2026-07-22-behavioral-profile-habit-ground-truth-design.md)
 - [Design: da persona locale a dataset simulabile](docs/plans/2026-07-24-local-persona-to-simulatable-dataset-design.md)

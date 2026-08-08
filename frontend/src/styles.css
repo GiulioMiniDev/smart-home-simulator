@@ -69,6 +69,15 @@ p { color: var(--text-soft); line-height: 1.55; }
 }
 
 .app-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; background: var(--bg); color: var(--text); }
+/* Collapsed to its icons: the plan is the thing worth the width. */
+.app-shell.nav-collapsed { grid-template-columns: 62px minmax(0, 1fr); }
+.nav-collapsed .sidebar { width: 62px; }
+.nav-collapsed .brand-lockup { justify-content: center; padding: 0; }
+.nav-collapsed .brand-lockup > span:nth-child(2), .nav-collapsed .sidebar-context, .nav-collapsed .sidebar nav a span { display: none; }
+.nav-collapsed .sidebar nav { padding: 1.1rem .5rem; }
+.nav-collapsed .sidebar nav a { justify-content: center; padding: .5rem; }
+.nav-collapsed .sidebar-collapse { position: absolute; top: 68px; right: 50%; transform: translate(50%, .55rem); }
+.nav-collapsed .sidebar nav { padding-top: 3.2rem; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; display: flex; width: 232px; flex-direction: column; background: var(--sidebar); color: oklch(93% 0.01 85); }
 .brand-lockup { display: flex; align-items: center; gap: .7rem; height: 68px; padding: 0 1.1rem; border-bottom: 1px solid oklch(100% 0 0 / .1); }
 .brand-lockup > span:nth-child(2) { display: flex; min-width: 0; flex: 1; flex-direction: column; }
@@ -83,6 +92,8 @@ p { color: var(--text-soft); line-height: 1.55; }
 .sidebar-context span, .sidebar-context small { color: var(--sidebar-muted); font-size: .72rem; }
 .sidebar-context strong { overflow: hidden; font-size: .84rem; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-close, .mobile-menu, .nav-scrim { display: none !important; }
+.sidebar-collapse { color: var(--sidebar-muted); }
+.sidebar-collapse:hover { background: oklch(100% 0 0 / .08); color: oklch(94% .01 85); }
 .app-body { grid-column: 2; min-width: 0; }
 .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: .75rem; height: 68px; padding: 0 clamp(1rem, 2.2vw, 2rem); border-bottom: 1px solid var(--line); background: color-mix(in oklch, var(--bg) 94%, transparent); backdrop-filter: blur(12px); }
 .global-search { display: flex; width: min(440px, 45vw); align-items: center; gap: .55rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text-soft); }
@@ -254,8 +265,12 @@ dd { margin: 0; }
 .definition-list.compact > div { grid-template-columns: 90px 1fr; min-height: 42px; }
 .evidence-sheet > .button { margin: 1rem 1.15rem; }
 
-.editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: 670px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-.editor-stage { display: grid; min-width: 0; grid-template-rows: auto 1fr; border-inline-end: 1px solid var(--line); }
+/* The stage is sized by the viewport, never by what the inspector happens to be showing.
+   Selecting a sensor unfolds a column of fields; while this grid took its height from its tallest
+   column, that made the canvas taller, and an SVG re-fits its viewBox when its box changes — so a
+   click on a piece of furniture silently rescaled and recentred the plan under the pointer. */
+.editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; height: min(78vh, 820px); min-height: 560px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.editor-stage { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); border-inline-end: 1px solid var(--line); }
 .editor-toolbar { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: .8rem; padding: .35rem .6rem; border-bottom: 1px solid var(--line); background: var(--surface-cool); }
 .editor-toolbar > div { display: flex; flex-wrap: wrap; gap: .25rem; }
 .viewport-tools { align-items: center; justify-content: flex-end; }
@@ -263,18 +278,33 @@ dd { margin: 0; }
 .editor-toolbar > span { color: var(--text-soft); font-size: .72rem; }
 .tool-button { display: inline-flex; align-items: center; gap: .35rem; padding: .38rem .55rem; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text-soft); font-size: .73rem; cursor: pointer; }
 .tool-button:hover, .tool-button[aria-pressed="true"] { border-color: var(--line); background: var(--surface); color: var(--text); }
-.plan-canvas-wrap { position: relative; min-height: 520px; background: var(--surface-raised); }
-.plan-canvas { display: block; width: 100%; height: 100%; min-height: 520px; }
+.plan-canvas-wrap { position: relative; min-height: 0; height: 100%; background: var(--surface-raised); }
+.plan-canvas { display: block; width: 100%; height: 100%; }
 .plan-grid { stroke: none; }
 pattern#grid path { fill: none; stroke: var(--line); stroke-width: .018; }
 pattern#obstacle line { stroke: var(--amber); stroke-width: .13; }
-.region { vector-effect: non-scaling-stroke; stroke: var(--line-strong); stroke-width: 1.4px; transition: 140ms ease-out; }
+/* Rooms are fills, not outlines: the walls below are what draws the plan. */
+.region { vector-effect: non-scaling-stroke; stroke: none; transition: 140ms ease-out; }
+.walls line, .doors line, .doors path { vector-effect: non-scaling-stroke; stroke-linecap: butt; }
+/* The envelope of the flat reads heavier than what divides it, the way a plan is drawn. */
+.wall-exterior { stroke: var(--text); stroke-width: 5px; }
+.wall-partition { stroke: var(--text-soft); stroke-width: 2.6px; }
+/* An opening: the threshold line, the leaf and the quarter-circle it sweeps. */
+.door-threshold { stroke: var(--surface-raised); stroke-width: 5px; }
+.door-leaf { stroke: var(--text-soft); stroke-width: 2px; }
+.door-swing { fill: none; stroke: var(--text-faint); stroke-width: 1.2px; stroke-dasharray: 2 2; }
+/* The way out of the flat, which the model only ever states as an entity and a transit link. */
+.door-entrance .door-leaf { stroke: var(--teal); stroke-width: 2.6px; }
+.door-entrance .door-swing { stroke: var(--teal); }
+.door-caption { fill: var(--teal); font-size: .26px; font-weight: 640; text-anchor: middle; pointer-events: none; }
 .region-room { fill: color-mix(in oklch, var(--surface-cool) 70%, var(--teal-soft)); }
 .region-outdoor, .region-external { fill: color-mix(in oklch, var(--green-soft) 70%, var(--surface)); }
 .region-transit { fill: var(--amber-soft); }
 g[role="button"] { cursor: pointer; }
 g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); stroke-width: 2.4px; }
-.region-label { fill: var(--text); font-size: .42px; font-weight: 690; text-anchor: middle; text-transform: capitalize; pointer-events: none; }
+.region-caption { pointer-events: none; }
+.region-area { fill: var(--text-soft); text-anchor: middle; font-weight: 500; }
+.region-label { fill: var(--text); font-weight: 690; text-anchor: middle; text-transform: capitalize; pointer-events: none; }
 .connection { vector-effect: non-scaling-stroke; stroke: var(--text-faint); stroke-width: 1.5px; stroke-dasharray: 3 3; }
 .connection-doorway { stroke: var(--teal); stroke-width: 2.2px; }
 .obstacle { fill: url(#obstacle); vector-effect: non-scaling-stroke; stroke: var(--amber); stroke-width: 1.2px; cursor: pointer; }
@@ -298,20 +328,51 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .interaction-point { fill: var(--teal); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 1px; }
 .entity-node circle { fill: var(--indigo-soft); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; }
+/* The reach the model gives that spot: it is a place to stand, not the object itself. */
+.approach-radius { fill: color-mix(in oklch, var(--indigo) 8%, transparent); stroke: var(--indigo); stroke-width: 1px; stroke-dasharray: 2 2; opacity: 0; transition: opacity .12s; }
+.entity-node:hover .approach-radius, .entity-node:focus-within .approach-radius, .entity-node.is-selected .approach-radius { opacity: 1; }
 .entity-node path { fill: none; vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.2px; }
 .entity-node text, .sensor-node text { fill: var(--text-soft); font-size: .3px; text-transform: capitalize; }
 .entity-node:hover circle, .entity-node.is-selected circle { fill: var(--indigo); stroke: var(--surface-raised); stroke-width: 2.5px; }
-.sensor-coverage { fill: color-mix(in oklch, var(--teal) 10%, transparent); vector-effect: non-scaling-stroke; stroke: color-mix(in oklch, var(--teal) 55%, transparent); stroke-width: 1px; stroke-dasharray: 3 2; }
-.sensor-node circle { fill: var(--surface-raised); vector-effect: non-scaling-stroke; stroke: var(--teal); stroke-width: 2px; }
-.sensor-node path { fill: none; vector-effect: non-scaling-stroke; stroke: var(--teal); stroke-width: 1.3px; }
-.sensor-node.is-selected circle { fill: var(--teal); stroke: var(--surface-raised); }
+/* Only the selected field is drawn, so it can afford to be legible. */
+.sensor-coverage { fill: color-mix(in oklch, var(--teal) 14%, transparent); vector-effect: non-scaling-stroke; stroke: var(--teal); stroke-width: 1.6px; stroke-dasharray: 4 3; }
+/* One shape and one colour per family: motion, contact, temperature are told apart at a glance. */
+.sensor-glyph circle, .sensor-glyph rect, .sensor-glyph path { fill: var(--surface-raised); vector-effect: non-scaling-stroke; stroke-width: 1.7px; }
+.sensor-glyph .glyph-solid { fill: currentcolor; }
+.sensor-glyph path { fill: none; stroke-width: 1.5px; }
+.sensor-node { color: var(--teal); }
+.sensor-node .sensor-glyph circle, .sensor-node .sensor-glyph rect, .sensor-node .sensor-glyph path { stroke: currentcolor; }
+.sensor-pir { color: var(--teal); }
+.sensor-contact { color: var(--indigo); }
+.sensor-temperature { color: var(--red); }
+.sensor-node.is-selected .sensor-glyph circle, .sensor-node.is-selected .sensor-glyph rect { fill: currentcolor; }
+.sensor-node.is-selected text { opacity: 1; }
+/* With a sensor field on top, the furniture below is context: it should not compete with it. */
+.shows-sensors .entity-node { opacity: .32; }
+.shows-sensors .entity-node:hover, .shows-sensors .entity-node.is-selected { opacity: 1; }
+.shows-sensors .furniture-glyph { opacity: .42; }
+.shows-sensors .obstacle { opacity: .55; }
+/* Direct manipulation. Touch targets and outlines are kept at screen scale, because one user unit
+   is one metre here and a handle sized in metres is unusable at any zoom but one. */
+.plan-canvas { cursor: grab; touch-action: none; }
+.plan-canvas:active { cursor: grabbing; }
+.plan-canvas.is-editable g[role="button"] { cursor: move; }
+.plan-canvas.is-editable g[role="button"]:active { cursor: grabbing; }
+.selection-outline { fill: none; vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; stroke-dasharray: 4 3; pointer-events: none; }
+.resize-handle { fill: var(--surface-raised); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 2px; cursor: pointer; }
+.resize-handle:hover { fill: var(--indigo); }
+.handle-n, .handle-s { cursor: ns-resize; }
+.handle-e, .handle-w { cursor: ew-resize; }
+.handle-nw, .handle-se { cursor: nwse-resize; }
+.handle-ne, .handle-sw { cursor: nesw-resize; }
 .active-trajectory polyline { fill: none; vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 3px; stroke-linecap: round; stroke-linejoin: round; }
 .active-trajectory circle { fill: var(--indigo); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 2px; }
 .plan-legend { position: absolute; inset: auto auto .7rem .7rem; display: flex; gap: .7rem; padding: .42rem .55rem; border: 1px solid var(--line); border-radius: 5px; background: color-mix(in oklch, var(--surface-raised) 92%, transparent); color: var(--text-soft); font-size: .65rem; }
 .plan-legend span { display: inline-flex; align-items: center; gap: .3rem; }
 .plan-legend i { width: 10px; height: 10px; border: 1px solid var(--line-strong); }
+.legend-entrance { border-color: var(--teal); background: var(--teal-soft); }
 .legend-room { background: var(--surface-cool); }.legend-obstacle { background: var(--amber-soft); }.legend-provider { border-radius: 50%; background: var(--indigo-soft); }.legend-sensor { border-radius: 50%; background: var(--teal-soft); }
-.inspector { position: relative; display: flex; min-width: 0; flex-direction: column; background: var(--surface); }
+.inspector { position: relative; display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow-y: auto; background: var(--surface); }
 .inspector-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; padding: 1rem; border-bottom: 1px solid var(--line); }
 .inspector-heading h2, .inspector-heading p { overflow-wrap: anywhere; margin-bottom: 0; }
 .inspector-help { padding: 0 1rem; font-size: .78rem; }
@@ -325,7 +386,9 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .inspector-section { padding: 1rem; border-top: 1px solid var(--line); }
 .inspector-section code { display: block; overflow-wrap: anywhere; }
 .inspector-section p { font-size: .77rem; }
-.inspector-footer { margin-top: auto; padding: .8rem; border-top: 1px solid var(--line); }
+.inspector-footer { margin-top: auto; padding: .8rem; border-top: 1px solid var(--line); background: var(--surface); }
+.unsaved-note { display: flex; align-items: flex-start; gap: .35rem; margin: 0 0 .5rem; color: var(--text-soft); font-size: .7rem; line-height: 1.35; }
+.unsaved-note svg { flex: none; margin-top: .1rem; color: var(--amber); }
 .inspector-footer .button { width: 100%; }
 
 .run-table { border-top: 1px solid var(--line); }
@@ -489,6 +552,10 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
   .sidebar { width: min(82vw, 290px); transform: translateX(-102%); transition: transform 180ms cubic-bezier(.25, 1, .5, 1); }
   .sidebar.is-open { transform: translateX(0); }
   .sidebar-close, .mobile-menu { display: inline-grid !important; }
+  /* Stacked on a phone the sidebar is a drawer, and collapsing it to icons means nothing. */
+  .sidebar-collapse { display: none !important; }
+  .app-shell.nav-collapsed { grid-template-columns: 1fr; }
+  .nav-collapsed .sidebar { width: 232px; }
   .nav-scrim { position: fixed; inset: 0; z-index: 25; display: block !important; border: 0; background: oklch(10% .01 220 / .45); }
   .topbar { height: 58px; padding: 0 .8rem; }
   .global-search { width: auto; flex: 1; }
@@ -512,7 +579,7 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
   .active-run-bar { grid-template-columns: 1fr; }
   .tabs { overflow-x: auto; }
   .tabs button { white-space: nowrap; }
-  .editor-layout { display: flex; flex-direction: column; }
+  .editor-layout { display: flex; height: auto; flex-direction: column; }
   .editor-stage { min-height: 520px; border-inline-end: 0; }
   .inspector { min-height: 400px; border-top: 1px solid var(--line); }
   .run-table { overflow-x: auto; }
@@ -556,3 +623,15 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .ghost-row.is-active { border-color: var(--accent, #4b3fb0); }
 .ghost-row small { margin-left: auto; opacity: 0.6; }
 .generate-status .hint { opacity: 0.75; font-size: 0.92rem; }
+
+/* The planimetry review: what the researcher answers before anything is simulated. */
+.plan-review { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; margin-bottom: 1rem; padding: 1rem; border: 1px solid color-mix(in oklch, var(--indigo) 35%, var(--line)); border-radius: var(--radius); background: var(--indigo-soft); }
+.plan-review h2 { margin: .15rem 0 .35rem; font-size: 1rem; }
+.plan-review p { margin: 0; color: var(--text-soft); }
+.plan-review .eyebrow { display: inline-flex; align-items: center; gap: .3rem; }
+@media (max-width: 820px) { .plan-review { grid-template-columns: 1fr; } }
+.plan-preview { display: flex; flex-direction: column; gap: .7rem; }
+.plan-preview .plan-canvas-wrap, .plan-preview .plan-canvas { height: 340px; border-radius: var(--radius); }
+.plan-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
+.plan-preview-heading h3 { margin: .1rem 0 0; font-size: .95rem; }
+.recommended-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .5rem; border: 1px solid color-mix(in oklch, var(--indigo) 45%, var(--line)); border-radius: 999px; background: var(--indigo-soft); color: var(--text); font-size: .7rem; font-weight: 620; }

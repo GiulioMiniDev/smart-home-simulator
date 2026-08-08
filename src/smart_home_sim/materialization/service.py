@@ -246,6 +246,24 @@ def _json(path: Path, model: Any) -> None:
     path.write_text(model.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8")
 
 
+def _json_document(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def bind_sensor_model(model: SensorModel, bundle: SimulationBundle) -> SensorModel:
+    """The same sensor field, its provenance bound to the bundle it is about to observe.
+
+    A field a researcher approved was validated against an earlier bundle — or, for a horizon,
+    against no single one. Only its provenance moves; every sensor, position, coverage and error
+    parameter is the researcher's, which is the whole point of approving it.
+    """
+    payload = json.loads(model.model_dump_json(by_alias=True))
+    payload["sourceBundleId"] = bundle.bundle_id
+    payload["sourceBundleSha256"] = canonical_sha256(bundle)
+    payload["seed"] = bundle.seed
+    return SensorModel.model_validate_json(json.dumps(payload))
+
+
 def _load_model[ModelT](path: Path, model: type[ModelT]) -> ModelT:
     return model.model_validate_json(path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
 
@@ -1165,9 +1183,20 @@ def materialize_workspace(
     *,
     home_policy: HomeGenerationPolicy | None = None,
     sensor_policy: SensorDeploymentPolicy | None = None,
+    approved_home: HomeModel | None = None,
+    approved_sensors: SensorModel | None = None,
     progress: Callable[[str, float, str, dict[str, int]], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
 ) -> SyntheticWorkspaceManifest:
+    """Materialize, simulate and project one scenario into a complete synthetic workspace.
+
+    ``approved_home``/``approved_sensors`` are the models a researcher has confirmed or edited for
+    this home. When given they REPLACE the corresponding deterministic policy step: the recommended
+    plan is what the generator proposes, the approved plan is what the run executes. They are not
+    trusted blindly — the M4 bundle gate and the M6 sensor contract judge them exactly as they judge
+    a generated model, and a rejected approved model fails the run instead of quietly falling back
+    to the policy, which would simulate a home the researcher never agreed to.
+    """
     if output_directory.exists():
         raise FileExistsError(f"output directory already exists: {output_directory}")
     home_policy = home_policy or HomeGenerationPolicy()
@@ -1208,19 +1237,28 @@ def materialize_workspace(
             {"activities": compilation.report.summary.scheduled_activity_count},
         )
 
-        home_result = generate_home(scenario, package, home_policy)
-        _json(staging / "home-generation-report.json", home_result.report)
-        if home_result.home is None:
-            raise MaterializationFailure(
-                "home", "home generation failed", home_result.report.issues
+        if approved_home is not None:
+            _json(staging / "home-model.json", approved_home)
+            emit(
+                "home",
+                26,
+                "Accepted the researcher-approved plan",
+                {"regions": len(approved_home.regions)},
             )
-        _json(staging / "home-model.json", home_result.home)
-        emit(
-            "home",
-            26,
-            "Generated and validated the executable home",
-            {"regions": home_result.report.summary.region_count},
-        )
+        else:
+            home_result = generate_home(scenario, package, home_policy)
+            _json(staging / "home-generation-report.json", home_result.report)
+            if home_result.home is None:
+                raise MaterializationFailure(
+                    "home", "home generation failed", home_result.report.issues
+                )
+            _json(staging / "home-model.json", home_result.home)
+            emit(
+                "home",
+                26,
+                "Generated and validated the executable home",
+                {"regions": home_result.report.summary.region_count},
+            )
 
         bundle_result = build_bundle_files(
             staging / "scenario.json",
@@ -1243,18 +1281,40 @@ def materialize_workspace(
             {"bindings": bundle_result.report.summary.action_binding_count},
         )
 
-        sensor_result = deploy_sensors(bundle_result.bundle, sensor_policy)
-        _json(staging / "sensor-deployment-report.json", sensor_result.report)
-        if sensor_result.sensor_model is None:
-            raise MaterializationFailure(
-                "sensors", "Sensor deployment failed.", sensor_result.report.issues
+        if approved_sensors is not None:
+            sensor_model = bind_sensor_model(approved_sensors, bundle_result.bundle)
+            _json(staging / "sensor-model.json", sensor_model)
+            emit(
+                "sensors",
+                50,
+                "Accepted the researcher-approved sensor field",
+                {"sensors": len(sensor_model.sensors)},
             )
-        _json(staging / "sensor-model.json", sensor_result.sensor_model)
-        emit(
-            "sensors",
-            50,
-            "Deployed and validated sensors",
-            {"sensors": sensor_result.report.summary.sensor_count},
+        else:
+            sensor_result = deploy_sensors(bundle_result.bundle, sensor_policy)
+            _json(staging / "sensor-deployment-report.json", sensor_result.report)
+            if sensor_result.sensor_model is None:
+                raise MaterializationFailure(
+                    "sensors", "Sensor deployment failed.", sensor_result.report.issues
+                )
+            sensor_model = sensor_result.sensor_model
+            _json(staging / "sensor-model.json", sensor_model)
+            emit(
+                "sensors",
+                50,
+                "Deployed and validated sensors",
+                {"sensors": sensor_result.report.summary.sensor_count},
+            )
+        _json_document(
+            staging / "plan-approval.json",
+            {
+                "schemaVersion": "1.0.0",
+                "documentType": "plan_approval",
+                "homeModel": "researcher_approved" if approved_home else "generated",
+                "sensorModel": "researcher_approved" if approved_sensors else "generated",
+                "homeSha256": canonical_sha256(bundle_result.bundle.home_model),
+                "sensorModelSha256": canonical_sha256(sensor_model),
+            },
         )
 
         emit("simulation", 52, "Started deterministic execution")
@@ -1277,9 +1337,7 @@ def materialize_workspace(
         )
 
         emit("projection", 84, "Started observable sensor projection")
-        projection = project_sensors(
-            simulation.trace, bundle_result.bundle, sensor_result.sensor_model
-        )
+        projection = project_sensors(simulation.trace, bundle_result.bundle, sensor_model)
         _json(staging / "sensor-projection-report.json", projection.report)
         if projection.observable_log is None or projection.oracle_mapping is None:
             raise MaterializationFailure(
@@ -1294,19 +1352,23 @@ def materialize_workspace(
             {"observations": projection.report.summary.observation_count},
         )
 
+        # An approved model has no generation report: nothing generated it. The manifest records
+        # only artifacts this run actually produced, and plan-approval.json says which of the two
+        # models the researcher supplied.
         roles = {
             "scenario": "scenario.json",
             "behavior_package": "personal-process-package.json",
             "home_policy": "home-generation-policy.json",
-            "home_report": "home-generation-report.json",
+            **({} if approved_home else {"home_report": "home-generation-report.json"}),
             "home": "home-model.json",
             "compilation_report": "compilation-report.json",
             "canonical_plan": "canonical-plan.json",
             "environment_report": "environment-report.json",
             "simulation_bundle": "simulation-bundle.json",
             "sensor_policy": "sensor-deployment-policy.json",
-            "sensor_report": "sensor-deployment-report.json",
+            **({} if approved_sensors else {"sensor_report": "sensor-deployment-report.json"}),
             "sensor_model": "sensor-model.json",
+            "plan_approval": "plan-approval.json",
             "simulation_report": "simulation-report.json",
             "execution_trace": "execution-trace.json",
             "projection_report": "sensor-projection-report.json",

@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
+from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
     PersonalProcessPackage,
     ValueExpression,
@@ -33,6 +34,7 @@ from smart_home_sim.environment.service import (
     _entity_candidates,
     _resolve_expression,
     build_bundle_files,
+    rebind_bundle_home,
     validate_home_file,
     validate_home_model,
 )
@@ -501,3 +503,47 @@ def test_environment_report_text_and_empty_factory() -> None:
     report = EnvironmentValidationReport.from_issues([])
     assert report.valid
     assert "unknown home" in format_environment_text_report(report)
+
+
+def test_an_approved_plan_is_rebound_into_an_accepted_bundle_without_recompiling() -> None:
+    """A reviewed home replaces the generated one in a bundle that was already accepted.
+
+    This is what makes the plan editor mean something: the researcher moves the bed, and the run
+    executes THAT home — same scenario, same canonical plan, re-resolved bindings, kinematics and
+    routes, and a home digest that says which plan was actually simulated.
+    """
+    original = build_bundle_files(SCENARIO, PLAN, PACKAGE, HOME).bundle
+    assert original is not None
+    payload = load(HOME)
+    for vertex in payload["obstacles"][0]["boundary"]["vertices"]:
+        vertex["x"] += 0.2
+    edited = parsed_home(payload)
+
+    result = rebind_bundle_home(original, edited)
+
+    assert result.report.valid
+    assert result.bundle is not None
+    assert result.bundle.home_model == edited
+    assert result.bundle.scenario == original.scenario
+    assert result.bundle.canonical_plan == original.canonical_plan
+    assert result.bundle.action_bindings
+    assert result.report.home_sha256 == canonical_sha256(edited)
+    assert result.report.home_sha256 != canonical_sha256(original.home_model)
+    home_digests = [
+        item.sha256 for item in result.bundle.digests if item.artifact_id == edited.home_id
+    ]
+    assert home_digests == [canonical_sha256(edited)]
+
+
+def test_a_plan_that_no_longer_binds_is_refused_instead_of_silently_reverting() -> None:
+    original = build_bundle_files(SCENARIO, PLAN, PACKAGE, HOME).bundle
+    assert original is not None
+    # A wardrobe dragged clean through the bedroom wall is not a home anyone can walk in.
+    payload = load(HOME)
+    for vertex in payload["obstacles"][0]["boundary"]["vertices"]:
+        vertex["x"] += 60
+
+    result = rebind_bundle_home(original, parsed_home(payload))
+
+    assert result.bundle is None
+    assert "OBSTACLE_INVALID" in issue_codes(result.report)

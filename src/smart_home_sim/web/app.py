@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from datetime import date as _date
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -32,6 +32,7 @@ from smart_home_sim.application.generation_ingest import (
 )
 from smart_home_sim.application.generation_paths import GENERATION_ARTIFACTS, generation_run_dir
 from smart_home_sim.application.jobs import JobManager
+from smart_home_sim.application.plan_approval import plan_approval
 from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
@@ -408,6 +409,7 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
                 for item in workspace.list_jobs(home_id=home_id)
             ],
             "generation": horizon_revision(workspace, home_id),
+            "planApproval": plan_approval(workspace, home_id),
         }
 
     @app.post("/api/homes/{home_id}/authoring", dependencies=[secured])
@@ -435,6 +437,11 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     @app.put("/api/homes/{home_id}/sensor-model", dependencies=[secured])
     def publish_sensor(home_id: str, request: ModelPublish) -> dict[str, Any]:
         return application.publish_sensor(home_id, request.model)
+
+    @app.post("/api/homes/{home_id}/plan-approval", dependencies=[secured])
+    def approve_plan(home_id: str) -> dict[str, Any]:
+        """Accept the recommended planimetry unchanged, so runs execute the reviewed plan."""
+        return application.approve_plan(home_id)
 
     @app.post("/api/homes/{home_id}/runs", status_code=202, dependencies=[secured])
     def start_run(home_id: str, request: MaterializationStart) -> dict[str, Any]:

@@ -7,6 +7,12 @@ from types import SimpleNamespace
 
 import pytest
 
+from smart_home_sim.application.plan_approval import (
+    RECOMMENDED,
+    approved_home_model,
+    approved_sensor_model,
+    plan_approval,
+)
 from smart_home_sim.application.service import ApplicationService, _issues
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 
@@ -236,3 +242,79 @@ def test_a_document_that_is_not_an_outline_is_refused_before_anything_is_written
     assert result["valid"] is False
     assert result["stage"] == "outline"
     assert workspace.list_residents(home.home_id) == []
+
+
+def test_a_reviewed_plan_stops_being_a_recommendation(tmp_path: Path) -> None:
+    """Confirming or editing the recommended planimetry makes it the home's own model.
+
+    Everything downstream reads this one distinction: a recommended plan is regenerated from the
+    policy on every run, an approved one is executed as it stands. The researcher who accepts the
+    proposal untouched has decided just as much as the one who moves a wall, so both paths must
+    leave the home approved.
+    """
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Approval")
+    summary = workspace.create_home("Reviewed home")
+    service = ApplicationService(workspace)
+    home = json.loads(
+        (PROJECT_ROOT / "examples/environment/mario_monteverde.home.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    sensor = json.loads(
+        (PROJECT_ROOT / "examples/sensors/mario_monteverde.sensor-model.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert service.publish_home(summary.home_id, home, approval=RECOMMENDED)["valid"] is True
+    assert service.publish_sensor(summary.home_id, sensor, approval=RECOMMENDED)["valid"] is True
+    assert plan_approval(workspace, summary.home_id) == {
+        "home": RECOMMENDED,
+        "sensor": RECOMMENDED,
+        "approved": False,
+    }
+    assert approved_home_model(workspace, summary.home_id) is None
+    assert approved_sensor_model(workspace, summary.home_id) is None
+
+    approved = service.approve_plan(summary.home_id)
+
+    assert approved["planApproval"]["approved"] is True
+    model = approved_home_model(workspace, summary.home_id)
+    assert model is not None and model.home_id == home["homeId"]
+    field = approved_sensor_model(workspace, summary.home_id)
+    assert field is not None and field.sensors
+    # Approval decides, it does not duplicate: the artifact the run executes is the reviewed one.
+    assert (
+        workspace.get_home(summary.home_id).current_home_artifact_id
+        == workspace.latest_revision(summary.home_id, "home")["artifactId"]
+    )
+
+
+def test_editing_the_plan_approves_it_and_a_home_without_one_cannot_be_approved(
+    tmp_path: Path,
+) -> None:
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Approval")
+    summary = workspace.create_home("Edited home")
+    service = ApplicationService(workspace)
+
+    with pytest.raises(WorkspaceError, match="no plan to approve"):
+        service.approve_plan(summary.home_id)
+
+    home = json.loads(
+        (PROJECT_ROOT / "examples/environment/mario_monteverde.home.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    # The researcher drags the bed 20 cm across the bedroom, which is a decision about the home.
+    edited = copy.deepcopy(home)
+    for vertex in edited["obstacles"][0]["boundary"]["vertices"]:
+        vertex["x"] += 0.2
+
+    assert service.publish_home(summary.home_id, edited)["valid"] is True
+
+    assert plan_approval(workspace, summary.home_id)["approved"] is True
+    model = approved_home_model(workspace, summary.home_id)
+    assert model is not None
+    assert [point.x for point in model.obstacles[0].boundary.vertices] == [
+        vertex["x"] for vertex in edited["obstacles"][0]["boundary"]["vertices"]
+    ]

@@ -27,6 +27,7 @@ import {
   Sparkles,
   Square,
   Trash2,
+  Trees,
   Upload,
   UserRound,
   Users,
@@ -52,7 +53,18 @@ import {
   StatusBadge,
 } from "./components";
 import { useResource, useStoredState } from "./hooks";
-import { addObstacle, addRoom, addSensor, removeSelection } from "./editor";
+import {
+  addObstacle,
+  addRoom,
+  addSensor,
+  dwellingRegionIds,
+  movePlanObject,
+  pirRange,
+  removeSelection,
+  resizePlanObject,
+  setPirRange,
+} from "./editor";
+import type { ResizeHandle } from "./editor";
 import { authoringPrompts } from "./prompts";
 import type {
   DiaryEntry,
@@ -124,6 +136,8 @@ export function App() {
   const overview = useResource<Overview>("/overview");
   const [theme, setTheme] = useStoredState<"light" | "dark">("habitat-theme", "light");
   const [navOpen, setNavOpen] = useState(false);
+  // Collapsing the navigation is a preference about this workspace, so it outlives the tab.
+  const [navCollapsed, setNavCollapsed] = useStoredState("habitat-lab-nav-collapsed", false);
   useEffect(() => {
     void api<{ value?: unknown }>("/settings/theme")
       .then((setting) => {
@@ -146,6 +160,8 @@ export function App() {
       onTheme={toggleTheme}
       navOpen={navOpen}
       onNav={() => setNavOpen(!navOpen)}
+      navCollapsed={navCollapsed}
+      onNavCollapse={() => setNavCollapsed(!navCollapsed)}
     >
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -366,6 +382,7 @@ function GeneratePage() {
   const [focusId, setFocusId] = useState<string>();
   const [starting, setStarting] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string>();
   const [review, setReview] = useState<GenerationReview>();
   const navigate = useNavigate();
@@ -377,6 +394,11 @@ function GeneratePage() {
   // Only homeId identifies the published home: a generation from before the home workflow carries
   // its own job id in resultReference, which would link to a home that does not exist.
   const homeId = job?.status === "completed" ? job.homeId : undefined;
+  // The generated home is where the planimetry lives; reviewing it here saves the researcher from
+  // discovering the house they are about to simulate only after opening another page.
+  const homeDetail = useResource<HomeDetail>(homeId ? `/homes/${homeId}` : undefined);
+  const plan = homeDetail.data?.models.homeModel;
+  const planApproved = homeDetail.data?.planApproval?.approved ?? false;
 
   useJobStream(focusId, genActive, genDetail.reload);
 
@@ -414,6 +436,20 @@ function GeneratePage() {
   const openGeneration = (id: string) => {
     setFocusId(id);
     setError(undefined);
+  };
+
+  const confirmPlan = async () => {
+    if (!homeId) return;
+    setConfirming(true);
+    setError(undefined);
+    try {
+      await api(`/homes/${homeId}/plan-approval`, { method: "POST" });
+      await homeDetail.reload();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setConfirming(false);
+    }
   };
 
   // Generations made before the home workflow kept their artifacts; publishing them is a
@@ -523,13 +559,48 @@ function GeneratePage() {
                   </div>
                   {homeId ? (
                     <>
-                      <div className="guide-callout">
-                        <ShieldCheck size={19} />
-                        <p><strong>Published as a home input.</strong> The persona, its process package and the whole horizon of days are now an ordinary workspace home, with its executable plan and sensor field already validated.</p>
-                      </div>
-                      <Link className="button primary" to={`/homes/${homeId}`}>
-                        <HomeIcon size={16} /> Open the home and run the simulation
-                      </Link>
+                      {plan && (
+                        <div className="plan-preview">
+                          <div className="plan-preview-heading">
+                            <div>
+                              <p className="eyebrow">{planApproved ? "Approved plan" : "Recommended plan"}</p>
+                              <h3>{plan.regions.length} rooms, {plan.entities.length} providers, {homeDetail.data?.models.sensorModel?.sensors.length ?? 0} sensors</h3>
+                            </div>
+                            {!planApproved && <span className="recommended-badge"><Sparkles size={13} aria-hidden="true" /> Recommended</span>}
+                          </div>
+                          <PlanCanvas home={plan} sensors={homeDetail.data?.models.sensorModel} />
+                          <p className="hint">
+                            {planApproved
+                              ? "This is the plan the runs of this home execute."
+                              : "Rooms, furniture and sensors proposed by the deterministic policies. Confirm it, or open the home to move walls, furniture and PIRs before simulating."}
+                          </p>
+                          <div className="button-row">
+                            {!planApproved && (
+                              <button
+                                className="button primary"
+                                disabled={confirming}
+                                onClick={() => void confirmPlan()}
+                              >
+                                <ShieldCheck size={16} /> {confirming ? "Confirming…" : "Confirm plan"}
+                              </button>
+                            )}
+                            <Link className={`button ${planApproved ? "primary" : "secondary"}`} to={`/homes/${homeId}`}>
+                              <HomeIcon size={16} /> {planApproved ? "Open the home and run the simulation" : "Edit the plan"}
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                      {!plan && (
+                        <>
+                          <div className="guide-callout">
+                            <ShieldCheck size={19} />
+                            <p><strong>Published as a home input.</strong> The persona, its process package and the whole horizon of days are now an ordinary workspace home, with its executable plan and sensor field already validated.</p>
+                          </div>
+                          <Link className="button primary" to={`/homes/${homeId}`}>
+                            <HomeIcon size={16} /> Open the home and run the simulation
+                          </Link>
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
@@ -659,13 +730,23 @@ function HomePage() {
   const [history, setHistory] = useState<Array<{ home?: HomeModel; sensor?: SensorModel }>>([]);
   const [future, setFuture] = useState<Array<{ home?: HomeModel; sensor?: SensorModel }>>([]);
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
+  // Every edit passes through `snapshot`, so it is also where the drafts start diverging from what
+  // the workspace holds. Publishing is what makes them agree again.
+  const [unsaved, setUnsaved] = useState(false);
+  // The plan is the house. Supermarket, bar and the relative's flat exist in the model so the
+  // resident has somewhere to be when they are out; they are shown only when explicitly asked for.
+  const [showExternalPlaces, setShowExternalPlaces] = useState(false);
   useJobRefresh(resource.data?.jobs ?? [], resource.reload);
   const sourceHome = resource.data?.models.homeModel;
   const sourceSensor = resource.data?.models.sensorModel;
   useEffect(() => {
+    // Anything that reloads the home reseeds the drafts from the server — and a run in progress
+    // reloads it on every progress event. Reseeding over unpublished edits threw away the wall
+    // somebody had just moved, silently, while they were still looking at it.
+    if (unsaved) return;
     if (sourceHome) setHomeDraft(structuredClone(sourceHome));
     if (sourceSensor) setSensorDraft(structuredClone(sourceSensor));
-  }, [sourceHome, sourceSensor]);
+  }, [sourceHome, sourceSensor, unsaved]);
   if (resource.loading) return <div className="page"><Skeleton lines={8} /></div>;
   if (resource.error || !resource.data) return <div className="page"><ErrorPanel message={resource.error?.message ?? "Home not found"} onRetry={() => void resource.reload()} /></div>;
   const detail = resource.data;
@@ -723,22 +804,24 @@ function HomePage() {
     finally { setWorking(false); }
   };
   const currentSnapshot = () => ({ home: homeDraft ? structuredClone(homeDraft) : undefined, sensor: sensorDraft ? structuredClone(sensorDraft) : undefined });
-  const snapshot = () => { setHistory((items) => [...items.slice(-49), currentSnapshot()]); setFuture([]); };
+  const snapshot = () => { setHistory((items) => [...items.slice(-49), currentSnapshot()]); setFuture([]); setUnsaved(true); };
+  // Pointer and keyboard move the same objects through the same geometry: dragging the bed and
+  // nudging it with the arrows must not leave the plan in two different shapes.
+  const moveSelected = (id: string | undefined, dx: number, dy: number) => {
+    if (!homeDraft || !id) return;
+    const result = movePlanObject(homeDraft, sensorDraft, id, dx, dy);
+    setHomeDraft(result.home);
+    if (result.sensors) setSensorDraft(result.sensors);
+  };
   const nudgeSelected = (dx: number, dy: number) => {
     snapshot();
-    if (tab === "sensors" && sensorDraft) {
-      setSensorDraft({ ...sensorDraft, sensors: sensorDraft.sensors.map((sensor) => {
-        if (sensor.sensorId !== selectedId) return sensor;
-        const coverage = sensor.sensorType === "pir" && sensor.coverage && typeof sensor.coverage === "object"
-          ? { vertices: (sensor.coverage as { vertices: Array<{ x: number; y: number }> }).vertices.map((point) => ({ x: point.x + dx, y: point.y + dy })) }
-          : sensor.coverage;
-        return { ...sensor, position: { x: sensor.position.x + dx, y: sensor.position.y + dy }, coverage };
-      }) });
-    } else if (homeDraft) {
-      const entity = homeDraft.entities.find((item) => item.entityId === selectedId);
-      const pointId = entity?.interactionPointId ?? selectedId;
-      setHomeDraft({ ...homeDraft, interactionPoints: homeDraft.interactionPoints.map((point) => point.interactionPointId === pointId ? { ...point, position: { x: point.position.x + dx, y: point.position.y + dy } } : point) });
-    }
+    moveSelected(selectedId, dx, dy);
+  };
+  const resizeSelected = (id: string, handle: ResizeHandle, dx: number, dy: number) => {
+    if (!homeDraft) return;
+    const result = resizePlanObject(homeDraft, sensorDraft, id, handle, dx, dy);
+    setHomeDraft(result.home);
+    if (result.sensors) setSensorDraft(result.sensors);
   };
   const undo = () => {
     const previous = history.at(-1); if (!previous) return;
@@ -787,16 +870,49 @@ function HomePage() {
     try {
       const result = await api<{ valid: boolean; issues: Array<{ message: string }> }>(`/homes/${homeId}/${kind}-model`, { method: "PUT", body: JSON.stringify({ model }) });
       if (!result.valid) setNotice({ kind: "error", text: result.issues.map((item) => item.message).join(" · ") });
-      else { setNotice({ kind: "success", text: `${kind === "home" ? "Home" : "Sensor"} revision validated and published.` }); setHistory([]); setFuture([]); await resource.reload(); }
+      else { setNotice({ kind: "success", text: `${kind === "home" ? "Plan" : "Sensor field"} validated and published. Every run of this home now executes it.` }); setHistory([]); setFuture([]); setUnsaved(false); await resource.reload(); }
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
     finally { setWorking(false); }
   };
+  // Accepting the proposal untouched is a decision like any edit: from here on the runs execute
+  // this plan instead of asking the policy for a new one.
+  const confirmPlan = async () => {
+    setWorking(true); setNotice(undefined);
+    try {
+      await api(`/homes/${homeId}/plan-approval`, { method: "POST" });
+      setNotice({ kind: "success", text: "Plan confirmed. Every run of this home now executes it as it stands." });
+      await resource.reload();
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
+    finally { setWorking(false); }
+  };
+  const recommended = !!homeDraft && detail.planApproval?.approved === false;
   return (
     <div className="page home-page">
       <Breadcrumbs items={[{ label: "Homes", to: "/homes" }, { label: detail.home.name }]} />
       <PageHeader eyebrow="Environment workspace" title={detail.home.name} description={detail.home.description || "Executable spatial model and resident context"} actions={<><StatusBadge status={activeJob?.status ?? (homeDraft ? "valid" : "draft")} /><button className="button primary" disabled={!inputResident || !!activeJob || working} onClick={() => void startRun()}><Play size={16} /> Run simulation</button></>} />
       {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}<span>{notice.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button></div>}
       {progress && <OperationPanel progress={progress} />}
+      {recommended && (
+        <section className="plan-review" aria-labelledby="plan-review-title">
+          <div>
+            <p className="eyebrow"><Sparkles size={14} aria-hidden="true" /> Recommended</p>
+            <h2 id="plan-review-title">This planimetry is a proposal</h2>
+            <p>
+              Rooms, furniture and sensors were derived from the scenario by the deterministic
+              policies. Confirm it as it stands, or open the plan and move walls, furniture and PIRs
+              — either way, what you accept is what every run of this home executes.
+            </p>
+          </div>
+          <div className="button-row">
+            <button className="button primary" disabled={working} onClick={() => void confirmPlan()}>
+              <ShieldCheck size={16} /> Confirm this plan
+            </button>
+            <button className="button secondary" onClick={() => setTab("home")}>
+              <RouteIcon size={16} /> Edit the plan
+            </button>
+          </div>
+        </section>
+      )}
       {!!detail.issues?.length && <section className="validation-summary" aria-labelledby="validation-issues-title"><div><p className="eyebrow">Persisted validation</p><h2 id="validation-issues-title">Resolve {detail.issues.length} authoritative issue{detail.issues.length === 1 ? "" : "s"}</h2></div><div>{detail.issues.map((issue, index) => <button key={`${issue.code}-${issue.path}-${index}`} onClick={() => { const target = issue.graphicalReference?.elementId; if (target && !target.startsWith("index:")) setSelectedId(target); if (issue.graphicalReference?.surface === "sensor") setTab("sensors"); else if (issue.graphicalReference?.surface === "home") setTab("home"); }}><AlertCircle size={16} /><span><strong>{issue.message}</strong><small>{issue.code} · {issue.path}</small></span></button>)}</div></section>}
       {activeJob && <section className="active-run-bar"><div><StatusBadge status={activeJob.status} /><strong>{activeJob.progress.message}</strong></div><ProgressBar value={activeJob.progress.percent} label={activeJob.progress.phase} /><Link to={`/simulations/${activeJob.jobId}`} className="button secondary">Open live detail</Link></section>}
       <div className="tabs" role="tablist" aria-label="Home sections">
@@ -832,13 +948,13 @@ function HomePage() {
       </div>}
       {(tab === "home" || tab === "sensors") && <div className="editor-layout">
         <section className="editor-stage">
-          <div className="editor-toolbar"><div><button className="tool-button" disabled={!history.length} onClick={undo}><RotateCcw size={16} /> Undo</button><button className="tool-button" disabled={!future.length} onClick={redo}><RotateCw size={16} /> Redo</button><button className="tool-button" aria-pressed="true"><Square size={15} /> Select</button>{tab === "home" ? <><button className="tool-button" disabled={!homeDraft} onClick={() => addEditorObject("room")}><Plus size={15} /> Room</button><button className="tool-button" disabled={!homeDraft} onClick={() => addEditorObject("obstacle")}><Plus size={15} /> Obstacle</button></> : <>{(["pir", "contact", "temperature"] as const).map((kind) => <button key={kind} className="tool-button" disabled={!homeDraft || !sensorDraft} onClick={() => addEditorObject(kind)}><Plus size={15} /> {kind}</button>)}</>}<label className="tool-button file-tool"><Upload size={15} /> Import {tab === "home" ? "home" : "sensors"}<input type="file" accept="application/json,.json" onChange={(event) => void importModel(tab === "home" ? "home" : "sensor", event.target.files?.[0])} /></label></div><div className="viewport-tools" aria-label="Plan viewport"><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.5, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button><button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(4, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">←</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">↑</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">↓</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">→</button><span>{Math.round(viewport.zoom * 100)}%</span></div></div>
-          {homeDraft ? <PlanCanvas home={homeDraft} sensors={tab === "sensors" ? sensorDraft : undefined} selectedId={selectedId} onSelect={setSelectedId} viewport={viewport} /> : <EmptyState title="No spatial model yet" icon={<RouteIcon size={25} />}><p>Run scenario-first materialization or import a valid home model to open the editor.</p></EmptyState>}
+          <div className="editor-toolbar"><div><button className="tool-button" disabled={!history.length} onClick={undo}><RotateCcw size={16} /> Undo</button><button className="tool-button" disabled={!future.length} onClick={redo}><RotateCw size={16} /> Redo</button><button className="tool-button" aria-pressed="true"><Square size={15} /> Select</button>{tab === "home" ? <><button className="tool-button" disabled={!homeDraft} onClick={() => addEditorObject("room")}><Plus size={15} /> Room</button><button className="tool-button" disabled={!homeDraft} onClick={() => addEditorObject("obstacle")}><Plus size={15} /> Obstacle</button></> : <>{(["pir", "contact", "temperature"] as const).map((kind) => <button key={kind} className="tool-button" disabled={!homeDraft || !sensorDraft} onClick={() => addEditorObject(kind)}><Plus size={15} /> {kind}</button>)}</>}<label className="tool-button file-tool"><Upload size={15} /> Import {tab === "home" ? "home" : "sensors"}<input type="file" accept="application/json,.json" onChange={(event) => void importModel(tab === "home" ? "home" : "sensor", event.target.files?.[0])} /></label></div><div className="viewport-tools" aria-label="Plan viewport"><button className="tool-button" aria-pressed={showExternalPlaces} onClick={() => setShowExternalPlaces(!showExternalPlaces)} title="The places the resident travels to are regions of the model, not rooms of the house."><Trees size={15} /> External places</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.4, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button><button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(12, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">←</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">↑</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">↓</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">→</button><span>{Math.round(viewport.zoom * 100)}%</span></div></div>
+          {homeDraft ? <PlanCanvas home={homeDraft} sensors={tab === "sensors" ? sensorDraft : undefined} selectedId={selectedId} onSelect={setSelectedId} viewport={viewport} editing={{ onDragStart: snapshot, onMove: moveSelected, onResize: resizeSelected }} showExternalPlaces={showExternalPlaces} onViewport={setViewport} /> : <EmptyState title="No spatial model yet" icon={<RouteIcon size={25} />}><p>Run scenario-first materialization or import a valid home model to open the editor.</p></EmptyState>}
         </section>
         <aside className="inspector" aria-label="Selection inspector">
           <div className="inspector-heading"><div><p className="eyebrow">Inspector</p><h2>{selectedId ?? "Nothing selected"}</h2></div>{selectedId && <button className="icon-button" onClick={() => setSelectedId(undefined)} aria-label="Clear selection"><X size={16} /></button>}</div>
           {selectedId ? <><p className="inspector-help">Use precise keyboard-compatible controls. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div></fieldset><EditorFields tab={tab} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); setHomeDraft(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
-          <div className="inspector-footer"><button className="button primary" disabled={working || !(tab === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(tab === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish</button></div>
+          <div className="inspector-footer">{unsaved && <p className="unsaved-note"><AlertCircle size={14} /> Unpublished edits. Publishing covers this tab only — the plan and the sensor field are separate revisions.</p>}<button className="button primary" disabled={working || !(tab === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(tab === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish {tab === "home" ? "plan" : "sensors"}{unsaved ? " •" : ""}</button></div>
         </aside>
       </div>}
       {tab === "runs" && <RunTable jobs={detail.jobs} empty="No run has been started for this home." />}
@@ -859,7 +975,7 @@ function EditorFields({ tab, selectedId, home, sensors, onHome, onSensors }: { t
       const ends = new Date(starts.getTime() + 60 * 60 * 1000);
       update({ failureWindows: [...sensor.failureWindows, { startsAt: starts.toISOString(), endsAt: ends.toISOString() }] });
     };
-    return <div className="inspector-section editor-fields"><h3>Sensor configuration</h3><div className="field-grid"><label><span>X position</span><input type="number" step="0.1" value={sensor.position.x} onChange={(event) => update({ position: { ...sensor.position, x: event.target.valueAsNumber } })} /></label><label><span>Y position</span><input type="number" step="0.1" value={sensor.position.y} onChange={(event) => update({ position: { ...sensor.position, y: event.target.valueAsNumber } })} /></label><label><span>Latency ms</span><input type="number" min="0" value={sensor.timing.latencyMilliseconds} onChange={(event) => timing("latencyMilliseconds", event.target.valueAsNumber)} /></label><label><span>Jitter ms</span><input type="number" min="0" value={sensor.timing.clockJitterMilliseconds} onChange={(event) => timing("clockJitterMilliseconds", event.target.valueAsNumber)} /></label><label><span>Cooldown ms</span><input type="number" min="0" value={sensor.timing.cooldownMilliseconds} onChange={(event) => timing("cooldownMilliseconds", event.target.valueAsNumber)} /></label><label><span>Dropout 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.dropoutProbability} onChange={(event) => error("dropoutProbability", event.target.valueAsNumber)} /></label><label><span>False negative 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falseNegativeProbability} onChange={(event) => error("falseNegativeProbability", event.target.valueAsNumber)} /></label><label><span>False positives/day</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falsePositiveProbabilityPerDay} onChange={(event) => error("falsePositiveProbabilityPerDay", event.target.valueAsNumber)} /></label><label><span>Noise σ</span><input type="number" min="0" step="0.01" value={sensor.errorModel.measurementNoiseStandardDeviation} onChange={(event) => error("measurementNoiseStandardDeviation", event.target.valueAsNumber)} /></label>{sensor.sensorType === "temperature" && <><label><span>Region</span><select value={String(sensor.regionId)} onChange={(event) => update({ regionId: event.target.value })}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label><label><span>Baseline °C</span><input type="number" step="0.1" value={Number(sensor.baselineCelsius)} onChange={(event) => update({ baselineCelsius: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "contact" && <label><span>Entity</span><select value={String(sensor.entityId)} onChange={(event) => update({ entityId: event.target.value })}>{home.entities.map((item) => <option key={item.entityId}>{item.entityId}</option>)}</select></label>}</div><div className="failure-editor"><div><h4>Failure windows</h4><button className="button secondary" onClick={addFailure}><Plus size={14} /> Add window</button></div>{sensor.failureWindows.length ? sensor.failureWindows.map((window, index) => <div className="failure-window" key={`${window.startsAt}-${index}`}><label><span>Starts</span><input type="datetime-local" value={window.startsAt.slice(0, 16)} onChange={(event) => setFailure(index, "startsAt", event.target.value)} /></label><label><span>Ends</span><input type="datetime-local" value={window.endsAt.slice(0, 16)} onChange={(event) => setFailure(index, "endsAt", event.target.value)} /></label><button className="icon-button" aria-label={`Remove failure window ${index + 1}`} onClick={() => update({ failureWindows: sensor.failureWindows.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>) : <p>No planned dropout interval. Random dropout remains controlled by the probability above.</p>}</div></div>;
+    return <div className="inspector-section editor-fields"><h3>Sensor configuration</h3><div className="field-grid"><label><span>X position</span><input type="number" step="0.1" value={sensor.position.x} onChange={(event) => update({ position: { ...sensor.position, x: event.target.valueAsNumber } })} /></label><label><span>Y position</span><input type="number" step="0.1" value={sensor.position.y} onChange={(event) => update({ position: { ...sensor.position, y: event.target.valueAsNumber } })} /></label><label><span>Latency ms</span><input type="number" min="0" value={sensor.timing.latencyMilliseconds} onChange={(event) => timing("latencyMilliseconds", event.target.valueAsNumber)} /></label><label><span>Jitter ms</span><input type="number" min="0" value={sensor.timing.clockJitterMilliseconds} onChange={(event) => timing("clockJitterMilliseconds", event.target.valueAsNumber)} /></label><label><span>Cooldown ms</span><input type="number" min="0" value={sensor.timing.cooldownMilliseconds} onChange={(event) => timing("cooldownMilliseconds", event.target.valueAsNumber)} /></label><label><span>Dropout 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.dropoutProbability} onChange={(event) => error("dropoutProbability", event.target.valueAsNumber)} /></label><label><span>False negative 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falseNegativeProbability} onChange={(event) => error("falseNegativeProbability", event.target.valueAsNumber)} /></label><label><span>False positives/day</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falsePositiveProbabilityPerDay} onChange={(event) => error("falsePositiveProbabilityPerDay", event.target.valueAsNumber)} /></label><label><span>Noise σ</span><input type="number" min="0" step="0.01" value={sensor.errorModel.measurementNoiseStandardDeviation} onChange={(event) => error("measurementNoiseStandardDeviation", event.target.valueAsNumber)} /></label>{sensor.sensorType === "pir" && <><label><span>Range m</span><input type="number" min="0.2" max="12" step="0.1" value={pirRange(sensor)} onChange={(event) => onSensors(setPirRange(sensors, home, sensor.sensorId, event.target.valueAsNumber))} /></label><label><span>Hold ms</span><input type="number" min="1" step="100" value={Number(sensor.holdMilliseconds ?? 30000)} onChange={(event) => update({ holdMilliseconds: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "temperature" && <><label><span>Region</span><select value={String(sensor.regionId)} onChange={(event) => update({ regionId: event.target.value })}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label><label><span>Baseline °C</span><input type="number" step="0.1" value={Number(sensor.baselineCelsius)} onChange={(event) => update({ baselineCelsius: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "contact" && <label><span>Entity</span><select value={String(sensor.entityId)} onChange={(event) => update({ entityId: event.target.value })}>{home.entities.map((item) => <option key={item.entityId}>{item.entityId}</option>)}</select></label>}</div><div className="failure-editor"><div><h4>Failure windows</h4><button className="button secondary" onClick={addFailure}><Plus size={14} /> Add window</button></div>{sensor.failureWindows.length ? sensor.failureWindows.map((window, index) => <div className="failure-window" key={`${window.startsAt}-${index}`}><label><span>Starts</span><input type="datetime-local" value={window.startsAt.slice(0, 16)} onChange={(event) => setFailure(index, "startsAt", event.target.value)} /></label><label><span>Ends</span><input type="datetime-local" value={window.endsAt.slice(0, 16)} onChange={(event) => setFailure(index, "endsAt", event.target.value)} /></label><button className="icon-button" aria-label={`Remove failure window ${index + 1}`} onClick={() => update({ failureWindows: sensor.failureWindows.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>) : <p>No planned dropout interval. Random dropout remains controlled by the probability above.</p>}</div></div>;
   }
   const region = home.regions.find((item) => item.regionId === selectedId);
   if (region) return <div className="inspector-section editor-fields"><h3>Region geometry</h3><label><span>Kind</span><select value={region.kind} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, kind: event.target.value as typeof item.kind } : item) })}>{["room", "outdoor", "external", "transit"].map((kind) => <option key={kind}>{kind}</option>)}</select></label><label className="check-field"><input type="checkbox" checked={region.traversable} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, traversable: event.target.checked } : item) })} /><span>Traversable</span></label><div className="vertex-list">{region.boundary.vertices.map((point, index) => <div key={index}><span>Vertex {index + 1}</span><input aria-label={`Vertex ${index + 1} X`} type="number" step="0.1" value={point.x} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, x: event.target.valueAsNumber } : vertex) } } : item) })} /><input aria-label={`Vertex ${index + 1} Y`} type="number" step="0.1" value={point.y} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, y: event.target.valueAsNumber } : vertex) } } : item) })} /></div>)}</div></div>;
@@ -956,7 +1072,13 @@ function DiaryInspector({ entry }: { entry?: DiaryEntry }) {
 
 function ReplayPlan({ runId, activeMovement }: { runId: string; activeMovement?: TimelineEvent }) {
   const models = useResource<{ homeModel?: HomeModel; sensorModel?: SensorModel }>(`/runs/${runId}/models`);
-  return <div className="replay-plan">{models.data?.homeModel ? <PlanCanvas home={models.data.homeModel} sensors={models.data.sensorModel} activeMovement={activeMovement} /> : models.error ? <ErrorPanel message={models.error.message} /> : <Skeleton lines={6} />}</div>;
+  const home = models.data?.homeModel;
+  // Replay follows the resident. While they are out, the errand is the thing being replayed, so
+  // the places they travel to come into view for exactly as long as the trajectory needs them.
+  const leavesHome = !!home && !!activeMovement?.waypoints?.some(
+    (item) => !dwellingRegionIds(home).has(item.regionId),
+  );
+  return <div className="replay-plan">{home ? <PlanCanvas home={home} sensors={models.data?.sensorModel} activeMovement={activeMovement} showExternalPlaces={leavesHome} /> : models.error ? <ErrorPanel message={models.error.message} /> : <Skeleton lines={6} />}</div>;
 }
 
 function ExportsPage() {

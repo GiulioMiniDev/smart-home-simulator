@@ -252,3 +252,47 @@ def test_client_disconnect_noise_is_quietened_but_real_failures_are_not() -> Non
     # The same socket error from another callback, and a real defect from that one, both survive.
     assert len(reported) == 2
     assert isinstance(reported[-1]["exception"], ValueError)
+
+
+def test_the_plan_is_marked_as_a_recommendation_until_the_researcher_answers(
+    tmp_path: Path,
+) -> None:
+    """The surface that shows the planimetry can tell a proposal from a decision.
+
+    ``planApproval`` is what lets the review screen say "Recommended" over a plan nobody has
+    looked at yet, and stop saying it the moment the researcher confirms or edits one.
+    """
+    app = create_app(tmp_path / "workspace", workspace_name="Plan review")
+    with TestClient(app) as client:
+        headers = {"X-Workspace-Token": _token(client)}
+        home_id = client.post("/api/homes", headers=headers, json={"name": "Reviewed home"}).json()[
+            "homeId"
+        ]
+        home = json.loads(
+            (PROJECT_ROOT / "examples/environment/mario_monteverde.home.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        published = client.put(
+            f"/api/homes/{home_id}/home-model", headers=headers, json={"model": home}
+        )
+        assert published.status_code == 200
+        assert published.json()["valid"] is True
+
+        # Publishing through the editor IS the researcher's answer.
+        detail = client.get(f"/api/homes/{home_id}", headers=headers).json()
+        assert detail["planApproval"] == {
+            "home": "researcher",
+            "sensor": "recommended",
+            "approved": True,
+        }
+
+        approved = client.post(f"/api/homes/{home_id}/plan-approval", headers=headers)
+        assert approved.status_code == 200
+        assert approved.json()["planApproval"]["approved"] is True
+
+        empty = client.post("/api/homes", headers=headers, json={"name": "No plan"}).json()
+        refused = client.post(f"/api/homes/{empty['homeId']}/plan-approval", headers=headers)
+        assert refused.status_code == 409
+        assert refused.json()["error"]["code"] == "WORKSPACE_OPERATION_FAILED"

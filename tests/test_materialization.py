@@ -12,7 +12,13 @@ from typer.testing import CliRunner
 from smart_home_sim.cli import app
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import PersonalProcessPackage
-from smart_home_sim.domain.environment import ConnectionKind, HomeModel, SimulationBundle
+from smart_home_sim.domain.environment import (
+    ConnectionKind,
+    HomeModel,
+    Point2D,
+    Polygon2D,
+    SimulationBundle,
+)
 from smart_home_sim.domain.materialization import (
     HomeGenerationPolicy,
     HomeGenerationReport,
@@ -28,7 +34,12 @@ from smart_home_sim.domain.sensors import (
     TemperatureSensor,
 )
 from smart_home_sim.environment import validate_home_model
-from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
+from smart_home_sim.materialization import (
+    bind_sensor_model,
+    deploy_sensors,
+    generate_home,
+    materialize_workspace,
+)
 from smart_home_sim.materialization.service import (
     load_home_policy,
     load_sensor_policy,
@@ -228,7 +239,20 @@ def test_workspace_is_transactional_replayable_and_self_verifying(tmp_path: Path
     assert first == SyntheticWorkspaceManifest.model_validate_json(
         (first_path / "workspace-manifest.json").read_text(encoding="utf-8")
     )
-    assert len(first.artifacts) == 17
+    assert len(first.artifacts) == 18
+    # A run says on the record whether it executed a generated plan or one a researcher approved.
+    assert json.loads((first_path / "plan-approval.json").read_text(encoding="utf-8")) == {
+        "schemaVersion": "1.0.0",
+        "documentType": "plan_approval",
+        "homeModel": "generated",
+        "sensorModel": "generated",
+        "homeSha256": canonical_sha256(
+            json.loads((first_path / "home-model.json").read_text(encoding="utf-8"))
+        ),
+        "sensorModelSha256": canonical_sha256(
+            json.loads((first_path / "sensor-model.json").read_text(encoding="utf-8"))
+        ),
+    }
     for artifact in first.artifacts:
         payload = json.loads((first_path / artifact.relative_path).read_text(encoding="utf-8"))
         assert artifact.sha256 == canonical_sha256(payload)
@@ -337,7 +361,7 @@ def test_materialization_cli_commands(tmp_path: Path) -> None:
         ],
     )
     assert run.exit_code == 0, run.output
-    assert "17 verified artifacts" in run.output
+    assert "18 verified artifacts" in run.output
     repeated = runner.invoke(
         app,
         [
@@ -504,3 +528,71 @@ def _covers(coverage: Any, position: Any) -> bool:
     xs = [vertex.x for vertex in coverage.vertices]
     ys = [vertex.y for vertex in coverage.vertices]
     return min(xs) <= position.x <= max(xs) and min(ys) <= position.y <= max(ys)
+
+
+def test_a_run_executes_the_plan_the_researcher_approved(tmp_path: Path) -> None:
+    """An approved home and field replace the policy step instead of being regenerated over.
+
+    Without this the plan editor is decoration: the researcher moves the bed, presses run, and the
+    deterministic generator quietly rebuilds the room it was in. The approved models are still
+    judged by the same M4 and M6 gates — they are inputs, not exemptions.
+    """
+    scenario, package = source_models()
+    recommended = generate_home(scenario, package).home
+    assert recommended is not None
+    approved = recommended.model_copy(
+        update={
+            "obstacles": [
+                recommended.obstacles[0].model_copy(
+                    update={
+                        "boundary": Polygon2D(
+                            vertices=[
+                                Point2D(x=point.x + 0.2, y=point.y)
+                                for point in recommended.obstacles[0].boundary.vertices
+                            ]
+                        )
+                    }
+                ),
+                *recommended.obstacles[1:],
+            ]
+        }
+    )
+
+    manifest = materialize_workspace(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        tmp_path / "approved",
+        approved_home=approved,
+    )
+
+    executed = HomeModel.model_validate_json(
+        (tmp_path / "approved/home-model.json").read_text(encoding="utf-8")
+    )
+    assert executed == approved
+    assert executed != recommended
+    approval = json.loads((tmp_path / "approved/plan-approval.json").read_text(encoding="utf-8"))
+    assert approval["homeModel"] == "researcher_approved"
+    assert approval["sensorModel"] == "generated"
+    assert approval["homeSha256"] == canonical_sha256(approved)
+    # Nothing generated this plan, so the run publishes no generation report claiming it did.
+    assert {item.role for item in manifest.artifacts} & {"home_report"} == set()
+    assert not (tmp_path / "approved/home-generation-report.json").exists()
+
+
+def test_an_approved_sensor_field_is_installed_rather_than_redeployed(tmp_path: Path) -> None:
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    field = deploy_sensors(bundle, SensorDeploymentPolicy(preset="room_coverage")).sensor_model
+    assert field is not None
+    # The researcher keeps one PIR and widens nothing else: a deployment no preset would produce.
+    approved = field.model_copy(
+        update={"sensors": [item for item in field.sensors if item.sensor_type != "pir"][:2]}
+    )
+
+    bound = bind_sensor_model(approved, bundle)
+
+    assert [item.sensor_id for item in bound.sensors] == [
+        item.sensor_id for item in approved.sensors
+    ]
+    assert bound.source_bundle_id == bundle.bundle_id
+    assert bound.source_bundle_sha256 == canonical_sha256(bundle)
+    assert bound.seed == bundle.seed

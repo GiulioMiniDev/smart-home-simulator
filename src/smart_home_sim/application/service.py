@@ -6,6 +6,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from smart_home_sim.application.plan_approval import (
+    RESEARCHER,
+    Approval,
+    approval_provenance,
+    plan_approval,
+)
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.authoring.service import validate_authoring_payload
 from smart_home_sim.domain.application import ApplicationIssue, GraphicalReference
@@ -258,7 +264,16 @@ class ApplicationService:
             "residents": [item.model_dump(mode="json", by_alias=True) for item in resident_results],
         }
 
-    def publish_home(self, home_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def publish_home(
+        self, home_id: str, payload: dict[str, Any], *, approval: Approval = RESEARCHER
+    ) -> dict[str, Any]:
+        """Validate and publish a home model as the home's current plan.
+
+        ``approval`` records who decided this plan. The editor publishes a researcher decision —
+        that is what confirming or editing the recommended planimetry means, and from then on runs
+        execute this model instead of regenerating one. The deterministic pipelines publish a
+        recommendation, which leaves the home free to be regenerated from its policy.
+        """
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
         try:
@@ -307,7 +322,9 @@ class ApplicationService:
             "home",
             artifact.artifact_id,
             status="valid",
-            provenance={"validationReport": report.model_dump(mode="json", by_alias=True)},
+            provenance=approval_provenance(
+                approval, validationReport=report.model_dump(mode="json", by_alias=True)
+            ),
         )
         return {
             "valid": True,
@@ -317,7 +334,14 @@ class ApplicationService:
             "revisionId": revision,
         }
 
-    def publish_sensor(self, home_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def publish_sensor(
+        self, home_id: str, payload: dict[str, Any], *, approval: Approval = RESEARCHER
+    ) -> dict[str, Any]:
+        """Validate and publish a sensor field against the home's current plan.
+
+        ``approval`` carries the same meaning as in :meth:`publish_home`: an approved field is
+        installed once and observed as it stands, a recommended one is redeployed from the policy.
+        """
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
         try:
@@ -401,7 +425,9 @@ class ApplicationService:
             "sensor",
             artifact.artifact_id,
             status="valid",
-            provenance={"validatedAgainstHomeArtifact": home_summary.current_home_artifact_id},
+            provenance=approval_provenance(
+                approval, validatedAgainstHomeArtifact=home_summary.current_home_artifact_id
+            ),
         )
         return {
             "valid": True,
@@ -409,6 +435,35 @@ class ApplicationService:
             "artifact": artifact.model_dump(mode="json", by_alias=True),
             "revisionId": revision,
         }
+
+    def approve_plan(self, home_id: str) -> dict[str, Any]:
+        """Accept the recommended plan and sensor field as they stand.
+
+        The researcher who changes nothing has still decided something, so this records the same
+        kind of decision the editor does — a new revision of the very same artifacts — rather than
+        a flag on the side. Runs then execute the reviewed plan instead of regenerating it, and the
+        home's history shows when it stopped being a proposal.
+        """
+        self.workspace.ensure_writable()
+        home = self.workspace.get_home(home_id)
+        if home.current_home_artifact_id is None:
+            raise WorkspaceError("this home has no plan to approve yet")
+        self.workspace.create_revision(
+            home_id,
+            "home",
+            home.current_home_artifact_id,
+            status="valid",
+            provenance=approval_provenance(RESEARCHER, decision="confirmed_as_recommended"),
+        )
+        if home.current_sensor_artifact_id is not None:
+            self.workspace.create_revision(
+                home_id,
+                "sensor",
+                home.current_sensor_artifact_id,
+                status="valid",
+                provenance=approval_provenance(RESEARCHER, decision="confirmed_as_recommended"),
+            )
+        return {"homeId": home_id, "planApproval": plan_approval(self.workspace, home_id)}
 
     def current_models(self, home_id: str) -> dict[str, Any]:
         home = self.workspace.get_home(home_id)

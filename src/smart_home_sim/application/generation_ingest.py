@@ -22,6 +22,7 @@ from typing import Any
 
 from smart_home_sim.application.generation_paths import generation_run_dir
 from smart_home_sim.application.horizon_run import deploy_horizon_sensors
+from smart_home_sim.application.plan_approval import RECOMMENDED
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.batch import SimulationBatchManifest
@@ -181,14 +182,19 @@ def ingest_generation(
         provenance=provenance,
     )
 
-    home_result = application.publish_home(home.home_id, json.loads(home_json))
+    # Published as a RECOMMENDATION: the plan and the field are what the deterministic policies
+    # propose for this persona, and the researcher reviews the planimetry before the first run.
+    # Confirming or editing it in the plan editor is what turns it into the home's own model.
+    home_result = application.publish_home(
+        home.home_id, json.loads(home_json), approval=RECOMMENDED
+    )
     if not home_result.get("valid"):
         raise GenerationIngestError("the generated home model did not pass validation")
 
     # The home's sensor field is the horizon's single installed field, not one day's deployment.
     field, _ = deploy_horizon_sensors(workspace, generation_job_id)
     sensor_result = application.publish_sensor(
-        home.home_id, json.loads(field.model_dump_json(by_alias=True))
+        home.home_id, json.loads(field.model_dump_json(by_alias=True)), approval=RECOMMENDED
     )
     if not sensor_result.get("valid"):
         raise GenerationIngestError("the deployed sensor model did not pass validation")

@@ -23,13 +23,25 @@ from smart_home_sim.application.horizon_run import (
     verify_horizon,
 )
 from smart_home_sim.application.jobs import JobManager
+from smart_home_sim.application.plan_approval import (
+    RESEARCHER,
+    approval_provenance,
+    plan_approval,
+)
 from smart_home_sim.application.replay import ReplayService
+from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.application import (
     ExportFormat,
     ExportRequest,
     JobProgress,
     JobStatus,
+)
+from smart_home_sim.domain.environment import (
+    ConnectionKind,
+    HomeModel,
+    Point2D,
+    Polygon2D,
 )
 from smart_home_sim.domain.sensors import SensorModel
 from smart_home_sim.hybrid_planning.lmstudio import LMStudioClient, LMStudioConfig
@@ -382,3 +394,138 @@ def test_run_endpoint_routes_a_generated_home_to_its_horizon(monkeypatch, tmp_pa
             f"/api/generation/{generation_job_id}/artifact/horizon-scenario.json", headers=headers
         )
         assert artifact.status_code == 200
+
+
+def test_a_generated_horizon_runs_on_the_plan_the_researcher_approved(tmp_path) -> None:
+    """Editing the recommended planimetry changes what every generated day executes.
+
+    The days were bundled during generation around the recommended home. Approving an edited plan
+    has to reach all of them, or the researcher would review one home and simulate another.
+    """
+    workspace = WorkspaceService.create(tmp_path / "ws", "gen")
+    generation_job_id = _generate(workspace)
+    home_id = workspace.get_job(generation_job_id).result_reference
+    assert home_id is not None
+    service = ApplicationService(workspace)
+
+    recommended = HomeModel.model_validate_json(
+        workspace.read_artifact(workspace.get_home(home_id).current_home_artifact_id or "")
+    )
+    assert plan_approval(workspace, home_id)["approved"] is False
+    moved = recommended.obstacles[0]
+    approved = recommended.model_copy(
+        update={
+            "obstacles": [
+                moved.model_copy(
+                    update={
+                        "boundary": Polygon2D(
+                            vertices=[
+                                Point2D(x=point.x, y=point.y + 0.2)
+                                for point in moved.boundary.vertices
+                            ]
+                        )
+                    }
+                ),
+                *recommended.obstacles[1:],
+            ]
+        }
+    )
+    published = service.publish_home(home_id, json.loads(approved.model_dump_json(by_alias=True)))
+    assert published["valid"] is True
+    assert plan_approval(workspace, home_id)["approved"] is True
+
+    run = workspace.create_job(
+        "simulation", home_id=home_id, request={"generationJobId": generation_job_id}
+    )
+    run_horizon_job(workspace, run.job_id)
+
+    assert workspace.get_job(run.job_id).status is JobStatus.completed
+    executed = HomeModel.model_validate_json(
+        (workspace.runs_path / run.job_id / "home-model.json").read_text(encoding="utf-8")
+    )
+    assert executed == approved
+    assert executed != recommended
+    summary = json.loads(
+        (workspace.runs_path / run.job_id / "horizon-manifest.json").read_text(encoding="utf-8")
+    )
+    assert summary["planApproval"]["homeModel"] == "researcher_approved"
+    assert summary["observationCount"] > 0
+
+
+def test_an_approved_sensor_field_is_the_one_a_horizon_observes_with(tmp_path) -> None:
+    workspace = WorkspaceService.create(tmp_path / "ws", "gen")
+    generation_job_id = _generate(workspace)
+    home_id = workspace.get_job(generation_job_id).result_reference
+    assert home_id is not None
+    service = ApplicationService(workspace)
+
+    recommended = SensorModel.model_validate_json(
+        workspace.read_artifact(workspace.get_home(home_id).current_sensor_artifact_id or "")
+    )
+    # The researcher takes one PIR out of the recommended installation.
+    dropped = next(item for item in recommended.sensors if item.sensor_type == "pir").sensor_id
+    approved = recommended.model_copy(
+        update={"sensors": [item for item in recommended.sensors if item.sensor_id != dropped]}
+    )
+    assert (
+        service.publish_sensor(home_id, json.loads(approved.model_dump_json(by_alias=True)))[
+            "valid"
+        ]
+        is True
+    )
+
+    run = workspace.create_job(
+        "simulation", home_id=home_id, request={"generationJobId": generation_job_id}
+    )
+    run_horizon_job(workspace, run.job_id)
+
+    assert workspace.get_job(run.job_id).status is JobStatus.completed
+    field = SensorModel.model_validate_json(
+        (workspace.runs_path / run.job_id / "sensor-model.json").read_text(encoding="utf-8")
+    )
+    assert dropped not in {item.sensor_id for item in field.sensors}
+    log = json.loads(
+        (workspace.runs_path / run.job_id / "observable-sensor-log.json").read_text("utf-8")
+    )
+    assert dropped not in {record["sensorId"] for record in log["records"]}
+
+
+def test_a_plan_that_cannot_be_walked_stops_the_run_instead_of_reverting(tmp_path) -> None:
+    workspace = WorkspaceService.create(tmp_path / "ws", "gen")
+    generation_job_id = _generate(workspace)
+    home_id = workspace.get_job(generation_job_id).result_reference
+    assert home_id is not None
+
+    recommended = HomeModel.model_validate_json(
+        workspace.read_artifact(workspace.get_home(home_id).current_home_artifact_id or "")
+    )
+    # Approved, structurally valid, and impossible to bind: no doorway is left to walk through.
+    broken = recommended.model_copy(
+        update={
+            "connections": [
+                item for item in recommended.connections if item.kind is not ConnectionKind.doorway
+            ]
+        }
+    )
+    workspace.create_revision(
+        home_id,
+        "home",
+        workspace.put_object(
+            broken.model_dump_json(by_alias=True).encode("utf-8"),
+            role="home_model",
+            schema_version="1.0.0",
+            home_id=home_id,
+        ).artifact_id,
+        status="valid",
+        provenance=approval_provenance(RESEARCHER),
+    )
+
+    run = workspace.create_job(
+        "simulation", home_id=home_id, request={"generationJobId": generation_job_id}
+    )
+    run_horizon_job(workspace, run.job_id)
+
+    failed = workspace.get_job(run.job_id)
+    assert failed.status is JobStatus.failed
+    assert "approved plan" in (failed.error_message or "")
+    assert not (workspace.runs_path / run.job_id).exists()

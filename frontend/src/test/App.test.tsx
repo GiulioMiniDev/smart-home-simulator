@@ -214,8 +214,8 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByRole("button", { name: "room room" }));
     fireEvent.change(screen.getByLabelText("Kind", { selector: "select" }), { target: { value: "outdoor" } });
     fireEvent.click(screen.getByRole("button", { name: "Room" }));
-    fireEvent.click(screen.getByText("Validate and publish"));
-    await screen.findByText(/revision validated/);
+    fireEvent.click(screen.getByRole("button", { name: /Validate and publish plan/ }));
+    await screen.findByText(/Plan validated and published/);
     fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     fireEvent.change(screen.getByLabelText("X position"), { target: { value: "3" } });
@@ -229,6 +229,99 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByLabelText("Pan down"));
     fireEvent.click(screen.getByLabelText("Pan right"));
     fireEvent.click(screen.getByLabelText("Fit plan"));
+  });
+
+  it("presents a generated plan as a recommendation until the researcher answers", async () => {
+    // Until it is answered, the planimetry on screen is a proposal, and the page says so and
+    // offers the two ways of answering: take it as it stands, or open it and change it.
+    const approve = vi.fn(() => response({ homeId: "home_1", planApproval: { home: "researcher", sensor: "researcher", approved: true } }));
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
+    overrides["/homes/home_1/plan-approval"] = approve;
+    mount("/homes/home_1");
+
+    await screen.findByText("This planimetry is a proposal");
+    fireEvent.click(screen.getByRole("button", { name: /Confirm this plan/ }));
+
+    await screen.findByText(/Plan confirmed/);
+    expect(approve).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing about approval for a plan the researcher already stands behind", async () => {
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "researcher", sensor: "researcher", approved: true } };
+    mount("/homes/home_1");
+
+    await screen.findByRole("heading", { name: "Golden home" });
+    expect(screen.queryByText("This planimetry is a proposal")).not.toBeInTheDocument();
+  });
+
+  it("widens a PIR range from the inspector and keeps it inside the room", async () => {
+    mount("/homes/home_1");
+    await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
+
+    const range = screen.getByLabelText("Range m") as HTMLInputElement;
+    // The whole 4x4 room, so the control reads 2 metres around the node.
+    expect(range.value).toBe("2");
+    fireEvent.change(range, { target: { value: "0.5" } });
+    expect((screen.getByLabelText("Range m") as HTMLInputElement).value).toBe("0.5");
+  });
+
+  it("reports a refused confirmation and drags nothing when nothing is selected", async () => {
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
+    overrides["/homes/home_1/plan-approval"] = () => response({ error: { code: "WORKSPACE_OPERATION_FAILED", message: "this home has no plan to approve yet" } }, { status: 409 });
+    mount("/homes/home_1");
+
+    await screen.findByText("This planimetry is a proposal");
+    fireEvent.click(screen.getByRole("button", { name: /Confirm this plan/ }));
+    expect(await screen.findByText(/no plan to approve/)).toBeInTheDocument();
+
+    // With no object selected there is nothing to move: the inspector says so instead of guessing.
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    expect(screen.getByText(/Select an object on the plan/)).toBeInTheDocument();
+  });
+
+  it("keeps the plain published-home callout for a generation whose plan is unavailable", async () => {
+    const progress = { phase: "completed", percent: 100, completedUnits: 2, totalUnits: 2, message: "done" };
+    const genJob = { jobId: "gen_2", homeId: "home_1", kind: "generation", status: "completed", progress, requestedAt: now, finishedAt: now, resultReference: "home_1" };
+    overrides = {
+      "/generations": [genJob],
+      "/jobs/gen_2": { job: genJob },
+      "/generation/gen_2/artifact/persona.json": { name: "Elena", age: 72, city: "Bologna" },
+      "/generation/gen_2/artifact/behavioral-profile.json": { recurringActivities: [] },
+      "/generation/gen_2/artifact/batch-manifest.json": { runs: [1] },
+      "/generation/gen_2/artifact/planned-activity-trace.json": { entries: [] },
+      "/homes/home_1": { home, residents: [resident], models: {}, jobs: [job] },
+    };
+    mount("/generate");
+    fireEvent.click(await screen.findByText("gen_2"));
+
+    expect(await screen.findByText(/Published as a home input/)).toBeInTheDocument();
+    expect(screen.queryByText("Recommended")).not.toBeInTheDocument();
+  });
+
+  it("keeps unpublished edits when the home reloads under them, and publishes one tab at a time", async () => {
+    // A run in progress reloads the home on every progress event, and the drafts used to be
+    // reseeded from the server each time — quietly discarding the wall you had just moved.
+    mount("/homes/home_1");
+    await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
+    fireEvent.change(screen.getByLabelText("Range m"), { target: { value: "0.6" } });
+
+    expect(await screen.findByText(/Unpublished edits/)).toBeInTheDocument();
+    // The button says which of the two revisions it is about to create.
+    expect(screen.getByRole("button", { name: /Validate and publish sensors/ })).toBeInTheDocument();
+
+    // A reload arrives (as a running job would trigger); the edit survives it.
+    fireEvent.click(screen.getByRole("tab", { name: "overview" }));
+    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
+    expect((screen.getByLabelText("Range m") as HTMLInputElement).value).toBe("0.6");
+
+    fireEvent.click(screen.getByRole("button", { name: /Validate and publish sensors/ }));
+    await screen.findByText(/Sensor field validated and published/);
+    expect(screen.queryByText(/Unpublished edits/)).not.toBeInTheDocument();
   });
 
   it("opens diary, oracle observations, replay and complete export manifest", async () => {
@@ -559,6 +652,7 @@ describe("complete application routes", () => {
   it("generates, reviews, lists past generations and hands over to the published home", async () => {
     const progress = { phase: "completed", percent: 100, completedUnits: 2, totalUnits: 2, message: "done" };
     const genJob = { jobId: "gen_1", homeId: "home_1", kind: "generation", status: "completed", progress, requestedAt: now, finishedAt: now, resultReference: "home_1" };
+    let confirmed = false;
     overrides = {
       "/generations": [genJob],
       "/generation": () => response(genJob, { status: 202 }),
@@ -567,6 +661,9 @@ describe("complete application routes", () => {
       "/generation/gen_1/artifact/behavioral-profile.json": { recurringActivities: [1, 2, 3, 4, 5, 6, 7, 8] },
       "/generation/gen_1/artifact/batch-manifest.json": { runs: [1, 2] },
       "/generation/gen_1/artifact/planned-activity-trace.json": { entries: [1, 2, 3] },
+      // The workspace answers with the home's current state, which confirming the plan changes.
+      "/homes/home_1": () => response({ home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: confirmed ? "researcher" : "recommended", sensor: confirmed ? "researcher" : "recommended", approved: confirmed } }),
+      "/homes/home_1/plan-approval": () => { confirmed = true; return response({ homeId: "home_1" }); },
     };
     mount("/generate");
     await screen.findByText("No generation selected");
@@ -574,7 +671,13 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
     await screen.findByText("Elena");
     fireEvent.click(screen.getByText("gen_1"));
-    expect(await screen.findByText(/Published as a home input/)).toBeInTheDocument();
+    // The generated house is shown where it was generated, labelled as what it still is.
+    expect(await screen.findByText("Recommended plan")).toBeInTheDocument();
+    expect(screen.getByText("Recommended")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Plan of model_home/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Edit the plan/ })).toHaveAttribute("href", "/homes/home_1");
+    fireEvent.click(screen.getByRole("button", { name: /Confirm plan/ }));
+    await waitFor(() => expect(screen.getByText("Approved plan")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: /Open the home and run the simulation/ })).toHaveAttribute("href", "/homes/home_1");
   });
 

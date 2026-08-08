@@ -24,11 +24,12 @@ from pathlib import Path
 from typing import Any
 
 from smart_home_sim.application.generation_paths import generation_run_dir
+from smart_home_sim.application.plan_approval import approved_home_model, approved_sensor_model
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.application import JobProgress, JobStatus
 from smart_home_sim.domain.batch import SimulationBatchManifest
-from smart_home_sim.domain.environment import SimulationBundle
+from smart_home_sim.domain.environment import HomeModel, SimulationBundle
 from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.sensors import (
     ObservableSensorLog,
@@ -36,7 +37,8 @@ from smart_home_sim.domain.sensors import (
     OracleObservationLink,
     SensorModel,
 )
-from smart_home_sim.materialization import deploy_sensors
+from smart_home_sim.environment import rebind_bundle_home
+from smart_home_sim.materialization import bind_sensor_model, deploy_sensors
 from smart_home_sim.materialization.service import load_sensor_policy
 from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle, trace_semantic_digest
@@ -100,13 +102,22 @@ def horizon_sensor_field(
     return SensorModel.model_validate_json(json.dumps(payload)), introduced_by
 
 
-def _retargeted(model: SensorModel, bundle: SimulationBundle) -> SensorModel:
-    """The horizon's field bound to one day's bundle, so its projection accepts the provenance."""
-    payload = json.loads(model.model_dump_json(by_alias=True))
-    payload["sourceBundleId"] = bundle.bundle_id
-    payload["sourceBundleSha256"] = canonical_sha256(bundle)
-    payload["seed"] = bundle.seed
-    return SensorModel.model_validate_json(json.dumps(payload))
+def _rebound_to_plan(bundle: SimulationBundle, home: HomeModel | None) -> SimulationBundle:
+    """One generated day, re-gated against the plan the researcher approved.
+
+    The day's bundle was assembled during generation around the recommended home. If the researcher
+    has since moved a wall or a wardrobe, simulating that bundle would execute a home nobody
+    approved — with different walking distances and different reachability. Rebinding re-runs the
+    home-dependent M4 gates on the approved plan; a plan that fails them stops the run rather than
+    silently reverting to the recommendation.
+    """
+    if home is None:
+        return bundle
+    result = rebind_bundle_home(bundle, home)
+    if result.bundle is None:
+        messages = " · ".join(issue.message for issue in result.report.issues[:3])
+        raise HorizonRunError(f"the approved plan does not bind to this horizon: {messages}")
+    return result.bundle
 
 
 TRACE_COLLECTIONS: tuple[str, ...] = (
@@ -253,10 +264,15 @@ def deploy_horizon_sensors(
     workspace: WorkspaceService,
     generation_job_id: str,
     *,
+    approved_home: HomeModel | None = None,
     progress: Any = None,
     cancelled: Any = None,
 ) -> tuple[SensorModel, dict[str, list[str]]]:
-    """Deploy the one sensor field a generated horizon is observed with."""
+    """Deploy the one sensor field a generated horizon is observed with.
+
+    With ``approved_home`` the field is deployed onto the plan the researcher approved, so a room
+    they resized or added is covered by the policy exactly as the recommended rooms were.
+    """
     generation_dir = generation_run_dir(workspace, generation_job_id)
     manifest = SimulationBatchManifest.model_validate_json(
         (generation_dir / "batch-manifest.json").read_text(encoding="utf-8")
@@ -268,8 +284,11 @@ def deploy_horizon_sensors(
     for index, run in enumerate(manifest.runs, start=1):
         if cancelled is not None and cancelled():
             raise InterruptedError("job was cancelled")
-        bundle = SimulationBundle.model_validate_json(
-            (generation_dir / run.bundle_path).read_text(encoding="utf-8")
+        bundle = _rebound_to_plan(
+            SimulationBundle.model_validate_json(
+                (generation_dir / run.bundle_path).read_text(encoding="utf-8")
+            ),
+            approved_home,
         )
         deployment = deploy_sensors(bundle, policy)
         if deployment.sensor_model is None:
@@ -296,6 +315,8 @@ def simulate_horizon(
     *,
     scenario_json: bytes | None = None,
     behavior_json: bytes | None = None,
+    approved_home: HomeModel | None = None,
+    approved_sensors: SensorModel | None = None,
     progress: Any = None,
     cancelled: Any = None,
 ) -> dict[str, Any]:
@@ -304,6 +325,11 @@ def simulate_horizon(
     ``scenario_json``/``behavior_json`` are the home's published input artifacts; the run records
     exactly what the home declares. They fall back to the generation directory only for a horizon
     inspected outside a home.
+
+    ``approved_home``/``approved_sensors`` are the plan and field the researcher confirmed or
+    edited after reviewing the recommendation. The approved plan replaces the generated one in
+    every day's bundle; the approved field is installed as it stands instead of being redeployed
+    from the policy. Without them the horizon runs exactly on what generation produced.
     """
     generation_dir = generation_run_dir(workspace, generation_job_id)
     manifest = SimulationBatchManifest.model_validate_json(
@@ -314,22 +340,34 @@ def simulate_horizon(
     skipped: list[str] = []
     total = len(manifest.runs)
 
-    sensor_model, introduced_by = deploy_horizon_sensors(
-        workspace, generation_job_id, progress=progress, cancelled=cancelled
-    )
+    if approved_sensors is not None:
+        sensor_model, introduced_by = approved_sensors, {}
+    else:
+        sensor_model, introduced_by = deploy_horizon_sensors(
+            workspace,
+            generation_job_id,
+            approved_home=approved_home,
+            progress=progress,
+            cancelled=cancelled,
+        )
 
     for index, run in enumerate(manifest.runs, start=1):
         if cancelled is not None and cancelled():
             raise InterruptedError("job was cancelled")
-        bundle = SimulationBundle.model_validate_json(
-            (generation_dir / run.bundle_path).read_text(encoding="utf-8")
+        bundle = _rebound_to_plan(
+            SimulationBundle.model_validate_json(
+                (generation_dir / run.bundle_path).read_text(encoding="utf-8")
+            ),
+            approved_home,
         )
         simulation = simulate_bundle(bundle)
         if simulation.trace is None:
             skipped.append(run.run_id)
             continue
         # Every day observes the SAME installed field; only its provenance is bound to the day.
-        projection = project_sensors(simulation.trace, bundle, _retargeted(sensor_model, bundle))
+        projection = project_sensors(
+            simulation.trace, bundle, bind_sensor_model(sensor_model, bundle)
+        )
         if projection.observable_log is None or projection.oracle_mapping is None:
             skipped.append(run.run_id)
             continue
@@ -390,6 +428,12 @@ def simulate_horizon(
         "sourceBundleSha256": trace.source_bundle_sha256,
         "observableLogId": log.log_id,
         "sensorField": _sensor_field_summary(sensor_model, introduced_by),
+        "planApproval": {
+            "homeModel": "researcher_approved" if approved_home else "generated",
+            "sensorModel": "researcher_approved" if approved_sensors else "generated",
+            "homeSha256": canonical_sha256(bundle.home_model),
+            "sensorModelSha256": canonical_sha256(sensor_model),
+        },
         "days": accumulator.days,
     }
     _write_json(staging / "horizon-manifest.json", json.dumps(summary, indent=2) + "\n")
@@ -468,13 +512,16 @@ def run_horizon_job(workspace: WorkspaceService, job_id: str) -> None:
             raise HorizonRunError("this run has already published its artifacts")
         shutil.rmtree(staging, ignore_errors=True)
         progress("starting", 1, "Started a local worker")
-        scenario_json, behavior_json = _home_inputs(workspace, workspace.get_job(job_id).home_id)
+        home_id = workspace.get_job(job_id).home_id
+        scenario_json, behavior_json = _home_inputs(workspace, home_id)
         summary = simulate_horizon(
             workspace,
             generation_job_id,
             staging,
             scenario_json=scenario_json,
             behavior_json=behavior_json,
+            approved_home=approved_home_model(workspace, home_id) if home_id else None,
+            approved_sensors=approved_sensor_model(workspace, home_id) if home_id else None,
             progress=progress,
             cancelled=cancelled,
         )

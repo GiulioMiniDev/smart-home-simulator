@@ -10,6 +10,13 @@ from typing import Any
 from smart_home_sim.application.generation_ingest import generation_job_for_home
 from smart_home_sim.application.generation_job import _generation_worker
 from smart_home_sim.application.horizon_run import _horizon_worker
+from smart_home_sim.application.plan_approval import (
+    RECOMMENDED,
+    RESEARCHER,
+    approval_provenance,
+    approved_home_model,
+    approved_sensor_model,
+)
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobRecord, JobStatus
 from smart_home_sim.domain.materialization import HomeGenerationPolicy, SensorDeploymentPolicy
@@ -66,14 +73,21 @@ def _materialization_worker(root: str, job_id: str) -> None:
         scenario = workspace.artifact_path(request["scenarioArtifactId"])
         behavior = workspace.artifact_path(request["behaviorArtifactId"])
         output = workspace.runs_path / job_id
+        home_id = workspace.get_job(job_id).home_id or ""
         home_policy = HomeGenerationPolicy.model_validate(request.get("homePolicy") or {})
         sensor_policy = _sensor_policy_from_request(request.get("sensorPolicy"))
+        # An approved plan is the home's physical model, not a suggestion to be recomputed: the run
+        # executes it, and only a home still carrying the recommendation is materialized by policy.
+        approved_home = approved_home_model(workspace, home_id) if home_id else None
+        approved_sensors = approved_sensor_model(workspace, home_id) if home_id else None
         materialize_workspace(
             scenario,
             behavior,
             output,
             home_policy=home_policy,
             sensor_policy=sensor_policy,
+            approved_home=approved_home,
+            approved_sensors=approved_sensors,
             progress=progress,
             cancelled=lambda: workspace.get_job(job_id).status is JobStatus.cancelled,
         )
@@ -81,19 +95,29 @@ def _materialization_worker(root: str, job_id: str) -> None:
         by_role = {item.role: item for item in descriptors}
         if "home_model" in by_role:
             workspace.create_revision(
-                workspace.get_job(job_id).home_id or "",
+                home_id,
                 "home",
                 by_role["home_model"].artifact_id,
                 status="valid",
-                provenance={"jobId": job_id, "source": "scenario-first-1.0.0"},
+                # Republishing what the researcher approved must not quietly demote it back to a
+                # recommendation, or the next run would regenerate the plan they just accepted.
+                provenance=approval_provenance(
+                    RESEARCHER if approved_home is not None else RECOMMENDED,
+                    jobId=job_id,
+                    source="scenario-first-1.0.0",
+                ),
             )
         if "sensor_model" in by_role:
             workspace.create_revision(
-                workspace.get_job(job_id).home_id or "",
+                home_id,
                 "sensor",
                 by_role["sensor_model"].artifact_id,
                 status="valid",
-                provenance={"jobId": job_id, "source": "scenario-first-1.0.0"},
+                provenance=approval_provenance(
+                    RESEARCHER if approved_sensors is not None else RECOMMENDED,
+                    jobId=job_id,
+                    source="scenario-first-1.0.0",
+                ),
             )
         workspace.update_job(
             job_id,

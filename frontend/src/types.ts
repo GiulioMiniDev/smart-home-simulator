@@ -192,6 +192,18 @@ export interface GenerationProvenance {
   gate?: string;
 }
 
+/**
+ * Whether the plan on screen is still only what the policies recommended.
+ *
+ * `approved` is the one the interface acts on: until the researcher confirms the planimetry or
+ * edits it, what they are looking at is a proposal, and the runs regenerate it from the policy.
+ */
+export interface PlanApproval {
+  home: "recommended" | "researcher";
+  sensor: "recommended" | "researcher";
+  approved: boolean;
+}
+
 export interface HomeDetail {
   home: HomeSummary;
   residents: ResidentSummary[];
@@ -199,6 +211,7 @@ export interface HomeDetail {
   jobs: JobRecord[];
   issues?: ApplicationIssue[];
   generation?: GenerationProvenance | null;
+  planApproval?: PlanApproval;
 }
 
 export interface ApplicationIssue {
