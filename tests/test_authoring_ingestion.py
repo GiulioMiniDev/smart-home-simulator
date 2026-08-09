@@ -593,6 +593,14 @@ def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None
     for spec in INTENT_CATALOG:
         assert f"- `{spec.intent_id}` — {spec.default_location}" in prompt
 
+    from tools.build_authoring_artifacts import _retarget_action_state_contract
+
     start = frozen.index("## Personal ADL process-model rules")
     end = frozen.index("## Required final consistency checks", start)
-    assert frozen[start:end].rstrip() in prompt
+    section = frozen[start:end].rstrip()
+    # Reused whole, save for the replayed state contract. The two prompts embed different action
+    # catalogs — 1.0.0 there, 1.1.0 here — and lifting that part verbatim described the wrong one:
+    # its table omitted `prepare_food`, `shop` and `dress`, the three actions that hand the
+    # resident a role, and the rule above it said no such action existed.
+    assert _retarget_action_state_contract(section) in prompt
+    assert section not in prompt

@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import math
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -203,6 +204,7 @@ def build_day_plan(
     actor_id: str,
     rhythm: DayRhythm | None = None,
     seed: int | None = None,
+    busy_minutes: Sequence[tuple[int, int]] = (),
 ) -> DayPlan:
     """Deterministic DayPlan: wake, the due recurring activities mapped to intents, then a terminal
     sleep.
@@ -211,6 +213,11 @@ def build_day_plan(
     every single day of the horizon. With a rhythm, the day is shaped by the drive state it
     inherited — the night starts and ends where the sleep model put it, nocturnal bathroom trips
     are laid down before the wake, and a nap appears when sleep debt has built up.
+
+    ``busy_minutes`` are the hours the day is already spoken for — its fixed commitments and its
+    placed events — as (start, end) minutes after midnight. They are not part of this plan; the
+    expander appends them afterwards. But the drive layer has to see them, or it fills an afternoon
+    the resident spends at work.
     """
     entries: list[TimelineEntry] = []
     wake_time = WAKE_TIME
@@ -241,13 +248,13 @@ def build_day_plan(
         )
     entries.sort(key=lambda item: item.hhmm)
     if rhythm is not None and rhythm.nap:
-        slot = _free_slot(entries, _NAP_WINDOW, _NAP_SHAPE)
+        slot = _free_slot(entries, _NAP_WINDOW, _NAP_SHAPE, busy_minutes)
         if slot is not None:
             entries.append(
                 TimelineEntry(_NAP_INTENT, slot, label="sleep_debt_nap", duration_shape=_NAP_SHAPE)
             )
     if rhythm is not None and rhythm.unplanned_social_contact:
-        slot = _free_slot(entries, _UNPLANNED_SOCIAL_WINDOW, _UNPLANNED_SOCIAL_SHAPE)
+        slot = _free_slot(entries, _UNPLANNED_SOCIAL_WINDOW, _UNPLANNED_SOCIAL_SHAPE, busy_minutes)
         if slot is not None:
             entries.append(
                 TimelineEntry(
@@ -280,13 +287,20 @@ def _free_slot(
     entries: list[TimelineEntry],
     window: tuple[int, int],
     shape: tuple[int, int, int, float],
+    busy: Sequence[tuple[int, int]] = (),
 ) -> str | None:
     """Drop a drive-generated activity into the widest free gap of ``window``, or not at all.
 
     An activity pinned to a fixed clock time collides with whatever activity already sits there and
     makes the day unsolvable, so it has to be placed against the schedule that actually exists.
+
+    ``busy`` is the part of the day the resident is not free to fill — the fixed commitments and
+    the placed events, which the expander materialises after this plan and which therefore appear
+    nowhere in ``entries``. Without them the afternoon looks empty on a working Monday and the debt
+    nap lands in the middle of a nine-hour shift: two mandatory activities over the same hour, and
+    no schedule exists.
     """
-    occupied: list[tuple[int, int]] = []
+    occupied: list[tuple[int, int]] = list(busy)
     for entry in entries:
         start = _to_minutes(entry.hhmm)
         entry_shape = (
@@ -476,10 +490,18 @@ def window_around(moment: datetime, flex: timedelta) -> DateTimeWindow:
     precede, and the window is rejected downstream for `earliest <= preferred <= latest`. Shifting
     in UTC and converting back keeps the three edges ordered on every day of the year, and is what
     a fifteen-minute window means anyway.
+
+    ``moment`` itself gets the same treatment, because it may already *be* one of those local times
+    that never happen: `_at` builds it by attaching the zone to a wall-clock reading, so a night
+    visit drawn at 02:24 on the day the clock jumps 02:00 to 03:00 is stored with the pre-transition
+    offset. Python compares two aware datetimes sharing one tzinfo object by their naive fields
+    alone, so the ordering guard above is defeated exactly there — the earliest edge reads 03:09 and
+    is judged to fall *after* a preferred moment reading 02:24, and the window is rejected. Rounding
+    the moment through UTC lands it on the local time the clock actually showed.
     """
     base = moment.astimezone(UTC)
     return DateTimeWindow(
         earliest=(base - flex).astimezone(moment.tzinfo),
-        preferred=moment,
+        preferred=base.astimezone(moment.tzinfo),
         latest=(base + flex).astimezone(moment.tzinfo),
     )

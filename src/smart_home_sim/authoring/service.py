@@ -517,8 +517,21 @@ def validate_authoring_payload(
         if behavior_report.valid and compilation_plan is not None:
             scenario = Scenario.model_validate_json(json.dumps(scenario_payload))
             package = PersonalProcessPackage.model_validate_json(json.dumps(behavior_payload))
+            # The declared version, exactly as behavior validation above resolves it. Replaying
+            # against a different catalog asks the package to satisfy preconditions no reader of
+            # its own catalog would expect: under 1.0.0 `prepare_food` has no effect, so a model
+            # that cooks a meal and puts it in the fridge — correct under the 1.1.0 the package
+            # declares — fails `put_item` on every meal of the horizon, 413 times on one year.
             action_catalog = ActionCatalog.model_validate_json(
-                json.dumps(_load_catalog(default_action_catalog_path()))
+                json.dumps(
+                    _load_catalog(
+                        default_action_catalog_path(
+                            _declared_catalog_version(
+                                behavior_payload, "actionCatalog", default_action_catalog_path
+                            )
+                        )
+                    )
+                )
             )
             variable_catalog = VariableCatalog.model_validate_json(
                 json.dumps(_load_catalog(default_variable_catalog_path()))

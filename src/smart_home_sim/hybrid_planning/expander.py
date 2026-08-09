@@ -31,6 +31,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -68,6 +69,7 @@ from smart_home_sim.hybrid_planning.horizon import _scheduled_drive_load
 from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG, intent_spec
 from smart_home_sim.hybrid_planning.outline import (
     Displacement,
+    FixedCommitment,
     HabitComposition,
     HabitGroundTruth,
     HabitObservation,
@@ -416,9 +418,14 @@ def _wobble(
     )
 
 
-def _event_activity(
-    placed: _PlacedEvent, index: int, tz: ZoneInfo, actor_id: str, seed: int
-) -> Activity:
+def _event_placement(placed: _PlacedEvent, seed: int) -> tuple[int, int, int]:
+    """Where inside its band this occurrence lands: (start, latest start, duration) in minutes.
+
+    Drawn here rather than inside `_event_activity` because the drive layer has to know the hours
+    an event takes *before* the day plan exists — an unplanned call dropped into a Sunday that a
+    four-hour family dinner already owns is two mandatory activities over the same hour. The draw
+    is keyed on the event and the day, so both callers get the same answer.
+    """
     event = placed.event
     low = _to_minutes(event.window_start)
     high = _to_minutes(event.window_end)
@@ -426,6 +433,24 @@ def _event_activity(
     # Start late enough that the shortest acceptable duration still ends inside the declared band.
     latest_start = max(low, high - event.minimum_minutes)
     start_minutes = rng.randint(low, latest_start)
+    return start_minutes, latest_start, rng.randint(event.minimum_minutes, event.maximum_minutes)
+
+
+def _event_spans(placed: Sequence[_PlacedEvent], seed: int) -> list[tuple[int, int]]:
+    """The day's placed events as (start, end) minutes after midnight, ends taken generously."""
+    return [
+        (start, start + item.event.maximum_minutes)
+        for item in placed
+        for start, _, _ in (_event_placement(item, seed),)
+    ]
+
+
+def _event_activity(
+    placed: _PlacedEvent, index: int, tz: ZoneInfo, actor_id: str, seed: int
+) -> Activity:
+    event = placed.event
+    low = _to_minutes(event.window_start)
+    start_minutes, latest_start, preferred = _event_placement(placed, seed)
     moment = at_offset(placed.day, start_minutes, tz)
     # An event without an explicit intent is mapped from its label, exactly as a habit is.
     intent = event.intent or label_to_intent(event.label)
@@ -434,7 +459,6 @@ def _event_activity(
         raise ExpansionError(
             f"event {event.event_id!r} names intent {intent!r}, which the catalog does not define"
         )
-    preferred = rng.randint(event.minimum_minutes, event.maximum_minutes)
     # Like a habit, an event is given its whole declared band, not a sliver around the draw.
     earliest = at_offset(placed.day, low, tz)
     latest = at_offset(placed.day, latest_start, tz)
@@ -487,7 +511,19 @@ def _resolve_overlaps(activities: list[Activity]) -> list[Activity]:
         # A commitment's hours are not the resident's to move, so it anchors the day rather than
         # yielding to it: it still pushes the frontier forward, it just never slides itself.
         fixed = any(label.startswith("commitment:") for label in activity.labels)
-        if not fixed and free_from is not None and preferred < free_from <= window.latest:
+        if (
+            not fixed
+            and free_from is not None
+            and preferred < free_from <= window.latest
+            # Never across local midnight: an activity belongs to the day whose date its preferred
+            # start names, so a push past it silently reassigns the activity to a day that does not
+            # list it and the scenario is rejected with ACTIVITY_ASSIGNED_TO_WRONG_DAY. It is the
+            # terminal night that gets caught — a long evening running to 00:04 against a 23:54
+            # lights-out whose window still reaches 00:09 — and the night is exactly the one
+            # activity nothing follows, so leaving it on its own preferred moment costs nothing:
+            # the window is untouched and the compiler still has the room to settle the overlap.
+            and free_from.date() == preferred.date()
+        ):
             preferred = free_from
         resolved.append(
             activity.model_copy(
@@ -507,6 +543,45 @@ def _resolve_overlaps(activities: list[Activity]) -> list[Activity]:
     return resolved
 
 
+def _commitment_active_on(commitment: FixedCommitment, day: date) -> bool:
+    if day.strftime("%A").lower() not in {item.value for item in commitment.weekdays}:
+        return False
+    if commitment.start_date is not None and day < commitment.start_date:
+        return False
+    return not (commitment.end_date is not None and day > commitment.end_date)
+
+
+def _commitment_spans(outline: HorizonOutline, day: date) -> list[tuple[int, int]]:
+    """The day's fixed commitments as (start, end) minutes after midnight."""
+    return [
+        (_to_minutes(commitment.start_time), _to_minutes(commitment.end_time))
+        for commitment in outline.fixed_commitments
+        if _commitment_active_on(commitment, day)
+    ]
+
+
+def _first_commitment_by_day(
+    outline: HorizonOutline, days: Sequence[CalendarDay]
+) -> dict[date, int]:
+    """When the earliest fixed commitment starts on each day, in minutes after midnight.
+
+    The drive model shapes the night from the resident's chronotype alone, which is right for a day
+    she owns and wrong for a day someone else has already claimed part of. Handing it the start of
+    the first commitment is what turns a free-running wake into an alarm.
+    """
+    starts: dict[date, int] = {}
+    for calendar_day in days:
+        day = date.fromisoformat(calendar_day.date)
+        minutes = [
+            _to_minutes(commitment.start_time)
+            for commitment in outline.fixed_commitments
+            if _commitment_active_on(commitment, day)
+        ]
+        if minutes:
+            starts[day] = min(minutes)
+    return starts
+
+
 def _commitment_activities(
     outline: HorizonOutline, day: date, tz: ZoneInfo, index: int
 ) -> list[Activity]:
@@ -518,13 +593,8 @@ def _commitment_activities(
     a shift that cannot move. Everything else on the day gives way to it instead.
     """
     activities: list[Activity] = []
-    weekday = day.strftime("%A").lower()
     for offset, commitment in enumerate(outline.fixed_commitments):
-        if weekday not in {item.value for item in commitment.weekdays}:
-            continue
-        if commitment.start_date is not None and day < commitment.start_date:
-            continue
-        if commitment.end_date is not None and day > commitment.end_date:
+        if not _commitment_active_on(commitment, day):
             continue
         assert commitment.intent is not None  # guaranteed by _check_intents
         location = _intent_location(commitment.intent)
@@ -796,18 +866,24 @@ def expand_outline(
         seed=seed,
         meals_by_day=meals,
         social_by_day=social,
+        first_commitment_by_day=_first_commitment_by_day(outline, calendar.days),
     )
 
     tz = ZoneInfo(outline.time_zone)
     recurring_activities = _activities_by_id(outline.profile)
     days: list[DayPlan] = []
     for calendar_day in calendar.days:
+        day_events = placed.get(calendar_day.date, [])
         plan = build_day_plan(
             calendar_day,
             timezone=outline.time_zone,
             actor_id=outline.resident_id,
             rhythm=rhythms.get(calendar_day.date),
             seed=seed,
+            busy_minutes=[
+                *_commitment_spans(outline, date.fromisoformat(calendar_day.date)),
+                *_event_spans(day_events, seed),
+            ],
         )
         activities = [
             _wobble(
@@ -818,7 +894,7 @@ def expand_outline(
             )
             for activity in plan.activities
         ]
-        for index, item in enumerate(placed.get(calendar_day.date, [])):
+        for index, item in enumerate(day_events):
             activities.append(
                 _event_activity(item, len(activities) + index, tz, outline.resident_id, seed)
             )

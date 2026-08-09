@@ -544,3 +544,80 @@ def test_the_declared_kind_decides_what_a_crowded_day_may_drop(
 
     assert mandatory_by_kind[RecurringActivityKind.anchor] == {True}
     assert mandatory_by_kind[RecurringActivityKind.optional] == {False}
+
+
+def test_the_night_is_never_pushed_into_the_following_day(
+    package: PersonalProcessPackage,
+) -> None:
+    """An activity belongs to the day whose date its preferred start names.
+
+    The overlap pass slides a preferred moment forward to clear the activity before it, and the
+    terminal night is the one it can slide across midnight: a late film running to 00:04 against a
+    23:54 lights-out whose window still reaches 00:09 moved the sleep to a day that does not list
+    it, and the whole 365-day scenario was rejected for that one night.
+    """
+    misplaced = [
+        (day.date, activity.activity_id)
+        for seed in range(6)
+        for day in expand_outline(_outline(months=6), package, seed=seed).bundle.scenario.days
+        for activity in day.activities
+        if activity.start_window is not None and activity.start_window.preferred.date() != day.date
+    ]
+
+    assert misplaced == []
+
+
+def test_a_debt_nap_is_not_dropped_inside_a_shift(package: PersonalProcessPackage) -> None:
+    """The drive layer fills the widest free gap, and a commitment is not a gap.
+
+    Commitments are materialised after the day plan, so without being told about them the drive
+    layer reads a working Monday as an empty afternoon and lands the nap in the middle of the
+    shift. Two mandatory activities over the same hour, and the day has no schedule at all.
+    """
+    commitment = FixedCommitment(
+        commitment_id="office",
+        label="Office",
+        weekdays=[Weekday.monday, Weekday.tuesday, Weekday.wednesday],
+        start_time="08:30",
+        end_time="17:30",
+        intent="work_shift",
+    )
+    template = package.bindings[0]
+    covering = package.model_copy(
+        update={
+            "bindings": [
+                *package.bindings,
+                template.model_copy(
+                    update={"binding_id": "away__work_shift", "intent": "work_shift"}
+                ),
+            ]
+        }
+    )
+    result = expand_outline(_outline(months=3, fixed_commitments=[commitment]), covering, seed=2)
+
+    clashes = []
+    for day in result.bundle.scenario.days:
+        shift = next(
+            (
+                item
+                for item in day.activities
+                if any(label.startswith("commitment:") for label in item.labels)
+            ),
+            None,
+        )
+        if shift is None or shift.start_window is None or shift.duration is None:
+            continue
+        begins = shift.start_window.preferred
+        ends = begins + timedelta(minutes=shift.duration.preferred_minutes)
+        # Scoped to what the drive layer placed itself. A declared recurring activity whose band
+        # the author ran through the shift is an authoring error the outline owns; the nap and the
+        # unplanned call have no band at all, so where they land is the expander's answer.
+        clashes.extend(
+            item.activity_id
+            for item in day.activities
+            if item.start_window is not None
+            and {"sleep_debt_nap", "social_need_contact"} & set(item.labels)
+            and begins <= item.start_window.preferred < ends
+        )
+
+    assert clashes == []

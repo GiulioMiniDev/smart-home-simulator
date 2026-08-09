@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -141,6 +142,7 @@ def build_prompt() -> None:
         ACTION_STATE_FRAGMENT.read_text(encoding="utf-8")
         .strip()
         .replace("{{ACTION_STATE_CONTRACT}}", _render_action_state_contract(action_catalog))
+        .replace("{{CARRYING_GRANTS}}", _render_carrying_grants(action_catalog))
         .replace("{{CONTAINER_ROLES}}", _render_container_roles())
     )
     prompt_1_3 = prompt_1_2.replace("1.2.0", "1.3.0")
@@ -291,6 +293,39 @@ def _render_canonical_roles(
         "hanno un arredo dedicato: non inventarne altri fuori da questi due elenchi, perche' un "
         f"ruolo sconosciuto esegue contro un oggetto inesistente. {listed(area_roles)}."
     )
+
+
+def _carrying_grants(action_catalog: dict[str, Any]) -> list[tuple[str, str]]:
+    """Every action other than `take_item` that leaves the resident holding a role."""
+    prefix = "resident.carrying."
+    return [
+        (action["actionType"], effect["factTemplate"][len(prefix) :])
+        for action in sorted(action_catalog["actions"], key=lambda item: item["actionType"])
+        if action["actionType"] != "take_item"
+        for effect in action["effects"]
+        if effect["factTemplate"].startswith(prefix) and effect["value"] is True
+    ]
+
+
+def _render_carrying_grants(action_catalog: dict[str, Any]) -> str:
+    """Which actions satisfy a later `put_item`, spelled from the catalog rather than asserted.
+
+    "`take_item` is the only action that grants a carrying fact" is true of action catalog 1.0.0
+    and false of 1.1.0, where `prepare_food`, `shop` and `dress` each hand over a role. The outline
+    prompt embeds 1.1.0 while inheriting this rule from the 1.3.0 prompt, which embeds 1.0.0, so
+    the sentence reached its author as a flat contradiction of the catalog printed underneath it.
+    """
+    granted = _carrying_grants(action_catalog)
+    if granted:
+        listed = ", ".join(f"`{action}` grants `{role}`" for action, role in granted)
+        text = (
+            f"`take_item` grants the role it names, and so do these: {listed}. Any one of them "
+            "satisfies a later `put_item` of that same role, with no `take_item` in between."
+        )
+    else:
+        text = "`take_item` is the only action in this catalog that grants a carrying fact."
+    # Continues the numbered item it is inserted into, so it carries the list's own indent.
+    return textwrap.fill(text, width=98, initial_indent="   ", subsequent_indent="   ")
 
 
 def _render_carrying_effects(action_catalog: dict[str, Any]) -> str:
@@ -533,6 +568,29 @@ OUTLINE_PLACEHOLDERS = {
 }
 
 
+def _retarget_action_state_contract(section: str) -> str:
+    """Re-render the replayed contract against the catalog the outline prompt embeds.
+
+    The process-model half is lifted verbatim from the 1.3.0 prompt, which embeds action catalog
+    1.0.0. The outline path runs on 1.1.0 and embeds it, so the lifted text arrived describing a
+    different catalog from the one printed below it — silently, because both are rendered and
+    neither is retyped. Under 1.0.0 `prepare_food` has no effect, so the table omitted the three
+    actions that hand the resident a role and the rule above them said no such action exists.
+    """
+    frozen_catalog = json.loads(
+        (CATALOG_DIR / "action-catalog-1.0.0.json").read_text(encoding="utf-8")
+    )
+    outline_catalog = json.loads(
+        OUTLINE_PLACEHOLDERS["{{ACTION_CATALOG_JSON}}"].read_text(encoding="utf-8")
+    )
+    for render in (_render_action_state_contract, _render_carrying_grants):
+        stale = render(frozen_catalog)
+        if section.count(stale) != 1:
+            raise RuntimeError(f"Outline prompt: cannot retarget {render.__name__}")
+        section = section.replace(stale, render(outline_catalog))
+    return section
+
+
 def build_outline_prompt() -> None:
     frozen = PROMPT_1_3_PATH.read_text(encoding="utf-8")
     prompt = OUTLINE_TEMPLATE_PATH.read_text(encoding="utf-8")
@@ -541,7 +599,10 @@ def build_outline_prompt() -> None:
     prompt = prompt.replace("{{CATALOG_INTENTS}}", _render_catalog_intents())
     prompt = prompt.replace("{{FURNITURE_CATALOG}}", _render_furniture_catalog())
     prompt = prompt.replace("{{RHYTHM_INTENTS}}", _render_rhythm_intents())
-    prompt = prompt.replace("{{PROCESS_MODEL_SECTIONS}}", _section_span(frozen, *REUSED_FROM_1_3_0))
+    prompt = prompt.replace(
+        "{{PROCESS_MODEL_SECTIONS}}",
+        _retarget_action_state_contract(_section_span(frozen, *REUSED_FROM_1_3_0)),
+    )
     prompt = prompt.replace(
         "{{OUTLINE_BUNDLE_SCHEMA_JSON}}", _compact_json(OUTLINE_BUNDLE_SCHEMA_PATH)
     )

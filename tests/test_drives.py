@@ -237,3 +237,40 @@ def test_drive_state_is_clamped_to_its_bands() -> None:
     assert clamped.hunger == 1.0
     assert clamped.social_need == 0.0
     assert clamped.fatigue == 1.0
+
+
+def test_lights_out_never_crosses_midnight() -> None:
+    """A late chronotype must not wrap the night into the small hours of its own day.
+
+    Past midnight the block is emitted as the day's *first* activity, duplicating the night already
+    in progress and leaving the night that day was meant to start with none at all.
+    """
+    profile = _profile(chronotype_bedtime_minutes=_minutes("23:45"))
+    rhythms = plan_rhythms(profile, LONG_HORIZON, seed=3)
+    assert rhythms
+    assert max(_minutes(item.sleep_hhmm) for item in rhythms.values()) <= _minutes("23:50")
+
+
+def test_a_fixed_commitment_sets_an_alarm() -> None:
+    profile = _profile(chronotype_bedtime_minutes=_minutes("23:45"))
+    work = _minutes("08:30")
+    free = plan_rhythms(profile, HORIZON, seed=4)
+    alarmed = plan_rhythms(
+        profile, HORIZON, seed=4, first_commitment_by_day={day: work for day in HORIZON}
+    )
+    assert max(_minutes(item.wake_hhmm) for item in free.values()) > work
+    assert max(_minutes(item.wake_hhmm) for item in alarmed.values()) <= work
+
+
+def test_the_alarm_shortens_the_night_rather_than_moving_lights_out() -> None:
+    """Cutting the night is what builds weekday debt; moving bedtime would hide the cost."""
+    profile = _profile(chronotype_bedtime_minutes=_minutes("23:45"))
+    day = date(2026, 8, 3)
+    state = DriveState(sleep_debt_minutes=30.0)
+    free, _ = advance(profile, day, state, seed=6)
+    alarmed, after = advance(
+        profile, day, state, seed=6, first_commitment_minutes=_minutes("08:30")
+    )
+    assert alarmed.sleep_hhmm == free.sleep_hhmm
+    assert alarmed.sleep_minutes < free.sleep_minutes
+    assert after.sleep_debt_minutes > 0

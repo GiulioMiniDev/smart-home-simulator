@@ -292,10 +292,11 @@ construction rules while walking it:
      spends the whole horizon indoors: one eight-month run produced zero `leave_home` actions and
      74 door events, where a real home records several a day. If the intent says the resident is
      out, the model must take her out.
-3. Every `put_item(role)` is preceded on every incoming path by a `take_item` with the exact
-   same role. `take_item` is the only action in this catalog that grants a carrying fact, so a
-   `put_item` whose role was never taken is always deterministically false. Do not take
-   `ingredients` and put `prepared_meal`.
+3. Every `put_item(role)` is preceded on every incoming path by an action that grants that exact
+   role. A `put_item` whose role was never granted is always deterministically false, and the role
+   has to match: taking `ingredients` and putting `prepared_meal` grants one fact and asserts
+   another.
+   `take_item` is the only action in this catalog that grants a carrying fact.
 4. A component whose required sequence begins with `put_item` — `store_food`,
    `store_purchases`, `discard_recycling` — needs an explicit `take_item` of that same role
    inserted before the required sequence whenever the ledger does not already carry it.

@@ -46,6 +46,21 @@ _MAX_NIGHT_VISITS = 3
 # Keeps a trip clear of midnight and of the morning wake, and keeps two trips from colliding.
 _NIGHT_VISIT_MARGIN_MINUTES = 25.0
 
+# Lights-out is the last activity of its own calendar day, so it has to fall before midnight. Past
+# it the night wraps to the small hours and is emitted as the *first* activity of the same day,
+# which both duplicates the night already in progress and leaves the night that day was supposed to
+# begin with no sleep at all — one horizon had the resident awake from 09:38 to 23:30 the next
+# evening. A late chronotype plus the weekend shift plus the sigma reaches past midnight often, so
+# the ceiling belongs here rather than in the author's hands.
+_LATEST_LIGHTS_OUT_MINUTES = 23 * 60 + 50
+# How long before a fixed commitment the resident is up: the wake itself, washing, breakfast and
+# getting out of the door. An alarm shortens the night rather than moving lights-out, which is what
+# builds weekday sleep debt and repays it at the weekend — the social-jetlag pattern.
+_ALARM_LEAD_MINUTES = 90
+# An alarm may cut the night, but not past the point where the resident would simply have gone to
+# bed earlier instead.
+_ALARM_MINIMUM_SLEEP_FRACTION = 0.45
+
 # Appetite and the wish for company both build daily and are spent by doing the thing. Without a
 # consumption term they only ever climb: hunger saturated in about seventeen days and social need
 # in about six, after which a variable meant to shape the day became a constant.
@@ -161,12 +176,15 @@ def plan_rhythms(
     rest_days: frozenset[date] = frozenset(),
     meals_by_day: Mapping[date, int] | None = None,
     social_by_day: Mapping[date, int] | None = None,
+    first_commitment_by_day: Mapping[date, int] | None = None,
 ) -> dict[str, DayRhythm]:
     """Walk the horizon in order, carrying drive state, and shape every day.
 
     Days must be consecutive and ordered: the whole point is that day N reads the state day N-1
     left behind. ``meals_by_day`` and ``social_by_day`` carry what the calendar scheduled, so the
     corresponding drives are spent as well as accumulated; omitting them leaves both climbing.
+    ``first_commitment_by_day`` carries the start of the earliest fixed commitment, in minutes after
+    midnight, so the day the resident is expected somewhere gets an alarm.
     """
     state = initial_state(profile, seed)
     rhythms: dict[str, DayRhythm] = {}
@@ -179,6 +197,9 @@ def plan_rhythms(
             rest_day=day in rest_days,
             meals=0 if meals_by_day is None else meals_by_day.get(day, 0),
             social_contacts=0 if social_by_day is None else social_by_day.get(day, 0),
+            first_commitment_minutes=(
+                None if first_commitment_by_day is None else first_commitment_by_day.get(day)
+            ),
         )
         rhythms[day.isoformat()] = rhythm
     return rhythms
@@ -193,11 +214,17 @@ def advance(
     rest_day: bool = False,
     meals: int = 0,
     social_contacts: int = 0,
+    first_commitment_minutes: int | None = None,
 ) -> tuple[DayRhythm, DriveState]:
     """Turn today's incoming drive state into a day shape and tomorrow's state.
 
     ``meals`` and ``social_contacts`` are what the calendar actually scheduled for this day. They
     are what closes the loop: without them hunger and social need only accumulate.
+
+    ``first_commitment_minutes`` is when the day's earliest fixed commitment starts. It is the one
+    thing in the day the resident does not choose, so it sets an alarm: without it the night runs to
+    its own length and a 23:45 chronotype puts the wake at 09:38 on a day whose shift began at
+    08:30, which is not a late morning but an unschedulable day.
     """
     key = day.isoformat()
     rng = _rng(seed, profile.persona_id, "rhythm", key)
@@ -213,6 +240,7 @@ def advance(
         + (profile.weekend_shift_minutes if relaxed else 0.0)
         - 45.0 * debt_pressure
     )
+    bedtime = min(bedtime, float(_LATEST_LIGHTS_OUT_MINUTES))
 
     # Night length: log-normal so it keeps a right tail, lengthened by part of the standing debt.
     target = need + _DEBT_RECOVERY_FRACTION * state.sleep_debt_minutes
@@ -220,6 +248,18 @@ def advance(
     sleep_minutes = _clip(sleep_minutes, need * 0.55, need * 1.45)
 
     wake = bedtime + sleep_minutes + rng.gauss(0, profile.wake_sigma_minutes * 0.35)
+
+    # The alarm cuts the night short rather than moving lights-out, so the minutes it takes are the
+    # minutes that become tomorrow's debt.
+    if first_commitment_minutes is not None:
+        alarm = first_commitment_minutes - _ALARM_LEAD_MINUTES
+        overshoot = min(
+            wake % (24 * 60) - alarm,
+            sleep_minutes - need * _ALARM_MINIMUM_SLEEP_FRACTION,
+        )
+        if overshoot > 0:
+            wake -= overshoot
+            sleep_minutes -= overshoot
 
     visits = _night_visits(profile, state, rng, wake % (24 * 60))
     # Each awakening costs some restorative sleep even when total time in bed is unchanged.
