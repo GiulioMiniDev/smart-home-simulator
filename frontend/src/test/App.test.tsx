@@ -391,6 +391,138 @@ describe("complete application routes", () => {
     expect(screen.getByText("simulation")).toBeInTheDocument();
   });
 
+  it("builds the home and sensors before any run, and keeps evidence views closed for it", async () => {
+    const started = vi.fn(() => response({ ...job, jobId: "env_1", kind: "environment", status: "queued", finishedAt: undefined, progress: { phase: "queued", percent: 0, completedUnits: 0, message: "Waiting for a local worker" } }, { status: 202 }));
+    overrides["/homes/home_1"] = { home: { ...home, currentHomeArtifactId: undefined, currentSensorArtifactId: undefined }, residents: [resident], models: {}, jobs: [] };
+    overrides["/homes/home_1/environment"] = started;
+    mount("/homes/home_1");
+    await screen.findByText("Authoritative revisions");
+    fireEvent.click(screen.getByRole("button", { name: /Generate home and sensors/ }));
+    await waitFor(() => expect(started).toHaveBeenCalled());
+    expect(await screen.findByText(/Nothing is executed until you start a run/)).toBeInTheDocument();
+
+    cleanup();
+    const environmentJob = { ...job, jobId: "env_1", kind: "environment" as const, progress: { ...job.progress, message: "Home and sensor field published; no simulation was executed" } };
+    overrides["/jobs/env_1"] = { job: environmentJob, events: [], artifacts: { home_model: { artifactId: "artifact_home", role: "home_model", sha256: "a".repeat(64), sizeBytes: 100 } } };
+    mount("/simulations/env_1");
+    expect(await screen.findByText(/executed nothing/)).toBeInTheDocument();
+    // A completed job with no trace must not offer the diary, the observations or the replay.
+    expect(screen.getByRole("tab", { name: "diary" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Export complete dataset/ })).toBeDisabled();
+  });
+
+  it("reports an environment build the server refuses", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, currentHomeArtifactId: undefined, currentSensorArtifactId: undefined }, residents: [resident], models: {}, jobs: [] };
+    overrides["/homes/home_1/environment"] = () => response({ error: { message: "all local workers are busy" } }, { status: 409 });
+    mount("/homes/home_1");
+    await screen.findByText("Authoritative revisions");
+    fireEvent.click(screen.getByRole("button", { name: /Generate home and sensors/ }));
+    expect(await screen.findByText("all local workers are busy")).toBeInTheDocument();
+  });
+
+  it("tells the dashboard what a startup reconciliation had to change", async () => {
+    overrides["/overview"] = {
+      ...overview,
+      lastRepair: { performedAt: now, homesRemoved: 0, runsRemoved: 0, exportsRemoved: 1, artifactsPruned: 34, artifactsAdopted: 0, filesRemoved: 2, bytesFreed: 5_242_880, corruptRemaining: 0, details: ["forgot 34 catalogue entries whose file is no longer in the workspace folder"] },
+    };
+    mount("/");
+    expect(await screen.findByText(/The workspace folder changed since the last session/)).toBeInTheDocument();
+    expect(screen.getByText(/forgot 34 catalogue entries/)).toBeInTheDocument();
+    expect(screen.getByText(/5.0 MB reclaimed/)).toBeInTheDocument();
+    // Files a researcher deleted are not corruption, so nothing is paused.
+    expect(screen.queryByText("Workspace opened in diagnostic mode")).toBeNull();
+  });
+
+  it("reports integrity, reconciles the folder and deletes a stored export", async () => {
+    const finding = { kind: "missing" as const, relativePath: "exports/export_1/observable.csv", artifactId: "artifact_1", role: "export_observable_csv", sizeBytes: 2048, detail: "the file is no longer in the workspace folder" };
+    let integrity = { checkedAt: now, diagnosticMode: false, missing: [finding], corrupt: [], orphans: [{ kind: "orphan" as const, relativePath: "exports/stray.csv", sizeBytes: 1024, detail: "not in the catalogue" }], reclaimableBytes: 1024 };
+    let listed = [{ exportId: "export_1", runId: "run_1", createdAt: now, available: true, archived: false, fileCount: 3, sizeBytes: 4096 }];
+    overrides["/workspace/integrity"] = () => response(integrity);
+    overrides["/exports"] = () => response(listed);
+    overrides["/workspace/repair?remove_orphans=true"] = () => {
+      integrity = { ...integrity, missing: [], orphans: [], reclaimableBytes: 0 };
+      return response({ summary: { performedAt: now, homesRemoved: 0, runsRemoved: 0, exportsRemoved: 0, artifactsPruned: 1, artifactsAdopted: 0, filesRemoved: 1, bytesFreed: 1024, corruptRemaining: 0, details: ["deleted 1 uncatalogued file(s) from the folder"] } });
+    };
+    overrides["/exports/export_1"] = () => {
+      listed = [];
+      return response({ performedAt: now, homesRemoved: 0, runsRemoved: 0, exportsRemoved: 1, artifactsPruned: 3, artifactsAdopted: 0, filesRemoved: 3, bytesFreed: 4096, corruptRemaining: 0, details: ["deleted export 'export_1' and its 3 catalogued file(s)"] });
+    };
+    mount("/maintenance");
+    expect(await screen.findByText("exports/export_1/observable.csv")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Delete 1 uncatalogued file/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Delete 1 uncatalogued file/ })[0]);
+    expect(await screen.findByText(/1.0 KB reclaimed/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete export export_1" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete export export_1" })[0]);
+    expect(await screen.findByText("No export has been built")).toBeInTheDocument();
+  });
+
+  it("keeps publication paused while content contradicts the catalogue", async () => {
+    overrides["/workspace/integrity"] = { checkedAt: now, diagnosticMode: true, missing: [], corrupt: [{ kind: "corrupt", relativePath: "objects/abc.json", artifactId: "artifact_2", role: "home_model", sizeBytes: 10, detail: "size or digest mismatch" }], orphans: [], reclaimableBytes: 0 };
+    overrides["/exports"] = [];
+    mount("/maintenance");
+    expect(await screen.findByText("Publication is paused")).toBeInTheDocument();
+    expect(screen.getByText("objects/abc.json")).toBeInTheDocument();
+  });
+
+  it("surfaces a failed reconciliation without changing the report", async () => {
+    overrides["/workspace/integrity"] = { checkedAt: now, diagnosticMode: false, missing: [], corrupt: [], orphans: [], reclaimableBytes: 0 };
+    overrides["/exports"] = [];
+    overrides["/workspace/repair?remove_orphans=false"] = () => response({ error: { message: "the folder is read only" } }, { status: 409 });
+    mount("/maintenance");
+    await screen.findByText("The folder and the catalogue agree");
+    fireEvent.click(screen.getByRole("button", { name: /Reconcile now/ }));
+    expect(await screen.findByText("the folder is read only")).toBeInTheDocument();
+  });
+
+  it("deletes a home and its evidence from the home workspace", async () => {
+    const removed = vi.fn(() => response({ performedAt: now, homesRemoved: 1, runsRemoved: 1, exportsRemoved: 0, artifactsPruned: 9, artifactsAdopted: 0, filesRemoved: 9, bytesFreed: 2048, corruptRemaining: 0, details: ["deleted home 'Golden home' with 1 run(s) and 0 export(s)"] }));
+    overrides["/homes/home_1"] = (options?: RequestInit) => options?.method === "DELETE" ? removed() : response({ home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job] });
+    mount("/homes/home_1");
+    await screen.findByText("Environment workspace");
+    fireEvent.click(screen.getByRole("button", { name: /Delete home/ }));
+    expect(screen.getByText(/Its 1 resident context\(s\), 1 run\(s\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+    expect(screen.queryByText(/Its 1 resident context/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Delete home/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Delete home/ })[0]);
+    await waitFor(() => expect(removed).toHaveBeenCalled());
+    expect(await screen.findByText("Workspace catalogue")).toBeInTheDocument();
+  });
+
+  it("refuses to delete a home the server still has work for", async () => {
+    overrides["/homes/home_1"] = (options?: RequestInit) => options?.method === "DELETE"
+      ? response({ error: { message: "wait for this home's active jobs to finish before deleting it" } }, { status: 409 })
+      : response({ home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job] });
+    mount("/homes/home_1");
+    await screen.findByText("Environment workspace");
+    fireEvent.click(screen.getByRole("button", { name: /Delete home/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Delete home/ })[0]);
+    expect(await screen.findByText(/wait for this home's active jobs/)).toBeInTheDocument();
+  });
+
+  it("deletes a finished run from its detail page", async () => {
+    const removed = vi.fn(() => response({ performedAt: now, homesRemoved: 0, runsRemoved: 1, exportsRemoved: 2, artifactsPruned: 12, artifactsAdopted: 0, filesRemoved: 12, bytesFreed: 4096, corruptRemaining: 0, details: ["deleted run 'run_1' and its 2 export(s)"] }));
+    overrides["/jobs/run_1"] = (options?: RequestInit) => options?.method === "DELETE" ? removed() : response({ job, events: [], artifacts: {} });
+    mount("/simulations/run_1");
+    await screen.findByText("Run evidence");
+    fireEvent.click(screen.getByRole("button", { name: /Delete run/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Delete run/ })[0]);
+    await waitFor(() => expect(removed).toHaveBeenCalled());
+    expect(await screen.findByText("Execution centre")).toBeInTheDocument();
+  });
+
+  it("reports a run deletion the server refuses", async () => {
+    overrides["/jobs/run_1"] = (options?: RequestInit) => options?.method === "DELETE"
+      ? response({ error: { message: "cancel this run before deleting it" } }, { status: 409 })
+      : response({ job, events: [], artifacts: {} });
+    mount("/simulations/run_1");
+    await screen.findByText("Run evidence");
+    fireEvent.click(screen.getByRole("button", { name: /Delete run/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Delete run/ })[0]);
+    expect(await screen.findByText("cancel this run before deleting it")).toBeInTheDocument();
+  });
+
   it("loads and persists the workspace theme preference", async () => {
     overrides["/settings/theme"] = { value: "dark" };
     mount("/");

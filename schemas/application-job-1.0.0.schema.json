@@ -87,7 +87,8 @@
         "simulation",
         "export",
         "integrity",
-        "generation"
+        "generation",
+        "environment"
       ],
       "title": "Kind",
       "type": "string"

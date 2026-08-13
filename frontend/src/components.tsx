@@ -15,7 +15,9 @@ import {
   Search,
   Sparkles,
   Sun,
+  Trash2,
   Users,
+  Wrench,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -42,6 +44,7 @@ const nav = [
   { to: "/residents", label: "Residents", icon: Users },
   { to: "/simulations", label: "Simulations", icon: FlaskConical },
   { to: "/exports", label: "Exports", icon: Download },
+  { to: "/maintenance", label: "Maintenance", icon: Wrench },
   { to: "/help", label: "Guide", icon: BookOpen },
 ];
 
@@ -168,6 +171,70 @@ export function PageHeader({
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>
+  );
+}
+
+/**
+ * A destructive action that takes two deliberate clicks and says what it will destroy.
+ *
+ * Deleting a home takes its runs, exports and stored inputs with it, which is exactly what a
+ * researcher reclaiming disk space wants and exactly what nobody wants by accident. The second
+ * click is the confirmation; the consequence is written above it rather than in a browser dialog
+ * that the local application cannot style, translate or test.
+ */
+export function ConfirmAction({
+  label,
+  title,
+  consequence,
+  busy = false,
+  disabled = false,
+  compact = false,
+  onConfirm,
+}: {
+  label: string;
+  title: string;
+  consequence: string;
+  busy?: boolean;
+  disabled?: boolean;
+  compact?: boolean;
+  onConfirm: () => void | Promise<void>;
+}) {
+  const [asking, setAsking] = useState(false);
+  if (!asking) {
+    return (
+      <button
+        className={compact ? "icon-button danger" : "button danger"}
+        disabled={disabled || busy}
+        aria-label={compact ? label : undefined}
+        onClick={() => setAsking(true)}
+      >
+        <Trash2 size={compact ? 15 : 16} />
+        {!compact && label}
+      </button>
+    );
+  }
+  return (
+    <div className="confirm-action" role="alertdialog" aria-label={title}>
+      <div>
+        <strong>{title}</strong>
+        <small>{consequence}</small>
+      </div>
+      <div className="button-row">
+        <button className="button secondary" disabled={busy} onClick={() => setAsking(false)}>
+          Keep it
+        </button>
+        <button
+          className="button danger"
+          disabled={busy}
+          onClick={() => {
+            setAsking(false);
+            void onConfirm();
+          }}
+        >
+          <Trash2 size={15} /> {busy ? "Deleting…" : label}
+        </button>
+      </div>
+    </div>
   );
 }
 

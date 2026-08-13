@@ -20,11 +20,13 @@ from smart_home_sim.domain.environment import (
     SimulationBundle,
 )
 from smart_home_sim.domain.materialization import (
+    EnvironmentMaterializationManifest,
     HomeGenerationPolicy,
     HomeGenerationReport,
     SensorDeploymentPolicy,
     SensorDeploymentReport,
     SyntheticWorkspaceManifest,
+    WorkspaceArtifact,
 )
 from smart_home_sim.domain.models import Location, LocationKind, Scenario
 from smart_home_sim.domain.sensors import (
@@ -38,6 +40,7 @@ from smart_home_sim.materialization import (
     bind_sensor_model,
     deploy_sensors,
     generate_home,
+    materialize_environment,
     materialize_workspace,
 )
 from smart_home_sim.materialization.service import (
@@ -596,3 +599,111 @@ def test_an_approved_sensor_field_is_installed_rather_than_redeployed(tmp_path: 
     assert bound.source_bundle_id == bundle.bundle_id
     assert bound.source_bundle_sha256 == canonical_sha256(bundle)
     assert bound.seed == bundle.seed
+
+
+def test_the_environment_alone_is_what_a_full_run_would_have_built(tmp_path: Path) -> None:
+    """Stopping before execution must not change what the plan and the sensor field are.
+
+    The whole value of building the environment first is that the researcher reviews the models a
+    run will execute. If the two paths could diverge, approving a plan here would mean approving
+    something else than what runs — so the same bytes are the contract between them.
+    """
+    environment_path = tmp_path / "environment"
+    complete_path = tmp_path / "complete"
+    manifest = materialize_environment(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        environment_path,
+    )
+    complete = materialize_workspace(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        complete_path,
+    )
+
+    assert manifest.executed is False
+    assert manifest == EnvironmentMaterializationManifest.model_validate_json(
+        (environment_path / "environment-manifest.json").read_text(encoding="utf-8")
+    )
+    shared = {item.relative_path for item in manifest.artifacts}
+    assert shared == {item.relative_path for item in complete.artifacts} - {
+        "simulation-report.json",
+        "execution-trace.json",
+        "sensor-projection-report.json",
+        "observable-sensor-log.json",
+        "oracle-mapping.json",
+    }
+    for relative_path in shared:
+        assert (environment_path / relative_path).read_bytes() == (
+            complete_path / relative_path
+        ).read_bytes()
+    # Nothing was executed, so nothing that describes an execution exists.
+    for absent in ("execution-trace.json", "observable-sensor-log.json", "oracle-mapping.json"):
+        assert not (environment_path / absent).exists()
+    with pytest.raises(FileExistsError):
+        materialize_environment(
+            SOURCE / "scenario.json",
+            SOURCE / "personal-process-package.json",
+            environment_path,
+        )
+
+
+def test_an_environment_manifest_cannot_claim_execution_evidence() -> None:
+    with pytest.raises(ValidationError, match="must not publish execution evidence"):
+        EnvironmentMaterializationManifest(
+            scenario_id="scenario",
+            bundle_id="bundle",
+            home_id="home",
+            sensor_model_id="sensors",
+            artifacts=[
+                WorkspaceArtifact(
+                    role="execution_trace",
+                    relative_path="execution-trace.json",
+                    sha256="a" * 64,
+                )
+            ],
+        )
+
+
+def test_building_the_environment_reports_progress_and_removes_staging_on_failure(
+    tmp_path: Path,
+) -> None:
+    seen: list[tuple[str, float]] = []
+    materialize_environment(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        tmp_path / "watched",
+        progress=lambda phase, percent, message, counters: seen.append((phase, percent)),
+    )
+    # The environment is the whole job, so its bar reaches the end instead of stopping at half.
+    assert [phase for phase, _ in seen] == [
+        "input",
+        "compilation",
+        "home",
+        "binding",
+        "sensors",
+        "completed",
+    ]
+    assert seen[-1][1] == 100
+    assert all(previous[1] <= current[1] for previous, current in zip(seen, seen[1:], strict=False))
+
+    package = json.loads((SOURCE / "personal-process-package.json").read_text(encoding="utf-8"))
+    package["sourceScenarioId"] = "wrong"
+    invalid_package = tmp_path / "invalid-package.json"
+    invalid_package.write_text(json.dumps(package), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="home generation failed"):
+        materialize_environment(SOURCE / "scenario.json", invalid_package, tmp_path / "failed")
+    assert not (tmp_path / "failed").exists()
+    assert not list(tmp_path.glob(".failed.*"))
+
+
+def test_a_cancelled_environment_build_publishes_nothing(tmp_path: Path) -> None:
+    with pytest.raises(InterruptedError):
+        materialize_environment(
+            SOURCE / "scenario.json",
+            SOURCE / "personal-process-package.json",
+            tmp_path / "cancelled",
+            progress=lambda *_: None,
+            cancelled=lambda: True,
+        )
+    assert not (tmp_path / "cancelled").exists()

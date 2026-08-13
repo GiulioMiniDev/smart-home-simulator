@@ -342,6 +342,14 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     def overview() -> dict[str, Any]:
         return {
             "workspace": workspace.summary().model_dump(mode="json", by_alias=True),
+            # What opening the workspace had to reconcile. Shown once rather than kept forever:
+            # a researcher who deleted files should be told what that cost, not warned about it
+            # at every start.
+            "lastRepair": (
+                None
+                if workspace.last_repair is None or not workspace.last_repair.changed
+                else workspace.last_repair.model_dump(mode="json", by_alias=True)
+            ),
             "homes": [
                 item.model_dump(mode="json", by_alias=True) for item in workspace.list_homes()
             ],
@@ -357,6 +365,21 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     @app.get("/api/workspace/manifest", dependencies=[secured])
     def workspace_manifest() -> dict[str, Any]:
         return workspace.manifest().model_dump(mode="json", by_alias=True)
+
+    @app.get("/api/workspace/integrity", dependencies=[secured])
+    def workspace_integrity() -> dict[str, Any]:
+        return workspace.integrity().model_dump(mode="json", by_alias=True)
+
+    @app.post("/api/workspace/repair", dependencies=[secured])
+    def repair_workspace(remove_orphans: bool = False) -> dict[str, Any]:
+        """Reconcile the catalogue with the folder on demand, and report what that changed."""
+        summary = workspace.repair(remove_orphans=remove_orphans)
+        workspace.last_repair = summary
+        return {
+            "summary": summary.model_dump(mode="json", by_alias=True),
+            "integrity": workspace.integrity().model_dump(mode="json", by_alias=True),
+            "workspace": workspace.summary().model_dump(mode="json", by_alias=True),
+        }
 
     @app.get("/api/settings/{key}", dependencies=[secured])
     def get_setting(key: str) -> dict[str, Any]:
@@ -412,6 +435,11 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             "planApproval": plan_approval(workspace, home_id),
         }
 
+    @app.delete("/api/homes/{home_id}", dependencies=[secured])
+    def delete_home(home_id: str) -> dict[str, Any]:
+        """Delete a home with its residents, revisions, runs, exports and stored inputs."""
+        return workspace.delete_home(home_id).model_dump(mode="json", by_alias=True)
+
     @app.post("/api/homes/{home_id}/authoring", dependencies=[secured])
     def import_authoring(home_id: str, request: AuthoringImport) -> dict[str, Any]:
         return application.import_authoring(
@@ -450,6 +478,29 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
         if generation_job_for_home(workspace, home_id) is not None:
             return jobs.start_horizon_run(home_id).model_dump(mode="json", by_alias=True)
         return jobs.start_materialization(
+            home_id,
+            request.scenario_artifact_id,
+            request.behavior_artifact_id,
+            seed=request.seed,
+            home_policy=request.home_policy,
+            sensor_policy=request.sensor_policy,
+        ).model_dump(mode="json", by_alias=True)
+
+    @app.post("/api/homes/{home_id}/environment", status_code=202, dependencies=[secured])
+    def start_environment(home_id: str, request: MaterializationStart) -> dict[str, Any]:
+        """Build the home and its sensor field without executing the simulation."""
+        if generation_job_for_home(workspace, home_id) is not None:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "ENVIRONMENT_ALREADY_GENERATED",
+                    "message": (
+                        "a generated horizon already publishes its home and sensor field; "
+                        "review the plan and start the run"
+                    ),
+                },
+            )
+        return jobs.start_environment(
             home_id,
             request.scenario_artifact_id,
             request.behavior_artifact_id,
@@ -527,6 +578,11 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
                 for role, item in workspace.run_artifacts(job_id).items()
             },
         }
+
+    @app.delete("/api/jobs/{job_id}", dependencies=[secured])
+    def delete_job(job_id: str) -> dict[str, Any]:
+        """Delete one finished run or generation with its events, artifacts and exports."""
+        return workspace.delete_run(job_id).model_dump(mode="json", by_alias=True)
 
     @app.post("/api/jobs/{job_id}/cancel", dependencies=[secured])
     def cancel_job(job_id: str) -> dict[str, Any]:
@@ -652,6 +708,15 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
                 detail={"code": "RUN_ID_MISMATCH", "message": "Path and body run IDs differ"},
             )
         return exports.export(request).model_dump(mode="json", by_alias=True)
+
+    @app.get("/api/exports", dependencies=[secured])
+    def list_exports(run_id: str | None = None) -> list[dict[str, Any]]:
+        return exports.list_exports(run_id)
+
+    @app.delete("/api/exports/{export_id}", dependencies=[secured])
+    def delete_export(export_id: str) -> dict[str, Any]:
+        """Delete one export folder and its archive; the run it came from is untouched."""
+        return workspace.delete_export(export_id).model_dump(mode="json", by_alias=True)
 
     @app.get("/api/exports/{export_id}/manifest", dependencies=[secured])
     def export_manifest(export_id: str) -> dict[str, Any]:

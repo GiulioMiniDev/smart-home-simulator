@@ -124,6 +124,14 @@ p { color: var(--text-soft); line-height: 1.55; }
 .button.secondary { border-color: var(--line); background: var(--surface); color: var(--text); }
 .button.secondary:hover:not(:disabled) { border-color: var(--line-strong); background: var(--surface-cool); }
 .button.danger { border-color: color-mix(in oklch, var(--red) 45%, var(--line)); background: var(--red-soft); color: var(--red); }
+.icon-button.danger { color: var(--red); }
+.icon-button.danger:hover { border-color: color-mix(in oklch, var(--red) 45%, var(--line)); background: var(--red-soft); }
+/* The second click of a destructive action, with the consequence written beside it. */
+.confirm-action { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .6rem .75rem; border: 1px solid color-mix(in oklch, var(--red) 38%, var(--line)); border-radius: var(--radius); background: var(--red-soft); }
+.confirm-action > div:first-child { display: grid; max-width: 44ch; }
+.confirm-action strong { color: var(--red); font-size: .85rem; }
+.confirm-action small { color: color-mix(in oklch, var(--red) 62%, var(--text)); font-size: .74rem; line-height: 1.35; }
+.confirm-action .button-row { margin: 0; }
 .status { display: inline-flex; width: max-content; align-items: center; gap: .38rem; padding: .18rem .48rem; border-radius: 999px; background: var(--surface-cool); color: var(--text-soft); font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
 .status i { width: 6px; height: 6px; border: 1px solid currentColor; border-radius: 50%; background: currentColor; }
 .status-completed, .status-valid, .status-success, .status-nominal { background: var(--green-soft); color: var(--green); }

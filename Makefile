@@ -132,7 +132,7 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-repair-request --output schemas/authoring-repair-request-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-outline --output schemas/horizon-outline-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-authoring-bundle --output schemas/horizon-authoring-bundle-1.0.0.schema.json
-	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract habit-ground-truth --output schemas/habit-ground-truth-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract habit-ground-truth --output schemas/habit-ground-truth-1.1.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract home-model --output schemas/home-model-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract environment-validation-report --output schemas/environment-validation-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-bundle --output schemas/simulation-bundle-1.0.0.schema.json
@@ -150,6 +150,7 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-deployment-policy --output schemas/sensor-deployment-policy-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract sensor-deployment-report --output schemas/sensor-deployment-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract synthetic-workspace-manifest --output schemas/synthetic-workspace-manifest-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract environment-materialization-manifest --output schemas/environment-materialization-manifest-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-workspace-manifest --output schemas/application-workspace-manifest-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-job --output schemas/application-job-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract application-export-manifest --output schemas/application-export-manifest-1.0.0.schema.json

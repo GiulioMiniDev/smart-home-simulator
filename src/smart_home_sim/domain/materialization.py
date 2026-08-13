@@ -301,6 +301,48 @@ class WorkspaceArtifact(ContractModel):
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
+class EnvironmentMaterializationManifest(ContractModel):
+    """What materializing the environment alone produced: a plan and a sensor field, no execution.
+
+    Deliberately not a `SyntheticWorkspaceManifest` with empty fields. That document asserts a
+    complete workspace — trace and observable log included — and a home that has not been run yet
+    has neither. Claiming one with placeholder identifiers would make an unexecuted environment
+    indistinguishable from a run whose evidence went missing.
+    """
+
+    model_config = ConfigDict(
+        **ContractModel.model_config,
+        json_schema_extra={
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "urn:smart-home-simulator:schema:environment-materialization-manifest:1.0.0",
+            "title": "Smart Home Environment Materialization Manifest 1.0.0",
+        },
+    )
+
+    schema_version: Literal["1.0.0"] = "1.0.0"
+    document_type: Literal["environment_materialization_manifest"] = (
+        "environment_materialization_manifest"
+    )
+    workflow_version: Literal["scenario-first-1.0.0"] = "scenario-first-1.0.0"
+    success: Literal[True] = True
+    executed: Literal[False] = False
+    scenario_id: str
+    bundle_id: str
+    home_id: str
+    sensor_model_id: str
+    artifacts: list[WorkspaceArtifact] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def check_artifacts(self) -> EnvironmentMaterializationManifest:
+        roles = [item.role for item in self.artifacts]
+        paths = [item.relative_path for item in self.artifacts]
+        if len(roles) != len(set(roles)) or len(paths) != len(set(paths)):
+            raise ValueError("environment artifact roles and paths must be unique")
+        if "execution_trace" in roles:
+            raise ValueError("an environment materialization must not publish execution evidence")
+        return self
+
+
 class SyntheticWorkspaceManifest(ContractModel):
     model_config = ConfigDict(
         **ContractModel.model_config,

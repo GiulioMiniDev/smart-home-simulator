@@ -41,6 +41,7 @@ from smart_home_sim.domain.environment import (
 )
 from smart_home_sim.domain.execution import ExecutionTrace, ReplayReport, SimulationReport
 from smart_home_sim.domain.materialization import (
+    EnvironmentMaterializationManifest,
     HomeGenerationPolicy,
     HomeGenerationReport,
     SensorDeploymentPolicy,
@@ -147,6 +148,7 @@ class SchemaContract(StrEnum):
     sensor_deployment_policy = "sensor-deployment-policy"
     sensor_deployment_report = "sensor-deployment-report"
     synthetic_workspace_manifest = "synthetic-workspace-manifest"
+    environment_materialization_manifest = "environment-materialization-manifest"
     application_workspace_manifest = "application-workspace-manifest"
     application_job = "application-job"
     application_export_manifest = "application-export-manifest"
@@ -1144,6 +1146,7 @@ def schema(
         SchemaContract.sensor_deployment_policy: SensorDeploymentPolicy,
         SchemaContract.sensor_deployment_report: SensorDeploymentReport,
         SchemaContract.synthetic_workspace_manifest: SyntheticWorkspaceManifest,
+        SchemaContract.environment_materialization_manifest: EnvironmentMaterializationManifest,
         SchemaContract.application_workspace_manifest: WorkspaceManifest,
         SchemaContract.application_job: JobRecord,
         SchemaContract.application_export_manifest: ExportManifest,

@@ -54,7 +54,7 @@ export interface JobProgress {
 export interface JobRecord {
   jobId: string;
   homeId?: string;
-  kind: "materialization" | "simulation" | "export" | "integrity" | "generation";
+  kind: "materialization" | "simulation" | "export" | "integrity" | "generation" | "environment";
   status: JobStatus;
   progress: JobProgress;
   requestedAt: string;
@@ -77,8 +77,50 @@ export interface JobEvent {
   payload: Record<string, unknown>;
 }
 
+export interface IntegrityFinding {
+  kind: "missing" | "corrupt" | "orphan";
+  relativePath: string;
+  artifactId?: string;
+  role?: string;
+  sizeBytes: number;
+  detail: string;
+}
+
+export interface WorkspaceIntegrity {
+  checkedAt: string;
+  diagnosticMode: boolean;
+  missing: IntegrityFinding[];
+  corrupt: IntegrityFinding[];
+  orphans: IntegrityFinding[];
+  reclaimableBytes: number;
+}
+
+export interface MaintenanceSummary {
+  performedAt: string;
+  homesRemoved: number;
+  runsRemoved: number;
+  exportsRemoved: number;
+  artifactsPruned: number;
+  artifactsAdopted: number;
+  filesRemoved: number;
+  bytesFreed: number;
+  corruptRemaining: number;
+  details: string[];
+}
+
+export interface ExportRecord {
+  exportId: string;
+  runId: string;
+  createdAt: string;
+  available: boolean;
+  archived: boolean;
+  fileCount: number;
+  sizeBytes: number;
+}
+
 export interface Overview {
   workspace: WorkspaceSummary;
+  lastRepair?: MaintenanceSummary | null;
   homes: HomeSummary[];
   residents: ResidentSummary[];
   jobs: JobRecord[];

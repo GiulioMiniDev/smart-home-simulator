@@ -97,6 +97,59 @@ class ResidentSummary(ContractModel):
     created_at: AwareDatetime
 
 
+class IntegrityFinding(ContractModel):
+    """One disagreement between the persistent catalogue and the workspace folder."""
+
+    kind: Literal["missing", "corrupt", "orphan"]
+    relative_path: str = Field(min_length=1)
+    artifact_id: str | None = None
+    role: str | None = None
+    size_bytes: int = Field(default=0, ge=0)
+    detail: str = Field(min_length=1)
+
+
+class WorkspaceIntegrity(ContractModel):
+    """The result of comparing every catalogued artifact with the files on disk.
+
+    ``missing`` and ``orphan`` describe a folder a researcher has edited; they are recoverable and
+    never justify refusing new work. ``corrupt`` means a file is present with content the catalogue
+    does not vouch for, which is the only condition that still enables diagnostic mode.
+    """
+
+    checked_at: AwareDatetime
+    diagnostic_mode: bool = False
+    missing: list[IntegrityFinding] = Field(default_factory=list)
+    corrupt: list[IntegrityFinding] = Field(default_factory=list)
+    orphans: list[IntegrityFinding] = Field(default_factory=list)
+    reclaimable_bytes: int = Field(default=0, ge=0)
+
+
+class MaintenanceSummary(ContractModel):
+    """What a repair or a deletion actually changed, in terms a researcher can check."""
+
+    performed_at: AwareDatetime
+    homes_removed: int = Field(default=0, ge=0)
+    runs_removed: int = Field(default=0, ge=0)
+    exports_removed: int = Field(default=0, ge=0)
+    artifacts_pruned: int = Field(default=0, ge=0)
+    artifacts_adopted: int = Field(default=0, ge=0)
+    files_removed: int = Field(default=0, ge=0)
+    bytes_freed: int = Field(default=0, ge=0)
+    corrupt_remaining: int = Field(default=0, ge=0)
+    details: list[str] = Field(default_factory=list)
+
+    @property
+    def changed(self) -> bool:
+        return bool(
+            self.homes_removed
+            or self.runs_removed
+            or self.exports_removed
+            or self.artifacts_pruned
+            or self.artifacts_adopted
+            or self.files_removed
+        )
+
+
 class WorkspaceManifest(ContractModel):
     model_config = ConfigDict(
         **ContractModel.model_config,
@@ -136,7 +189,11 @@ class JobRecord(ContractModel):
 
     job_id: str = Field(min_length=1)
     home_id: str | None = None
-    kind: Literal["materialization", "simulation", "export", "integrity", "generation"]
+    # `environment` builds the home and its sensor field and executes nothing, so it is the one
+    # completed job kind that legitimately publishes no execution evidence.
+    kind: Literal[
+        "materialization", "simulation", "export", "integrity", "generation", "environment"
+    ]
     status: JobStatus
     progress: JobProgress
     requested_at: AwareDatetime

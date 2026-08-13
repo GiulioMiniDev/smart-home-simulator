@@ -11,6 +11,7 @@ from smart_home_sim.application.jobs import (
     _materialization_worker,
     _sensor_policy_from_request,
 )
+from smart_home_sim.application.plan_approval import plan_approval
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobStatus
@@ -210,3 +211,54 @@ def test_worker_persists_structured_gate_issues_before_marking_run_failed(
         "expected": True,
         "actual": False,
     }
+
+
+def test_the_environment_is_publishable_before_any_execution(tmp_path: Path) -> None:
+    """A researcher can see and approve the plan without paying for the run first.
+
+    Building the environment publishes the same home and sensor revisions a full run publishes, so
+    what the plan editor then opens is exactly what a later run executes. The evidence a run would
+    have produced is deliberately absent: this job executed nothing and must not look as if it did.
+    """
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Environment first")
+    home = workspace.create_home("Minimal")
+    payload = json.loads(
+        (PROJECT_ROOT / "examples/authoring/minimal.authoring-bundle.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    imported = ApplicationService(workspace).import_authoring(
+        home.home_id, payload["scenario"], payload["personalProcessPackage"]
+    )
+    job = workspace.create_job(
+        "environment",
+        home_id=home.home_id,
+        seed=payload["scenario"]["seed"],
+        request={
+            "scenarioArtifactId": imported["scenarioArtifact"]["artifactId"],
+            "behaviorArtifactId": imported["behaviorArtifact"]["artifactId"],
+            "homePolicy": {},
+            "sensorPolicy": {"preset": "minimal"},
+            "stopAfter": "environment",
+        },
+    )
+    _materialization_worker(str(workspace.root), job.job_id)
+
+    completed = workspace.get_job(job.job_id)
+    assert completed.status is JobStatus.completed
+    assert "no simulation was executed" in completed.progress.message
+    artifacts = workspace.run_artifacts(job.job_id)
+    assert {"home_model", "sensor_model", "simulation_bundle"} <= set(artifacts)
+    assert {"execution_trace", "observable_sensor_log", "oracle_mapping"} & set(artifacts) == set()
+    published = workspace.get_home(home.home_id)
+    assert published.current_home_artifact_id == artifacts["home_model"].artifact_id
+    assert published.current_sensor_artifact_id == artifacts["sensor_model"].artifact_id
+    # The plan is a recommendation until the researcher answers, exactly as after a full run.
+    assert plan_approval(workspace, home.home_id)["approved"] is False
+    phases = {
+        event.payload.get("phase")
+        for event in workspace.list_events(job.job_id)
+        if event.event_type in {"progress", "status"}
+    }
+    assert {"compilation", "home", "binding", "sensors"} <= phases
+    assert "simulation" not in phases

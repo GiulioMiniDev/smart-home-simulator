@@ -97,3 +97,17 @@ Reusable physical homes remain supported as M4 overrides. Separating a reusable 
 shell from scenario-specific bindings, and merging independently authored residents into
 one physical home, remain explicit M7/M8 design work; neither is required for the complete
 single-scenario M6.1 workflow.
+
+## Amendment: materializing the environment without executing it
+
+The pipeline above is also usable up to the sensor field and no further. `materialize_environment`
+runs input, compilation, home generation, the M4 bundle gate and sensor deployment, publishes the
+same artifacts those phases produce, and stops. It is a separate entry point over the same code —
+not a second pipeline — so the plan a researcher reviews is byte-for-byte the plan a run executes.
+
+The reason is the review surface this ADR makes optional. Making the recommended plan reachable
+only through a completed run meant a year-long horizon had to be simulated before anyone could see
+that a room was in the wrong place, and correcting it meant simulating it again. What it publishes
+is an `environment_materialization_manifest 1.0.0`, which asserts `executed: false` and is refused
+if it lists execution evidence — an unexecuted environment must never be mistaken for a run whose
+trace went missing.

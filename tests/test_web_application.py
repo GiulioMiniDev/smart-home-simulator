@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from smart_home_sim.application.generation_ingest import HORIZON_REVISION_KIND
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobStatus
 from smart_home_sim.web import create_app
@@ -82,6 +83,42 @@ def test_local_api_session_workspace_authoring_and_errors(tmp_path: Path) -> Non
         missing = client.get("/api/homes/missing", headers=headers)
         assert missing.status_code == 409
         assert missing.json()["error"]["code"] == "WORKSPACE_OPERATION_FAILED"
+
+
+def test_the_environment_endpoint_guards_its_inputs_and_generated_homes(tmp_path: Path) -> None:
+    """Building the environment is only offered where it is the missing step.
+
+    A home created from a local generation already carries the plan and the sensor field its days
+    were generated with, so rebuilding them from a scenario would replace reviewed models with
+    different ones. It is refused with the reason rather than silently doing something else.
+    """
+    root = tmp_path / "workspace"
+    workspace = WorkspaceService.create(root, "Environment API")
+    authored = workspace.create_home("Authored")
+    generated = workspace.create_home("Generated")
+    workspace.create_revision(
+        generated.home_id,
+        HORIZON_REVISION_KIND,
+        None,
+        status="valid",
+        provenance={"generationJobId": "job_generation"},
+    )
+
+    app = create_app(root)
+    with TestClient(app) as client:
+        headers = {"X-Workspace-Token": _token(client)}
+        body = {"scenario_artifact_id": "missing", "behavior_artifact_id": "missing"}
+        refused = client.post(
+            f"/api/homes/{generated.home_id}/environment", headers=headers, json=body
+        )
+        assert refused.status_code == 409
+        assert refused.json()["detail"]["code"] == "ENVIRONMENT_ALREADY_GENERATED"
+        unknown = client.post(
+            f"/api/homes/{authored.home_id}/environment", headers=headers, json=body
+        )
+        assert unknown.status_code == 409
+        assert "unknown artifact" in unknown.json()["error"]["message"]
+        assert workspace.list_jobs() == []
 
 
 def test_api_rejects_non_loopback_client(tmp_path: Path) -> None:
@@ -211,6 +248,69 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         ) as response:
             stream = "".join(response.iter_text())
         assert "event: done" in stream
+
+
+def test_integrity_repair_and_deletion_endpoints(tmp_path: Path) -> None:
+    """Everything a researcher needs to reclaim space without leaving the application.
+
+    Deleting export folders in the file manager is the documented way to get disk back, and doing
+    it used to leave the workspace in diagnostic mode with no way out from the UI. The endpoints
+    here are that way out, plus the deletions that make going to the file manager unnecessary.
+    """
+    root = tmp_path / "workspace"
+    workspace = WorkspaceService.create(root, "Maintenance API")
+    home = workspace.create_home("Disposable home")
+    job = workspace.create_job("simulation", home_id=home.home_id, seed=7)
+    run_directory = workspace.runs_path / job.job_id
+    shutil.copytree(
+        PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30",
+        run_directory,
+    )
+    workspace.import_run_directory(job.job_id, run_directory)
+    workspace.update_job(
+        job.job_id,
+        JobStatus.completed,
+        JobProgress(phase="completed", percent=100, message="Complete"),
+        result_reference=job.job_id,
+    )
+
+    app = create_app(root)
+    with TestClient(app) as client:
+        headers = {"X-Workspace-Token": _token(client)}
+        export_id = client.post(
+            f"/api/runs/{job.job_id}/exports",
+            headers=headers,
+            json={"runId": job.job_id, "formats": ["jsonl"], "roles": ["observable"]},
+        ).json()["exportId"]
+        listed = client.get("/api/exports", headers=headers).json()
+        assert [item["exportId"] for item in listed] == [export_id]
+        assert listed[0]["fileCount"] > 0
+
+        # A file removed from the folder is reported, then reconciled away on request.
+        (workspace.exports_path / export_id / "manifest.json").unlink()
+        integrity = client.get("/api/workspace/integrity", headers=headers).json()
+        assert integrity["diagnosticMode"] is False
+        assert [item["relativePath"] for item in integrity["missing"]] == [
+            f"exports/{export_id}/manifest.json"
+        ]
+        repaired = client.post("/api/workspace/repair", headers=headers).json()
+        assert repaired["summary"]["artifactsPruned"] == 1
+        assert repaired["workspace"]["diagnosticMode"] is False
+        assert client.get("/api/workspace/integrity", headers=headers).json()["missing"] == []
+        assert client.get("/api/overview", headers=headers).json()["lastRepair"]["details"]
+
+        assert (
+            client.delete(f"/api/exports/{export_id}", headers=headers).json()["exportsRemoved"]
+            == 1
+        )
+        assert client.get("/api/exports", headers=headers).json() == []
+        assert client.delete(f"/api/jobs/{job.job_id}", headers=headers).json()["runsRemoved"] == 1
+        assert client.get("/api/jobs", headers=headers).json() == []
+        removed = client.delete(f"/api/homes/{home.home_id}", headers=headers).json()
+        assert removed["homesRemoved"] == 1
+        assert client.get("/api/homes", headers=headers).json() == []
+        assert client.delete(f"/api/homes/{home.home_id}", headers=headers).status_code == 409
+        assert client.get("/api/workspace/integrity", headers=headers).json()["missing"] == []
 
 
 def test_client_disconnect_noise_is_quietened_but_real_failures_are_not() -> None:

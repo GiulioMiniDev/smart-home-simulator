@@ -18,11 +18,14 @@ from smart_home_sim.domain.application import (
     ApplicationIssue,
     ArtifactDescriptor,
     HomeSummary,
+    IntegrityFinding,
     JobEvent,
     JobProgress,
     JobRecord,
     JobStatus,
+    MaintenanceSummary,
     ResidentSummary,
+    WorkspaceIntegrity,
     WorkspaceManifest,
     WorkspaceSummary,
     utc_now,
@@ -62,6 +65,9 @@ class WorkspaceService:
         self.exports_path = self.root / "exports"
         self.staging_path = self.root / "staging"
         self.diagnostic_mode = False
+        # What the last startup repair had to change, so the application can say so instead of
+        # quietly rewriting the catalogue behind the researcher's back.
+        self.last_repair: MaintenanceSummary | None = None
 
     def _ensure_layout(self) -> None:
         """Create the workspace's content directories if they are absent.
@@ -101,7 +107,10 @@ class WorkspaceService:
         if recover_jobs:
             service._recover_running_jobs()
         if reconcile:
-            service.diagnostic_mode = bool(service.reconcile())
+            # A folder a researcher has tidied is not a corrupt workspace. Files they removed are
+            # reconciled away here and reported afterwards; only content that is present and
+            # disagrees with its recorded digest still stops publication.
+            service.last_repair = service.repair(startup=True)
         return service
 
     def export_archive(self, target: Path) -> Path:
@@ -1212,55 +1221,500 @@ class WorkspaceService:
             artifacts=[self._artifact(row) for row in rows],
         )
 
-    def reconcile(self) -> list[str]:
-        issues: list[str] = []
+    def integrity(self) -> WorkspaceIntegrity:
+        """Compare every catalogued artifact with the folder, without changing either.
+
+        Three different situations used to be one undifferentiated failure. They are not the same
+        thing: a file the researcher deleted is gone and no amount of caution brings it back, while
+        a file that is still there with unexpected content means the catalogue can no longer vouch
+        for what a run executed. Only the second is a reason to stop publishing.
+        """
+        missing: list[IntegrityFinding] = []
+        corrupt: list[IntegrityFinding] = []
+        orphans: list[IntegrityFinding] = []
         with self.connection() as connection:
             rows = connection.execute(
-                "SELECT artifact_id, relative_path, size_bytes, sha256 FROM artifacts"
+                "SELECT artifact_id, relative_path, role, size_bytes, sha256 FROM artifacts"
             ).fetchall()
         known: set[Path] = set()
         for row in rows:
             try:
                 path = self._safe_path(row["relative_path"])
             except WorkspaceError as error:
-                issues.append(f"{row['artifact_id']}: {error}")
+                corrupt.append(
+                    IntegrityFinding(
+                        kind="corrupt",
+                        relative_path=row["relative_path"],
+                        artifact_id=row["artifact_id"],
+                        role=row["role"],
+                        detail=str(error),
+                    )
+                )
                 continue
             known.add(path)
             if not path.is_file():
-                issues.append(f"{row['artifact_id']}: file is missing")
+                missing.append(
+                    IntegrityFinding(
+                        kind="missing",
+                        relative_path=row["relative_path"],
+                        artifact_id=row["artifact_id"],
+                        role=row["role"],
+                        size_bytes=row["size_bytes"],
+                        detail="the file is no longer in the workspace folder",
+                    )
+                )
             elif path.stat().st_size != row["size_bytes"] or _sha256(path) != row["sha256"]:
-                issues.append(f"{row['artifact_id']}: size or digest mismatch")
+                corrupt.append(
+                    IntegrityFinding(
+                        kind="corrupt",
+                        relative_path=row["relative_path"],
+                        artifact_id=row["artifact_id"],
+                        role=row["role"],
+                        size_bytes=row["size_bytes"],
+                        detail="size or digest mismatch",
+                    )
+                )
         for base in (self.objects_path, self.runs_path, self.exports_path):
-            if base.exists():
-                for path in base.rglob("*"):
-                    if (
-                        path.is_file()
-                        and path not in known
-                        and path.name != "workspace-manifest.json"
-                    ):
-                        if (
-                            base == self.exports_path
-                            and path.suffix == ".zip"
-                            and not path.name.startswith(".")
-                        ):
-                            export_id = path.stem
-                            with self.connection() as connection:
-                                export_row = connection.execute(
-                                    "SELECT export_id FROM exports WHERE export_id = ?",
-                                    (export_id,),
-                                ).fetchone()
-                            if export_row is not None:
-                                self.register_artifact(
-                                    path,
-                                    role="export_archive",
-                                    media_type="application/zip",
-                                    schema_version="1.0.0",
-                                )
-                                known.add(path)
-                                continue
-                        issues.append(f"orphan file: {path.relative_to(self.root).as_posix()}")
-        self.diagnostic_mode = bool(issues)
-        return sorted(issues)
+            if not base.exists():
+                continue
+            for path in base.rglob("*"):
+                if not path.is_file() or path in known or path.name == "workspace-manifest.json":
+                    continue
+                orphans.append(
+                    IntegrityFinding(
+                        kind="orphan",
+                        relative_path=path.relative_to(self.root).as_posix(),
+                        size_bytes=path.stat().st_size,
+                        detail="the file is in the workspace folder but not in the catalogue",
+                    )
+                )
+        return WorkspaceIntegrity(
+            checked_at=utc_now(),
+            diagnostic_mode=bool(corrupt),
+            missing=sorted(missing, key=lambda item: item.relative_path),
+            corrupt=sorted(corrupt, key=lambda item: item.relative_path),
+            orphans=sorted(orphans, key=lambda item: item.relative_path),
+            reclaimable_bytes=sum(item.size_bytes for item in orphans),
+        )
+
+    def reconcile(self) -> list[str]:
+        """Every disagreement as one sorted list, and diagnostic mode when content is corrupt.
+
+        Kept as the strict check an imported archive has to pass: an archive is written by this
+        application in one shot, so anything missing or unaccounted for in it is a damaged archive
+        rather than a folder somebody tidied.
+        """
+        report = self.integrity()
+        self.diagnostic_mode = bool(report.corrupt)
+        return sorted(
+            [f"{item.artifact_id}: file is missing" for item in report.missing]
+            + [
+                f"{item.artifact_id}: {item.detail}"
+                if item.artifact_id
+                else f"{item.relative_path}: {item.detail}"
+                for item in report.corrupt
+            ]
+            + [f"orphan file: {item.relative_path}" for item in report.orphans]
+        )
+
+    @contextmanager
+    def _recovery(self) -> Iterator[None]:
+        """Allow the writes a repair is made of, whatever mode the workspace is in."""
+        previous = self.diagnostic_mode
+        self.diagnostic_mode = False
+        try:
+            yield
+        finally:
+            self.diagnostic_mode = previous
+
+    def _is_abandoned_staging(self, path: Path) -> bool:
+        """A leftover this application itself wrote and never got to rename into place.
+
+        Every atomic writer here stages under a dot-prefixed name inside the destination directory,
+        so a dot-prefixed component is a temporary file whose operation did not finish. Nothing a
+        researcher puts in the folder is named that way.
+        """
+        return any(part.startswith(".") for part in path.relative_to(self.root).parts)
+
+    def _remove_path(self, path: Path) -> tuple[int, int]:
+        """Delete a file or directory tree, returning how many files and bytes it held."""
+        if path.is_file():
+            size = path.stat().st_size
+            path.unlink(missing_ok=True)
+            return 1, size
+        if not path.is_dir():
+            return 0, 0
+        files = 0
+        total = 0
+        for item in path.rglob("*"):
+            if item.is_file():
+                files += 1
+                total += item.stat().st_size
+        shutil.rmtree(path, ignore_errors=True)
+        return files, total
+
+    def _drop_artifact_rows(self, connection: sqlite3.Connection, artifact_ids: list[str]) -> int:
+        """Remove catalogue rows and every reference to them, in foreign-key-safe order."""
+        if not artifact_ids:
+            return 0
+        removed = 0
+        step = 500
+        for start in range(0, len(artifact_ids), step):
+            chunk = artifact_ids[start : start + step]
+            placeholders = ", ".join("?" for _ in chunk)
+            for statement in (
+                f"UPDATE homes SET current_home_artifact_id=NULL "  # noqa: S608
+                f"WHERE current_home_artifact_id IN ({placeholders})",
+                f"UPDATE homes SET current_sensor_artifact_id=NULL "  # noqa: S608
+                f"WHERE current_sensor_artifact_id IN ({placeholders})",
+                f"UPDATE residents SET scenario_artifact_id=NULL "  # noqa: S608
+                f"WHERE scenario_artifact_id IN ({placeholders})",
+                f"UPDATE residents SET behavior_artifact_id=NULL "  # noqa: S608
+                f"WHERE behavior_artifact_id IN ({placeholders})",
+                f"UPDATE revisions SET artifact_id=NULL "  # noqa: S608
+                f"WHERE artifact_id IN ({placeholders})",
+                f"UPDATE exports SET manifest_artifact_id=NULL "  # noqa: S608
+                f"WHERE manifest_artifact_id IN ({placeholders})",
+                f"DELETE FROM artifacts WHERE artifact_id IN ({placeholders})",  # noqa: S608
+            ):
+                cursor = connection.execute(statement, tuple(chunk))
+                if statement.startswith("DELETE"):
+                    removed += cursor.rowcount
+        return removed
+
+    def repair(self, *, remove_orphans: bool = False, startup: bool = False) -> MaintenanceSummary:
+        """Make the catalogue agree with the folder again, and report exactly what that took.
+
+        Runs at every open. Adopting an export archive and forgetting a deleted file are both
+        reconciliations of a catalogue with the ground truth on disk, and neither invents evidence:
+        an artifact row whose file a researcher deleted describes something that no longer exists,
+        and keeping it only blocks the workspace it was meant to protect. What it will not do is
+        touch a file whose content contradicts its digest — that stays, and stays reported.
+        """
+        report = self.integrity()
+        details: list[str] = []
+        adopted = 0
+        files_removed = 0
+        bytes_freed = 0
+        remaining_orphans: list[IntegrityFinding] = []
+        with self._recovery():
+            for orphan in report.orphans:
+                path = self.root / orphan.relative_path
+                if self._is_abandoned_staging(path):
+                    continue  # removed below, once, as whole staging directories
+                if path.suffix == ".zip" and path.parent == self.exports_path:
+                    with self.connection() as connection:
+                        row = connection.execute(
+                            "SELECT export_id FROM exports WHERE export_id = ?", (path.stem,)
+                        ).fetchone()
+                    if row is not None:
+                        self.register_artifact(
+                            path,
+                            role="export_archive",
+                            media_type="application/zip",
+                            schema_version="1.0.0",
+                        )
+                        adopted += 1
+                        continue
+                remaining_orphans.append(orphan)
+            bases = [self.objects_path, self.runs_path, self.exports_path]
+            # Nothing durable lives in `staging/`, but an archive being written is in there right
+            # now — so it is only swept at startup, when nothing can be in flight.
+            if startup:
+                bases.append(self.staging_path)
+            for base in bases:
+                if not base.is_dir():
+                    continue
+                for path in sorted(base.iterdir()):
+                    if base == self.staging_path or path.name.startswith("."):
+                        files, freed = self._remove_path(path)
+                        files_removed += files
+                        bytes_freed += freed
+            if files_removed:
+                details.append(
+                    f"removed {files_removed} unfinished staging file(s) left by an interrupted "
+                    "export or import"
+                )
+            if adopted:
+                details.append(f"catalogued {adopted} export archive(s) found in the folder")
+            if remove_orphans:
+                for orphan in remaining_orphans:
+                    files, freed = self._remove_path(self.root / orphan.relative_path)
+                    files_removed += files
+                    bytes_freed += freed
+                if remaining_orphans:
+                    details.append(
+                        f"deleted {len(remaining_orphans)} uncatalogued file(s) from the folder"
+                    )
+            pruned = 0
+            exports_removed = 0
+            if report.missing:
+                with self.transaction() as connection:
+                    pruned = self._drop_artifact_rows(
+                        connection,
+                        [item.artifact_id for item in report.missing if item.artifact_id],
+                    )
+                    rows = connection.execute("SELECT export_id FROM exports").fetchall()
+                    dead = [
+                        row["export_id"]
+                        for row in rows
+                        if not (self.exports_path / row["export_id"]).is_dir()
+                    ]
+                    for chunk in (dead[index : index + 500] for index in range(0, len(dead), 500)):
+                        connection.execute(
+                            "DELETE FROM exports WHERE export_id IN "  # noqa: S608
+                            f"({', '.join('?' for _ in chunk)})",
+                            tuple(chunk),
+                        )
+                    exports_removed = len(dead)
+                details.append(
+                    f"forgot {pruned} catalogue entr{'y' if pruned == 1 else 'ies'} whose file is "
+                    "no longer in the workspace folder"
+                )
+                if exports_removed:
+                    details.append(f"closed {exports_removed} export(s) whose folder was deleted")
+        self.diagnostic_mode = bool(report.corrupt)
+        if report.corrupt:
+            details.append(
+                f"{len(report.corrupt)} file(s) are present with content that does not match the "
+                "catalogue and were left untouched"
+            )
+        return MaintenanceSummary(
+            performed_at=utc_now(),
+            exports_removed=exports_removed,
+            artifacts_pruned=pruned,
+            artifacts_adopted=adopted,
+            files_removed=files_removed,
+            bytes_freed=bytes_freed,
+            corrupt_remaining=len(report.corrupt),
+            details=details,
+        )
+
+    def delete_export(self, export_id: str) -> MaintenanceSummary:
+        """Remove one export: its folder, its archive and every catalogue row that described it.
+
+        Exports are the reproducible part of a workspace — the same run and the same request
+        rebuild them byte for byte — which is why this is the one deletion that costs nothing but
+        the time to export again.
+        """
+        directory = self._safe_path(f"exports/{export_id}")
+        archive = self._safe_path(f"exports/{export_id}.zip")
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT export_id FROM exports WHERE export_id=?", (export_id,)
+            ).fetchone()
+        if row is None and not directory.is_dir() and not archive.is_file():
+            raise WorkspaceError(f"unknown export '{export_id}'")
+        files_removed = 0
+        bytes_freed = 0
+        with self._recovery():
+            with self.transaction() as connection:
+                rows = connection.execute(
+                    "SELECT artifact_id FROM artifacts "
+                    "WHERE relative_path=? OR relative_path LIKE ?",
+                    (f"exports/{export_id}.zip", f"exports/{export_id}/%"),
+                ).fetchall()
+                pruned = self._drop_artifact_rows(connection, [r["artifact_id"] for r in rows])
+                connection.execute("DELETE FROM exports WHERE export_id=?", (export_id,))
+            for path in (directory, archive):
+                files, freed = self._remove_path(path)
+                files_removed += files
+                bytes_freed += freed
+        return MaintenanceSummary(
+            performed_at=utc_now(),
+            exports_removed=1,
+            artifacts_pruned=pruned,
+            files_removed=files_removed,
+            bytes_freed=bytes_freed,
+            details=[f"deleted export '{export_id}' and its {pruned} catalogued file(s)"],
+        )
+
+    def delete_run(self, job_id: str) -> MaintenanceSummary:
+        """Remove one run and everything derived from it, once it is no longer executing."""
+        job = self.get_job(job_id)
+        if job.status in {JobStatus.queued, JobStatus.running}:
+            raise WorkspaceError("cancel this run before deleting it")
+        with self.connection() as connection:
+            exports = [
+                row["export_id"]
+                for row in connection.execute(
+                    "SELECT export_id FROM exports WHERE run_id=?", (job_id,)
+                ).fetchall()
+            ]
+        removed = [self.delete_export(export_id) for export_id in exports]
+        pruned = sum(item.artifacts_pruned for item in removed)
+        files_removed = sum(item.files_removed for item in removed)
+        bytes_freed = sum(item.bytes_freed for item in removed)
+        with self._recovery():
+            with self.transaction() as connection:
+                rows = connection.execute(
+                    "SELECT artifact_id, relative_path FROM artifacts WHERE run_id=?", (job_id,)
+                ).fetchall()
+                # Files inside `runs/<job>/` go with the directory, so their rows must go too.
+                # Stored objects the run merely produced are released instead: another home may
+                # have published the same bytes and still be using them.
+                inside = [row for row in rows if row["relative_path"].startswith(f"runs/{job_id}/")]
+                pruned += self._drop_artifact_rows(
+                    connection, [row["artifact_id"] for row in inside]
+                )
+                freed_paths = self._release_stored_objects(
+                    connection, [row for row in rows if row not in inside], column="run_id"
+                )
+                pruned += len(freed_paths)
+                connection.execute("DELETE FROM replay_sessions WHERE run_id=?", (job_id,))
+                connection.execute("DELETE FROM job_events WHERE job_id=?", (job_id,))
+                connection.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
+            # A generation keeps its per-day bundles outside `runs/`, in the uncatalogued area the
+            # integrity check ignores; deleting the job has to take them with it or they stay
+            # forever as folders nothing in the application refers to any more.
+            for path in [self.runs_path / job_id, self.root / "generations" / job_id] + [
+                self.root / relative for relative in freed_paths
+            ]:
+                files, freed = self._remove_path(path)
+                files_removed += files
+                bytes_freed += freed
+        return MaintenanceSummary(
+            performed_at=utc_now(),
+            runs_removed=1,
+            exports_removed=len(removed),
+            artifacts_pruned=pruned,
+            files_removed=files_removed,
+            bytes_freed=bytes_freed,
+            details=[
+                f"deleted run '{job_id}'"
+                + (f" and its {len(removed)} export(s)" if removed else "")
+            ],
+        )
+
+    def delete_home(self, home_id: str) -> MaintenanceSummary:
+        """Remove one home with its residents, revisions, runs, exports and stored inputs."""
+        home = self.get_home(home_id)
+        with self.connection() as connection:
+            active = connection.execute(
+                "SELECT COUNT(*) AS count FROM jobs "
+                "WHERE home_id=? AND status IN ('queued','running')",
+                (home_id,),
+            ).fetchone()["count"]
+            job_ids = [
+                row["job_id"]
+                for row in connection.execute(
+                    "SELECT job_id FROM jobs WHERE home_id=?", (home_id,)
+                ).fetchall()
+            ]
+        if active:
+            raise WorkspaceError("wait for this home's active jobs to finish before deleting it")
+        removed = [self.delete_run(job_id) for job_id in job_ids]
+        with self._recovery():
+            with self.transaction() as connection:
+                connection.execute("DELETE FROM validation_issues WHERE home_id=?", (home_id,))
+                connection.execute("DELETE FROM revisions WHERE home_id=?", (home_id,))
+                connection.execute("DELETE FROM residents WHERE home_id=?", (home_id,))
+                connection.execute(
+                    "UPDATE homes SET current_home_artifact_id=NULL, "
+                    "current_sensor_artifact_id=NULL WHERE home_id=?",
+                    (home_id,),
+                )
+                # Only now, with this home's own references gone, is it possible to tell which of
+                # its stored inputs another home still depends on.
+                rows = connection.execute(
+                    "SELECT artifact_id, relative_path FROM artifacts WHERE home_id=?", (home_id,)
+                ).fetchall()
+                freed_paths = self._release_stored_objects(connection, rows, column="home_id")
+                connection.execute("DELETE FROM homes WHERE home_id=?", (home_id,))
+                connection.execute("UPDATE workspace SET updated_at=?", (_iso(),))
+            pruned = len(freed_paths)
+            files = 0
+            freed = 0
+            for relative in freed_paths:
+                count, size = self._remove_path(self.root / relative)
+                files += count
+                freed += size
+            collected, swept, reclaimed = self._collect_unowned_objects()
+            pruned += collected
+            files += swept
+            freed += reclaimed
+        runs_removed = sum(item.runs_removed for item in removed)
+        exports_removed = sum(item.exports_removed for item in removed)
+        return MaintenanceSummary(
+            performed_at=utc_now(),
+            homes_removed=1,
+            runs_removed=runs_removed,
+            exports_removed=exports_removed,
+            artifacts_pruned=pruned + sum(item.artifacts_pruned for item in removed),
+            files_removed=files + sum(item.files_removed for item in removed),
+            bytes_freed=freed + sum(item.bytes_freed for item in removed),
+            details=[
+                f"deleted home '{home.name}' with {runs_removed} run(s) and "
+                f"{exports_removed} export(s)"
+            ],
+        )
+
+    @staticmethod
+    def _referenced_artifact_ids(connection: sqlite3.Connection) -> set[str]:
+        """Every artifact some surviving home, resident, revision or export still names."""
+        rows = connection.execute(
+            """SELECT current_home_artifact_id AS artifact_id FROM homes
+                    WHERE current_home_artifact_id IS NOT NULL
+                UNION SELECT current_sensor_artifact_id FROM homes
+                    WHERE current_sensor_artifact_id IS NOT NULL
+                UNION SELECT scenario_artifact_id FROM residents
+                    WHERE scenario_artifact_id IS NOT NULL
+                UNION SELECT behavior_artifact_id FROM residents
+                    WHERE behavior_artifact_id IS NOT NULL
+                UNION SELECT artifact_id FROM revisions WHERE artifact_id IS NOT NULL
+                UNION SELECT manifest_artifact_id FROM exports
+                    WHERE manifest_artifact_id IS NOT NULL"""
+        ).fetchall()
+        return {row["artifact_id"] for row in rows}
+
+    def _release_stored_objects(
+        self, connection: sqlite3.Connection, rows: list[sqlite3.Row], *, column: str
+    ) -> list[str]:
+        """Give up the caller's claim on these stored objects, and say which files are now free.
+
+        Content-addressed storage means one file can back several homes at once: publishing the
+        same model twice returns the same row. So an object is only forgotten once nothing that
+        survives the deletion still names it; one that is still referenced keeps its row and its
+        file and merely stops belonging to what is being deleted. An object file costs disk, a
+        dangling reference costs a working workspace.
+        """
+        referenced = self._referenced_artifact_ids(connection)
+        detach = [row["artifact_id"] for row in rows if row["artifact_id"] in referenced]
+        forget = [row for row in rows if row["artifact_id"] not in referenced]
+        if detach:
+            connection.execute(
+                f"UPDATE artifacts SET {column}=NULL WHERE artifact_id IN "  # noqa: S608
+                f"({', '.join('?' for _ in detach)})",
+                tuple(detach),
+            )
+        self._drop_artifact_rows(connection, [row["artifact_id"] for row in forget])
+        return [row["relative_path"] for row in forget]
+
+    def _collect_unowned_objects(self) -> tuple[int, int, int]:
+        """Forget stored objects that belong to nothing and that nothing refers to.
+
+        An object detached from a deleted home stays while another home is still using it. When
+        that home is deleted too, this is what finally reclaims it — a row with no home, no run
+        and no reference is unreachable from every API the application offers.
+        """
+        with self.transaction() as connection:
+            referenced = self._referenced_artifact_ids(connection)
+            rows = [
+                row
+                for row in connection.execute(
+                    "SELECT artifact_id, relative_path FROM artifacts "
+                    "WHERE relative_path LIKE 'objects/%' AND home_id IS NULL AND run_id IS NULL"
+                ).fetchall()
+                if row["artifact_id"] not in referenced
+            ]
+            pruned = self._drop_artifact_rows(connection, [row["artifact_id"] for row in rows])
+        files = 0
+        freed = 0
+        for row in rows:
+            removed, size = self._remove_path(self.root / row["relative_path"])
+            files += removed
+            freed += size
+        return pruned, files, freed
 
     def _recover_running_jobs(self) -> None:
         if not self.database_path.exists():

@@ -31,6 +31,7 @@ import {
   Upload,
   UserRound,
   Users,
+  Wrench,
   X,
   ZoomIn,
   ZoomOut,
@@ -41,6 +42,7 @@ import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "re
 import { api, download, eventSourceUrl, health } from "./api";
 import {
   Breadcrumbs,
+  ConfirmAction,
   EmptyState,
   ErrorPanel,
   Metric,
@@ -69,15 +71,18 @@ import { authoringPrompts } from "./prompts";
 import type {
   DiaryEntry,
   ExportManifest,
+  ExportRecord,
   HomeDetail,
   HomeModel,
   HomeSummary,
   JobEvent,
   JobRecord,
+  MaintenanceSummary,
   Observation,
   Overview,
   SensorModel,
   TimelineEvent,
+  WorkspaceIntegrity,
 } from "./types";
 
 const terminal = new Set(["completed", "failed", "cancelled", "interrupted"]);
@@ -102,6 +107,15 @@ function duration(start: string, end: string): string {
   const minutes = Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
   if (minutes < 60) return `${minutes} min`;
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let size = value / 1024;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
+  return `${size.toFixed(size < 10 ? 1 : 0)} ${units[unit]}`;
 }
 
 async function readJson(file: File): Promise<Record<string, unknown>> {
@@ -172,6 +186,7 @@ export function App() {
         <Route path="/simulations" element={<SimulationsPage />} />
         <Route path="/simulations/:runId" element={<RunPage />} />
         <Route path="/exports" element={<ExportsPage />} />
+        <Route path="/maintenance" element={<MaintenancePage />} />
         <Route path="/help" element={<HelpPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -196,7 +211,18 @@ function Dashboard() {
       {workspace.diagnosticMode && (
         <div className="diagnostic-banner" role="alert">
           <ShieldCheck size={20} />
-          <div><strong>Workspace opened in diagnostic mode</strong><p>One or more artifact files did not match the persistent catalogue. New publication is paused until integrity is restored.</p></div>
+          <div><strong>Workspace opened in diagnostic mode</strong><p>One or more files are still in the folder but hold content the catalogue does not vouch for, so what a run executed can no longer be established. New publication is paused until that is resolved — files you deleted yourself are not the cause and are reconciled automatically.</p></div>
+          <Link className="button secondary" to="/maintenance"><Wrench size={16} /> Open maintenance</Link>
+        </div>
+      )}
+      {!workspace.diagnosticMode && resource.data.lastRepair && (
+        <div className="notice" role="status">
+          <Wrench size={18} />
+          <span>
+            <strong>The workspace folder changed since the last session.</strong>{" "}
+            {resource.data.lastRepair.details.join("; ")}.
+            {resource.data.lastRepair.bytesFreed > 0 && ` ${formatBytes(resource.data.lastRepair.bytesFreed)} reclaimed.`}
+          </span>
         </div>
       )}
       <section className="metrics-strip" aria-label="Workspace summary">
@@ -714,6 +740,7 @@ function OperationPanel({ progress }: { progress: OperationProgress }) {
 
 function HomePage() {
   const { homeId = "" } = useParams();
+  const navigate = useNavigate();
   const resource = useResource<HomeDetail>(`/homes/${homeId}`);
   const [tab, setTab] = useState<"overview" | "home" | "sensors" | "runs">("overview");
   const [selectedId, setSelectedId] = useState<string>();
@@ -793,16 +820,19 @@ function HomePage() {
       personal_process_package: await readJson(behaviorFile),
     }), "Validating the Advanced import");
   };
-  const startRun = async () => {
+  const start = async (path: "runs" | "environment", message: string) => {
     if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
     setWorking(true); setNotice(undefined);
     try {
-      await api(`/homes/${homeId}/runs`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId }) });
-      setNotice({ kind: "success", text: "The run was queued in an isolated local worker." });
+      await api(`/homes/${homeId}/${path}`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId }) });
+      setNotice({ kind: "success", text: message });
       await resource.reload();
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
     finally { setWorking(false); }
   };
+  const startRun = () => start("runs", "The run was queued in an isolated local worker.");
+  // Building the environment on its own is what makes the plan reviewable before it is executed.
+  const startEnvironment = () => start("environment", "Building the home and its sensor field. Nothing is executed until you start a run.");
   const currentSnapshot = () => ({ home: homeDraft ? structuredClone(homeDraft) : undefined, sensor: sensorDraft ? structuredClone(sensorDraft) : undefined });
   const snapshot = () => { setHistory((items) => [...items.slice(-49), currentSnapshot()]); setFuture([]); setUnsaved(true); };
   // Pointer and keyboard move the same objects through the same geometry: dragging the bed and
@@ -885,11 +915,18 @@ function HomePage() {
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
     finally { setWorking(false); }
   };
+  const removeHome = async () => {
+    setWorking(true); setNotice(undefined);
+    try {
+      const summary = await api<MaintenanceSummary>(`/homes/${homeId}`, { method: "DELETE" });
+      navigate("/homes", { state: { removed: summary } });
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); setWorking(false); }
+  };
   const recommended = !!homeDraft && detail.planApproval?.approved === false;
   return (
     <div className="page home-page">
       <Breadcrumbs items={[{ label: "Homes", to: "/homes" }, { label: detail.home.name }]} />
-      <PageHeader eyebrow="Environment workspace" title={detail.home.name} description={detail.home.description || "Executable spatial model and resident context"} actions={<><StatusBadge status={activeJob?.status ?? (homeDraft ? "valid" : "draft")} /><button className="button primary" disabled={!inputResident || !!activeJob || working} onClick={() => void startRun()}><Play size={16} /> Run simulation</button></>} />
+      <PageHeader eyebrow="Environment workspace" title={detail.home.name} description={detail.home.description || "Executable spatial model and resident context"} actions={<><StatusBadge status={activeJob?.status ?? (homeDraft ? "valid" : "draft")} /><button className="button primary" disabled={!inputResident || !!activeJob || working} onClick={() => void startRun()}><Play size={16} /> Run simulation</button><ConfirmAction label="Delete home" title={`Delete “${detail.home.name}”?`} consequence={`Its ${detail.residents.length} resident context(s), ${detail.jobs.length} run(s), every export built from them and the stored inputs only this home uses are deleted from the workspace folder. This cannot be undone.`} busy={working} disabled={!!activeJob} onConfirm={removeHome} /></>} />
       {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}<span>{notice.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button></div>}
       {progress && <OperationPanel progress={progress} />}
       {recommended && (
@@ -943,7 +980,13 @@ function HomePage() {
           <div className="section-heading"><div><p className="eyebrow">Environment state</p><h2>Authoritative revisions</h2></div><ShieldCheck size={21} /></div>
           <dl className="definition-list"><div><dt>Home model</dt><dd>{detail.home.currentHomeArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentHomeArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div><div><dt>Sensor model</dt><dd>{detail.home.currentSensorArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentSensorArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div>{detail.generation && <div><dt>Generated horizon</dt><dd><StatusBadge status="valid" /><span>{detail.generation.dayCount} days, each compiled and bundled separately</span></dd></div>}<div><dt>Runs</dt><dd>{detail.jobs.length}</dd></div></dl>
           {detail.generation && <p className="hint">Running this home simulates every generated day and publishes them as one run: a single trace, one observable sensor log and one oracle mapping to export whole.</p>}
-          {!homeDraft && inputResident && <button className="button primary" disabled={working || !!activeJob} onClick={() => void startRun()}><RouteIcon size={16} /> Generate home, sensors and first run</button>}
+          {!homeDraft && inputResident && <>
+            <p className="hint">The plan and the sensor field come from the deterministic policies, not from the execution. Building them first lets you move a wall or a PIR before anything is simulated — and what you approve is what the run then executes.</p>
+            <div className="button-row">
+              <button className="button primary" disabled={working || !!activeJob} onClick={() => void startEnvironment()}><HomeIcon size={16} /> Generate home and sensors</button>
+              <button className="button secondary" disabled={working || !!activeJob} onClick={() => void startRun()}><RouteIcon size={16} /> Generate and run in one step</button>
+            </div>
+          </>}
         </section>
       </div>}
       {(tab === "home" || tab === "sensors") && <div className="editor-layout">
@@ -1015,6 +1058,7 @@ interface JobDetail { job: JobRecord; events: JobEvent[]; artifacts: Record<stri
 
 function RunPage() {
   const { runId = "" } = useParams();
+  const navigate = useNavigate();
   const detail = useResource<JobDetail>(`/jobs/${runId}`);
   useJobRefresh(detail.data ? [detail.data.job] : [], detail.reload);
   const [tab, setTab] = useState<"summary" | "diary" | "observations" | "replay" | "artifacts">("summary");
@@ -1024,7 +1068,9 @@ function RunPage() {
   const [playing, setPlaying] = useState(false);
   const [exportNotice, setExportNotice] = useState<string>();
   const [exportManifest, setExportManifest] = useState<ExportManifest>();
-  const evidenceAvailable = detail.data?.job.status === "completed";
+  // An environment job publishes a plan and a sensor field and executes nothing, so it completes
+  // without a trace: offering the diary or the replay for it would open empty views.
+  const evidenceAvailable = detail.data?.job.status === "completed" && detail.data.job.kind !== "environment";
   const diary = useResource<{ items: DiaryEntry[]; total: number }>(evidenceAvailable ? `/runs/${runId}/diary?limit=500` : undefined);
   const observations = useResource<{ items: Observation[]; total: number; mode: string }>(evidenceAvailable ? `/runs/${runId}/observations?limit=500&include_oracle=${oracle}` : undefined);
   const timeline = useResource<TimelineEvent[]>(evidenceAvailable ? `/runs/${runId}/timeline?limit=5000` : undefined);
@@ -1044,15 +1090,19 @@ function RunPage() {
   const issueEvents = detail.data.events.filter((event) => event.eventType === "issue");
   const homeModelArtifact = detail.data.artifacts.home_model;
   const cancel = async () => { await api(`/jobs/${runId}/cancel`, { method: "POST" }); await detail.reload(); };
+  const removeRun = async () => {
+    try { await api<MaintenanceSummary>(`/jobs/${runId}`, { method: "DELETE" }); navigate("/simulations"); }
+    catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); }
+  };
   const verify = async () => { try { const result = await api<{ matches: boolean; actualSemanticDigest: string }>(`/runs/${runId}/replay/verify`, { method: "POST" }); setExportNotice(result.matches ? `Replay verified: ${result.actualSemanticDigest}` : "Replay digest did not match"); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
   const createExport = async () => { try { const result = await api<ExportManifest>(`/runs/${runId}/exports`, { method: "POST", body: JSON.stringify({ runId, formats: ["jsonl", "csv", "xes"], roles: ["observable", "oracle", "activities", "actions", "movements", "state_transitions", "resources", "runtime_events", "plan_deviations", "final_state", "habit_ground_truth"] }) }); setExportManifest(result); setExportNotice(`Export ${result.exportId} published with ${result.files.length} verified files.`); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
   return <div className="page run-page">
     <Breadcrumbs items={[{ label: "Simulations", to: "/simulations" }, { label: runId }]} />
-    <PageHeader eyebrow="Run evidence" title={runId} description={job.progress.message} actions={<><StatusBadge status={job.status} />{!terminal.has(job.status) && <button className="button danger" onClick={() => void cancel()}><Square size={15} /> Cancel safely</button>}</>} />
+    <PageHeader eyebrow="Run evidence" title={runId} description={job.progress.message} actions={<><StatusBadge status={job.status} />{!terminal.has(job.status) ? <button className="button danger" onClick={() => void cancel()}><Square size={15} /> Cancel safely</button> : <ConfirmAction label="Delete run" title="Delete this run and its evidence?" consequence="The execution trace, observable log, oracle mapping and every export built from this run are deleted from the workspace folder. The home and its inputs are untouched." onConfirm={removeRun} />}</>} />
     {!terminal.has(job.status) && <section className="active-run-detail"><div className="phase-orbit" aria-hidden="true"><i /><span>{Math.round(job.progress.percent)}%</span></div><div><p className="eyebrow">Current backend phase</p><h2>{job.progress.phase}</h2><p>{job.progress.message}</p><ProgressBar value={job.progress.percent} label="Overall progress" /></div><ol>{detail.data.events.slice(-6).map((event) => <li key={event.sequence}><time>{formatTime(event.occurredAt)}</time><span>{event.message}</span></li>)}</ol></section>}
     <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "diary", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={!evidenceAvailable && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
     {exportNotice && <div className="notice notice-success" role="status"><Check size={17} /><span>{exportNotice}</span><button className="icon-button" aria-label="Dismiss" onClick={() => setExportNotice(undefined)}><X size={15} /></button></div>}
-    {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button primary" onClick={() => void download(`/exports/${exportManifest.exportId}/zip`, `${exportManifest.exportId}.zip`)}><Download size={15} /> Download ZIP</button><StatusBadge status="valid" /></div></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
+    {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : job.kind === "environment" ? "This job built the home and its sensor field and executed nothing. Review the plan on the home, then start a run to produce evidence from exactly these models." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button primary" onClick={() => void download(`/exports/${exportManifest.exportId}/zip`, `${exportManifest.exportId}.zip`)}><Download size={15} /> Download ZIP</button><StatusBadge status="valid" /></div></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
     {tab === "diary" && <section className="diary-layout"><div className="diary-list"><div className="section-heading"><div><p className="eyebrow">Authoritative execution trace</p><h2>Ground-truth diary</h2></div><span>{diary.data?.total ?? 0} activities</span></div>{diary.loading ? <Skeleton lines={8} /> : diary.error ? <ErrorPanel message={diary.error.message} /> : diary.data?.items?.map((entry) => <button key={entry.activityExecutionId} className={`diary-entry ${selectedDiary === entry.activityExecutionId ? "is-selected" : ""}`} onClick={() => setSelectedDiary(entry.activityExecutionId)}><time>{formatTime(entry.actualStart)}</time><span><strong>{entry.intent.replaceAll("_", " ")}</strong><small>{entry.actorId} · {duration(entry.actualStart, entry.actualEnd)} · {entry.actions.length} actions</small></span><StatusBadge status={entry.status} /></button>)}</div><DiaryInspector entry={diary.data?.items?.find((item) => item.activityExecutionId === selectedDiary) ?? diary.data?.items?.[0]} /></section>}
     {tab === "observations" && <section><div className="observable-toolbar"><div><p className="eyebrow">Sensor projection</p><h2>{oracle ? "Oracle-linked observations" : "Observable device log"}</h2></div><div className="mode-switch" role="group" aria-label="Data visibility"><button aria-pressed={!oracle} onClick={() => setOracle(false)}>Observable</button><button aria-pressed={oracle} onClick={() => setOracle(true)}>Oracle links</button></div></div><p className="mode-explanation">{oracle ? "Identity and activity appear only through the separate oracle mapping." : "This view contains only fields a physical device could expose."}</p>{observations.loading ? <Skeleton lines={8} /> : observations.error ? <ErrorPanel message={observations.error.message} /> : <div className="observation-table"><div className="observation-head"><span>Time</span><span>Sensor</span><span>Measurement</span><span>Value</span><span>Quality</span>{oracle && <span>Ground-truth cause</span>}</div>{observations.data?.items?.map((record) => <div className="observation-row" key={record.observationId}><time>{formatTime(record.observedAt)}</time><span><code>{record.sensorId}</code><small>{record.sensorType}</small></span><span>{record.measurement}</span><strong>{String(record.value)}{record.unit ? ` ${record.unit}` : ""}</strong><StatusBadge status={record.quality} />{oracle && <span className="cause-cell">{record.oracleCause ? <><b>{record.oracleCause.origin.replaceAll("_", " ")}</b><small>{record.oracleCause.residentIds.join(", ") || "No resident identity"} · {record.oracleCause.causeType}</small></> : "No oracle link"}</span>}</div>)}</div>}</section>}
     {tab === "replay" && <section className="replay-workbench"><div className="replay-toolbar"><button className="button secondary" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={15} /> : <Play size={15} />}{playing ? "Pause" : "Play movements"}</button><button className="button secondary" onClick={() => void verify()}><ShieldCheck size={15} /> Verify semantic digest</button><span>{selectedEvent ? `${formatTime(selectedEvent.at)} · ${selectedEvent.label}` : "Select an event on the timeline"}</span></div><div className="replay-stage">{homeModelArtifact ? <ReplayPlan runId={runId} activeMovement={selectedEvent} /> : <EmptyState title="Home artifact unavailable"><p>The plan cannot be reconstructed without the persisted home model.</p></EmptyState>}<aside className="timeline-panel"><div className="section-heading"><div><p className="eyebrow">Synchronized trace</p><h2>Timeline</h2></div><Activity size={19} /></div>{timeline.loading ? <Skeleton lines={7} /> : timeline.error ? <ErrorPanel message={timeline.error.message} /> : timeline.data?.slice(0, 800).map((event) => <button key={event.id} className={`timeline-event kind-${event.kind} ${selectedEvent?.id === event.id ? "is-selected" : ""}`} onClick={() => setSelectedEvent(event)}><time>{formatTime(event.at)}</time><i /><span><strong>{event.label.replaceAll("_", " ")}</strong><small>{event.kind} · {event.actorId}</small></span></button>)}</aside></div></section>}
@@ -1084,7 +1134,80 @@ function ReplayPlan({ runId, activeMovement }: { runId: string; activeMovement?:
 function ExportsPage() {
   const jobs = useResource<JobRecord[]>("/jobs?limit=500");
   const completed = jobs.data?.filter((job) => job.status === "completed") ?? [];
-  return <div className="page"><PageHeader eyebrow="Portable datasets" title="Exports" description="Streaming JSONL, CSV and XES projections with versions, seeds, digests and source relations." actions={<button className="button secondary" onClick={() => void download("/workspace/archive", "smart-home-workspace.shw")}><Download size={16} /> Archive workspace</button>} />{jobs.loading ? <Skeleton lines={6} /> : jobs.error ? <ErrorPanel message={jobs.error.message} /> : completed.length ? <div className="export-run-list">{completed.map((job) => <Link key={job.jobId} to={`/simulations/${job.jobId}`} className="export-run"><span className="object-symbol"><Download size={18} /></span><span><strong>{job.jobId}</strong><small>Build or verify an export from the run detail.</small></span><StatusBadge status="completed" /><span>Open export builder</span></Link>)}</div> : <EmptyState title="No completed run to export" icon={<Download size={25} />}><p>Exports are always derived from persisted, digest-verified execution artifacts.</p></EmptyState>}<section className="format-notes"><div><p className="eyebrow">JSONL</p><h2>Streaming records</h2><p>One canonical record per line, suited to large datasets and incremental tools.</p></div><div><p className="eyebrow">CSV</p><h2>Stable columns</h2><p>Separate files per artifact family. Nested values remain canonical JSON cells.</p></div><div><p className="eyebrow">XES</p><h2>Process mining</h2><p>Explicit trace and event mappings preserve source identifiers and timestamps.</p></div></section></div>;
+  return <div className="page"><PageHeader eyebrow="Portable datasets" title="Exports" description="Streaming JSONL, CSV and XES projections with versions, seeds, digests and source relations." actions={<><Link className="button secondary" to="/maintenance"><Wrench size={16} /> Manage stored exports</Link><button className="button secondary" onClick={() => void download("/workspace/archive", "smart-home-workspace.shw")}><Download size={16} /> Archive workspace</button></>} />{jobs.loading ? <Skeleton lines={6} /> : jobs.error ? <ErrorPanel message={jobs.error.message} /> : completed.length ? <div className="export-run-list">{completed.map((job) => <Link key={job.jobId} to={`/simulations/${job.jobId}`} className="export-run"><span className="object-symbol"><Download size={18} /></span><span><strong>{job.jobId}</strong><small>Build or verify an export from the run detail.</small></span><StatusBadge status="completed" /><span>Open export builder</span></Link>)}</div> : <EmptyState title="No completed run to export" icon={<Download size={25} />}><p>Exports are always derived from persisted, digest-verified execution artifacts.</p></EmptyState>}<section className="format-notes"><div><p className="eyebrow">JSONL</p><h2>Streaming records</h2><p>One canonical record per line, suited to large datasets and incremental tools.</p></div><div><p className="eyebrow">CSV</p><h2>Stable columns</h2><p>Separate files per artifact family. Nested values remain canonical JSON cells.</p></div><div><p className="eyebrow">XES</p><h2>Process mining</h2><p>Explicit trace and event mappings preserve source identifiers and timestamps.</p></div></section></div>;
+}
+
+/**
+ * Where a researcher sees what the folder and the catalogue disagree about, and reclaims space.
+ *
+ * The two are deliberately on one page: deleting exports is the ordinary way to get disk back, and
+ * doing it in Explorer instead is what produced a divergence worth explaining in the first place.
+ */
+function MaintenancePage() {
+  const integrity = useResource<WorkspaceIntegrity>("/workspace/integrity");
+  const catalogue = useResource<ExportRecord[]>("/exports");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
+  const reload = async () => { await Promise.all([integrity.reload(), catalogue.reload()]); };
+  const describe = (summary: MaintenanceSummary) =>
+    (summary.details.length ? summary.details.join("; ") : "Nothing needed changing")
+    + (summary.bytesFreed > 0 ? `. ${formatBytes(summary.bytesFreed)} reclaimed` : "") + ".";
+  const run = async (action: () => Promise<MaintenanceSummary>) => {
+    setBusy(true); setNotice(undefined);
+    try {
+      setNotice({ kind: "success", text: describe(await action()) });
+      await reload();
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
+    finally { setBusy(false); }
+  };
+  const repair = (removeOrphans: boolean) => run(async () =>
+    (await api<{ summary: MaintenanceSummary }>(`/workspace/repair?remove_orphans=${removeOrphans}`, { method: "POST" })).summary);
+  const removeExport = (exportId: string) => run(() => api<MaintenanceSummary>(`/exports/${exportId}`, { method: "DELETE" }));
+  const report = integrity.data;
+  const findings = report ? [...report.corrupt, ...report.missing, ...report.orphans] : [];
+  return <div className="page">
+    <PageHeader
+      eyebrow="Workspace integrity"
+      title="Maintenance"
+      description="What the persistent catalogue and the workspace folder currently disagree about, and everything this workspace is holding on disk."
+      actions={<button className="button secondary" disabled={busy || integrity.loading} onClick={() => void repair(false)}><Wrench size={16} /> Reconcile now</button>}
+    />
+    {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}<span>{notice.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button></div>}
+    {integrity.loading && <Skeleton lines={5} />}
+    {integrity.error && <ErrorPanel message={integrity.error.message} onRetry={() => void integrity.reload()} />}
+    {report && <>
+      <section className="metrics-strip" aria-label="Integrity summary">
+        <Metric label="Content mismatches" value={report.corrupt.length} detail="Present, but not what the catalogue recorded" />
+        <Metric label="Deleted files" value={report.missing.length} detail="Catalogued, no longer in the folder" />
+        <Metric label="Uncatalogued files" value={report.orphans.length} detail={`${formatBytes(report.reclaimableBytes)} reclaimable`} />
+      </section>
+      {report.corrupt.length > 0 && <div className="diagnostic-banner" role="alert"><ShieldCheck size={20} /><div><strong>Publication is paused</strong><p>These files are still in the folder but their content no longer matches the digest recorded when they were published, so the workspace cannot say what they contain. Restore them from a workspace archive, or delete the runs and homes that depend on them.</p></div></div>}
+      {findings.length ? <div className="artifact-table">
+        <div className="artifact-head"><span>Finding</span><span>Path</span><span>Role</span><span>Size</span></div>
+        {findings.slice(0, 200).map((finding) => <div className="artifact-row" key={`${finding.kind}-${finding.relativePath}`}>
+          <StatusBadge status={finding.kind === "corrupt" ? "failed" : finding.kind === "missing" ? "interrupted" : "draft"} />
+          <code title={finding.detail}>{finding.relativePath}</code>
+          <span>{finding.role ?? "uncatalogued"}</span>
+          <span>{formatBytes(finding.sizeBytes)}</span>
+        </div>)}
+      </div> : <EmptyState title="The folder and the catalogue agree" icon={<ShieldCheck size={25} />}><p>Every catalogued artifact is present with the content that was recorded when it was published.</p></EmptyState>}
+      {report.orphans.length > 0 && <section className="surface"><div className="section-heading"><div><p className="eyebrow">Uncatalogued files</p><h2>{formatBytes(report.reclaimableBytes)} nothing refers to</h2></div><Trash2 size={20} /></div><p>Files inside the workspace folder that no catalogue entry describes. They are never read by the application; deleting them frees the space and changes no evidence.</p><ConfirmAction label={`Delete ${report.orphans.length} uncatalogued file(s)`} title="Delete every uncatalogued file?" consequence="Only files nothing in the catalogue refers to are removed. Runs, exports and stored inputs are untouched." busy={busy} onConfirm={() => void repair(true)} /></section>}
+    </>}
+    <section className="surface">
+      <div className="section-heading"><div><p className="eyebrow">Stored datasets</p><h2>Exports on disk</h2></div><Download size={20} /></div>
+      <p>Exports are reproducible: the same run and the same request rebuild them byte for byte, so deleting one costs only the time to export it again.</p>
+      {catalogue.loading ? <Skeleton lines={4} /> : catalogue.error ? <ErrorPanel message={catalogue.error.message} /> : catalogue.data?.length ? <div className="artifact-table">
+        <div className="artifact-head"><span>Export</span><span>Run</span><span>Files</span><span>Size</span><span /></div>
+        {catalogue.data.map((item) => <div className="artifact-row" key={item.exportId}>
+          <code>{item.exportId}</code>
+          <RunLink id={item.runId}>{item.runId}</RunLink>
+          <span>{item.available ? item.fileCount : "folder deleted"}</span>
+          <span>{formatBytes(item.sizeBytes)}</span>
+          <ConfirmAction compact label={`Delete export ${item.exportId}`} title="Delete this export?" consequence={`${item.fileCount} file(s), ${formatBytes(item.sizeBytes)}. The run keeps every artifact it was built from.`} busy={busy} onConfirm={() => void removeExport(item.exportId)} />
+        </div>)}
+      </div> : <EmptyState title="No export has been built" icon={<Download size={25} />}><p>Build one from any completed run to produce JSONL, CSV and XES projections.</p></EmptyState>}
+    </section>
+  </div>;
 }
 
 function promptWithCase(template: string, caseDescription: string): string {
@@ -1113,7 +1236,7 @@ function PromptCard({ title, label, description, template, caseDescription }: { 
 
 function HelpPage() {
   const [caseDescription, setCaseDescription] = useState("");
-  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">Which file to use</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM to return one pure JSON object containing both the scenario and its personal process package.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into both prompts; the simplified prompt also receives a current ISO generation timestamp. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Complete prompt" label="Recommended · Advanced 1.3.0" description="The authoritative path: full frozen schemas and catalogs for strict reproducibility and detailed diagnostics, plus the action state contract the deterministic replay enforces across activities and days." template={authoringPrompts.advanced.text} caseDescription={caseDescription} /><PromptCard title="Simplified prompt" label="Corrected · compact 1.2.3" description="Generated from the frozen catalogs: neutral 1.2.0 intent labels, the proven process models with their container openings, and a chronological state ledger. Application validation remains mandatory." template={authoringPrompts.simplified.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><h3>Horizons longer than a month</h3><p>Asking one response for every day of a long horizon degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. The outline prompt asks for the <em>structure</em> of the period instead—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Long horizons · outline 1.0.0" description="Returns a horizon outline plus its process package, not days. Weeks or years cost the same size. The expander also publishes the habit ground truth a segmentation algorithm is scored against." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> Save it as JSON and choose it under <em>Horizon outline</em> in Resident context: the application computes the days and imports the result in one step. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the complete <code>authoring-bundle.json</code> in Resident context.</li><li>Resolve every reported validation issue; rejected bundles publish no authoring revision.</li><li>Start materialization. The worker compiles, builds the home, binds behavior, deploys sensors, executes and projects observations.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>Source, canonical and runtime files</h2><p><strong>Import the source bundle in the ordinary workflow.</strong> It has <code>documentType: simulation_authoring_bundle</code> and contains <code>scenario</code> plus <code>personalProcessPackage</code>. Canonical split files are internal validated projections. Runtime inputs may reference upgraded execution catalogs and are not a substitute for the researcher-authored source.</p><p>The collapsed Advanced importer accepts the two canonical documents separately for debugging or controlled migration. It does not silently repair or upgrade them.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption and recovery</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
+  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">Which file to use</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM to return one pure JSON object containing both the scenario and its personal process package.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into both prompts; the simplified prompt also receives a current ISO generation timestamp. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Complete prompt" label="Recommended · Advanced 1.3.0" description="The authoritative path: full frozen schemas and catalogs for strict reproducibility and detailed diagnostics, plus the action state contract the deterministic replay enforces across activities and days." template={authoringPrompts.advanced.text} caseDescription={caseDescription} /><PromptCard title="Simplified prompt" label="Corrected · compact 1.2.3" description="Generated from the frozen catalogs: neutral 1.2.0 intent labels, the proven process models with their container openings, and a chronological state ledger. Application validation remains mandatory." template={authoringPrompts.simplified.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><h3>Horizons longer than a month</h3><p>Asking one response for every day of a long horizon degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. The outline prompt asks for the <em>structure</em> of the period instead—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Long horizons · outline 1.0.0" description="Returns a horizon outline plus its process package, not days. Weeks or years cost the same size. The expander also publishes the habit ground truth a segmentation algorithm is scored against." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> Save it as JSON and choose it under <em>Horizon outline</em> in Resident context: the application computes the days and imports the result in one step. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the complete <code>authoring-bundle.json</code> in Resident context.</li><li>Resolve every reported validation issue; rejected bundles publish no authoring revision.</li><li>Choose <em>Generate home and sensors</em> to build the environment alone. The worker compiles, builds the home, binds behavior and deploys sensors, and executes nothing — so you can review the plan, move a wall or a PIR and confirm it before a single day is simulated.</li><li>Start the run. It executes the plan and the sensor field you approved, then projects the observations. <em>Generate and run in one step</em> does both at once when the recommended plan needs no review.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>Source, canonical and runtime files</h2><p><strong>Import the source bundle in the ordinary workflow.</strong> It has <code>documentType: simulation_authoring_bundle</code> and contains <code>scenario</code> plus <code>personalProcessPackage</code>. Canonical split files are internal validated projections. Runtime inputs may reference upgraded execution catalogs and are not a substitute for the researcher-authored source.</p><p>The collapsed Advanced importer accepts the two canonical documents separately for debugging or controlled migration. It does not silently repair or upgrade them.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and housekeeping</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
 }
 
 function NotFound() {

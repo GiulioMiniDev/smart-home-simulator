@@ -7,6 +7,7 @@ import shutil
 import tempfile
 from collections import defaultdict
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import ceil, sqrt
 from pathlib import Path
@@ -41,6 +42,7 @@ from smart_home_sim.domain.environment import (
     TraversalMode,
 )
 from smart_home_sim.domain.materialization import (
+    EnvironmentMaterializationManifest,
     HomeGenerationPolicy,
     HomeGenerationReport,
     HomeGenerationResult,
@@ -53,8 +55,9 @@ from smart_home_sim.domain.materialization import (
     SyntheticWorkspaceManifest,
     WorkspaceArtifact,
 )
-from smart_home_sim.domain.models import LocationKind, Scenario
+from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES, LocationKind, Scenario
 from smart_home_sim.domain.sensors import (
+    CONTACT_INSTRUMENTED_TYPES,
     ContactSensor,
     PirSensor,
     SensorErrorModel,
@@ -180,57 +183,6 @@ def _stable_fraction(*parts: str) -> float:
     return value / (2**64 - 1)
 
 
-# Roles a process model can ask for, mapped onto the furniture that actually provides them. A role
-# missing here silently falls back to the per-region "generated_environment_service" catch-all: the
-# step still executes, but against a phantom provider with no footprint and no contact sensor. That
-# is how `clean_kitchen` came to fetch a cloth from nowhere and `consumption_area` — where the
-# resident sits to eat — resolved to thin air rather than the table.
-RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
-    "refrigerator": frozenset(
-        {
-            "food_storage",
-            "coffee_and_breakfast_storage",
-            "ingredients",
-            "prepared_meal",
-            "prepared_food_portions",
-        }
-    ),
-    "storage_cabinet": frozenset(
-        {
-            "medication_cabinet",
-            "medication_storage",
-            "household_storage",
-            "household_supplies",
-            "cleaning_products",
-            "cleaning_product_storage",
-            "medication",
-        }
-    ),
-    "wardrobe": frozenset(
-        {
-            "clothing_storage",
-            "clothes",
-            "used_clothing",
-            "laundry_collection",
-            "laundry_storage",
-        }
-    ),
-    "washing_machine": frozenset({"laundry_equipment", "laundry"}),
-    "stove": frozenset({"cooking_appliance", "food_preparation_area"}),
-    "moka_coffee_maker": frozenset({"moka_coffee_maker", "coffee_equipment"}),
-    "sink": frozenset(
-        {"washing_area", "food_preparation_area", "drinking_water_source", "sink_faucet"}
-    ),
-    "washbasin": frozenset({"washing_area", "personal_care_fixture"}),
-    "shower": frozenset({"shower", "personal_care_fixture", "shower_water"}),
-    "toilet": frozenset({"toilet", "personal_care_fixture"}),
-    "bed": frozenset({"bed", "sleeping_area"}),
-    "chair": frozenset({"chair", "dining_seat", "consumption_area"}),
-    "table": frozenset({"table", "dining_area", "consumption_area"}),
-    "sofa": frozenset({"sofa", "seating", "rest_area"}),
-    "television": frozenset({"television", "media"}),
-    "radio": frozenset({"radio", "media"}),
-}
 ENTRANCE_CAPABILITIES = frozenset({"home_egress", "home_ingress"})
 
 
@@ -762,13 +714,6 @@ def generate_home(
     return HomeGenerationResult(report=report, home=home)
 
 
-# Furniture a deployment fits a contact sensor to: everything with a door or a lid, the front door
-# aside since it is handled on its own. Keyed on the resource type the author declared, so the
-# inventory follows the home rather than the behaviour.
-CONTACT_INSTRUMENTED_TYPES = frozenset(
-    {"refrigerator", "storage_cabinet", "wardrobe", "washing_machine"}
-)
-
 # Interaction points a single motion sensor is expected to cover. A worktop, a sink and a stove
 # standing together are one zone; the table across the room is another.
 _POINTS_PER_ZONE = 3
@@ -1176,6 +1121,235 @@ def _file_digest(path: Path) -> str:
     return canonical_sha256(json.loads(path.read_text(encoding="utf-8")))
 
 
+@dataclass(frozen=True)
+class _Environment:
+    """What the deterministic policies produce before anything is executed."""
+
+    scenario: Scenario
+    bundle: SimulationBundle
+    sensor_model: SensorModel
+    roles: dict[str, str]
+
+
+def _build_environment(
+    staging: Path,
+    scenario_path: Path,
+    package_path: Path,
+    *,
+    home_policy: HomeGenerationPolicy,
+    sensor_policy: SensorDeploymentPolicy,
+    approved_home: HomeModel | None,
+    approved_sensors: SensorModel | None,
+    emit: Callable[..., None],
+) -> _Environment:
+    """Compile, build the home, bind the bundle and deploy the sensor field into ``staging``.
+
+    Everything up to, but not including, execution. Split out because it is worth having on its
+    own: the plan and the sensor field are what a researcher reviews and approves, and making them
+    only reachable by running the simulation meant paying for a year of execution to see a room in
+    the wrong place. `materialize_workspace` continues from here; `materialize_environment` stops.
+    """
+    scenario = _load_model(scenario_path, Scenario)
+    package = _load_model(package_path, PersonalProcessPackage)
+    emit("input", 2, "Accepted source artifacts")
+    shutil.copyfile(scenario_path, staging / "scenario.json")
+    shutil.copyfile(package_path, staging / "personal-process-package.json")
+    _json(staging / "home-generation-policy.json", home_policy)
+    _json(staging / "sensor-deployment-policy.json", sensor_policy)
+
+    compilation = compile_scenario(scenario)
+    _json(staging / "compilation-report.json", compilation.report)
+    if compilation.plan is None:
+        raise MaterializationFailure(
+            "compilation", "Scenario compilation failed.", compilation.report.issues
+        )
+    _json(staging / "canonical-plan.json", compilation.plan)
+    emit(
+        "compilation",
+        12,
+        "Compiled the canonical plan",
+        {"activities": compilation.report.summary.scheduled_activity_count},
+    )
+
+    if approved_home is not None:
+        _json(staging / "home-model.json", approved_home)
+        emit(
+            "home",
+            26,
+            "Accepted the researcher-approved plan",
+            {"regions": len(approved_home.regions)},
+        )
+    else:
+        home_result = generate_home(scenario, package, home_policy)
+        _json(staging / "home-generation-report.json", home_result.report)
+        if home_result.home is None:
+            raise MaterializationFailure(
+                "home", "home generation failed", home_result.report.issues
+            )
+        _json(staging / "home-model.json", home_result.home)
+        emit(
+            "home",
+            26,
+            "Generated and validated the executable home",
+            {"regions": home_result.report.summary.region_count},
+        )
+
+    bundle_result = build_bundle_files(
+        staging / "scenario.json",
+        staging / "canonical-plan.json",
+        staging / "personal-process-package.json",
+        staging / "home-model.json",
+    )
+    _json(staging / "environment-report.json", bundle_result.report)
+    if bundle_result.bundle is None:
+        raise MaterializationFailure(
+            "binding",
+            "Environment bundle validation failed.",
+            bundle_result.report.issues,
+        )
+    _json(staging / "simulation-bundle.json", bundle_result.bundle)
+    emit(
+        "binding",
+        40,
+        "Resolved action and route bindings",
+        {"bindings": bundle_result.report.summary.action_binding_count},
+    )
+
+    if approved_sensors is not None:
+        sensor_model = bind_sensor_model(approved_sensors, bundle_result.bundle)
+        _json(staging / "sensor-model.json", sensor_model)
+        emit(
+            "sensors",
+            50,
+            "Accepted the researcher-approved sensor field",
+            {"sensors": len(sensor_model.sensors)},
+        )
+    else:
+        sensor_result = deploy_sensors(bundle_result.bundle, sensor_policy)
+        _json(staging / "sensor-deployment-report.json", sensor_result.report)
+        if sensor_result.sensor_model is None:
+            raise MaterializationFailure(
+                "sensors", "Sensor deployment failed.", sensor_result.report.issues
+            )
+        sensor_model = sensor_result.sensor_model
+        _json(staging / "sensor-model.json", sensor_model)
+        emit(
+            "sensors",
+            50,
+            "Deployed and validated sensors",
+            {"sensors": sensor_result.report.summary.sensor_count},
+        )
+    _json_document(
+        staging / "plan-approval.json",
+        {
+            "schemaVersion": "1.0.0",
+            "documentType": "plan_approval",
+            "homeModel": "researcher_approved" if approved_home else "generated",
+            "sensorModel": "researcher_approved" if approved_sensors else "generated",
+            "homeSha256": canonical_sha256(bundle_result.bundle.home_model),
+            "sensorModelSha256": canonical_sha256(sensor_model),
+        },
+    )
+    # An approved model has no generation report: nothing generated it. The manifest records only
+    # artifacts this run actually produced, and plan-approval.json says which of the two models the
+    # researcher supplied.
+    roles = {
+        "scenario": "scenario.json",
+        "behavior_package": "personal-process-package.json",
+        "home_policy": "home-generation-policy.json",
+        **({} if approved_home else {"home_report": "home-generation-report.json"}),
+        "home": "home-model.json",
+        "compilation_report": "compilation-report.json",
+        "canonical_plan": "canonical-plan.json",
+        "environment_report": "environment-report.json",
+        "simulation_bundle": "simulation-bundle.json",
+        "sensor_policy": "sensor-deployment-policy.json",
+        **({} if approved_sensors else {"sensor_report": "sensor-deployment-report.json"}),
+        "sensor_model": "sensor-model.json",
+        "plan_approval": "plan-approval.json",
+    }
+    return _Environment(
+        scenario=scenario, bundle=bundle_result.bundle, sensor_model=sensor_model, roles=roles
+    )
+
+
+def materialize_environment(
+    scenario_path: Path,
+    package_path: Path,
+    output_directory: Path,
+    *,
+    home_policy: HomeGenerationPolicy | None = None,
+    sensor_policy: SensorDeploymentPolicy | None = None,
+    approved_home: HomeModel | None = None,
+    approved_sensors: SensorModel | None = None,
+    progress: Callable[[str, float, str, dict[str, int]], None] | None = None,
+    cancelled: Callable[[], bool] | None = None,
+) -> EnvironmentMaterializationManifest:
+    """Materialize the home and its sensor field from one scenario, and execute nothing.
+
+    The output is the plan a researcher reviews: rooms, furniture, providers and the deployed
+    sensors, with the same validation gates a full run applies. Nothing about it is provisional —
+    a run started afterwards executes exactly these artifacts once they are approved.
+    """
+    if output_directory.exists():
+        raise FileExistsError(f"output directory already exists: {output_directory}")
+    home_policy = home_policy or HomeGenerationPolicy()
+    sensor_policy = sensor_policy or SensorDeploymentPolicy()
+    output_directory.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(
+        tempfile.mkdtemp(prefix=f".{output_directory.name}.", dir=output_directory.parent)
+    )
+
+    def emit(
+        phase: str, percent: float, message: str, counters: dict[str, int] | None = None
+    ) -> None:
+        if cancelled is not None and cancelled():
+            raise InterruptedError("materialization cancelled")
+        if progress is not None:
+            # The environment is the whole job here, not its first half, so its own 2-50 becomes
+            # the full bar: a progress indicator that stops at 50 reads as a job that stalled.
+            progress(phase, min(percent * 2, 99), message, counters or {})
+
+    try:
+        environment = _build_environment(
+            staging,
+            scenario_path,
+            package_path,
+            home_policy=home_policy,
+            sensor_policy=sensor_policy,
+            approved_home=approved_home,
+            approved_sensors=approved_sensors,
+            emit=emit,
+        )
+        manifest = EnvironmentMaterializationManifest(
+            scenario_id=environment.scenario.scenario_id,
+            bundle_id=environment.bundle.bundle_id,
+            home_id=environment.bundle.home_model.home_id,
+            sensor_model_id=environment.sensor_model.sensor_model_id,
+            artifacts=[
+                WorkspaceArtifact(
+                    role=role,
+                    relative_path=relative_path,
+                    sha256=_file_digest(staging / relative_path),
+                )
+                for role, relative_path in environment.roles.items()
+            ],
+        )
+        _json(staging / "environment-manifest.json", manifest)
+        staging.replace(output_directory)
+        if progress is not None:
+            progress(
+                "completed",
+                100,
+                "Published the home and its sensor field",
+                {"artifacts": len(manifest.artifacts)},
+            )
+        return manifest
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+
 def materialize_workspace(
     scenario_path: Path,
     package_path: Path,
@@ -1201,8 +1375,6 @@ def materialize_workspace(
         raise FileExistsError(f"output directory already exists: {output_directory}")
     home_policy = home_policy or HomeGenerationPolicy()
     sensor_policy = sensor_policy or SensorDeploymentPolicy()
-    scenario = _load_model(scenario_path, Scenario)
-    package = _load_model(package_path, PersonalProcessPackage)
     output_directory.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
         tempfile.mkdtemp(prefix=f".{output_directory.name}.", dir=output_directory.parent)
@@ -1217,108 +1389,22 @@ def materialize_workspace(
             progress(phase, percent, message, counters or {})
 
     try:
-        emit("input", 2, "Accepted source artifacts")
-        shutil.copyfile(scenario_path, staging / "scenario.json")
-        shutil.copyfile(package_path, staging / "personal-process-package.json")
-        _json(staging / "home-generation-policy.json", home_policy)
-        _json(staging / "sensor-deployment-policy.json", sensor_policy)
-
-        compilation = compile_scenario(scenario)
-        _json(staging / "compilation-report.json", compilation.report)
-        if compilation.plan is None:
-            raise MaterializationFailure(
-                "compilation", "Scenario compilation failed.", compilation.report.issues
-            )
-        _json(staging / "canonical-plan.json", compilation.plan)
-        emit(
-            "compilation",
-            12,
-            "Compiled the canonical plan",
-            {"activities": compilation.report.summary.scheduled_activity_count},
+        environment = _build_environment(
+            staging,
+            scenario_path,
+            package_path,
+            home_policy=home_policy,
+            sensor_policy=sensor_policy,
+            approved_home=approved_home,
+            approved_sensors=approved_sensors,
+            emit=emit,
         )
-
-        if approved_home is not None:
-            _json(staging / "home-model.json", approved_home)
-            emit(
-                "home",
-                26,
-                "Accepted the researcher-approved plan",
-                {"regions": len(approved_home.regions)},
-            )
-        else:
-            home_result = generate_home(scenario, package, home_policy)
-            _json(staging / "home-generation-report.json", home_result.report)
-            if home_result.home is None:
-                raise MaterializationFailure(
-                    "home", "home generation failed", home_result.report.issues
-                )
-            _json(staging / "home-model.json", home_result.home)
-            emit(
-                "home",
-                26,
-                "Generated and validated the executable home",
-                {"regions": home_result.report.summary.region_count},
-            )
-
-        bundle_result = build_bundle_files(
-            staging / "scenario.json",
-            staging / "canonical-plan.json",
-            staging / "personal-process-package.json",
-            staging / "home-model.json",
-        )
-        _json(staging / "environment-report.json", bundle_result.report)
-        if bundle_result.bundle is None:
-            raise MaterializationFailure(
-                "binding",
-                "Environment bundle validation failed.",
-                bundle_result.report.issues,
-            )
-        _json(staging / "simulation-bundle.json", bundle_result.bundle)
-        emit(
-            "binding",
-            40,
-            "Resolved action and route bindings",
-            {"bindings": bundle_result.report.summary.action_binding_count},
-        )
-
-        if approved_sensors is not None:
-            sensor_model = bind_sensor_model(approved_sensors, bundle_result.bundle)
-            _json(staging / "sensor-model.json", sensor_model)
-            emit(
-                "sensors",
-                50,
-                "Accepted the researcher-approved sensor field",
-                {"sensors": len(sensor_model.sensors)},
-            )
-        else:
-            sensor_result = deploy_sensors(bundle_result.bundle, sensor_policy)
-            _json(staging / "sensor-deployment-report.json", sensor_result.report)
-            if sensor_result.sensor_model is None:
-                raise MaterializationFailure(
-                    "sensors", "Sensor deployment failed.", sensor_result.report.issues
-                )
-            sensor_model = sensor_result.sensor_model
-            _json(staging / "sensor-model.json", sensor_model)
-            emit(
-                "sensors",
-                50,
-                "Deployed and validated sensors",
-                {"sensors": sensor_result.report.summary.sensor_count},
-            )
-        _json_document(
-            staging / "plan-approval.json",
-            {
-                "schemaVersion": "1.0.0",
-                "documentType": "plan_approval",
-                "homeModel": "researcher_approved" if approved_home else "generated",
-                "sensorModel": "researcher_approved" if approved_sensors else "generated",
-                "homeSha256": canonical_sha256(bundle_result.bundle.home_model),
-                "sensorModelSha256": canonical_sha256(sensor_model),
-            },
-        )
+        scenario = environment.scenario
+        bundle = environment.bundle
+        sensor_model = environment.sensor_model
 
         emit("simulation", 52, "Started deterministic execution")
-        simulation = simulate_bundle(bundle_result.bundle)
+        simulation = simulate_bundle(bundle)
         _json(staging / "simulation-report.json", simulation.report)
         if simulation.trace is None:
             raise MaterializationFailure(
@@ -1337,7 +1423,7 @@ def materialize_workspace(
         )
 
         emit("projection", 84, "Started observable sensor projection")
-        projection = project_sensors(simulation.trace, bundle_result.bundle, sensor_model)
+        projection = project_sensors(simulation.trace, bundle, sensor_model)
         _json(staging / "sensor-projection-report.json", projection.report)
         if projection.observable_log is None or projection.oracle_mapping is None:
             raise MaterializationFailure(
@@ -1352,23 +1438,8 @@ def materialize_workspace(
             {"observations": projection.report.summary.observation_count},
         )
 
-        # An approved model has no generation report: nothing generated it. The manifest records
-        # only artifacts this run actually produced, and plan-approval.json says which of the two
-        # models the researcher supplied.
         roles = {
-            "scenario": "scenario.json",
-            "behavior_package": "personal-process-package.json",
-            "home_policy": "home-generation-policy.json",
-            **({} if approved_home else {"home_report": "home-generation-report.json"}),
-            "home": "home-model.json",
-            "compilation_report": "compilation-report.json",
-            "canonical_plan": "canonical-plan.json",
-            "environment_report": "environment-report.json",
-            "simulation_bundle": "simulation-bundle.json",
-            "sensor_policy": "sensor-deployment-policy.json",
-            **({} if approved_sensors else {"sensor_report": "sensor-deployment-report.json"}),
-            "sensor_model": "sensor-model.json",
-            "plan_approval": "plan-approval.json",
+            **environment.roles,
             "simulation_report": "simulation-report.json",
             "execution_trace": "execution-trace.json",
             "projection_report": "sensor-projection-report.json",
@@ -1377,7 +1448,7 @@ def materialize_workspace(
         }
         manifest = SyntheticWorkspaceManifest(
             scenario_id=scenario.scenario_id,
-            bundle_id=bundle_result.bundle.bundle_id,
+            bundle_id=bundle.bundle_id,
             trace_id=simulation.trace.trace_id,
             sensor_log_id=projection.observable_log.log_id,
             artifacts=[

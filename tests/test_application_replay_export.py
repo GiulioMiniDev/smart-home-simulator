@@ -386,7 +386,7 @@ def test_archive_export_creates_valid_zip(
     assert row["role"] == "export_archive"
 
 
-def test_reconcile_auto_registers_orphan_export_zips(
+def test_repair_auto_registers_orphan_export_zips(
     completed_workspace: tuple[WorkspaceService, str],
 ) -> None:
     workspace, run_id = completed_workspace
@@ -403,7 +403,9 @@ def test_reconcile_auto_registers_orphan_export_zips(
     # Unregister zip artifact manually to simulate an uncatalogued/orphan export archive
     with workspace.transaction() as connection:
         connection.execute("DELETE FROM artifacts WHERE relative_path = ?", (relative,))
-    # Running reconcile should auto-register the orphan export zip and clear diagnostic_mode for it
+    assert any(f"orphan file: {relative}" in issue for issue in workspace.reconcile())
+    # Repair — which every open runs — adopts the archive rather than reporting it forever.
+    assert workspace.repair().artifacts_adopted == 1
     reconciled_issues = [
         issue for issue in workspace.reconcile() if f"orphan file: {relative}" in issue
     ]

@@ -18,8 +18,17 @@ application service has passed the existing validators and atomically published 
   reference. The current authoritative result replaces the previous home issue set.
 - Replay sessions persist verified digest, position and filters. Verification invokes M5
   semantic replay before recording a digest.
-- Integrity failure enables diagnostic mode. Read and recovery operations remain available;
-  new homes, artifacts, revisions, jobs and settings are refused.
+- Startup reconciles the catalogue with the folder. A catalogued file that is no longer there is
+  forgotten together with every reference to it, exports whose folder was deleted are closed,
+  unfinished staging directories are removed, and the change is reported to the researcher.
+- Only content that is present and contradicts its recorded digest — or a path escaping the root —
+  enables diagnostic mode. Read, deletion and repair remain available; new homes, artifacts,
+  revisions, jobs and settings are refused.
+- Files no catalogue entry describes are reported as reclaimable and deleted only on request.
+- Deleting a home removes its residents, revisions, issues, runs, exports and stored inputs;
+  deleting a run removes its events, artifacts, generated days and exports; deleting an export
+  removes its folder and archive. A stored object shared with a surviving home is never removed.
+  Active jobs block deletion of the run and of the home that owns them.
 
 ## Durable job state
 
@@ -28,6 +37,13 @@ Progress is emitted by completed backend phases, not timers. Cancellation first 
 cooperative termination and then enforces a bounded stop. A cancelled, failed or interrupted
 job cannot publish staging as a valid run. A backend restart converts persisted `running`
 jobs to `interrupted` and appends a durable event.
+
+An `environment` job stops the materialization pipeline after the sensor field and executes
+nothing. It publishes the home and sensor revisions a full run would publish, from the same
+artifacts and through the same gates, and it is the only completed job kind that publishes no
+execution evidence: its manifest is an environment materialization manifest, and diary,
+observations, replay and export stay closed for it. Approving the plan it produced and starting a
+run afterwards executes exactly those models.
 
 ## Diary and observable/oracle traversal
 

@@ -482,6 +482,39 @@ class ExportService:
                 return ExportManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
         return None
 
+    def list_exports(self, run_id: str | None = None) -> list[dict[str, Any]]:
+        """Every recorded export, newest first, with what is actually on disk for it.
+
+        A researcher who wants the space back needs to see the exports they built in earlier
+        sessions, not only the one this browser tab happens to have created.
+        """
+        query = "SELECT export_id, run_id, created_at FROM exports"
+        parameters: tuple[Any, ...] = ()
+        if run_id is not None:
+            query += " WHERE run_id = ?"
+            parameters = (run_id,)
+        query += " ORDER BY created_at DESC, export_id"
+        with self.workspace.connection() as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        results: list[dict[str, Any]] = []
+        for row in rows:
+            directory = self.workspace.exports_path / row["export_id"]
+            archive = self.workspace.exports_path / f"{row['export_id']}.zip"
+            files = [item for item in directory.rglob("*") if item.is_file()]
+            results.append(
+                {
+                    "exportId": row["export_id"],
+                    "runId": row["run_id"],
+                    "createdAt": row["created_at"],
+                    "available": directory.is_dir(),
+                    "archived": archive.is_file(),
+                    "fileCount": len(files),
+                    "sizeBytes": sum(item.stat().st_size for item in files)
+                    + (archive.stat().st_size if archive.is_file() else 0),
+                }
+            )
+        return results
+
     def export(self, request: ExportRequest) -> ExportManifest:
         existing = self._reusable_export(request)
         if existing is not None:

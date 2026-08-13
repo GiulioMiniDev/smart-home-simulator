@@ -21,7 +21,7 @@ from smart_home_sim.application.workspace import WorkspaceError, WorkspaceServic
 from smart_home_sim.domain.application import JobProgress, JobRecord, JobStatus
 from smart_home_sim.domain.materialization import HomeGenerationPolicy, SensorDeploymentPolicy
 from smart_home_sim.domain.models import Scenario
-from smart_home_sim.materialization import materialize_workspace
+from smart_home_sim.materialization import materialize_environment, materialize_workspace
 from smart_home_sim.materialization.service import MaterializationFailure
 
 
@@ -80,7 +80,12 @@ def _materialization_worker(root: str, job_id: str) -> None:
         # executes it, and only a home still carrying the recommendation is materialized by policy.
         approved_home = approved_home_model(workspace, home_id) if home_id else None
         approved_sensors = approved_sensor_model(workspace, home_id) if home_id else None
-        materialize_workspace(
+        # The environment alone is the same pipeline stopped before execution, so it publishes its
+        # models through exactly the path a full run does — what a researcher then approves is what
+        # a later run executes, with no second way of producing a plan to keep in agreement.
+        environment_only = request.get("stopAfter") == "environment"
+        build = materialize_environment if environment_only else materialize_workspace
+        build(
             scenario,
             behavior,
             output,
@@ -125,7 +130,11 @@ def _materialization_worker(root: str, job_id: str) -> None:
             JobProgress(
                 phase="completed",
                 percent=100,
-                message="Simulation and sensor projection completed",
+                message=(
+                    "Home and sensor field published; no simulation was executed"
+                    if environment_only
+                    else "Simulation and sensor projection completed"
+                ),
             ),
             process_id=os.getpid(),
             result_reference=job_id,
@@ -200,6 +209,54 @@ class JobManager:
         home_policy: dict[str, Any] | None = None,
         sensor_policy: dict[str, Any] | None = None,
     ) -> JobRecord:
+        return self._start_materialization(
+            home_id,
+            scenario_artifact_id,
+            behavior_artifact_id,
+            kind="materialization",
+            seed=seed,
+            home_policy=home_policy,
+            sensor_policy=sensor_policy,
+        )
+
+    def start_environment(
+        self,
+        home_id: str,
+        scenario_artifact_id: str,
+        behavior_artifact_id: str,
+        *,
+        seed: int | None = None,
+        home_policy: dict[str, Any] | None = None,
+        sensor_policy: dict[str, Any] | None = None,
+    ) -> JobRecord:
+        """Build the home and its sensor field, and stop there.
+
+        Reviewing a plan used to cost a full execution: the only way to see the rooms was to run
+        the whole horizon and then decide the kitchen was in the wrong place. This produces the
+        same models by the same gates, so approving them and running afterwards executes exactly
+        what was reviewed.
+        """
+        return self._start_materialization(
+            home_id,
+            scenario_artifact_id,
+            behavior_artifact_id,
+            kind="environment",
+            seed=seed,
+            home_policy=home_policy,
+            sensor_policy=sensor_policy,
+        )
+
+    def _start_materialization(
+        self,
+        home_id: str,
+        scenario_artifact_id: str,
+        behavior_artifact_id: str,
+        *,
+        kind: str,
+        seed: int | None,
+        home_policy: dict[str, Any] | None,
+        sensor_policy: dict[str, Any] | None,
+    ) -> JobRecord:
         self.workspace.artifact_path(scenario_artifact_id)
         self.workspace.artifact_path(behavior_artifact_id)
         scenario = Scenario.model_validate_json(self.workspace.read_artifact(scenario_artifact_id))
@@ -215,7 +272,7 @@ class JobManager:
             if running >= self.max_workers:
                 raise WorkspaceError("all local workers are busy")
             job = self.workspace.create_job(
-                "materialization",
+                kind,
                 home_id=home_id,
                 seed=seed,
                 request={
@@ -223,6 +280,7 @@ class JobManager:
                     "behaviorArtifactId": behavior_artifact_id,
                     "homePolicy": home_policy or {},
                     "sensorPolicy": sensor_policy or {},
+                    **({"stopAfter": "environment"} if kind == "environment" else {}),
                 },
             )
             process = self._context.Process(
