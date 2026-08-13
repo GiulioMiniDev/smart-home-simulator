@@ -29,7 +29,7 @@ interface SimulationAuthoringBundle {
     seed: number;
     provenance: Provenance;
     modelReferences: {
-      activityCatalog: { referenceId: "activity_catalog"; version: "1.2.0" };
+      activityCatalog: { referenceId: "activity_catalog"; version: "1.3.0" };
       homeModel: { referenceId: string; version: "1.0.0" };
     };
     residents: Array<{ residentId: string; displayName: string; profile?: Record<string, JsonValue> }>;
@@ -68,7 +68,7 @@ interface SimulationAuthoringBundle {
     language: string;
     provenance: Provenance;
     catalogs: {
-      activityCatalog: { catalogId: "smart_home_activity_catalog"; version: "1.2.0" };
+      activityCatalog: { catalogId: "smart_home_activity_catalog"; version: "1.3.0" };
       variableCatalog: { catalogId: "smart_home_variable_catalog"; version: "1.0.0" };
       actionCatalog: { catalogId: "smart_home_action_catalog"; version: "1.1.0" };
     };
@@ -211,6 +211,7 @@ morning_toilet_and_wash = use_toilet, wash_face
 phone_call = phone_call
 portion_and_store_prepared_food = portion_food, store_food
 post_walk_shower = shower
+prepare_and_drink_hot_drink = prepare_drink, consume_drink
 prepare_and_eat_breakfast = prepare_food, consume_meal
 prepare_breakfast = prepare_food
 prepare_coffee_and_drink_on_balcony = prepare_drink, consume_drink
@@ -248,6 +249,7 @@ travel_to_neighborhood_bar = travel
 travel_to_pharmacy = travel
 travel_to_relatives_home = travel
 travel_to_supermarket = travel
+use_toilet = use_toilet
 vacuum_and_dust_apartment = vacuum, dust
 visit_relative_and_have_dinner = socialize_in_person, consume_meal
 wake_up = wake_up
@@ -261,6 +263,7 @@ watch_late_news = watch_media
 watch_sunday_program = watch_media
 watch_television = watch_media
 weekly_meal_preparation = prepare_food, portion_food, store_food
+work_from_home = work
 work_shift = work
 ```
 
@@ -383,6 +386,12 @@ morning_toilet_and_wash  [use_toilet, wash_face]
 phone_call  [phone_call]
   move_to_capability(communication_area) -> change_posture(sitting) -> communicate(phone) -> change_posture(standing)
 
+prepare_and_drink_hot_drink  [prepare_drink, consume_drink]
+  move_to(<activity location>) -> move_to_capability(coffee_and_breakfast_storage) -> open(coffee_and_breakfast_storage) -> take_item(ingredients) ->
+  close(coffee_and_breakfast_storage) -> move_to_capability(coffee_equipment) -> activate(coffee_equipment) -> prepare_food(hot_drink, drink) ->
+  deactivate(coffee_equipment) -> move_to_capability(consumption_area) -> change_posture(sitting) -> consume(drink) ->
+  change_posture(standing) -> put_item(ingredients)
+
 prepare_light_dinner  [prepare_food]
   move_to_capability(food_preparation_area) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
   activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> open(food_storage) -> take_item(ingredients) ->
@@ -423,6 +432,10 @@ take_morning_medication  [take_medication]
 tidy_living_room_and_hallway  [tidy_area]
   move_to_capability(tidying_area) -> organize(<intent>)
 
+use_toilet  [use_toilet]
+  move_to(<activity location>) -> move_to_capability(toilet) -> personal_care(use_toilet) -> move_to_capability(washing_area) ->
+  personal_care(wash_hands)
+
 wake_up  [wake_up]
   move_to(<activity location>) -> change_posture(standing)
 
@@ -435,6 +448,10 @@ weekly_meal_preparation  [prepare_food, portion_food, store_food]
   activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> put_item(prepared_meal) ->
   move_to_capability(food_preparation_area) -> organize(prepared_food_portions) -> move_to_capability(food_storage) -> open(food_storage) ->
   put_item(prepared_food_portions) -> close(food_storage)
+
+work_from_home  [work]
+  move_to(<activity location>) -> move_to_capability(table) -> change_posture(sitting) -> perform_work(focused_work) ->
+  change_posture(standing)
 ```
 
 
@@ -484,7 +501,7 @@ wait(purpose)                       purpose = literal string
 
 Ruoli con arredo dedicato: la generazione della casa li risolve su un oggetto reale, quindi preferiscili sempre. `bed`, `chair`, `cleaning_product_storage`, `cleaning_products`, `clothes`, `clothing_storage`, `coffee_and_breakfast_storage`, `coffee_equipment`, `consumption_area`, `cooking_appliance`, `dining_area`, `dining_seat`, `drinking_water_source`, `entrance`, `food_preparation_area`, `food_storage`, `home_entrance`, `home_exit`, `household_storage`, `household_supplies`, `ingredients`, `laundry`, `laundry_collection`, `laundry_equipment`, `laundry_storage`, `media`, `medication`, `medication_cabinet`, `medication_storage`, `moka_coffee_maker`, `personal_care_fixture`, `prepared_food_portions`, `prepared_meal`, `radio`, `refrigerator`, `rest_area`, `seating`, `shower`, `shower_water`, `sink`, `sink_faucet`, `sleeping_area`, `sofa`, `storage_cabinet`, `stove`, `table`, `television`, `toilet`, `used_clothing`, `wardrobe`, `washbasin`, `washing_area`, `washing_machine`.
 
-Ruoli di area o di oggetto trasportato usati dai modelli provati. Sono ammessi, ma non hanno un arredo dedicato: non inventarne altri fuori da questi due elenchi, perche' un ruolo sconosciuto esegue contro un oggetto inesistente. `cleaning_tool`, `communication_area`, `drinking_glass`, `drinking_water`, `drying_area`, `exercise_area`, `kitchen_surfaces`, `medication_dose_container`, `purchases`, `retail_area`, `tidying_area`, `walking_area`.
+Ruoli di area o di oggetto trasportato usati dai modelli provati. Sono ammessi, ma non hanno un arredo dedicato: non inventarne altri fuori da questi due elenchi, perche' un ruolo sconosciuto esegue contro un oggetto inesistente. `cleaning_tool`, `communication_area`, `drink`, `drinking_glass`, `drinking_water`, `drying_area`, `exercise_area`, `kitchen_surfaces`, `medication_dose_container`, `purchases`, `retail_area`, `tidying_area`, `walking_area`.
 
 Per parametri location usa `activity_location`. Per capability ed environment entity usa un literal role. Non usare `activity_resource` come scorciatoia per un parametro capability o environment entity.
 

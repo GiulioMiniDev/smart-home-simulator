@@ -31,6 +31,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+from collections import Counter, defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
@@ -71,6 +72,7 @@ from smart_home_sim.hybrid_planning.outline import (
     Displacement,
     FixedCommitment,
     HabitComposition,
+    HabitDayTypeObservation,
     HabitGroundTruth,
     HabitObservation,
     HorizonOutline,
@@ -79,7 +81,9 @@ from smart_home_sim.hybrid_planning.outline import (
 )
 from smart_home_sim.hybrid_planning.package_authoring import ACTIVITY_CATALOG_VERSION
 from smart_home_sim.hybrid_planning.recurring_activities import (
+    ActivityCadence,
     BehavioralProfile,
+    CadencePeriod,
     RecurringActivity,
     RecurringActivityKind,
 )
@@ -119,7 +123,7 @@ RHYTHM_OWNED_INTENTS = frozenset({"wake_up", "sleep"})
 # cannot fit them is genuinely over-constrained and should say so.
 _SACRIFICIAL_KINDS = frozenset({RecurringActivityKind.optional, RecurringActivityKind.rare})
 
-# The 24 intents `INTENT_CATALOG` exposes are the *in-home* alphabet: each carries a room and a
+# The intents `INTENT_CATALOG` exposes are the *in-home* alphabet: each carries a room and a
 # reference process model, and they are what a habit inside the dwelling performs.
 _HOME_INTENTS = {spec.intent_id: spec.default_location for spec in INTENT_CATALOG}
 # Time away needs no such detail; `away_intent_specs` supplies those, taken from the activity
@@ -276,16 +280,40 @@ def _place_events(outline: HorizonOutline, seed: int) -> dict[str, list[_PlacedE
     return placed
 
 
+def _daily_capacity(outline: HorizonOutline) -> dict[str, int]:
+    """How many occurrences of each habit one day may legitimately hold.
+
+    One, for everything that recurs weekly or monthly. For a daily habit it is whatever the cadence
+    asks for, taken at its widest across the baseline and any phase that replaces it, because a
+    displaced occurrence may be rescheduled into a phase with a different rhythm and the answer
+    must not depend on which side of the boundary it lands.
+    """
+    capacity: dict[str, int] = {}
+    cadences: dict[str, list[ActivityCadence]] = defaultdict(list)
+    for activity in outline.profile.recurring_activities:
+        cadences[activity.recurring_activity_id].append(activity.cadence)
+    for phase in outline.phases:
+        for override in phase.activity_overrides:
+            if override.cadence is not None:
+                cadences[override.recurring_activity_id].append(override.cadence)
+    for recurring_activity_id, declared in cadences.items():
+        capacity[recurring_activity_id] = max(
+            item.times_per_period if item.period is CadencePeriod.day else 1 for item in declared
+        )
+    return capacity
+
+
 def _apply_displacement(
     calendar: CadenceCalendar,
     placed: dict[str, list[_PlacedEvent]],
+    capacity: dict[str, int],
 ) -> tuple[CadenceCalendar, int, int, int]:
     """Remove the occurrences events push off their day, moving the ones asked to move.
 
-    A rescheduled occurrence looks forward for the nearest day inside the horizon that is neither
-    displaced for that habit nor already running it. Finding none, it is dropped and counted:
-    silently keeping it would put two of the same habit on one day, and silently losing it would
-    hide the fact from whoever reads the report.
+    A rescheduled occurrence looks forward for the nearest day inside the horizon that is not
+    displaced for that habit and still has room for it. Finding none, it is dropped and counted:
+    silently keeping it would put one more of the habit on a day than its cadence ever asks for,
+    and silently losing it would hide the fact from whoever reads the report.
     """
     by_date = {day.date: day for day in calendar.days}
     order = [day.date for day in calendar.days]
@@ -315,7 +343,7 @@ def _apply_displacement(
                 skipped += 1
                 continue
             target = _nearest_free_day(
-                order, key, occurrence.recurring_activity_id, displaced, occurrences
+                order, key, occurrence.recurring_activity_id, displaced, occurrences, capacity
             )
             if target is None:
                 dropped += 1
@@ -337,8 +365,10 @@ def _nearest_free_day(
     recurring_activity_id: str,
     displaced: dict[str, dict[str, Displacement]],
     occurrences: dict[str, list[ActivityOccurrence]],
+    capacity: dict[str, int],
 ) -> str | None:
     start = order.index(key)
+    room = capacity.get(recurring_activity_id, 1)
     for offset in range(1, RESCHEDULE_SEARCH_DAYS + 1):
         index = start + offset
         if index >= len(order):
@@ -346,9 +376,12 @@ def _nearest_free_day(
         candidate = order[index]
         if recurring_activity_id in displaced.get(candidate, {}):
             continue
-        if any(
-            item.recurring_activity_id == recurring_activity_id for item in occurrences[candidate]
-        ):
+        running = sum(
+            1
+            for item in occurrences[candidate]
+            if item.recurring_activity_id == recurring_activity_id
+        )
+        if running >= room:
             continue
         return candidate
     return None
@@ -356,6 +389,35 @@ def _nearest_free_day(
 
 def _activities_by_id(profile: BehavioralProfile) -> dict[str, RecurringActivity]:
     return {activity.recurring_activity_id: activity for activity in profile.recurring_activities}
+
+
+def _effective_activities(
+    outline: HorizonOutline, baseline: dict[str, RecurringActivity], day: date
+) -> dict[str, RecurringActivity]:
+    """The habits as they stand on one day, with the cadence any active phase replaced.
+
+    `_effective_calendar` already places the occurrences from the variant cadence; everything that
+    reads a cadence *afterwards* has to read the same one. It did not: the window handed to the
+    compiler came from the baseline, so a habit a phase moved to a later band was given the earlier
+    band's hours, and a habit a phase split into more occurrences a day was measured against the
+    wrong number of sub-bands. The contract forbids two phases overriding one habit at once, so
+    there is never a choice to make here.
+    """
+    replacements: dict[str, ActivityCadence] = {}
+    for phase in outline.phases:
+        if not phase.start_date <= day <= phase.end_date:
+            continue
+        for override in phase.activity_overrides:
+            if override.cadence is not None:
+                replacements[override.recurring_activity_id] = override.cadence
+    if not replacements:
+        return baseline
+    return {
+        habit_id: activity.model_copy(update={"cadence": replacements[habit_id]})
+        if habit_id in replacements
+        else activity
+        for habit_id, activity in baseline.items()
+    }
 
 
 def _recurring_activity_id_of(activity: Activity) -> str | None:
@@ -369,8 +431,60 @@ def _band(day_date: date, start: str, end: str, tz: ZoneInfo) -> tuple[datetime,
     return at_offset(day_date, _to_minutes(start), tz), at_offset(day_date, _to_minutes(end), tz)
 
 
+def _sub_bands(
+    activities: Sequence[Activity], recurring: dict[str, RecurringActivity]
+) -> dict[str, tuple[str, str]]:
+    """The slice of its habit's band each occurrence of a multi-occurrence daily habit owns.
+
+    A habit recurring several times a day is placed one occurrence per equal sub-band, and the
+    window handed to the compiler has to say the same thing. Handing each of them the *whole* band
+    instead — which is right for a habit that happens once — makes every occurrence free to sit
+    anywhere among the others, and the compiler is then asked to choose an ordering rather than to
+    confirm one. It does not scale: four working blocks and three bathroom visits inside bands of
+    nine and eleven hours exhausted CP-SAT's budget on the feasibility probes alone, and a horizon
+    that expands cleanly was rejected with `SOLVER_NOT_OPTIMAL` and no day named.
+
+    The occurrences are matched to sub-bands in time order, which is the order they were drawn in,
+    so occurrence *i* is given back the sub-band it came from.
+    """
+    by_habit: dict[str, list[Activity]] = defaultdict(list)
+    for activity in activities:
+        habit_id = _recurring_activity_id_of(activity)
+        if habit_id is None or activity.start_window is None:
+            continue
+        declared = recurring.get(habit_id)
+        if declared is None or declared.cadence.period is not CadencePeriod.day:
+            continue
+        if declared.cadence.times_per_period < 2:
+            continue
+        by_habit[habit_id].append(activity)
+
+    bands: dict[str, tuple[str, str]] = {}
+    for habit_id, occurrences in by_habit.items():
+        cadence = recurring[habit_id].cadence
+        low = _to_minutes(cadence.window_start)
+        width = (_to_minutes(cadence.window_end) - low) / cadence.times_per_period
+        ordered = sorted(
+            occurrences,
+            key=lambda item: (item.start_window.preferred, item.activity_id),  # type: ignore[union-attr]
+        )
+        for index, activity in enumerate(ordered):
+            # More occurrences than sub-bands means one was rescheduled onto a day that already
+            # ran the habit; it keeps the last sub-band rather than reaching past the band's end.
+            slot = min(index, cadence.times_per_period - 1)
+            bands[activity.activity_id] = (
+                _to_hhmm(int(low + slot * width)),
+                _to_hhmm(int(low + (slot + 1) * width)),
+            )
+    return bands
+
+
 def _wobble(
-    activity: Activity, recurring: RecurringActivity | None, tz: ZoneInfo, seed: int
+    activity: Activity,
+    recurring: RecurringActivity | None,
+    tz: ZoneInfo,
+    seed: int,
+    band: tuple[str, str] | None = None,
 ) -> Activity:
     """Wobble the preferred time by the habit's jitter, and open the window to its declared band.
 
@@ -380,6 +494,9 @@ def _wobble(
     handing that whole band to the compiler is what lets it resolve a collision rather than
     report one. Deriving both from jitter, as an earlier revision did, left a five-hour Christmas
     with fifteen minutes of room and made the day infeasible.
+
+    ``band`` narrows that statement for one occurrence of a habit that recurs several times a day,
+    where the author's band is divided rather than shared: see `_sub_bands`.
     """
     if activity.start_window is None:
         return activity
@@ -391,12 +508,11 @@ def _wobble(
             }
         )
 
-    earliest, latest = _band(
-        activity.start_window.preferred.date(),
+    window_start, window_end = band or (
         recurring.cadence.window_start,
         recurring.cadence.window_end,
-        tz,
     )
+    earliest, latest = _band(activity.start_window.preferred.date(), window_start, window_end, tz)
     jitter = max(recurring.cadence.jitter_minutes, 0)
     if jitter > 0:
         offset = _rng(seed, "jitter", activity.activity_id).randint(-jitter, jitter)
@@ -619,22 +735,80 @@ def _commitment_activities(
     return activities
 
 
+# A band's dominant activity has to hold a minute on at least this share of the applicable days
+# before that minute counts as part of the band's effective window. Half is the weakest claim
+# worth publishing — "on most days, this is what is happening here" — and it keeps a rare late
+# night from stretching the window.
+EFFECTIVE_DAY_SHARE = 0.5
+
+
+def _band_minutes_in_order(spans: list[tuple[int, int]]) -> list[int]:
+    """The band's minutes in traversal order, so a band that wraps reads 21:30 -> 06:29."""
+    return [minute for start, end in spans for minute in range(start, end)]
+
+
+def _longest_run(minutes: list[int], occupied: set[int]) -> list[int]:
+    best: list[int] = []
+    current: list[int] = []
+    for minute in minutes:
+        if minute in occupied:
+            current.append(minute)
+            if len(current) > len(best):
+                best = current
+        else:
+            current = []
+    return best
+
+
+def _compose(by_intent: dict[str, float], total: float) -> list[HabitComposition]:
+    return [
+        HabitComposition(
+            intent=intent,
+            minutes=round(minutes, 1),
+            share=round(minutes / total, 4) if total else 0.0,
+        )
+        for intent, minutes in sorted(by_intent.items(), key=lambda item: -item[1])
+    ]
+
+
+def _clock(minute: int) -> str:
+    return f"{minute // 60 % 24:02d}:{minute % 60:02d}"
+
+
 def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> HabitGroundTruth:
     """Measure what each declared habit band actually contains across the generated horizon.
 
-    For every day and every band, each planned activity contributes the minutes its interval
-    overlaps the band. An activity that starts before the band or runs past its end counts only
-    for the part inside — the night band and a sleep block that crosses midnight are the case that
-    forces this. The remainder of the band, during which the plan has the resident doing nothing
-    the outline named, is reported as `unaccounted` rather than silently dropped: the same "other"
-    column the habit-segmentation paper prints beside its own results.
+    For every applicable day and every band, each planned activity contributes the minutes its
+    interval overlaps the band. An activity that starts before the band or runs past its end
+    counts only for the part inside — the night band and a sleep block that crosses midnight are
+    the case that forces this. The remainder of the band, during which the plan has the resident
+    doing nothing the outline named, is reported as `unaccounted` rather than silently dropped:
+    the same "other" column the habit-segmentation paper prints beside its own results.
+
+    Three measurements beyond that, all of them things an evaluation would otherwise have to
+    reconstruct from the activity log:
+
+    - a band scoped to particular weekdays is measured over those days only, so its shares are not
+      diluted by the days it does not claim;
+    - a band that is *not* scoped is additionally measured over weekdays and weekend separately,
+      because that is where an undeclared split hides;
+    - the band's dominant activity is tracked minute by minute, so the window the author declared
+      can be compared against the stretch the behaviour actually occupies.
     """
     observations: list[HabitObservation] = []
     for segment in outline.habits:
         spans = segment.minute_spans()
         band_minutes = sum(end - start for start, end in spans)
+        applicable = [day for day in days if segment.applies_on(day.date)]
+
         by_intent: dict[str, float] = {}
-        for day in days:
+        by_class: dict[str, dict[str, float]] = {"weekday": {}, "weekend": {}}
+        class_days = {"weekday": 0, "weekend": 0}
+        occupancy: dict[str, Counter[int]] = defaultdict(Counter)
+
+        for day in applicable:
+            day_class = "weekend" if day.date.weekday() >= 5 else "weekday"
+            class_days[day_class] += 1
             for activity in day.activities:
                 if activity.start_window is None or activity.duration is None:
                     continue
@@ -647,22 +821,63 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
                     lo = offset + shift
                     hi = lo + minutes
                     for start, end in spans:
-                        overlap = min(hi, end) - max(lo, start)
-                        if overlap > 0:
-                            by_intent[activity.intent] = by_intent.get(activity.intent, 0.0) + (
-                                overlap
-                            )
-        total = float(band_minutes * len(days))
+                        first = max(lo, start)
+                        last = min(hi, end)
+                        overlap = last - first
+                        if overlap <= 0:
+                            continue
+                        by_intent[activity.intent] = by_intent.get(activity.intent, 0.0) + overlap
+                        bucket = by_class[day_class]
+                        bucket[activity.intent] = bucket.get(activity.intent, 0.0) + overlap
+                        occupancy[activity.intent].update(range(int(first), int(last)))
+
+        total = float(band_minutes * len(applicable))
         covered = sum(by_intent.values())
-        composition = [
-            HabitComposition(
-                intent=intent,
-                minutes=round(minutes, 1),
-                share=round(minutes / total, 4) if total else 0.0,
-            )
-            for intent, minutes in sorted(by_intent.items(), key=lambda item: -item[1])
-        ]
         unaccounted = max(0.0, total - covered)
+
+        dominant = max(by_intent, key=lambda intent: by_intent[intent]) if by_intent else None
+        effective: list[int] = []
+        if dominant is not None and applicable:
+            floor = EFFECTIVE_DAY_SHARE * len(applicable)
+            held = {minute for minute, count in occupancy[dominant].items() if count >= floor}
+            effective = _longest_run(_band_minutes_in_order(spans), held)
+
+        day_types = [
+            HabitDayTypeObservation(
+                day_type=day_class,  # type: ignore[arg-type]
+                day_count=class_days[day_class],
+                total_minutes=round(float(band_minutes * class_days[day_class]), 1),
+                composition=_compose(
+                    by_class[day_class], float(band_minutes * class_days[day_class])
+                ),
+                unaccounted_minutes=round(
+                    max(
+                        0.0,
+                        float(band_minutes * class_days[day_class])
+                        - sum(by_class[day_class].values()),
+                    ),
+                    1,
+                ),
+                unaccounted_share=round(
+                    max(
+                        0.0,
+                        1
+                        - sum(by_class[day_class].values())
+                        / (band_minutes * class_days[day_class]),
+                    ),
+                    4,
+                )
+                if class_days[day_class]
+                else 0.0,
+            )
+            for day_class in ("weekday", "weekend")
+            if class_days[day_class]
+        ]
+        # Restating `composition` under another name helps nobody: the split is published only
+        # when the band actually spans both kinds of day.
+        if len(day_types) < 2:
+            day_types = []
+
         observations.append(
             HabitObservation(
                 habit_id=segment.habit_id,
@@ -670,11 +885,18 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
                 window_start=segment.window_start,
                 window_end=segment.window_end,
                 crosses_midnight=segment.crosses_midnight,
-                day_count=len(days),
+                weekdays=list(segment.weekdays),
+                day_count=len(applicable),
                 total_minutes=round(total, 1),
-                composition=composition,
+                composition=_compose(by_intent, total),
                 unaccounted_minutes=round(unaccounted, 1),
                 unaccounted_share=round(unaccounted / total, 4) if total else 0.0,
+                dominant_intent=dominant,
+                effective_start=_clock(effective[0]) if effective else None,
+                effective_end=_clock(effective[-1] + 1) if effective else None,
+                effective_minutes=float(len(effective)),
+                effective_share=round(len(effective) / band_minutes, 4) if band_minutes else 0.0,
+                day_types=day_types,
             )
         )
     return HabitGroundTruth(
@@ -851,7 +1073,9 @@ def expand_outline(
     _check_package_covers(outline, package)
     calendar = _effective_calendar(outline, seed)
     placed = _place_events(outline, seed)
-    calendar, skipped, moved, dropped = _apply_displacement(calendar, placed)
+    calendar, skipped, moved, dropped = _apply_displacement(
+        calendar, placed, _daily_capacity(outline)
+    )
 
     rhythm_profile = replace(
         RhythmProfile.from_persona(
@@ -885,12 +1109,17 @@ def expand_outline(
                 *_event_spans(day_events, seed),
             ],
         )
+        effective = _effective_activities(
+            outline, recurring_activities, date.fromisoformat(calendar_day.date)
+        )
+        bands = _sub_bands(plan.activities, effective)
         activities = [
             _wobble(
                 activity,
-                recurring_activities.get(_recurring_activity_id_of(activity) or ""),
+                effective.get(_recurring_activity_id_of(activity) or ""),
                 tz,
                 seed,
+                bands.get(activity.activity_id),
             )
             for activity in plan.activities
         ]

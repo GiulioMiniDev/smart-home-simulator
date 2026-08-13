@@ -39,31 +39,17 @@
       "title": "HabitComposition",
       "type": "object"
     },
-    "HabitObservation": {
+    "HabitDayTypeObservation": {
       "additionalProperties": false,
-      "description": "One habit band with the activity mix that actually landed inside it.\n\nThis is the shape of Table IV in the habit-segmentation paper: for the Aruba bin `05:15-07:00`\nthe sleeping activity accounts for about 80% of the band, the rest being other activities or\nunlabelled time. `unaccounted_share` is that remainder \u2014 minutes inside the band during which\nthe plan has the resident doing nothing the outline named.",
+      "description": "The same band measured over one class of days.\n\nA band that is not weekday-scoped covers both the working week and the weekend, and those can\nbe different behaviours wearing the same hours. This splits the measurement so the difference\nis visible without anyone having to re-derive it from the activity log.",
       "properties": {
-        "habitId": {
-          "minLength": 1,
-          "title": "Habitid",
+        "dayType": {
+          "enum": [
+            "weekday",
+            "weekend"
+          ],
+          "title": "Daytype",
           "type": "string"
-        },
-        "label": {
-          "minLength": 1,
-          "title": "Label",
-          "type": "string"
-        },
-        "windowStart": {
-          "title": "Windowstart",
-          "type": "string"
-        },
-        "windowEnd": {
-          "title": "Windowend",
-          "type": "string"
-        },
-        "crossesMidnight": {
-          "title": "Crossesmidnight",
-          "type": "boolean"
         },
         "dayCount": {
           "minimum": 0,
@@ -92,6 +78,134 @@
           "minimum": 0,
           "title": "Unaccountedshare",
           "type": "number"
+        }
+      },
+      "required": [
+        "dayType",
+        "dayCount",
+        "totalMinutes",
+        "unaccountedMinutes",
+        "unaccountedShare"
+      ],
+      "title": "HabitDayTypeObservation",
+      "type": "object"
+    },
+    "HabitObservation": {
+      "additionalProperties": false,
+      "description": "One habit band with the activity mix that actually landed inside it.\n\nThis is the shape of Table IV in the habit-segmentation paper: for the Aruba bin `05:15-07:00`\nthe sleeping activity accounts for about 80% of the band, the rest being other activities or\nunlabelled time. `unaccounted_share` is that remainder \u2014 minutes inside the band during which\nthe plan has the resident doing nothing the outline named.\n\nTwo fields exist because a declared window is not a claim about behaviour. The window is where\nthe planner is *allowed* to put the band's activities, and it is routinely wider than where\nthey land: a night band declared from 21:30 on a horizon whose resident reliably goes to bed at\n23:30 spends two of its nine hours being the evening. `effective_start`/`effective_end` say\nwhere the band's dominant activity actually runs, so an evaluation has a target that the\nbehaviour supports. They are null when no single activity holds the band on most days \u2014 which\nis itself the finding, and the reason not to silently invent a boundary.",
+      "properties": {
+        "habitId": {
+          "minLength": 1,
+          "title": "Habitid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "windowStart": {
+          "title": "Windowstart",
+          "type": "string"
+        },
+        "windowEnd": {
+          "title": "Windowend",
+          "type": "string"
+        },
+        "crossesMidnight": {
+          "title": "Crossesmidnight",
+          "type": "boolean"
+        },
+        "weekdays": {
+          "items": {
+            "$ref": "#/$defs/Weekday"
+          },
+          "title": "Weekdays",
+          "type": "array"
+        },
+        "dayCount": {
+          "minimum": 0,
+          "title": "Daycount",
+          "type": "integer"
+        },
+        "totalMinutes": {
+          "minimum": 0,
+          "title": "Totalminutes",
+          "type": "number"
+        },
+        "composition": {
+          "items": {
+            "$ref": "#/$defs/HabitComposition"
+          },
+          "title": "Composition",
+          "type": "array"
+        },
+        "unaccountedMinutes": {
+          "minimum": 0,
+          "title": "Unaccountedminutes",
+          "type": "number"
+        },
+        "unaccountedShare": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Unaccountedshare",
+          "type": "number"
+        },
+        "dominantIntent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dominantintent"
+        },
+        "effectiveStart": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effectivestart"
+        },
+        "effectiveEnd": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effectiveend"
+        },
+        "effectiveMinutes": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Effectiveminutes",
+          "type": "number"
+        },
+        "effectiveShare": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Effectiveshare",
+          "type": "number"
+        },
+        "dayTypes": {
+          "items": {
+            "$ref": "#/$defs/HabitDayTypeObservation"
+          },
+          "title": "Daytypes",
+          "type": "array"
         }
       },
       "required": [
@@ -194,16 +308,29 @@
       ],
       "title": "Provenance",
       "type": "object"
+    },
+    "Weekday": {
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "title": "Weekday",
+      "type": "string"
     }
   },
-  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.0.0",
+  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.1.0",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer: the bands the outline\ndeclared, and the activity mix the generated horizon actually produced in each. It is derived\nfrom the plan, not from an execution, so it is the *planned* truth \u2014 deviations introduced by\nthe simulator belong to the execution trace.",
+  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer: the bands the outline\ndeclared, and the activity mix the generated horizon actually produced in each. It is derived\nfrom the plan, not from an execution, so it is the *planned* truth \u2014 deviations introduced by\nthe simulator belong to the execution trace.\n\n1.1.0 adds three things a segmentation experiment could not otherwise get without re-deriving\nthem from the activity log: the days each band applies to, where the band's dominant activity\nactually runs as opposed to where the window allows it, and the same measurement split by\nclass of day.",
   "properties": {
     "schemaVersion": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "1.1.0",
+      "default": "1.1.0",
       "title": "Schemaversion",
       "type": "string"
     },
@@ -262,6 +389,6 @@
     "seed",
     "provenance"
   ],
-  "title": "Smart Home Habit Ground Truth 1.0.0",
+  "title": "Smart Home Habit Ground Truth 1.1.0",
   "type": "object"
 }

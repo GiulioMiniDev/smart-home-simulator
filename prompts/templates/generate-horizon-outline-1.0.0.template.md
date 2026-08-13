@@ -105,10 +105,10 @@ process package: a binding or process model for an intent the outline cannot dec
 the import rejects.
 
 The catalog is deliberately **home-centred**: it describes what happens inside the dwelling. Time
-spent away — work, school, appointments, sport, an outing — is not modelled as detailed activity,
-because none of it is observable by home sensors. What matters is only *that the resident is out*.
-Do not invent intents for occupations, and do not build a detailed away-from-home routine: the
-persona's job is useful context for shaping plausible activities at home, not something to simulate.
+spent away — a shift elsewhere, school, appointments, sport, an outing — is not modelled as detailed
+activity, because none of it is observable by home sensors. What matters is only *that the resident
+is out*. Do not invent intents for occupations, and do not build a detailed away-from-home routine:
+where the persona's job happens matters, what the job consists of does not.
 
 Declare each absence **exactly once**, choosing the form that fits:
 
@@ -121,6 +121,51 @@ Declare each absence **exactly once**, choosing the form that fits:
 
 Do not describe the same absence twice. A `work_shift` recurring activity *and* a fixed commitment for the same
 teaching hours put the resident at work twice over.
+
+### Work done at home is not an absence
+
+`work_from_home` is an ordinary in-home intent, in the first list above, placed in `living_room`.
+Use it whenever the case has the resident working inside the dwelling — freelancing, remote days,
+a home study — and **never** `work_shift`, which is an away intent and would send her out of the
+front door for the whole working day.
+
+This is the largest single stretch of a working-age resident's day, so leaving it undeclared is not
+a small approximation. One authored horizon omitted it, recording the reason in its own notes
+("freelance work itself is not declared because no canonical home-work intent exists"), and its
+09:30-17:30 band then contained a single lunch on 260 weekdays: seven waking hours in which the
+ground truth says nothing happens.
+
+**Author the working day as several blocks, not as one.** A day at home is not a shift: the person
+gets up, makes coffee, starts a wash, takes a call, comes back. Declare the work with a **daily**
+cadence and `timesPerPeriod` set to the number of blocks — three or four across a wide band is
+typical — and the expander spreads them through the window, one per equal sub-band, each wobbled by
+the jitter you declare.
+
+**Then declare the breaks.** They are not decoration: they are the entire sensor signature of home
+work. Four blocks with nothing between them describe a person who does not move, which reads
+exactly like an empty flat. Two intents exist for the short ones, and they earn their place by
+moving the resident to a different room:
+
+- `prepare_and_drink_hot_drink` — the trip to the kitchen for a coffee or a tea. Once or twice a
+  working day, in the same band as the work;
+- `use_toilet` — a visit to the bathroom on its own. Two or three times a day is ordinary, and it
+  is *not* `morning_toilet_and_wash`: that one is the morning routine, and using it for an
+  afternoon trip mislabels the ground truth the dataset publishes.
+
+The longer breaks are ordinary home intents you already have: lunch, a stretch, a phone call, the
+laundry going on mid-afternoon, a walk before the shops close. Interleave them with the blocks
+rather than stacking them at the edges of the day.
+
+An unbroken working day is still allowed, because some people do work that way. Write it as a
+`fixedCommitment` with `work_from_home` as its intent — the hours are then pinned and the day holds
+one long block. Expect a `HOME_WORK_IS_ONE_UNBROKEN_BLOCK` warning saying so; it is a warning
+precisely because it may be what the case describes. What it will not let you do is arrive at eight
+motionless hours by accident.
+
+Two things do not change for a resident who works at home. She still has to **leave the house on a
+recurring basis** — she is at home all day, which makes the errand and the evening walk more of her
+door signal, not less. And a working day still ends: do not let the blocks run into the evening the
+rhythm needs for its night.
 
 **The resident must leave the house on a recurring basis, not only for events.** Declare at least
 two *recurring* activities that happen outdoors — the weekly shop, a walk, an errand — with a
@@ -135,7 +180,12 @@ door and back.
 For each recurring activity:
 
 - `cadence.period`, `timesPerPeriod` and `everyNPeriods` state how often it recurs; `weekdays`
-  restricts it to particular days when the case says so, and is otherwise left empty;
+  restricts it to particular days when the case says so, and is otherwise left empty. Over a
+  `week` or a `month`, `timesPerPeriod` counts **days** — three runs a week are three days on
+  which a run happens. Over a `day` it counts **occurrences inside that day**, which is how a
+  working day split into blocks, a medication taken twice or a dog walked morning and evening is
+  written. The window is then divided into that many equal sub-bands, one occurrence to each, so
+  it must be wide enough for them: at least twenty minutes apiece;
 - `cadence.windowStart` and `cadence.windowEnd` are the hours it may occupy. Make them as wide as
   the case honestly allows;
 - `cadence.jitterMinutes` is how *irregular* this recurring activity is — how far a single occurrence wanders
@@ -184,12 +234,28 @@ Give the day between three and six bands: the night, the morning, whatever the m
 person's day looks like, the evening. Each has an id, a label a human would recognise, and its
 `windowStart`/`windowEnd`. List in `recurringActivityIds` the activities you expect to populate it.
 
-Two rules:
+Three rules:
 
-- **bands may not overlap.** They divide the timestamp axis, and a moment belonging to two habits
-  would not be a division. Gaps are allowed — time no band claims is simply unsegmented;
+- **bands may not overlap on a day they share.** They divide the timestamp axis, and a moment
+  belonging to two habits would not be a division. Gaps are allowed — time no band claims is
+  simply unsegmented;
 - **the night band may cross midnight.** For habits only, `windowStart` later than `windowEnd`
-  means the band wraps, which is how a night from 22:30 to 06:15 is written.
+  means the band wraps, which is how a night from 22:30 to 06:15 is written;
+- **a band may be scoped to particular days** with `weekdays`, listing the days it applies to.
+  Leaving it out means every day, which is the right answer for the night and usually for the
+  morning.
+
+**Scope the band whenever the hours hold two different behaviours.** If the resident works
+09:00-17:00 from Monday to Friday, those hours are a working day on five days and something else
+entirely on the other two, and one band covering all seven has to describe both. Measured on a
+generated year, exactly that band came out `work_shift` at 96% across its 260 weekdays and, across
+its 105 weekend days, a mixture whose largest component reached 23% — one band, two behaviours,
+and a segmentation algorithm asked to find a single boundary for them. Write two bands instead,
+one scoped to the working days and one to the weekend; sharing the same hours is allowed precisely
+because their days are disjoint.
+
+The signal to watch for is your own label. If a band needs a name like "daytime and domestic
+weekend" to be honest, it wants to be two bands.
 
 **The night band must open at least two hours before `rhythm.chronotypeBedtime`.** The chronotype is
 where the resident *tends*, not where she is put: the drive layer moves each night's lights-out up
@@ -328,8 +394,10 @@ Before answering, verify all of the following:
 - the habit portfolio satisfies the stated minimum counts per kind;
 - every `recurringActivityId` named by a phase override, an event displacement or a habit band
   exists in `outline.profile.recurringActivities`;
-- `habits` declares between three and six bands, none of them overlapping, and at most one of them
-  crossing midnight;
+- `habits` declares between three and six bands for any given day of the week, no two of them
+  overlapping on a day they share, and at most one of them crossing midnight;
+- any band whose hours mean something different at the weekend carries a `weekdays` scope, and the
+  days it does not claim are covered by another band;
 - the night band opens at least two hours before `rhythm.chronotypeBedtime`, and the evening band
   ends where it opens;
 - no two overlapping phases override the same recurring activity;
@@ -353,8 +421,8 @@ Before answering, verify all of the following:
   the meals included;
 - the process package implements every intent the recurring activities, events and commitments
   imply, **and** the intents the rhythm adds by itself, listed above;
-- every `take_item` or `put_item` of a stored role opens and closes its container, so the fridge is
-  not the only object in the home a contact sensor ever observes;
+- every action reaching inside a container — `take_item`, `put_item`, `laundry_step` — opens and
+  closes it, so the fridge is not the only object in the home a contact sensor ever observes;
 - the process package satisfies the
   action state continuity rules above.
 

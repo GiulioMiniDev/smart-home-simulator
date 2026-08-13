@@ -36,6 +36,10 @@ from smart_home_sim.domain.environment import (
     HomeModel,
     SimulationBundle,
 )
+from smart_home_sim.domain.materialization import (
+    EnvironmentMaterializationManifest,
+    SyntheticWorkspaceManifest,
+)
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.domain.report import ValidationReport
@@ -72,7 +76,7 @@ AUTHORING_SCHEMAS = {
 OUTLINE_SCHEMAS = {
     "horizon-outline-1.0.0.schema.json": HorizonOutline,
     "horizon-authoring-bundle-1.0.0.schema.json": HorizonAuthoringBundle,
-    "habit-ground-truth-1.0.0.schema.json": HabitGroundTruth,
+    "habit-ground-truth-1.1.0.schema.json": HabitGroundTruth,
 }
 HISTORICAL_AUTHORING_REPORT_SCHEMA = (
     PROJECT_ROOT / "schemas/authoring-ingestion-report-1.0.0.schema.json"
@@ -91,6 +95,10 @@ SENSOR_SCHEMAS = {
     "observable-sensor-log-1.0.0.schema.json": ObservableSensorLog,
     "oracle-mapping-1.0.0.schema.json": OracleMapping,
     "sensor-projection-report-1.0.0.schema.json": SensorProjectionReport,
+}
+MATERIALIZATION_SCHEMAS = {
+    "synthetic-workspace-manifest-1.0.0.schema.json": SyntheticWorkspaceManifest,
+    "environment-materialization-manifest-1.0.0.schema.json": EnvironmentMaterializationManifest,
 }
 APPLICATION_SCHEMAS = {
     "application-workspace-manifest-1.0.0.schema.json": WorkspaceManifest,
@@ -134,6 +142,7 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in SENSOR_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in MATERIALIZATION_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in APPLICATION_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
     ):
@@ -144,7 +153,7 @@ def test_frozen_schema_checksums_match() -> None:
 
 
 def test_application_schemas_match_models_and_are_valid() -> None:
-    for name, model in APPLICATION_SCHEMAS.items():
+    for name, model in (APPLICATION_SCHEMAS | MATERIALIZATION_SCHEMAS).items():
         schema = json.loads((PROJECT_ROOT / "schemas" / name).read_text(encoding="utf-8"))
         assert schema == model.model_json_schema(by_alias=True)
         Draft202012Validator.check_schema(schema)

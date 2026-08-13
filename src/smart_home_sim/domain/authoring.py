@@ -22,11 +22,18 @@ AUTHORING_ISSUE_CODES = frozenset(
         *STABLE_ISSUE_CODES,
         *BEHAVIOR_ISSUE_CODES,
         *COMPILATION_ISSUE_CODES,
+        # The preflight warnings. Every code `authoring.service` can emit belongs here or the
+        # published report schema cannot describe a report the tool itself produces — which was
+        # true of the two parked-resident and silent-contact codes until the home-work check was
+        # added beside them and the omission became visible.
+        "ACTIVITY_PARKS_RESIDENT_IN_A_CROSSING",
         "AWAY_INTENT_NOT_A_ROUND_TRIP",
         "BEHAVIOR_VALIDATION_SKIPPED",
         "BUNDLE_STRUCTURE_INVALID",
         "COMPILATION_VALIDATION_SKIPPED",
         "DETERMINISTIC_PRECONDITION_FAILED",
+        "HOME_WORK_IS_ONE_UNBROKEN_BLOCK",
+        "INSTRUMENTED_OBJECT_IS_NEVER_OPENED",
         "OUTPUT_DIRECTORY_EXISTS",
         "OUTPUT_WRITE_ERROR",
         "RESIDENT_NEVER_LEAVES_HOME",

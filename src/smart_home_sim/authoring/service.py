@@ -16,6 +16,8 @@ from smart_home_sim.authoring.preflight import (
     validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
     validate_deterministic_preconditions,
+    validate_home_work_is_fragmented,
+    validate_instrumented_objects_are_opened,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
 )
@@ -485,11 +487,13 @@ def validate_authoring_payload(
                     )
                 )
             if behavior_report.valid:
+                parsed_package = PersonalProcessPackage.model_validate_json(
+                    json.dumps(behavior_payload)
+                )
                 # Needs both halves: the models say where the resident is left, the scenario says
                 # whether there is anything there to be left with.
                 for finding in validate_activities_do_not_park_the_resident(
-                    parsed_scenario,
-                    PersonalProcessPackage.model_validate_json(json.dumps(behavior_payload)),
+                    parsed_scenario, parsed_package
                 ):
                     issues.append(
                         _authoring_issue(
@@ -501,6 +505,34 @@ def validate_authoring_payload(
                             details=finding.details,
                         )
                     )
+                # Both halves again: the scenario says what is instrumented, the models say
+                # whether anything ever touches it.
+                for finding in validate_instrumented_objects_are_opened(
+                    parsed_scenario, parsed_package
+                ):
+                    issues.append(
+                        _authoring_issue(
+                            "INSTRUMENTED_OBJECT_IS_NEVER_OPENED",
+                            "behavior",
+                            _prefix_path("$.personalProcessPackage", finding.path),
+                            finding.message,
+                            severity="warning",
+                            details=finding.details,
+                        )
+                    )
+            for finding in validate_home_work_is_fragmented(parsed_scenario):
+                issues.append(
+                    _authoring_issue(
+                        "HOME_WORK_IS_ONE_UNBROKEN_BLOCK",
+                        "scenario",
+                        _prefix_path("$.scenario", finding.path),
+                        finding.message,
+                        # A warning for the same reason as the one below it: a resident who really
+                        # does not get up is a case someone may want, but it is not a default.
+                        severity="warning",
+                        details=finding.details,
+                    )
+                )
             for finding in validate_the_resident_goes_out(parsed_scenario):
                 issues.append(
                     _authoring_issue(

@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -41,6 +41,17 @@ REQUIRED_KINDS: dict[str, int] = {"anchor": 3, "contextual": 2, "optional": 2, "
 
 _TIME_ZONE_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
+# The narrowest sub-band a daily cadence may divide its window into. Two occurrences drawn from
+# twenty minutes apiece are still two moments a mining algorithm can tell apart; below that the
+# "band" is a pin, and asking for four occurrences inside an hour describes a single stretch of
+# time the author should have declared as one.
+MINIMUM_SUB_BAND_MINUTES = 20
+
+
+def _to_minutes(hhmm: str) -> int:
+    hours, minutes = hhmm.split(":")
+    return int(hours) * 60 + int(minutes)
+
 
 class RecurringActivityKind(StrEnum):
     anchor = "anchor"
@@ -63,6 +74,16 @@ class Weekday(StrEnum):
     friday = "friday"
     saturday = "saturday"
     sunday = "sunday"
+
+
+# The enum is declared in `date.weekday()` order, 0 = Monday. That is load-bearing wherever a
+# calendar day has to be matched against a declared weekday, so it lives here beside the enum
+# rather than being re-derived at each call site.
+WEEKDAY_BY_INDEX: tuple[Weekday, ...] = tuple(Weekday)
+
+
+def weekday_of(moment: date) -> Weekday:
+    return WEEKDAY_BY_INDEX[moment.weekday()]
 
 
 # Closed vocabularies the model picks from; deterministic maps turn them into a schedulable cadence.
@@ -97,6 +118,17 @@ class ProfileGenerationError(ValueError):
 
 
 class ActivityCadence(ContractModel):
+    """How often a recurring activity happens, and inside which hours.
+
+    `times_per_period` means different things per period, and both readings are the natural one.
+    Over a week or a month it counts *days*: three runs a week are three days on which a run
+    happens. Over a day it counts *occurrences inside that day*, which is what a working day split
+    into blocks, a course of medication taken twice, or a dog walked morning and evening actually
+    is. The daily reading used to be discarded — `_due_times` scheduled exactly one occurrence per
+    day whatever the field said — so an author writing `period: day, timesPerPeriod: 4` got one
+    activity and no warning.
+    """
+
     period: CadencePeriod
     times_per_period: int = Field(ge=1)
     every_n_periods: int = Field(default=1, ge=1)
@@ -112,6 +144,15 @@ class ActivityCadence(ContractModel):
                 raise ValueError(f"cadence window must be HH:MM, got {value!r}")
         if self.window_start >= self.window_end:
             raise ValueError("cadence window start must be before end")
+        if self.period is CadencePeriod.day and self.times_per_period > 1:
+            span = _to_minutes(self.window_end) - _to_minutes(self.window_start)
+            needed = self.times_per_period * MINIMUM_SUB_BAND_MINUTES
+            if span < needed:
+                raise ValueError(
+                    f"a daily cadence of {self.times_per_period} occurrences splits its window "
+                    f"into {self.times_per_period} sub-bands, which needs at least {needed} "
+                    f"minutes; {self.window_start}-{self.window_end} gives {span}"
+                )
         return self
 
 

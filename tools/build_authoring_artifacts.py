@@ -48,8 +48,9 @@ ACTION_STATE_CHECKS = (
     "days;\n"
     "- every `travel` component performed away from home carries the mandatory\n"
     "  `move_to_capability(home_entrance) -> enter_home` bridge;\n"
-    "- every `take_item` or `put_item` of a stored role opens and closes its container, so the\n"
-    "  fridge is not the only object in the home a contact sensor ever observes;"
+    "- every action reaching inside a container — `take_item`, `put_item`, `laundry_step` — opens\n"
+    "  and closes it, so the fridge is not the only object in the home a contact sensor ever\n"
+    "  observes;"
 )
 
 # The simplified prompt is the one a local model actually receives, so the sections that enumerate
@@ -62,10 +63,10 @@ SIMPLIFIED_PROMPT_PATH = ROOT / "prompts/generate-simulation-inputs-1.2.3-simpli
 
 # Pinned to what the local generation pipeline emits (`hybrid_planning.package_authoring`), so both
 # authoring paths label their datasets from one vocabulary and stay comparable.
-SIMPLIFIED_ACTIVITY_CATALOG_VERSION = "1.2.0"
+SIMPLIFIED_ACTIVITY_CATALOG_VERSION = "1.3.0"
 SIMPLIFIED_VARIABLE_CATALOG_VERSION = "1.0.0"
 SIMPLIFIED_ACTION_CATALOG_VERSION = "1.1.0"
-SIMPLIFIED_REFERENCE_MODELS = "reference-process-models-1.2.0.json"
+SIMPLIFIED_REFERENCE_MODELS = "reference-process-models-1.3.0.json"
 
 
 def _compact_json(path: Path) -> str:
@@ -275,7 +276,7 @@ def _render_canonical_roles(
     catch-all: the step executes against no real object and fires no contact sensor. The prompt has
     to say which is which, or a model picks an invented role and the defect is invisible.
     """
-    from smart_home_sim.materialization.service import RESOURCE_ROLE_ALIASES
+    from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES
 
     furnished = set(RESOURCE_ROLE_ALIASES) | {
         role for aliases in RESOURCE_ROLE_ALIASES.values() for role in aliases
@@ -499,10 +500,16 @@ def _render_container_roles() -> str:
 
     A `take_item` on one of these without an `open` is what left an eight-month log with the fridge
     as the only object ever opened, and the flat with two contact sensors instead of six.
-    """
-    from smart_home_sim.materialization.service import RESOURCE_ROLE_ALIASES
 
-    containers = ("refrigerator", "storage_cabinet", "wardrobe")
+    The list is `CONTACT_INSTRUMENTED_TYPES` rather than a tuple typed out here, because a tuple
+    typed out here is what omitted the washing machine: the deployment fitted it with a reed switch
+    and the preflight judged it, while the prompt never told an author it was a container at all. A
+    hand-kept second copy of that set can only ever drift away from the set that matters.
+    """
+    from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES
+    from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
+
+    containers = sorted(CONTACT_INSTRUMENTED_TYPES)
     lines = []
     for resource_type in containers:
         roles = sorted(RESOURCE_ROLE_ALIASES[resource_type])
@@ -517,7 +524,7 @@ def _render_furniture_catalog() -> str:
     a `resourceType` outside this map satisfies no role, so every activity that wanted one falls to
     the per-room placeholder — silently.
     """
-    from smart_home_sim.materialization.service import RESOURCE_ROLE_ALIASES
+    from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES
 
     lines = [
         "`world.resources` declares the objects the home contains. Use these `resourceType` "

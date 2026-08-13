@@ -120,6 +120,87 @@ class Resource(ContractModel):
     attributes: dict[str, JsonValue] = Field(default_factory=dict)
 
 
+# Roles a process model can ask for, mapped onto the furniture that actually provides them. A role
+# missing here silently falls back to the per-region "generated_environment_service" catch-all: the
+# step still executes, but against a phantom provider with no footprint and no contact sensor. That
+# is how `clean_kitchen` came to fetch a cloth from nowhere and `consumption_area` — where the
+# resident sits to eat — resolved to thin air rather than the table.
+#
+# It lives in the domain because four places have to agree on this vocabulary: materialization,
+# which binds each role to an entity; the authoring artifacts, which publish the roles an author is
+# allowed to name; the reference process models, which name them; and the authoring preflight,
+# which reads a model's roles back to decide what the behaviour touches. It sat in materialization
+# while preflight compared `open` targets against bare resource types, so a model opening
+# `cleaning_product_storage` — the spelling the reference models themselves use — was reported as
+# never opening the cabinet it resolves to at run time.
+RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
+    "refrigerator": frozenset(
+        {
+            "food_storage",
+            "coffee_and_breakfast_storage",
+            "ingredients",
+            "prepared_meal",
+            "prepared_food_portions",
+        }
+    ),
+    "storage_cabinet": frozenset(
+        {
+            "medication_cabinet",
+            "medication_storage",
+            "household_storage",
+            "household_supplies",
+            "cleaning_products",
+            "cleaning_product_storage",
+            "medication",
+        }
+    ),
+    "wardrobe": frozenset(
+        {
+            "clothing_storage",
+            "clothes",
+            "used_clothing",
+            "laundry_collection",
+            "laundry_storage",
+        }
+    ),
+    "washing_machine": frozenset({"laundry_equipment", "laundry"}),
+    "stove": frozenset({"cooking_appliance", "food_preparation_area"}),
+    "moka_coffee_maker": frozenset({"moka_coffee_maker", "coffee_equipment"}),
+    "sink": frozenset(
+        {"washing_area", "food_preparation_area", "drinking_water_source", "sink_faucet"}
+    ),
+    "washbasin": frozenset({"washing_area", "personal_care_fixture"}),
+    "shower": frozenset({"shower", "personal_care_fixture", "shower_water"}),
+    "toilet": frozenset({"toilet", "personal_care_fixture"}),
+    "bed": frozenset({"bed", "sleeping_area"}),
+    "chair": frozenset({"chair", "dining_seat", "consumption_area"}),
+    "table": frozenset({"table", "dining_area", "consumption_area"}),
+    "sofa": frozenset({"sofa", "seating", "rest_area"}),
+    "television": frozenset({"television", "media"}),
+    "radio": frozenset({"radio", "media"}),
+}
+
+
+def resource_types_for_role(role: str) -> frozenset[str]:
+    """Which declared resource types can satisfy a role a process model names.
+
+    A role is not a key: `food_preparation_area` is provided by both the stove and the sink, and
+    `consumption_area` by both the chair and the table. Callers that ask "does this role reach the
+    fridge?" want every furniture type it could bind to, not the first one.
+
+    A resource type names itself, matching how materialization builds an entity's roles: an author
+    who writes `refrigerator` where the reference models write `food_storage` still binds.
+    """
+    return frozenset(
+        {
+            resource_type
+            for resource_type, aliases in RESOURCE_ROLE_ALIASES.items()
+            if role in aliases
+        }
+        | ({role} if role in RESOURCE_ROLE_ALIASES else set())
+    )
+
+
 class ResidentInitialState(ContractModel):
     resident_id: str = Field(min_length=1)
     location_id: str = Field(min_length=1)

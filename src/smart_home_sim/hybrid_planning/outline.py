@@ -65,6 +65,7 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     ActivityCadence,
     BehavioralProfile,
     Weekday,
+    weekday_of,
 )
 
 OUTLINE_SCHEMA_VERSION = "1.0.0"
@@ -302,6 +303,15 @@ class HabitSegment(ContractModel):
 
     The night band is the one that legitimately wraps: `window_start` after `window_end` means the
     segment crosses midnight.
+
+    A band may also be scoped to particular days. Working hours are already weekday-scoped —
+    `FixedCommitment.weekdays` is mandatory — so a single band covering 08:30-17:30 every day of
+    the week has to hold both the working day and the domestic Saturday, and a segmentation
+    algorithm asked to recover it is being asked to find one boundary for two behaviours. Measured
+    on a generated year: the same band was `work_shift` at 96% across 260 weekdays and, across 105
+    weekend days, a mixture whose largest component was `buy_groceries` at 23%. The band that
+    produced those numbers had been named "Fascia diurna e weekend domestico" by its author, who
+    could see the problem and had no field in which to say it.
     """
 
     habit_id: str = Field(min_length=1)
@@ -311,7 +321,13 @@ class HabitSegment(ContractModel):
     # The activities expected to populate the band. Declaring them is optional — the expander
     # measures what actually lands there — but it records the author's intent for the reader.
     recurring_activity_ids: list[str] = Field(default_factory=list)
+    # Which days the band applies to. Empty means every day, which is what every outline written
+    # before this field existed meant, so leaving it out stays valid and keeps its meaning.
+    weekdays: list[Weekday] = Field(default_factory=list)
     note: str = ""
+
+    def applies_on(self, moment: date) -> bool:
+        return not self.weekdays or weekday_of(moment) in self.weekdays
 
     @property
     def crosses_midnight(self) -> bool:
@@ -326,6 +342,8 @@ class HabitSegment(ContractModel):
             raise ValueError(f"habit {self.habit_id!r} has an empty band")
         if len(set(self.recurring_activity_ids)) != len(self.recurring_activity_ids):
             raise ValueError(f"habit {self.habit_id!r} repeats an activity")
+        if len(set(self.weekdays)) != len(self.weekdays):
+            raise ValueError(f"habit {self.habit_id!r} repeats a weekday")
         return self
 
     def minute_spans(self) -> list[tuple[int, int]]:
@@ -423,14 +441,23 @@ class HorizonOutline(ContractModel):
                         f"habit {segment.habit_id!r} lists unknown activity {activity_id!r}"
                     )
         # Habits partition the day, so two of them may not claim the same minute: a segmentation
-        # ground truth that assigned one timestamp to two bins would not be a segmentation.
-        spans = [
-            (span, segment.habit_id) for segment in self.habits for span in segment.minute_spans()
-        ]
-        spans.sort()
-        for (first, first_id), (second, second_id) in zip(spans, spans[1:], strict=False):
-            if second[0] < first[1]:
-                raise ValueError(f"habits {first_id!r} and {second_id!r} overlap in the day")
+        # ground truth that assigned one timestamp to two bins would not be a segmentation. The
+        # partition is per weekday, not per week — a band scoped to Saturday and Sunday and one
+        # scoped to the working days may cover the same hours, because no single day is ever
+        # claimed twice.
+        for weekday in Weekday:
+            spans = [
+                (span, segment.habit_id)
+                for segment in self.habits
+                if not segment.weekdays or weekday in segment.weekdays
+                for span in segment.minute_spans()
+            ]
+            spans.sort()
+            for (first, first_id), (second, second_id) in zip(spans, spans[1:], strict=False):
+                if second[0] < first[1]:
+                    raise ValueError(
+                        f"habits {first_id!r} and {second_id!r} overlap on {weekday.value}"
+                    )
 
         for phase in self.phases:
             for override in phase.activity_overrides:
@@ -537,6 +564,22 @@ class HabitComposition(ContractModel):
     share: float = Field(ge=0, le=1)
 
 
+class HabitDayTypeObservation(ContractModel):
+    """The same band measured over one class of days.
+
+    A band that is not weekday-scoped covers both the working week and the weekend, and those can
+    be different behaviours wearing the same hours. This splits the measurement so the difference
+    is visible without anyone having to re-derive it from the activity log.
+    """
+
+    day_type: Literal["weekday", "weekend"]
+    day_count: int = Field(ge=0)
+    total_minutes: float = Field(ge=0)
+    composition: list[HabitComposition] = Field(default_factory=list)
+    unaccounted_minutes: float = Field(ge=0)
+    unaccounted_share: float = Field(ge=0, le=1)
+
+
 class HabitObservation(ContractModel):
     """One habit band with the activity mix that actually landed inside it.
 
@@ -544,6 +587,14 @@ class HabitObservation(ContractModel):
     the sleeping activity accounts for about 80% of the band, the rest being other activities or
     unlabelled time. `unaccounted_share` is that remainder — minutes inside the band during which
     the plan has the resident doing nothing the outline named.
+
+    Two fields exist because a declared window is not a claim about behaviour. The window is where
+    the planner is *allowed* to put the band's activities, and it is routinely wider than where
+    they land: a night band declared from 21:30 on a horizon whose resident reliably goes to bed at
+    23:30 spends two of its nine hours being the evening. `effective_start`/`effective_end` say
+    where the band's dominant activity actually runs, so an evaluation has a target that the
+    behaviour supports. They are null when no single activity holds the band on most days — which
+    is itself the finding, and the reason not to silently invent a boundary.
     """
 
     habit_id: str = Field(min_length=1)
@@ -551,11 +602,23 @@ class HabitObservation(ContractModel):
     window_start: str
     window_end: str
     crosses_midnight: bool
+    # Empty means the band applies every day, matching `HabitSegment.weekdays`.
+    weekdays: list[Weekday] = Field(default_factory=list)
     day_count: int = Field(ge=0)
     total_minutes: float = Field(ge=0)
     composition: list[HabitComposition] = Field(default_factory=list)
     unaccounted_minutes: float = Field(ge=0)
     unaccounted_share: float = Field(ge=0, le=1)
+    # The activity holding the largest share of the band, and the stretch of the band it occupies
+    # on at least `EFFECTIVE_DAY_SHARE` of the applicable days.
+    dominant_intent: str | None = None
+    effective_start: str | None = None
+    effective_end: str | None = None
+    effective_minutes: float = Field(default=0.0, ge=0)
+    effective_share: float = Field(default=0.0, ge=0, le=1)
+    # Populated only when the band spans both classes of day, since otherwise it would restate
+    # `composition`.
+    day_types: list[HabitDayTypeObservation] = Field(default_factory=list)
 
 
 class HabitGroundTruth(ContractModel):
@@ -566,18 +629,23 @@ class HabitGroundTruth(ContractModel):
     declared, and the activity mix the generated horizon actually produced in each. It is derived
     from the plan, not from an execution, so it is the *planned* truth — deviations introduced by
     the simulator belong to the execution trace.
+
+    1.1.0 adds three things a segmentation experiment could not otherwise get without re-deriving
+    them from the activity log: the days each band applies to, where the band's dominant activity
+    actually runs as opposed to where the window allows it, and the same measurement split by
+    class of day.
     """
 
     model_config = ConfigDict(
         **ContractModel.model_config,
         json_schema_extra={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.0.0",
-            "title": "Smart Home Habit Ground Truth 1.0.0",
+            "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.1.0",
+            "title": "Smart Home Habit Ground Truth 1.1.0",
         },
     )
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    schema_version: Literal["1.1.0"] = "1.1.0"
     document_type: Literal["habit_ground_truth"] = "habit_ground_truth"
     outline_id: str = Field(min_length=1)
     resident_id: str = Field(min_length=1)

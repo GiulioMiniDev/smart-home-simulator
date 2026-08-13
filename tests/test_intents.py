@@ -8,6 +8,7 @@ from smart_home_sim.behavior.service import default_action_catalog_path
 from smart_home_sim.domain.behavior import ProcessNodeKind
 from smart_home_sim.hybrid_planning.intents import (
     INTENT_CATALOG,
+    away_intent_specs,
     intent_ids,
     intent_spec,
     load_reference_models,
@@ -60,3 +61,26 @@ def test_intent_spec_lookup_and_error() -> None:
     assert intent_spec("sleep").default_location == "bedroom"
     with pytest.raises(KeyError):
         intent_spec("nope")
+
+
+def test_home_work_is_an_in_home_intent_with_a_room() -> None:
+    """`work_from_home` is the intent that made a home-based occupation expressible at all.
+
+    Before it the only work intent was `work_shift`, which the away list places `outdoors`, so a
+    freelancer's working day could be declared either as an eight-hour absence she never took or
+    not at all.
+    """
+    spec = intent_spec("work_from_home")
+
+    assert spec.default_location == "living_room"
+    assert spec.intent_id in intent_ids()
+
+
+def test_the_home_and_away_vocabularies_do_not_overlap() -> None:
+    """They are printed side by side in the authoring prompt; an intent in both is an instruction
+    to guess where the resident is."""
+    away = {spec.intent_id for spec in away_intent_specs()}
+
+    assert away.isdisjoint(set(intent_ids()))
+    assert "work_shift" in away
+    assert "work_from_home" not in away

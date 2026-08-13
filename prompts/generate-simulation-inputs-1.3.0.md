@@ -304,12 +304,16 @@ construction rules while walking it:
    so are `activate(target)` and `deactivate(target)`. A container left open at the end of one
    activity makes the next `open` of that same container deterministically false, on every
    later day.
-   **Anything stored inside something is reached by opening it.** Wrap the `take_item` or
-   `put_item` in `open(container) -> ... -> close(container)` whenever the role names one of these:
+   **Anything stored inside something is reached by opening it.** Wrap *every* action that reaches
+   inside a container in `open(container) -> ... -> close(container)` whenever the role names one of
+   these. `take_item` and `put_item` are the obvious ones, but they are not the only ones:
+   `laundry_step(collect)` empties a laundry basket, `laundry_step(load)` fills a washing machine,
+   and both reach inside exactly as a `take_item` would.
 
    - `refrigerator` — `coffee_and_breakfast_storage`, `food_storage`, `ingredients`, `prepared_food_portions`, `prepared_meal`
    - `storage_cabinet` — `cleaning_product_storage`, `cleaning_products`, `household_storage`, `household_supplies`, `medication`, `medication_cabinet`, `medication_storage`
    - `wardrobe` — `clothes`, `clothing_storage`, `laundry_collection`, `laundry_storage`, `used_clothing`
+   - `washing_machine` — `laundry`, `laundry_equipment`
 
    This is what a contact sensor observes, and it is the difference between a home that reports its
    cupboards and one that does not. In one generated eight-month horizon every `open` and `close` in
@@ -317,6 +321,11 @@ construction rules while walking it:
    and the clothes were taken straight out of closed furniture. The flat ended up with **two**
    contact sensors where a comparable real deployment has four to six, and the cabinets it did
    contain were invisible for eight months.
+
+   Keying this rule on `take_item`/`put_item` alone is what produced the next such horizon: a
+   resident who ran the washing machine 104 times over a year and opened it never, because her
+   laundry model used `laundry_step` and the rule, read literally, did not apply to it. Both her
+   washing machine and her wardrobe published a year of pure noise.
 6. Do not change the target or the role between the two halves of a `take_item`/`put_item`,
    `open`/`close` or `activate`/`deactivate` pair.
 
@@ -365,8 +374,9 @@ Before answering, verify internally that:
   satisfies its catalog precondition in the chronological ledger, across activities and days;
 - every `travel` component performed away from home carries the mandatory
   `move_to_capability(home_entrance) -> enter_home` bridge;
-- every `take_item` or `put_item` of a stored role opens and closes its container, so the
-  fridge is not the only object in the home a contact sensor ever observes;
+- every action reaching inside a container — `take_item`, `put_item`, `laundry_step` — opens
+  and closes it, so the fridge is not the only object in the home a contact sensor ever
+  observes;
 - output provenance is truthful and the JSON is complete.
 
 The deterministic project ingestion runs scenario validation, full plan compilation and

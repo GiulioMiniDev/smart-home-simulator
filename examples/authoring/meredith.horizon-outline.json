@@ -280,6 +280,7 @@
       "windowStart": "22:30",
       "windowEnd": "06:00",
       "recurringActivityIds": [],
+      "weekdays": [],
       "note": "Wraps past midnight, which only a habit band may do."
     },
     {
@@ -291,6 +292,7 @@
         "morning_run",
         "breakfast_at_home"
       ],
+      "weekdays": [],
       "note": ""
     },
     {
@@ -302,6 +304,7 @@
         "grocery_shopping",
         "laundry"
       ],
+      "weekdays": [],
       "note": ""
     },
     {
@@ -314,6 +317,7 @@
         "evening_television",
         "long_phone_call_family"
       ],
+      "weekdays": [],
       "note": ""
     }
   ],

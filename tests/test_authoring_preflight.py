@@ -13,6 +13,8 @@ from smart_home_sim.authoring.preflight import (
     _resolve_arguments,
     validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
+    validate_home_work_is_fragmented,
+    validate_instrumented_objects_are_opened,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
 )
@@ -23,6 +25,8 @@ from smart_home_sim.domain.behavior import (
     ProcessNode,
 )
 from smart_home_sim.domain.models import Scenario
+from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
+from smart_home_sim.hybrid_planning.intents import load_reference_models
 
 ROOT = Path(__file__).parents[1]
 
@@ -297,3 +301,206 @@ def test_a_model_that_ends_in_a_bare_corridor_is_flagged() -> None:
     assert len(findings) == 1
     assert findings[0].details["destination"] == "hallway"
     assert findings[0].details["processModelId"] == model["processModelId"]
+
+
+def _scenario_with_resources(*types: str) -> Scenario:
+    """The frozen week, refurnished with the given resource types in the kitchen."""
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    room = payload["resources"][0]["locationId"]
+    payload["resources"] = [
+        {
+            "resourceId": f"{resource_type}_main",
+            "resourceType": resource_type,
+            "locationId": room,
+        }
+        for resource_type in types
+    ]
+    return Scenario.model_validate_json(json.dumps(payload))
+
+
+def _package_opening(*targets: str) -> PersonalProcessPackage:
+    return _package_with(
+        [
+            {
+                "nodeId": f"open_{index}",
+                "kind": "action",
+                "actionType": "open",
+                "arguments": {"target": {"source": "literal", "value": target}},
+            }
+            for index, target in enumerate(targets)
+        ],
+        intent="read_and_rest",
+    )
+
+
+def test_an_instrumented_object_the_behaviour_never_opens_is_reported() -> None:
+    """The washing machine got a reed switch and 104 laundry runs, and never once opened.
+
+    Its contact reported 53 openings across a generated year against 54.8 expected from the noise
+    model's false-positive rate alone, so the sensor published nothing but noise.
+    """
+    findings = validate_instrumented_objects_are_opened(
+        _scenario_with_resources("refrigerator", "washing_machine", "wardrobe"),
+        _package_opening("refrigerator"),
+    )
+
+    assert [finding.details["resourceType"] for finding in findings] == [
+        "wardrobe",
+        "washing_machine",
+    ]
+    assert findings[0].details["openedTypes"] == ["refrigerator"]
+
+
+def test_an_object_the_behaviour_does_open_is_left_alone() -> None:
+    findings = validate_instrumented_objects_are_opened(
+        _scenario_with_resources("refrigerator", "wardrobe"),
+        _package_opening("refrigerator", "wardrobe"),
+    )
+
+    assert findings == []
+
+
+def test_a_role_is_credited_to_the_furniture_that_provides_it() -> None:
+    """`cleaning_product_storage` is how a model opens a cabinet; the type name is not.
+
+    Every reference model names a role rather than a `resourceType`, so a check reading the literal
+    as a bare type reported four instrumented objects as untouched for behaviour that opens them.
+    """
+    findings = validate_instrumented_objects_are_opened(
+        _scenario_with_resources("storage_cabinet", "washing_machine", "wardrobe"),
+        _package_opening("cleaning_product_storage", "laundry_equipment", "clothing_storage"),
+    )
+
+    assert findings == []
+
+
+def test_a_literal_naming_one_declared_object_counts_for_its_type() -> None:
+    """Materialization binds a resourceId as readily as a role, so the check follows it there."""
+    findings = validate_instrumented_objects_are_opened(
+        _scenario_with_resources("wardrobe"), _package_opening("wardrobe_main")
+    )
+
+    assert findings == []
+
+
+def test_the_reference_process_models_pass_their_own_rule() -> None:
+    """The models the authoring prompt holds up as correct must not be reported as defective.
+
+    `start_laundry` opens `laundry_storage` and `laundry_equipment`, `clean_kitchen` opens
+    `cleaning_product_storage`, the meals open `food_storage`: between them the reference set
+    touches every contact-instrumented type in the home. Reading those literals as resource types
+    made the check flag all four, which is the shape of a rule that had never been run against the
+    vocabulary it was judging.
+    """
+    models = [
+        json.loads(model.model_dump_json(by_alias=True))
+        for model in load_reference_models().values()
+    ]
+    package = PersonalProcessPackage.model_validate_json(
+        json.dumps(
+            {
+                "packageId": "reference",
+                "packageVersion": "1.0.0",
+                "sourceScenarioId": "scenario",
+                "sourceScenarioVersion": "1.0.0",
+                "language": "en",
+                "provenance": {"authorType": "human", "generatedAt": "2026-08-04T10:00:00+00:00"},
+                "catalogs": {
+                    "activityCatalog": {"catalogId": "a", "version": "1.2.0"},
+                    "variableCatalog": {"catalogId": "v", "version": "1.0.0"},
+                    "actionCatalog": {"catalogId": "c", "version": "1.1.0"},
+                },
+                "processModels": models,
+                "bindings": [
+                    {
+                        "bindingId": "binding",
+                        "residentId": "reference_resident",
+                        "intent": "read_and_rest",
+                        "processModelId": models[0]["processModelId"],
+                    }
+                ],
+            }
+        )
+    )
+
+    findings = validate_instrumented_objects_are_opened(
+        _scenario_with_resources(*sorted(CONTACT_INSTRUMENTED_TYPES)), package
+    )
+
+    assert findings == []
+
+
+def test_furniture_that_carries_no_contact_sensor_is_not_the_rule_s_business() -> None:
+    """A kettle has no door. Nothing is instrumented, so nothing is expected to be opened."""
+    findings = validate_instrumented_objects_are_opened(
+        _scenario_with_resources("kettle", "sink"), _package_opening()
+    )
+
+    assert findings == []
+
+
+def _scenario_with_home_work(blocks: tuple[tuple[str, int], ...]) -> Scenario:
+    """The frozen week, its first activities rewritten as a day of work at home.
+
+    Each block is (start time, minutes), applied to every day, so the shape of the working day is
+    the only thing the check is reading.
+    """
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    for day in payload["days"]:
+        stamp = day["activities"][0]["startWindow"]["preferred"]
+        calendar_day, offset = stamp.split("T")[0], stamp[-6:]
+        for activity, (start, minutes) in zip(day["activities"], blocks, strict=False):
+            activity["intent"] = "work_from_home"
+            activity["locationIds"] = ["living_room"]
+            activity["requiredResources"] = []
+            moment = f"{calendar_day}T{start}:00{offset}"
+            activity["startWindow"] = {
+                "earliest": moment,
+                "preferred": moment,
+                "latest": moment,
+            }
+            activity["duration"] = {
+                "minimumMinutes": float(minutes),
+                "preferredMinutes": float(minutes),
+                "maximumMinutes": float(minutes),
+            }
+    return Scenario.model_validate_json(json.dumps(payload))
+
+
+def test_a_working_day_that_never_leaves_the_desk_is_flagged() -> None:
+    """Working from home is observable only through the breaks.
+
+    A resident modelled as one unbroken block is a resident modelled as furniture: one motion
+    sensor holds the whole afternoon, every other room falls silent, and the segmentation target
+    for the middle of the day is a rectangle. A warning, not a rejection — some people really do
+    work that way, and a researcher who wants it keeps the finding.
+    """
+    findings = validate_home_work_is_fragmented(_scenario_with_home_work((("09:00", 480),)))
+
+    assert len(findings) == 1
+    assert findings[0].details["monolithicDays"] == findings[0].details["workingDays"]
+    assert findings[0].details["longestStretchMinutes"] == 480.0
+
+
+def test_a_working_day_split_into_blocks_is_left_alone() -> None:
+    scenario = _scenario_with_home_work(
+        (("09:15", 105), ("11:30", 90), ("14:30", 120), ("16:45", 75))
+    )
+
+    assert validate_home_work_is_fragmented(scenario) == []
+
+
+def test_blocks_a_quarter_hour_apart_are_one_stretch() -> None:
+    """Standing up and sitting straight back down is not a break by any sensor's reckoning."""
+    scenario = _scenario_with_home_work((("09:00", 130), ("11:15", 130), ("13:30", 130)))
+
+    findings = validate_home_work_is_fragmented(scenario)
+
+    assert len(findings) == 1
+    assert findings[0].details["longestStretchMinutes"] == 400.0
+
+
+def test_a_horizon_with_no_home_work_at_all_is_not_the_check_s_business() -> None:
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+
+    assert validate_home_work_is_fragmented(Scenario.model_validate_json(json.dumps(payload))) == []

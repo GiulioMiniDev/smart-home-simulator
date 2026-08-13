@@ -517,7 +517,7 @@ def test_outline_stays_small_across_horizon_lengths() -> None:
 
 def test_habit_bands_may_not_overlap() -> None:
     """A segmentation that assigned one minute to two bins would not be a segmentation."""
-    with pytest.raises(ValidationError, match="overlap in the day"):
+    with pytest.raises(ValidationError, match="overlap on monday"):
         _outline(
             habits=[
                 HabitSegment(
@@ -525,6 +525,86 @@ def test_habit_bands_may_not_overlap() -> None:
                 ),
                 HabitSegment(
                     habit_id="brunch", label="Brunch", window_start="09:00", window_end="11:00"
+                ),
+            ]
+        )
+
+
+def test_habit_bands_may_share_hours_on_disjoint_days() -> None:
+    """The partition is per day, not per week.
+
+    A working day and a Saturday are different behaviours, and the hours they occupy are the same
+    hours. Forbidding that forced one band to carry both, which is what produced a band measured at
+    96% `work_shift` on weekdays and a mixture topping out at 23% on weekends.
+    """
+    outline = _outline(
+        habits=[
+            HabitSegment(
+                habit_id="work",
+                label="Working day",
+                window_start="08:30",
+                window_end="17:30",
+                weekdays=[
+                    Weekday.monday,
+                    Weekday.tuesday,
+                    Weekday.wednesday,
+                    Weekday.thursday,
+                    Weekday.friday,
+                ],
+            ),
+            HabitSegment(
+                habit_id="errands",
+                label="Weekend at home",
+                window_start="08:30",
+                window_end="17:30",
+                weekdays=[Weekday.saturday, Weekday.sunday],
+            ),
+        ]
+    )
+
+    assert [segment.habit_id for segment in outline.habits] == ["work", "errands"]
+    assert outline.habits[0].applies_on(date(2026, 8, 11))  # a Tuesday
+    assert not outline.habits[0].applies_on(date(2026, 8, 15))  # a Saturday
+    assert outline.habits[1].applies_on(date(2026, 8, 15))
+
+
+def test_habit_bands_still_may_not_overlap_on_a_shared_day() -> None:
+    """Scoping is not a licence: Saturday is claimed twice here, so it is still rejected."""
+    with pytest.raises(ValidationError, match="overlap on saturday"):
+        _outline(
+            habits=[
+                HabitSegment(
+                    habit_id="work",
+                    label="Working day",
+                    window_start="08:30",
+                    window_end="17:30",
+                    weekdays=[Weekday.friday, Weekday.saturday],
+                ),
+                HabitSegment(
+                    habit_id="errands",
+                    label="Weekend at home",
+                    window_start="09:00",
+                    window_end="12:00",
+                    weekdays=[Weekday.saturday, Weekday.sunday],
+                ),
+            ]
+        )
+
+
+def test_a_band_without_weekdays_still_means_every_day() -> None:
+    """Outlines written before the field existed keep their meaning, and keep colliding."""
+    with pytest.raises(ValidationError, match="overlap on sunday"):
+        _outline(
+            habits=[
+                HabitSegment(
+                    habit_id="always", label="Always", window_start="06:00", window_end="10:00"
+                ),
+                HabitSegment(
+                    habit_id="sundays",
+                    label="Sundays",
+                    window_start="09:00",
+                    window_end="11:00",
+                    weekdays=[Weekday.sunday],
                 ),
             ]
         )

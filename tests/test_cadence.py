@@ -94,6 +94,71 @@ def test_every_other_day_habit() -> None:
     assert date(2026, 8, 5) in due
 
 
+def test_daily_habit_with_several_occurrences_spreads_them_through_the_window() -> None:
+    """A working day is blocks, and `timesPerPeriod` on a daily cadence is how many.
+
+    It used to be discarded: the daily branch scheduled one occurrence whatever the field said, so
+    an author writing four got one and no warning.
+    """
+    activity = _recurring("work", CadencePeriod.day, times=4, window=("09:00", "17:00"))
+
+    due = _due_times(activity, _START, _END, seed=3)
+
+    assert len(due) == 31
+    for day, times in due.items():
+        assert len(times) == 4, day
+        # One per equal sub-band, so the blocks stay in order and cover the whole window.
+        assert times == sorted(times)
+        assert "09:00" <= times[0] < "11:00"
+        assert "15:00" <= times[3] <= "17:00"
+
+
+def test_daily_habit_honours_the_weekdays_it_declares() -> None:
+    """The weekly and monthly branches always did; this one silently ignored them.
+
+    An authored bundle declaring a 06:10 alarm on `period: day` with monday-to-friday got it on
+    Saturday and Sunday as well, and nothing in the profile said so.
+    """
+    activity = _recurring(
+        "work",
+        CadencePeriod.day,
+        times=3,
+        weekdays=(
+            Weekday.monday,
+            Weekday.tuesday,
+            Weekday.wednesday,
+            Weekday.thursday,
+            Weekday.friday,
+        ),
+        window=("09:00", "18:00"),
+    )
+
+    due = _due_times(activity, _START, _END, seed=3)
+
+    assert due
+    assert all(day.weekday() < 5 for day in due)
+    assert all(len(times) == 3 for times in due.values())
+
+
+def test_a_single_daily_occurrence_keeps_the_draw_it_always_had() -> None:
+    """Honouring the count must not silently re-time every horizon already generated."""
+    activity = _recurring("d", CadencePeriod.day, window=("06:00", "08:00"))
+
+    due = _due_times(activity, _START, _END, seed=11)
+
+    assert due[_START] == [_target_time(activity, _START, seed=11)]
+
+
+def test_a_daily_cadence_cannot_ask_for_more_blocks_than_its_window_holds() -> None:
+    with pytest.raises(ValueError, match="sub-bands"):
+        ActivityCadence(
+            period=CadencePeriod.day,
+            times_per_period=4,
+            window_start="09:00",
+            window_end="10:00",
+        )
+
+
 def test_weekly_with_weekdays_only_on_those_days() -> None:
     activity = _recurring("g", CadencePeriod.week, weekdays=(Weekday.tuesday, Weekday.friday))
     due = _due_times(activity, _START, _END, seed=0)

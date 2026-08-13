@@ -17,8 +17,14 @@ from smart_home_sim.domain.behavior import (
     ValueSource,
     VariableCatalog,
 )
-from smart_home_sim.domain.models import DayPlan, LocationKind, Scenario
+from smart_home_sim.domain.models import (
+    DayPlan,
+    LocationKind,
+    Scenario,
+    resource_types_for_role,
+)
 from smart_home_sim.domain.plan import CanonicalActivity, CanonicalPlan
+from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
 
 _UNKNOWN = object()
 _ABSENT = object()
@@ -438,6 +444,95 @@ def validate_the_resident_goes_out(scenario: Scenario) -> list[PreflightFinding]
     ]
 
 
+# The intent that puts paid work inside the dwelling. Named here rather than imported so this
+# module keeps depending on nothing in `hybrid_planning`.
+_HOME_WORK_INTENT = "work_from_home"
+# Two home-work activities closer together than this are one stretch at the desk: the resident
+# stood up and sat back down, which is not a break by any measure a sensor would recognise.
+_HOME_WORK_JOIN_MINUTES = 15
+# How long an unbroken stretch may run before it stops describing someone at home. Four hours is
+# the outer edge of what the occupational-health literature treats as one work bout, and it is also
+# where a single activity starts to own a whole room's sensor signal for the afternoon.
+_HOME_WORK_MONOLITH_MINUTES = 240
+# The share of working days that must show the monolith before it is the horizon's shape rather
+# than a deadline.
+_HOME_WORK_MONOLITH_SHARE = 0.5
+
+
+def validate_home_work_is_fragmented(scenario: Scenario) -> list[PreflightFinding]:
+    """Does the resident who works from home ever get up from the desk?
+
+    Working from home is the one occupation a home sensor network can observe, and what it observes
+    is movement: the kitchen at eleven, the balcony at three, a call taken standing in the hallway.
+    A resident modelled as a single unbroken block is a resident modelled as furniture. Her motion
+    sensor reports one long occupancy, every other room falls silent for the whole afternoon, and
+    the segmentation target for the middle of the day becomes a rectangle no algorithm has to work
+    to find.
+
+    The check is on the *plan*, not on the outline, because the two ways of authoring a working day
+    arrive here as the same thing: a `fixedCommitment` from 09:00 to 17:30 and a daily recurring
+    activity whose one occurrence runs seven hours are both one activity in the day, and both are
+    what this is looking for.
+
+    A warning, not a rejection. Eight hours at a desk without standing up is a real way to spend a
+    Tuesday and a legitimate case to study — a researcher who wants it says so with a commitment
+    and keeps this finding. What is not legitimate is arriving at it by default, which is the
+    likelier reading when it holds on most of the horizon's working days.
+    """
+    stretches: list[float] = []
+    monoliths = 0
+    by_day: dict[object, list[tuple[float, float]]] = defaultdict(list)
+    for day in scenario.days:
+        for activity in day.activities:
+            if activity.intent != _HOME_WORK_INTENT:
+                continue
+            if activity.start_window is None or activity.duration is None:
+                continue
+            begin = activity.start_window.preferred
+            offset = float(begin.hour * 60 + begin.minute)
+            by_day[day.date].append((offset, offset + float(activity.duration.preferred_minutes)))
+
+    for spans in by_day.values():
+        longest = 0.0
+        current_start, current_end = None, None
+        for start, end in sorted(spans):
+            if current_end is not None and start - current_end <= _HOME_WORK_JOIN_MINUTES:
+                current_end = max(current_end, end)
+            else:
+                if current_end is not None and current_start is not None:
+                    longest = max(longest, current_end - current_start)
+                current_start, current_end = start, end
+        if current_end is not None and current_start is not None:
+            longest = max(longest, current_end - current_start)
+        stretches.append(longest)
+        if longest >= _HOME_WORK_MONOLITH_MINUTES:
+            monoliths += 1
+
+    if not stretches or monoliths < _HOME_WORK_MONOLITH_SHARE * len(stretches):
+        return []
+    longest_overall = max(stretches)
+    return [
+        PreflightFinding(
+            path="$.days",
+            message=(
+                f"On {monoliths} of {len(stretches)} working days the resident works from home in "
+                f"one unbroken stretch of at least {_HOME_WORK_MONOLITH_MINUTES // 60} hours — the "
+                f"longest runs {longest_overall / 60:.1f}. Working from home is observable only "
+                "through the breaks: give the activity a daily cadence with several occurrences so "
+                "the day is blocks rather than a block, and declare what happens between them. A "
+                "single stretch leaves one room's sensor holding the whole afternoon and hands a "
+                "segmentation algorithm a rectangle."
+            ),
+            details={
+                "workingDays": len(stretches),
+                "monolithicDays": monoliths,
+                "longestStretchMinutes": round(longest_overall, 1),
+                "thresholdMinutes": _HOME_WORK_MONOLITH_MINUTES,
+            },
+        )
+    ]
+
+
 # A room hosting at least this many distinct intents is somewhere the resident works, not passes
 # through, and needs more than one object to work with.
 _BUSY_ROOM_INTENTS = 3
@@ -576,4 +671,86 @@ def validate_activities_do_not_park_the_resident(
                     },
                 )
             )
+    return findings
+
+
+def validate_instrumented_objects_are_opened(
+    scenario: Scenario, package: PersonalProcessPackage
+) -> list[PreflightFinding]:
+    """Does the behaviour ever touch the furniture the deployment puts a reed switch on?
+
+    A contact sensor is fitted because the object has a door, not because the script happens to
+    open it — an installer wires the medicine cabinet before the study begins, and eight months of
+    silence from it is a measurement. That is the right rule, and it is why this is a check on the
+    *behaviour* rather than on the deployment.
+
+    What it catches is the other case: an object the resident demonstrably uses and never opens.
+    Measured on a generated year, `start_laundry` ran 104 times and `hang_laundry` 104 more while
+    the washing machine's contact reported 53 openings — against 54.8 expected from the noise
+    model's false-positive rate alone, so every one of them was spurious. The same held for the
+    wardrobe, which a resident who dresses every morning never opened. All 1 444 `open` actions in
+    the horizon went to the refrigerator and the kitchen cupboard.
+
+    Four of the home's seven contact sensors therefore published nothing but noise, which is both
+    a fifth of the sensor inventory wasted and, worse, a lost behavioural marker: a wardrobe
+    opening at 07:00 is exactly what separates "asleep" from "awake" for a segmentation algorithm
+    that otherwise sees only a bedroom motion sensor.
+
+    The check is per *type*, because that is the granularity a process model works at: a node
+    opens a `storage_cabinet`, and which cabinet it turns out to be is decided at run time by
+    where the activity happens. So a home declaring three cabinets of which only the kitchen one is
+    ever opened passes this check while leaving two sensors silent. Catching that needs the room
+    each activity runs in, and is not attempted here.
+
+    A target is resolved the way materialization resolves it, through `RESOURCE_ROLE_ALIASES`. It
+    read the literal as a bare resource type at first, which is not how anyone writes these: the
+    reference models open `food_storage` and `laundry_equipment`, never `refrigerator` and
+    `washing_machine`, so the check reported all four types as untouched for behaviour that opens
+    them correctly — and would have flagged the reference models themselves. It only ever passed
+    for an author who had departed from the spelling the reference sets.
+    """
+    opened: set[str] = set()
+    types_by_resource_id = {
+        resource.resource_id: resource.resource_type for resource in scenario.resources
+    }
+    for model in package.process_models:
+        for node in model.nodes:
+            if node.action_type not in {"open", "close"}:
+                continue
+            target = node.arguments.get("target")
+            if target is None or target.source is not ValueSource.literal:
+                continue
+            literal = str(target.value)
+            # A role can be served by several types and a literal can also name one declared piece
+            # of furniture outright; both spellings bind at run time, so both count here.
+            opened |= resource_types_for_role(literal)
+            if literal in types_by_resource_id:
+                opened.add(types_by_resource_id[literal])
+
+    by_type: dict[str, list[str]] = defaultdict(list)
+    for resource in scenario.resources:
+        if resource.resource_type in CONTACT_INSTRUMENTED_TYPES:
+            by_type[resource.resource_type].append(resource.resource_id)
+
+    findings: list[PreflightFinding] = []
+    for resource_type in sorted(set(by_type) - opened):
+        resources = sorted(by_type[resource_type])
+        findings.append(
+            PreflightFinding(
+                path="$.processModels",
+                message=(
+                    f"No process model ever opens a {resource_type!r}, but the home declares "
+                    f"{len(resources)} of them ({', '.join(resources)}) and the deployment fits "
+                    "each with a contact sensor. Those sensors will publish only false positives. "
+                    "If the resident uses the object, give the activity that uses it an 'open' "
+                    "action on it; if the object is genuinely never opened, the silence is a "
+                    "measurement and this warning can stand."
+                ),
+                details={
+                    "resourceType": resource_type,
+                    "resources": resources,
+                    "openedTypes": sorted(opened),
+                },
+            )
+        )
     return findings

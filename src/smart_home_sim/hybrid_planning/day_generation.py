@@ -45,6 +45,8 @@ _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("take_morning_medication", ("medication", "medicine", "pill", "tablet", "insulin")),
     ("morning_toilet_and_shower", ("shower",)),
     ("morning_toilet_and_wash", ("wash", "toilet", "hygiene", "brush")),
+    ("use_toilet", ("toilet break", "bathroom break", "bathroom visit")),
+    ("prepare_and_drink_hot_drink", ("coffee break", "tea break", "hot drink", "make coffee")),
     ("evening_hygiene", ("evening hygiene", "bedtime wash", "evening wash", "night hygiene")),
     ("eat_breakfast", ("breakfast", "coffee", "morning tea")),
     ("eat_lunch", ("lunch",)),
@@ -58,6 +60,10 @@ _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("start_laundry", ("laundry", "washing machine")),
     ("hang_laundry", ("hang laundry", "hang the laundry", "hang out the washing", "dry clothes")),
     ("indoor_light_exercise", ("exercise", "stretch", "workout", "yoga", "gym")),
+    # Bare "work" is safe here only because the longest keyword wins: "workout" (7) and
+    # "housework" (9) both beat it and keep their own intents. Before this row a persona whose
+    # profile said "morning work block" was silently recorded as `read_and_rest`.
+    ("work_from_home", ("work", "desk", "freelance", "office", "email", "client")),
     ("evening_walk", ("walk", "stroll", "outdoors", "outside", "garden")),
     ("watch_television", ("tv", "television", "watch", "documentary", "news")),
     ("phone_call", ("call", "phone", "video call", "visit", "chat")),
@@ -79,6 +85,7 @@ _CATEGORY_DURATION_MINUTES: dict[IntentCategory, tuple[int, int, int]] = {
     IntentCategory.errand: (40, 60, 90),
     IntentCategory.leisure: (30, 45, 70),
     IntentCategory.social: (15, 25, 40),
+    IntentCategory.home_work: (45, 95, 165),
 }
 # The overnight sleep is the terminal activity of a one-day scenario; it truncates safely at the
 # day boundary (allowBoundaryTruncation), so a natural length is fine.
@@ -103,9 +110,30 @@ _CATEGORY_DURATION_SHAPE: dict[IntentCategory, tuple[int, int, int, float]] = {
     IntentCategory.errand: (25, 55, 140, 0.33),
     IntentCategory.leisure: (15, 45, 150, 0.45),
     IntentCategory.social: (8, 22, 75, 0.45),
+    # A block of home work, not a working day: the day is several of these, and how many is the
+    # cadence's business. The median is a long Pomodoro run and the ceiling is the morning someone
+    # does not get up from — four hours is where an uninterrupted stretch stops being plausible and
+    # `validate_home_work_is_fragmented` starts saying so.
+    IntentCategory.home_work: (25, 90, 240, 0.40),
 }
+
+# Intents whose duration has nothing to do with their category's. A category is a coarse grouping
+# — `hygiene` holds a twenty-minute shower and a two-minute visit to the toilet — and where the gap
+# is that wide the category default is not an approximation but a wrong number: an afternoon break
+# drawn from `cooking` would have the resident making coffee for half an hour. The drive layer
+# already worked around this for its own activities by passing a shape per timeline entry
+# (`_NIGHT_VISIT_SHAPE` below is exactly that); this is the same override for the intents a
+# *declared* habit can name. Category, then override: the table wins where it has an entry.
+# (minimumMinutes, medianMinutes, maximumMinutes, logSigma)
+_INTENT_DURATION_SHAPE: dict[str, tuple[int, int, int, float]] = {
+    "use_toilet": (2, 6, 15, 0.35),
+    "prepare_and_drink_hot_drink": (5, 13, 35, 0.35),
+}
+
 # A nocturnal bathroom trip is short and reuses the only executable toilet intent; the label keeps
-# it distinguishable from the morning routine in the ground truth.
+# it distinguishable from the morning routine in the ground truth. The intent stays what it was
+# even though `use_toilet` now exists and would read better: every horizon already generated
+# carries this one, and re-labelling them for tidiness is not worth breaking their reproducibility.
 _NIGHT_VISIT_INTENT = "morning_toilet_and_wash"
 _NIGHT_VISIT_LABEL = "night_visit"
 _NIGHT_VISIT_SHAPE = (3, 6, 12, 0.35)
@@ -409,7 +437,13 @@ def _activity(
 ) -> Activity:
     spec = intent_spec(intent_id)
     moment = _at(day_date, hhmm, tz)
-    shape = duration_shape or _CATEGORY_DURATION_SHAPE[spec.category]
+    # An explicit shape from the caller still wins: the drive layer knows things about its own
+    # activities — how long *this* nap should be — that no table can hold.
+    shape = (
+        duration_shape
+        or _INTENT_DURATION_SHAPE.get(intent_id)
+        or _CATEGORY_DURATION_SHAPE[spec.category]
+    )
     if duration is not None:
         low, pref, high = duration
     elif intent_id == "sleep":
@@ -421,6 +455,9 @@ def _activity(
         low, pref, high = duration_shape[0], duration_shape[1], duration_shape[2]
     elif intent_id == "sleep":
         low, pref, high = _SLEEP_DURATION
+    elif intent_id in _INTENT_DURATION_SHAPE:
+        low, _, high, _ = _INTENT_DURATION_SHAPE[intent_id]
+        pref = _INTENT_DURATION_SHAPE[intent_id][1]
     else:
         low, pref, high = _CATEGORY_DURATION_MINUTES[spec.category]
     labels = [f"activity:{recurring_activity_id}"] if recurring_activity_id else []

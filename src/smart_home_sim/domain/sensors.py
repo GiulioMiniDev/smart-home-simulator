@@ -92,6 +92,18 @@ class PirSensor(SensorBase):
         return self
 
 
+# Furniture a deployment fits a contact sensor to: everything with a door or a lid, the front door
+# aside since it is handled on its own. Keyed on the resource type the author declared, so the
+# inventory follows the home rather than the behaviour.
+#
+# It lives here rather than in the deployment because two places need to agree on it: the
+# deployment, which installs the switches, and the authoring preflight, which checks that the
+# behaviour ever touches what they are attached to.
+CONTACT_INSTRUMENTED_TYPES = frozenset(
+    {"refrigerator", "storage_cabinet", "wardrobe", "washing_machine"}
+)
+
+
 class ContactSensor(SensorBase):
     sensor_type: Literal["contact"] = "contact"
     entity_id: str = Field(min_length=1)

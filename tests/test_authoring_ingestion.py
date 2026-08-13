@@ -418,7 +418,9 @@ def test_simplified_prompt_1_2_3_is_regenerated_from_the_catalogs() -> None:
 
     # The container openings the reference models gained are what the prompt exists to teach.
     assert "open(cleaning_product_storage) -> take_item(cleaning_tool)" in reference_section
-    assert 'version: "1.2.0"' in committed
+    # Read from the constant, not retyped: pinning the version by hand is the same mistake as
+    # retyping the intent list, and it fired the moment the catalog moved to 1.3.0.
+    assert f'version: "{SIMPLIFIED_ACTIVITY_CATALOG_VERSION}"' in committed
     assert "call_sister_lucia" not in committed
 
 

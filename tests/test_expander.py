@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +10,12 @@ import pytest
 
 from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.models import (
+    Activity,
     AuthorType,
+    DateTimeWindow,
+    DayContext,
     DayPlan,
+    DurationRange,
     Location,
     LocationKind,
     Provenance,
@@ -19,13 +23,19 @@ from smart_home_sim.domain.models import (
     VersionedReference,
 )
 from smart_home_sim.hybrid_planning.day_generation import RHYTHM_EMITTED_INTENTS
-from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
+from smart_home_sim.hybrid_planning.expander import (
+    ExpansionError,
+    _measure_habits,
+    expand_outline,
+)
 from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
 from smart_home_sim.hybrid_planning.outline import (
     ActivityDisplacement,
     ActivityOverride,
     Displacement,
     FixedCommitment,
+    HabitGroundTruth,
+    HabitSegment,
     HorizonOutline,
     OutlineEvent,
     OutlinePhase,
@@ -209,6 +219,61 @@ def test_every_day_of_the_horizon_is_different(package: PersonalProcessPackage) 
     assert len({_signature(day) for day in days}) == len(days)
 
 
+def test_a_working_day_at_home_expands_into_blocks_on_working_days_only(
+    package: PersonalProcessPackage,
+) -> None:
+    """The case the whole `work_from_home` intent exists for.
+
+    Declared as one daily activity with four occurrences on monday-to-friday, the working day
+    arrives as four separate blocks in the living room, and the weekend has none of them. Before
+    this, the same declaration produced one block a day, seven days a week, or — as every authored
+    horizon actually did — nothing at all, because the only work intent available sent the resident
+    out of the front door.
+    """
+    profile = _profile()
+    working = _recurring(
+        "freelance_work",
+        RecurringActivityKind.anchor,
+        ("09:00", "18:00"),
+        times=4,
+        jitter=20,
+        intent="work_from_home",
+    )
+    working = working.model_copy(
+        update={
+            "cadence": working.cadence.model_copy(
+                update={
+                    "weekdays": [
+                        Weekday.monday,
+                        Weekday.tuesday,
+                        Weekday.wednesday,
+                        Weekday.thursday,
+                        Weekday.friday,
+                    ]
+                }
+            )
+        }
+    )
+    outline = _outline(
+        profile=profile.model_copy(
+            update={"recurring_activities": [*profile.recurring_activities, working]}
+        )
+    )
+
+    days = {day.date: day for day in expand_outline(outline, package, seed=1).bundle.scenario.days}
+
+    def blocks(day: DayPlan) -> list[Activity]:
+        return [item for item in day.activities if item.intent == "work_from_home"]
+
+    weekday_blocks = blocks(days[date(2026, 8, 5)])  # a Wednesday
+    assert len(weekday_blocks) == 4
+    assert all(item.location_ids == ["living_room"] for item in weekday_blocks)
+    starts = sorted(item.start_window.preferred for item in weekday_blocks if item.start_window)
+    # Spread through the day rather than stacked: the first and last block are hours apart.
+    assert (starts[-1] - starts[0]) > timedelta(hours=4)
+    assert blocks(days[date(2026, 8, 8)]) == []  # the Saturday
+
+
 def test_the_same_seed_reproduces_the_bundle(package: PersonalProcessPackage) -> None:
     outline = _outline()
 
@@ -272,6 +337,87 @@ def test_a_replaced_cadence_thins_the_habit_inside_its_phase(
 
     assert inside < 14
     assert outside == 7
+
+
+def test_each_block_is_given_its_own_slice_of_the_band_not_the_whole_of_it(
+    package: PersonalProcessPackage,
+) -> None:
+    """The window handed to the compiler has to say what the placement already said.
+
+    Given the whole nine-hour band, four blocks are each free to sit anywhere among the others and
+    CP-SAT is asked to choose an ordering rather than confirm one: on a real horizon that exhausted
+    its budget on the feasibility probes and the year was rejected with `SOLVER_NOT_OPTIMAL`,
+    naming no day.
+    """
+    profile = _profile()
+    working = _recurring(
+        "freelance_work",
+        RecurringActivityKind.anchor,
+        ("09:00", "18:00"),
+        times=4,
+        jitter=15,
+        intent="work_from_home",
+    )
+    outline = _outline(
+        profile=profile.model_copy(
+            update={"recurring_activities": [*profile.recurring_activities, working]}
+        )
+    )
+
+    day = expand_outline(outline, package, seed=1).bundle.scenario.days[0]
+    blocks = sorted(
+        (item for item in day.activities if item.intent == "work_from_home"),
+        key=lambda item: item.start_window.preferred,  # type: ignore[union-attr]
+    )
+
+    assert len(blocks) == 4
+    for block in blocks:
+        window = block.start_window
+        assert window is not None
+        # Its own sub-band is two and a quarter hours; the whole band is nine.
+        assert window.latest - window.earliest <= timedelta(hours=2, minutes=45)
+    assert blocks[0].start_window.latest < blocks[-1].start_window.earliest
+
+
+def test_a_phase_moves_the_window_it_placed_the_habit_in(
+    package: PersonalProcessPackage,
+) -> None:
+    """Everything that reads a cadence must read the one the phase put in force.
+
+    The occurrences were already placed from the variant cadence; the window came from the
+    baseline, so a habit a phase moved to a later band was handed the earlier band's hours.
+    """
+    phase = OutlinePhase(
+        phase_id="late",
+        label="Late television",
+        start_date=date(2026, 8, 10),
+        end_date=date(2026, 8, 23),
+        activity_overrides=[
+            ActivityOverride(
+                recurring_activity_id="watch_television",
+                cadence=ActivityCadence(
+                    period=CadencePeriod.day,
+                    times_per_period=1,
+                    window_start="21:30",
+                    window_end="22:45",
+                    jitter_minutes=10,
+                ),
+            )
+        ],
+    )
+    days = {
+        day.date: day
+        for day in expand_outline(_outline(phases=[phase]), package, seed=1).bundle.scenario.days
+    }
+
+    inside = next(
+        item
+        for item in days[date(2026, 8, 12)].activities
+        if item.intent == "watch_television" and item.start_window is not None
+    )
+
+    assert inside.start_window is not None
+    assert inside.start_window.earliest.strftime("%H:%M") >= "21:15"
 
 
 def test_a_skipped_habit_is_gone_from_the_event_day(package: PersonalProcessPackage) -> None:
@@ -621,3 +767,131 @@ def test_a_debt_nap_is_not_dropped_inside_a_shift(package: PersonalProcessPackag
         )
 
     assert clashes == []
+
+
+# --------------------------------------------------------------------------------------
+# What the habit ground truth measures
+
+
+def _planned_day(day: date, *entries: tuple[str, str, int]) -> DayPlan:
+    """A day built by hand from `(intent, HH:MM, minutes)`, so the arithmetic is checkable."""
+    activities = []
+    for index, (intent, start, minutes) in enumerate(entries):
+        hour, minute = (int(part) for part in start.split(":"))
+        begin = datetime.combine(day, time(hour, minute), tzinfo=UTC)
+        activities.append(
+            Activity(
+                activity_id=f"{day.isoformat()}_{index}",
+                actor_id="resident",
+                intent=intent,
+                location_ids=["bedroom"],
+                start_window=DateTimeWindow(earliest=begin, preferred=begin, latest=begin),
+                duration=DurationRange(
+                    minimum_minutes=minutes,
+                    preferred_minutes=minutes,
+                    maximum_minutes=minutes,
+                ),
+            )
+        )
+    return DayPlan(date=day, context=DayContext(day_type="weekday"), activities=activities)
+
+
+def _fortnight(band: HabitSegment, weekday_entries, weekend_entries) -> HabitGroundTruth:
+    days = [
+        _planned_day(
+            _START + timedelta(days=offset),
+            *(
+                weekend_entries
+                if (_START + timedelta(days=offset)).weekday() >= 5
+                else weekday_entries
+            ),
+        )
+        for offset in range(14)
+    ]
+    return _measure_habits(_outline(habits=[band]), days, seed=1)
+
+
+def test_a_weekday_scoped_band_is_measured_only_on_its_own_days() -> None:
+    """The reason the field exists: a band covering both kinds of day averages them together."""
+    band = HabitSegment(
+        habit_id="daytime",
+        label="Working day",
+        window_start="09:00",
+        window_end="17:00",
+        weekdays=[
+            Weekday.monday,
+            Weekday.tuesday,
+            Weekday.wednesday,
+            Weekday.thursday,
+            Weekday.friday,
+        ],
+    )
+    truth = _fortnight(band, [("perform_work", "09:00", 480)], [("read_and_rest", "09:00", 480)])
+
+    (observation,) = truth.habits
+    # Ten weekdays in a fortnight, and not one of the four weekend days.
+    assert observation.day_count == 10
+    assert [item.intent for item in observation.composition] == ["perform_work"]
+    assert observation.composition[0].share == 1.0
+    assert observation.day_types == []
+
+
+def test_an_unscoped_band_publishes_the_split_it_is_hiding() -> None:
+    """Same hours, two behaviours. Without the split the band reads as a 5:2 blend of both."""
+    band = HabitSegment(
+        habit_id="daytime", label="Daytime", window_start="09:00", window_end="17:00"
+    )
+    truth = _fortnight(band, [("perform_work", "09:00", 480)], [("read_and_rest", "09:00", 480)])
+
+    (observation,) = truth.habits
+    assert observation.day_count == 14
+    assert {item.intent for item in observation.composition} == {"perform_work", "read_and_rest"}
+
+    split = {item.day_type: item for item in observation.day_types}
+    assert split["weekday"].day_count == 10
+    assert split["weekend"].day_count == 4
+    assert [item.intent for item in split["weekday"].composition] == ["perform_work"]
+    assert [item.intent for item in split["weekend"].composition] == ["read_and_rest"]
+
+
+def test_the_effective_window_is_where_the_dominant_activity_actually_runs() -> None:
+    """A window is where the planner may put the band; this is where the behaviour landed."""
+    band = HabitSegment(habit_id="night", label="Night", window_start="21:00", window_end="07:00")
+    # Declared from 21:00, but the resident watches television until 23:00 and sleeps from there.
+    truth = _fortnight(
+        band,
+        [("watch_television", "21:00", 120), ("sleep", "23:00", 420)],
+        [("watch_television", "21:00", 120), ("sleep", "23:00", 420)],
+    )
+
+    (observation,) = truth.habits
+    assert observation.dominant_intent == "sleep"
+    assert (observation.effective_start, observation.effective_end) == ("23:00", "06:00")
+    # Seven hours of the ten-hour band, and the declared window is left untouched.
+    assert observation.effective_minutes == 420.0
+    assert (observation.window_start, observation.window_end) == ("21:00", "07:00")
+
+
+def test_no_effective_window_is_published_when_nothing_holds_the_band() -> None:
+    """A band with no dominant behaviour reports none, rather than inventing a boundary."""
+    band = HabitSegment(
+        habit_id="evening", label="Evening", window_start="17:00", window_end="21:00"
+    )
+    # Four activities of an hour each, none of them on more than a quarter of the days.
+    days = [
+        _planned_day(
+            _START + timedelta(days=offset),
+            (
+                ("read_and_rest", "eat_dinner", "watch_television", "phone_call")[offset % 4],
+                "17:00",
+                240,
+            ),
+        )
+        for offset in range(12)
+    ]
+    truth = _measure_habits(_outline(habits=[band]), days, seed=1)
+
+    (observation,) = truth.habits
+    assert observation.effective_start is None
+    assert observation.effective_end is None
+    assert observation.effective_share == 0.0

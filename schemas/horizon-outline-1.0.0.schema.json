@@ -2,6 +2,7 @@
   "$defs": {
     "ActivityCadence": {
       "additionalProperties": false,
+      "description": "How often a recurring activity happens, and inside which hours.\n\n`times_per_period` means different things per period, and both readings are the natural one.\nOver a week or a month it counts *days*: three runs a week are three days on which a run\nhappens. Over a day it counts *occurrences inside that day*, which is what a working day split\ninto blocks, a course of medication taken twice, or a dog walked morning and evening actually\nis. The daily reading used to be discarded \u2014 `_due_times` scheduled exactly one occurrence per\nday whatever the field said \u2014 so an author writing `period: day, timesPerPeriod: 4` got one\nactivity and no warning.",
       "properties": {
         "period": {
           "$ref": "#/$defs/CadencePeriod"
@@ -301,7 +302,7 @@
     },
     "HabitSegment": {
       "additionalProperties": false,
-      "description": "A habit in the sense the smart-home literature uses the word.\n\nLeotta, Mecella and Sora define a habit as \"a sequence or interleaving of activities that\nhappen in specific contextual conditions\", the focus being the routine rather than the goal \u2014\nwhat the resident does each morning between 08:00 and 10:00. The habit-segmentation work makes\nthe same point operationally: it discretises the timestamp axis, and each bin is a time range\nin which a clearly identifiable process runs. In their Aruba results the bin `05:15-07:00` is\nabout 80% the *sleeping activity*, with `bed_to_toilet` and `meal_preparation` making up most\nof the rest.\n\nSo a habit is a band of the day, and activities live inside it. That is why this contract\nseparates the two: `RecurringActivity` says what recurs and how often, and this says how the\nday is carved up. A researcher's segmentation algorithm is trying to recover exactly these\nbands from a sensor log, which is why the expander publishes them as ground truth.\n\nThe night band is the one that legitimately wraps: `window_start` after `window_end` means the\nsegment crosses midnight.",
+      "description": "A habit in the sense the smart-home literature uses the word.\n\nLeotta, Mecella and Sora define a habit as \"a sequence or interleaving of activities that\nhappen in specific contextual conditions\", the focus being the routine rather than the goal \u2014\nwhat the resident does each morning between 08:00 and 10:00. The habit-segmentation work makes\nthe same point operationally: it discretises the timestamp axis, and each bin is a time range\nin which a clearly identifiable process runs. In their Aruba results the bin `05:15-07:00` is\nabout 80% the *sleeping activity*, with `bed_to_toilet` and `meal_preparation` making up most\nof the rest.\n\nSo a habit is a band of the day, and activities live inside it. That is why this contract\nseparates the two: `RecurringActivity` says what recurs and how often, and this says how the\nday is carved up. A researcher's segmentation algorithm is trying to recover exactly these\nbands from a sensor log, which is why the expander publishes them as ground truth.\n\nThe night band is the one that legitimately wraps: `window_start` after `window_end` means the\nsegment crosses midnight.\n\nA band may also be scoped to particular days. Working hours are already weekday-scoped \u2014\n`FixedCommitment.weekdays` is mandatory \u2014 so a single band covering 08:30-17:30 every day of\nthe week has to hold both the working day and the domestic Saturday, and a segmentation\nalgorithm asked to recover it is being asked to find one boundary for two behaviours. Measured\non a generated year: the same band was `work_shift` at 96% across 260 weekdays and, across 105\nweekend days, a mixture whose largest component was `buy_groceries` at 23%. The band that\nproduced those numbers had been named \"Fascia diurna e weekend domestico\" by its author, who\ncould see the problem and had no field in which to say it.",
       "properties": {
         "habitId": {
           "minLength": 1,
@@ -326,6 +327,13 @@
             "type": "string"
           },
           "title": "Recurringactivityids",
+          "type": "array"
+        },
+        "weekdays": {
+          "items": {
+            "$ref": "#/$defs/Weekday"
+          },
+          "title": "Weekdays",
           "type": "array"
         },
         "note": {

@@ -31,13 +31,13 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     RecurringActivity,
     RecurringActivityKind,
     Weekday,
+    weekday_of,
 )
 
 GENERATOR_NAME = "smart-home-sim.hybrid_planning.cadence"
 GENERATOR_VERSION = "1.0.0"
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_WEEKDAYS: list[Weekday] = list(Weekday)  # index matches date.weekday(): 0 = Monday
 
 
 class CadenceError(ValueError):
@@ -115,11 +115,8 @@ def build_cadence_calendar(
     while current < end_date:
         occurrences: list[ActivityOccurrence] = []
         for recurring_activity_id, schedule in per_activity_due.items():
-            target = schedule.get(current)
-            if target is None:
-                continue
             activity = by_id[recurring_activity_id]
-            occurrences.append(
+            occurrences.extend(
                 ActivityOccurrence(
                     recurring_activity_id=activity.recurring_activity_id,
                     label=activity.label,
@@ -129,13 +126,14 @@ def build_cadence_calendar(
                     window_start=activity.cadence.window_start,
                     window_end=activity.cadence.window_end,
                 )
+                for target in schedule.get(current, ())
             )
         occurrences.sort(key=lambda item: (item.target_time, item.recurring_activity_id))
         total += len(occurrences)
         days.append(
             CalendarDay(
                 date=current.isoformat(),
-                weekday=_weekday_of(current),
+                weekday=weekday_of(current),
                 occurrences=occurrences,
             )
         )
@@ -163,17 +161,32 @@ def build_cadence_calendar(
     return CadenceCalendarResult(calendar=calendar, total_occurrences=total)
 
 
-def _due_times(activity: RecurringActivity, start: date, end: date, seed: int) -> dict[date, str]:
+def _due_times(
+    activity: RecurringActivity, start: date, end: date, seed: int
+) -> dict[date, list[str]]:
+    """The days this activity is due, and the target time(s) inside each of them.
+
+    Several times on one day is only ever the daily period's business: over a week or a month
+    `timesPerPeriod` counts the days, and each of those days holds one occurrence.
+    """
     cadence = activity.cadence
-    due: dict[date, str] = {}
+    due: dict[date, list[str]] = {}
     if cadence.period is CadencePeriod.day:
+        # `weekdays` restricts a daily activity to the days it actually happens on, which the
+        # weekly and monthly branches have always honoured and this one silently ignored: an
+        # authored bundle declaring a 06:10 alarm on `day` with monday-to-friday got it on
+        # Saturday and Sunday too, and the profile said nothing was wrong. The stride counts
+        # eligible days only, so "every second working day" means what it reads as; with no
+        # weekdays declared every day is eligible and the schedule is unchanged.
+        weekdays = set(cadence.weekdays)
         current = start
         index = 0
         while current < end:
-            if index % cadence.every_n_periods == 0:
-                due[current] = _target_time(activity, current, seed)
+            if not weekdays or weekday_of(current) in weekdays:
+                if index % cadence.every_n_periods == 0:
+                    due[current] = _daily_target_times(activity, current, seed)
+                index += 1
             current += timedelta(days=1)
-            index += 1
         return due
 
     if cadence.period is CadencePeriod.week:
@@ -186,7 +199,7 @@ def _due_times(activity: RecurringActivity, start: date, end: date, seed: int) -
             if week_index % cadence.every_n_periods != 0:
                 continue
             for chosen in _select_week_dates(activity, week_index, dates, seed):
-                due[chosen] = _target_time(activity, chosen, seed)
+                due[chosen] = [_target_time(activity, chosen, seed)]
         return due
 
     month_buckets: dict[tuple[int, int], list[date]] = defaultdict(list)
@@ -199,7 +212,7 @@ def _due_times(activity: RecurringActivity, start: date, end: date, seed: int) -
         if ordinal % cadence.every_n_periods != 0:
             continue
         for chosen in _select_month_dates(activity, year, month, dates, seed):
-            due[chosen] = _target_time(activity, chosen, seed)
+            due[chosen] = [_target_time(activity, chosen, seed)]
     return due
 
 
@@ -208,7 +221,7 @@ def _select_week_dates(
 ) -> list[date]:
     weekdays = set(activity.cadence.weekdays)
     if weekdays:
-        return [day for day in dates if _weekday_of(day) in weekdays]
+        return [day for day in dates if weekday_of(day) in weekdays]
     count = min(activity.cadence.times_per_period, len(dates))
     rng = _rng(seed, activity.recurring_activity_id, "week", week_index)
     return sorted(rng.sample(dates, count))
@@ -218,12 +231,39 @@ def _select_month_dates(
     activity: RecurringActivity, year: int, month: int, dates: list[date], seed: int
 ) -> list[date]:
     weekdays = set(activity.cadence.weekdays)
-    candidates = [day for day in dates if _weekday_of(day) in weekdays] if weekdays else dates
+    candidates = [day for day in dates if weekday_of(day) in weekdays] if weekdays else dates
     if not candidates:
         return []
     count = min(activity.cadence.times_per_period, len(candidates))
     rng = _rng(seed, activity.recurring_activity_id, "month", year, month)
     return sorted(rng.sample(candidates, count))
+
+
+def _daily_target_times(activity: RecurringActivity, day: date, seed: int) -> list[str]:
+    """Spread a daily activity's occurrences across its window, one per equal sub-band.
+
+    Drawing every occurrence from the whole window would let a working day's four blocks all land
+    before eleven; splitting the window first is what makes "four times a day" mean four times
+    *through* the day. The sub-bands are equal and contiguous, so the occurrences stay in a stable
+    order and the ground truth reads morning-to-evening.
+
+    Nothing here reaches the single-occurrence case, which keeps its original draw down to the
+    seeding key: every horizon generated before daily counts were honoured still expands to exactly
+    the same calendar.
+    """
+    cadence = activity.cadence
+    if cadence.times_per_period == 1:
+        return [_target_time(activity, day, seed)]
+    low = _minutes(cadence.window_start)
+    high = _minutes(cadence.window_end)
+    width = (high - low) / cadence.times_per_period
+    times: list[str] = []
+    for index in range(cadence.times_per_period):
+        first = int(low + index * width)
+        last = max(first, int(low + (index + 1) * width) - 1)
+        rng = _rng(seed, activity.recurring_activity_id, "time", day.isoformat(), index)
+        times.append(_hhmm(rng.randint(first, last)))
+    return times
 
 
 def _target_time(activity: RecurringActivity, day: date, seed: int) -> str:
@@ -237,10 +277,6 @@ def _rng(seed: int, *parts: object) -> random.Random:
     key = "|".join(str(part) for part in (seed, *parts))
     digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
     return random.Random(int(digest[:16], 16))
-
-
-def _weekday_of(day: date) -> Weekday:
-    return _WEEKDAYS[day.weekday()]
 
 
 def _minutes(value: str) -> int:

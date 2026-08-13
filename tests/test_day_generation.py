@@ -121,6 +121,41 @@ def test_build_day_plan_scaffolds_wake_and_sleep() -> None:
     assert plan.activities[1].labels == ["activity:morning_coffee"]
 
 
+def test_a_break_is_not_given_the_length_of_its_category() -> None:
+    """A category is a coarse grouping, and for these two it is the wrong number outright.
+
+    `hygiene` holds a twenty-minute shower and a two-minute visit to the toilet; `cooking` holds a
+    Sunday roast and the ninety seconds it takes to put the moka on. Drawn from their categories a
+    bathroom break would run eighteen minutes and a coffee half an hour, which is not a break.
+    """
+    day = _day(
+        "2026-08-03",
+        Weekday.monday,
+        [_occ("toilet break", "11:20"), _occ("coffee break", "16:05")],
+    )
+
+    plan = build_day_plan(day, timezone="Europe/Rome", actor_id="luigi_bianchi", seed=4)
+
+    durations = {
+        activity.intent: activity.duration
+        for activity in plan.activities
+        if activity.duration is not None
+    }
+    assert durations["use_toilet"].maximum_minutes == 15
+    assert durations["prepare_and_drink_hot_drink"].maximum_minutes == 35
+    # The categories they belong to would have allowed 45 and 80.
+    assert durations["use_toilet"].preferred_minutes <= 15
+    assert durations["prepare_and_drink_hot_drink"].preferred_minutes <= 35
+
+
+def test_a_daytime_bathroom_visit_is_not_the_morning_routine() -> None:
+    """The intent id *is* the label the dataset publishes, so reusing the morning one for an
+    afternoon trip would put `morning_toilet_and_wash` in the ground truth at 15:30."""
+    assert label_to_intent("bathroom break") == "use_toilet"
+    assert label_to_intent("morning wash") == "morning_toilet_and_wash"
+    assert intent_spec("use_toilet").default_location == "bathroom"
+
+
 def test_build_day_scenario_uses_vocabulary_intents() -> None:
     day = _day(
         "2026-08-03", Weekday.monday, [_occ("groceries", "10:30", RecurringActivityKind.contextual)]
