@@ -617,25 +617,28 @@ def ingest_authoring_output(
         typer.echo(f"Authoring ingestion report written to: {report_output.resolve()}")
     if report.valid:
         typer.echo(f"Canonical authoring inputs written to: {output_dir.resolve()}")
-    else:
-        if repair_request_output is not None:
-            preparation = prepare_authoring_repair_file(bundle_path, attempt=repair_attempt)
-            if preparation.request is None:
-                typer.echo(
-                    f"Repair request unavailable: {preparation.unavailable_reason}",
-                    err=True,
-                )
-            else:
-                repair_request_output.parent.mkdir(parents=True, exist_ok=True)
-                repair_request_output.write_text(
-                    preparation.request.model_dump_json(by_alias=True, indent=2) + "\n",
-                    encoding="utf-8",
-                    newline="\n",
-                )
-                typer.echo(
-                    f"Authoring repair request written to: {repair_request_output.resolve()}",
-                    err=True,
-                )
+    # An accepted bundle can still carry warnings, and those are worth sending back to their author:
+    # the request is prepared whenever one was asked for, and only the exit code distinguishes a
+    # rejection from an acceptance with something to answer for.
+    if repair_request_output is not None:
+        preparation = prepare_authoring_repair_file(bundle_path, attempt=repair_attempt)
+        if preparation.request is None:
+            typer.echo(
+                f"Repair request unavailable: {preparation.unavailable_reason}",
+                err=True,
+            )
+        else:
+            repair_request_output.parent.mkdir(parents=True, exist_ok=True)
+            repair_request_output.write_text(
+                preparation.request.model_dump_json(by_alias=True, indent=2) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            typer.echo(
+                f"Authoring repair request written to: {repair_request_output.resolve()}",
+                err=True,
+            )
+    if not report.valid:
         raise typer.Exit(code=1)
 
 

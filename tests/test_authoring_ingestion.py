@@ -9,6 +9,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from smart_home_sim.authoring.service import (
+    AuthoringValidationResult,
     ingest_authoring_file,
     prepare_authoring_repair_file,
     validate_authoring_file,
@@ -517,12 +518,40 @@ def test_repair_request_supports_malformed_but_bounded_utf8_json(tmp_path: Path)
     assert [issue.code for issue in preparation.request.validation_report.issues] == ["JSON_SYNTAX"]
 
 
-def test_valid_or_unembeddable_bundle_does_not_create_repair_request(tmp_path: Path) -> None:
-    valid = prepare_authoring_repair_file(EXAMPLE)
-    assert valid.request is None
-    assert valid.report.valid
-    assert "already valid" in (valid.unavailable_reason or "")
+def test_an_accepted_bundle_with_warnings_still_gets_a_request(tmp_path: Path) -> None:
+    """A warning is the finding no gate will reject a document over, and it used to go nowhere.
 
+    Gating the request on the report being invalid meant the only route back to an author was
+    closed for exactly the defects that survive validation: a resident who ran the washing machine
+    104 times without opening it was told the bundle needed no repair.
+    """
+    accepted = prepare_authoring_repair_file(EXAMPLE)
+
+    assert accepted.report.valid
+    assert [issue.severity for issue in accepted.report.issues] == ["warning"]
+    assert accepted.request is not None
+    assert accepted.unavailable_reason is None
+    instructions = accepted.request.instructions
+    assert any("This bundle was accepted" in line for line in instructions)
+    # The error directive would send the author hunting for a structural fault that is not there.
+    assert not any("severity is error" in line for line in instructions)
+
+
+def test_a_bundle_with_nothing_to_say_about_it_gets_no_request(monkeypatch, tmp_path: Path) -> None:
+    report = prepare_authoring_repair_file(EXAMPLE).report
+    silent = report.model_copy(update={"issues": []})
+    monkeypatch.setattr(
+        "smart_home_sim.authoring.service.validate_authoring_file",
+        lambda path: AuthoringValidationResult(report=silent),
+    )
+
+    preparation = prepare_authoring_repair_file(EXAMPLE)
+
+    assert preparation.request is None
+    assert "already valid" in (preparation.unavailable_reason or "")
+
+
+def test_an_unembeddable_bundle_does_not_create_repair_request(tmp_path: Path) -> None:
     non_utf8_path = tmp_path / "binary.json"
     non_utf8_path.write_bytes(b"\xff")
     non_utf8 = prepare_authoring_repair_file(non_utf8_path)

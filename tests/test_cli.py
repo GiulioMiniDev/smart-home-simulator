@@ -332,17 +332,26 @@ def test_prepare_authoring_repair_command_writes_standalone_request(tmp_path: Pa
     assert request["validationReport"]["issues"][0]["code"] == "JSON_SYNTAX"
 
 
-def test_prepare_authoring_repair_rejects_valid_input_and_in_place_output(
+def test_prepare_authoring_repair_answers_an_accepted_bundle_s_warnings(
     tmp_path: Path,
 ) -> None:
+    """The minimal bundle passes every gate and still warns that the resident never goes out."""
     valid_path = EXAMPLES / "authoring/minimal.authoring-bundle.json"
-    no_repair = runner.invoke(
+    output = tmp_path / "repair.json"
+    accepted = runner.invoke(
         app,
-        ["prepare-authoring-repair", str(valid_path), "--output", str(tmp_path / "repair.json")],
+        ["prepare-authoring-repair", str(valid_path), "--output", str(output)],
     )
-    assert no_repair.exit_code == 1
-    assert "already valid" in no_repair.stderr
+    assert accepted.exit_code == 0
+    request = json.loads(output.read_text(encoding="utf-8"))
+    assert request["validationReport"]["valid"] is True
+    assert [issue["code"] for issue in request["validationReport"]["issues"]] == [
+        "RESIDENT_NEVER_LEAVES_HOME"
+    ]
+    assert any("This bundle was accepted" in line for line in request["instructions"])
 
+
+def test_prepare_authoring_repair_refuses_in_place_output(tmp_path: Path) -> None:
     invalid_path = tmp_path / "invalid.json"
     invalid_path.write_text("{not-json", encoding="utf-8")
     in_place = runner.invoke(
