@@ -85,6 +85,35 @@ EXECUTION_PACE_SIGMA = 0.10
 EXECUTION_PACE_LOG_LIMIT = 0.262
 EXECUTION_PACE_MIN_FACTOR = math.exp(-EXECUTION_PACE_LOG_LIMIT)
 EXECUTION_PACE_MAX_FACTOR = math.exp(EXECUTION_PACE_LOG_LIMIT)
+# How long a gesture takes on its own, in seconds, regardless of how much time the plan has
+# budgeted for the activity around it. Sitting down takes a moment whether the meal that follows
+# runs twenty minutes or two hours.
+#
+# Without this the whole budget was shared out by `durationWeight` alone, so every step stretched
+# with the activity. An eight-hour sleep whose three steps all weigh 1.0 — which is what the
+# authoring model emits, on all 110 action nodes of the twelve-month package — became two hours
+# and forty minutes of `move_to`, the same again of `change_posture`, and only the last third of
+# actual sleeping. Over that export it put 1.671 hours a year into changing posture; and since
+# `change_posture` is one of the action types the PIR model treats as manual work, three quarters
+# of the night's motion pulses came from a resident lying still in bed.
+#
+# Only gestures with a length of their own are listed. Everything absent is elastic: it is what
+# the activity is made of, and it absorbs whatever the budget leaves. Travel actions are entered
+# at zero because their real length is the walk, which `_execute_action` floors them at once the
+# path is planned.
+PUNCTUAL_ACTION_SECONDS = {
+    "activate": 3.0,
+    "change_posture": 4.0,
+    "close": 3.0,
+    "deactivate": 3.0,
+    "enter_home": 6.0,
+    "leave_home": 6.0,
+    "move_to": 0.0,
+    "move_to_capability": 0.0,
+    "open": 3.0,
+    "put_item": 6.0,
+    "take_item": 6.0,
+}
 
 
 class SimulationFailure(RuntimeError):
@@ -569,6 +598,47 @@ def _expand_process(
         return phases
 
     return walk(select_edge(starts[0]).target_node_id)
+
+
+def _phase_durations(phases: list[list[ProcessNode]], intended: int) -> list[int]:
+    """Share an activity's budget over its phases, holding gestures to their own length.
+
+    A phase is elastic when at least one of its nodes is something the activity is *made* of —
+    working, eating, sleeping. Those absorb the budget, and `durationWeight` decides how they
+    split it between themselves. A phase of pure gestures gets the gesture's length and nothing
+    more, so the time it used to swallow goes back to the elastic phases instead of stretching a
+    two-second act of sitting down into an hour of it.
+
+    The activity's total is unchanged, which is what keeps the habit ground truth valid across
+    this change: only the shape inside the activity moves.
+
+    A process made of nothing but gestures has nothing to absorb anything, so there the budget is
+    shared by weight exactly as before — a short process of taps and item handling is the one case
+    where stretching the gestures is the only available answer.
+    """
+    weights = [max(node.duration_weight or 1 for node in phase) for phase in phases]
+    fixed: list[int | None] = []
+    for phase in phases:
+        seconds = [PUNCTUAL_ACTION_SECONDS.get(node.action_type or "") for node in phase]
+        # A parallel phase is only punctual if every branch in it is: one elastic branch means the
+        # phase lasts as long as that branch does.
+        fixed.append(
+            int(round(max(item for item in seconds if item is not None) * 1_000_000))
+            if seconds and all(item is not None for item in seconds)
+            else None
+        )
+    elastic = [index for index, item in enumerate(fixed) if item is None]
+    if not elastic:
+        total = sum(weights)
+        return [max(1, int(round(intended * weight / total))) for weight in weights]
+    remaining = max(0, intended - sum(item for item in fixed if item is not None))
+    elastic_weight = sum(weights[index] for index in elastic)
+    return [
+        max(1, item)
+        if item is not None
+        else max(1, int(round(remaining * weights[index] / elastic_weight)))
+        for index, item in enumerate(fixed)
+    ]
 
 
 def trace_semantic_digest(payload: dict[str, Any]) -> str:
@@ -1396,17 +1466,15 @@ class SimulationEngine:
             phases = _expand_process(
                 model, self.state, actor_id, day, self.bundle, self.variable_catalog
             )
-            phase_weights = [max(node.duration_weight or 1 for node in phase) for phase in phases]
             intended = self._paced_duration(
                 activity.source_activity_id,
                 activity.duration_microseconds + self.extension_us[activity.source_activity_id],
             )
-            total_weight = sum(phase_weights)
+            phase_durations = _phase_durations(phases, intended)
             occurrences: Counter[str] = Counter()
             action_ids: list[str] = []
             self.active_processes[actor_id] = self.env.active_process
-            for phase, weight in zip(phases, phase_weights, strict=True):
-                duration_us = max(1, int(round(intended * weight / total_weight)))
+            for phase, duration_us in zip(phases, phase_durations, strict=True):
                 processes = []
                 for node in phase:
                     occurrence = occurrences[node.node_id]

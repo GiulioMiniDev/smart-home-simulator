@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
+from smart_home_sim.domain.behavior import ProcessNode, ProcessNodeKind
 from smart_home_sim.domain.environment import SimulationBundle
 from smart_home_sim.domain.execution import (
     ActionExecution,
@@ -20,12 +21,14 @@ from smart_home_sim.domain.models import ConditionOperator
 from smart_home_sim.simulation.service import (
     EXECUTION_PACE_MAX_FACTOR,
     EXECUTION_PACE_MIN_FACTOR,
+    PUNCTUAL_ACTION_SECONDS,
     NamedRandomStreams,
     ResourceCoordinator,
     SimulationEngine,
     _initial_runtime,
     _known_scenario_fact,
     _operator_matches,
+    _phase_durations,
     replay_files,
     simulate_bundle,
     simulate_file,
@@ -569,3 +572,82 @@ def test_execution_pace_breaks_whole_minute_durations(bundle: SimulationBundle) 
         for item in planned
     )
     assert 0.85 <= ratio <= 1.15
+
+
+def _node(action_type: str, weight: float = 1.0) -> ProcessNode:
+    return ProcessNode(
+        node_id=action_type,
+        kind=ProcessNodeKind.action,
+        action_type=action_type,
+        duration_weight=weight,
+    )
+
+
+def test_gestures_keep_their_own_length_and_elastic_steps_absorb_the_rest() -> None:
+    """A gesture must not stretch with the activity that contains it.
+
+    The whole budget used to be shared out by `durationWeight`, and the authoring model emits 1.0
+    on every node, so an eight-hour sleep of `move_to`/`change_posture`/`wait` became two hours
+    and forty minutes of walking to bed, the same again of lying down, and one third of sleeping.
+    """
+    phases = [[_node("move_to")], [_node("change_posture")], [_node("wait")]]
+    durations = _phase_durations(phases, 8 * 3600 * 1_000_000)
+    assert durations[1] == 4 * 1_000_000
+    assert durations[2] > 7.9 * 3600 * 1_000_000
+    # The activity's total is untouched, which is what keeps the habit ground truth valid across
+    # this change. Rounding leaves a microsecond or two anywhere the shares do not divide evenly.
+    assert abs(sum(durations) - 8 * 3600 * 1_000_000) <= len(durations)
+
+
+def test_elastic_phases_still_split_the_remainder_by_weight() -> None:
+    phases = [[_node("change_posture")], [_node("wait", 3.0)], [_node("perform_work", 1.0)]]
+    durations = _phase_durations(phases, 4 * 3600 * 1_000_000)
+    assert durations[1] == pytest.approx(3 * durations[2], rel=1e-3)
+
+
+def test_a_phase_is_elastic_when_any_parallel_branch_is() -> None:
+    phases = [[_node("change_posture"), _node("wait")]]
+    assert _phase_durations(phases, 600 * 1_000_000) == [600 * 1_000_000]
+
+
+def test_a_process_of_pure_gestures_still_shares_the_budget_by_weight() -> None:
+    """Nothing can absorb the budget here, so stretching the gestures is the only answer."""
+    phases = [[_node("open")], [_node("close")], [_node("activate")]]
+    assert _phase_durations(phases, 90 * 1_000_000) == [30 * 1_000_000] * 3
+
+
+def test_executed_gestures_stay_short_across_a_whole_week(result) -> None:
+    """The end-to-end guard: whenever an activity has something to absorb its budget, it does.
+
+    `change_posture` is one of the action types the PIR model treats as manual work, emitting a
+    pulse every eighteen seconds, so a long one floods the log with motion from a resident who is
+    holding still. A gesture may still run long for one honest reason — it is preceded by a walk,
+    and the walk takes as long as it takes — so the bound is the gesture's own length or its
+    movement, whichever is greater. Activities made of nothing but gestures, `wake_up` among them,
+    have no elastic step to hand the time to and are exempt: stretching them is the only answer.
+    """
+    assert result.trace is not None
+    elastic_activities = {
+        item.activity_execution_id
+        for item in result.trace.action_executions
+        if item.action_type not in PUNCTUAL_ACTION_SECONDS
+    }
+    walked = {
+        item.action_execution_id: item.duration_microseconds / 1_000_000
+        for item in result.trace.movements
+    }
+    gestures = [
+        item
+        for item in result.trace.action_executions
+        if item.action_type in PUNCTUAL_ACTION_SECONDS
+        and item.activity_execution_id in elastic_activities
+    ]
+    assert len(gestures) > 20
+    overruns = [
+        (item.node_id, item.action_type, seconds)
+        for item in gestures
+        if (seconds := (item.ended_at - item.started_at).total_seconds())
+        > max(PUNCTUAL_ACTION_SECONDS[item.action_type], walked.get(item.action_execution_id, 0.0))
+        + 1.0
+    ]
+    assert not overruns
