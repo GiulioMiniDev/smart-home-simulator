@@ -42,6 +42,9 @@ replay:
 project-sensors:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim project-sensors examples/execution/mario_week.execution-trace.json examples/sensors/mario_monteverde.sensor-model.json --bundle examples/bundles/mario_week.simulation-bundle-behavior-1.1.0.json --output examples/sensors/mario_week.observable-sensor-log.json --oracle-output examples/sensors/mario_week.oracle-mapping.json --report-output examples/sensors/mario_week.sensor-projection-report.json
 
+resident-profile:
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim resident-profile examples/execution/mario_week.execution-trace.json --output generated/mario_week.resident-profile.json
+
 run-synthetic:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim run-synthetic generated/mario_rossi_2026_10_30_ingested/scenario.json generated/mario_rossi_2026_10_30_ingested/personal-process-package.json --output-dir generated/mario_rossi_2026_10_30_simulation
 

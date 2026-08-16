@@ -202,6 +202,17 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         ).json()
         assert oracle["mode"] == "oracle"
         assert client.get(f"/api/runs/{job.job_id}/timeline?limit=5", headers=headers).json()
+        profile = client.get(f"/api/runs/{job.job_id}/profile", headers=headers).json()
+        assert profile["documentType"] == "resident_profile"
+        assert profile["residents"][0]["narrative"]
+        coarse = client.get(
+            f"/api/runs/{job.job_id}/profile?slot_minutes=60", headers=headers
+        ).json()
+        assert len(coarse["slotLabels"]) == 24
+        page = client.get(f"/api/runs/{job.job_id}/profile/page", headers=headers)
+        assert page.headers["content-type"].startswith("text/html")
+        assert page.text.startswith("<!doctype html>")
+        assert "attachment" in page.headers["content-disposition"]
         models = client.get(f"/api/runs/{job.job_id}/models", headers=headers).json()
         assert {"homeModel", "sensorModel"} <= set(models)
         verification = client.post(f"/api/runs/{job.job_id}/replay/verify", headers=headers).json()

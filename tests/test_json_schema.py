@@ -42,6 +42,7 @@ from smart_home_sim.domain.materialization import (
 )
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
+from smart_home_sim.domain.profile import ResidentProfile
 from smart_home_sim.domain.report import ValidationReport
 from smart_home_sim.domain.sensors import (
     ObservableSensorLog,
@@ -103,9 +104,15 @@ MATERIALIZATION_SCHEMAS = {
 APPLICATION_SCHEMAS = {
     "application-workspace-manifest-1.0.0.schema.json": WorkspaceManifest,
     "application-job-1.0.0.schema.json": JobRecord,
-    "application-export-manifest-1.0.0.schema.json": ExportManifest,
+    "application-export-manifest-1.1.0.schema.json": ExportManifest,
     "application-replay-1.0.0.schema.json": ReplayVerification,
+    "resident-profile-1.0.0.schema.json": ResidentProfile,
 }
+# Exports written before the resident profile existed declare 1.0.0 and are still readable, so the
+# schema that described them stays published beside the current one.
+HISTORICAL_EXPORT_MANIFEST_SCHEMA = (
+    PROJECT_ROOT / "schemas/application-export-manifest-1.0.0.schema.json"
+)
 
 
 def load_schema() -> dict[str, object]:
@@ -145,6 +152,7 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in MATERIALIZATION_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in APPLICATION_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
+        HISTORICAL_EXPORT_MANIFEST_SCHEMA,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]

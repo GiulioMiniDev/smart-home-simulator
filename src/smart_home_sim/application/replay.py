@@ -16,7 +16,9 @@ from smart_home_sim.domain.application import (
     utc_now,
 )
 from smart_home_sim.domain.execution import ExecutionTrace
+from smart_home_sim.domain.profile import ResidentProfile
 from smart_home_sim.domain.sensors import ObservableSensorLog, OracleMapping
+from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, profile_from_trace
 from smart_home_sim.simulation import replay_files
 
 
@@ -24,6 +26,16 @@ from smart_home_sim.simulation import replay_files
 def _trace(path: str, digest: str) -> ExecutionTrace:
     del digest
     return ExecutionTrace.model_validate_json(Path(path).read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=4)
+def _profile(path: str, digest: str, run_id: str, slot_minutes: int) -> ResidentProfile:
+    """Aggregating a horizon costs real time, and the answer cannot change while the digest holds.
+
+    Kept separate from the trace cache because the profile survives the trace being evicted, and
+    because the same trace can be asked for at more than one slot width.
+    """
+    return profile_from_trace(_trace(path, digest), run_id=run_id, slot_minutes=slot_minutes)
 
 
 @lru_cache(maxsize=8)
@@ -145,6 +157,11 @@ class ReplayService:
         offset = max(offset, 0)
         limit = max(1, min(limit, 500))
         return entries[offset : offset + limit], total
+
+    def profile(self, run_id: str, *, slot_minutes: int = DEFAULT_SLOT_MINUTES) -> ResidentProfile:
+        """What this run's residents are like, aggregated from its execution trace."""
+        trace_path, trace_sha = self._artifact(run_id, "execution_trace")
+        return _profile(str(trace_path), trace_sha, run_id, slot_minutes)
 
     def observations(
         self,

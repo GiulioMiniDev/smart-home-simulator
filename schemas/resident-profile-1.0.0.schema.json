@@ -1,0 +1,483 @@
+{
+  "$defs": {
+    "AuthorType": {
+      "enum": [
+        "human",
+        "external_llm",
+        "rule_generator",
+        "import"
+      ],
+      "title": "AuthorType",
+      "type": "string"
+    },
+    "BehaviourSlice": {
+      "additionalProperties": false,
+      "description": "The same resident measured over one class of day.\n\nWeekday and weekend are reported separately because for most residents they are two different\npeople wearing one name, and a single averaged heatmap smears the difference into a blur that\nreads as noise. The `all` slice is not the mean of the other two \u2014 it is the same computation\nover every day \u2014 so shares in it stay directly comparable.",
+      "properties": {
+        "dayType": {
+          "enum": [
+            "all",
+            "weekday",
+            "weekend"
+          ],
+          "title": "Daytype",
+          "type": "string"
+        },
+        "dayCount": {
+          "minimum": 0,
+          "title": "Daycount",
+          "type": "integer"
+        },
+        "observedMinutes": {
+          "minimum": 0,
+          "title": "Observedminutes",
+          "type": "number"
+        },
+        "activityCount": {
+          "minimum": 0,
+          "title": "Activitycount",
+          "type": "integer"
+        },
+        "intents": {
+          "items": {
+            "$ref": "#/$defs/IntentRhythm"
+          },
+          "title": "Intents",
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/RegionRhythm"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/SlotSummary"
+          },
+          "title": "Slots",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dayType",
+        "dayCount",
+        "observedMinutes",
+        "activityCount"
+      ],
+      "title": "BehaviourSlice",
+      "type": "object"
+    },
+    "IntentRhythm": {
+      "additionalProperties": false,
+      "description": "One activity across the clock: how much of each slot it holds, and when it typically starts.\n\n`occupancy_share` is the readable one \u2014 the fraction of the *observed* time in that slot during\nwhich the resident was doing this. It divides by observed minutes rather than by day count, so\na horizon that starts at noon does not report the morning as empty behaviour when it is in fact\nunobserved time.\n\n`typical_start` is a circular mean, not an arithmetic one: an activity that starts at 23:50 on\nsome nights and 00:10 on others has a typical start of midnight, whereas averaging the minute\ncounts would place it at noon. `start_spread_minutes` is the matching circular deviation, and\nit is the number that says whether this is a habit or a whim.",
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "occurrences": {
+          "minimum": 0,
+          "title": "Occurrences",
+          "type": "integer"
+        },
+        "daysObserved": {
+          "minimum": 0,
+          "title": "Daysobserved",
+          "type": "integer"
+        },
+        "totalMinutes": {
+          "minimum": 0,
+          "title": "Totalminutes",
+          "type": "number"
+        },
+        "meanDurationMinutes": {
+          "minimum": 0,
+          "title": "Meandurationminutes",
+          "type": "number"
+        },
+        "medianDurationMinutes": {
+          "minimum": 0,
+          "title": "Mediandurationminutes",
+          "type": "number"
+        },
+        "typicalStart": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Typicalstart"
+        },
+        "startSpreadMinutes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startspreadminutes"
+        },
+        "occupancyMinutes": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Occupancyminutes",
+          "type": "array"
+        },
+        "occupancyShare": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Occupancyshare",
+          "type": "array"
+        },
+        "starts": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Starts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "intent",
+        "occurrences",
+        "daysObserved",
+        "totalMinutes",
+        "meanDurationMinutes",
+        "medianDurationMinutes"
+      ],
+      "title": "IntentRhythm",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "$ref": "#/$defs/AuthorType"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "generatorVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorversion"
+        },
+        "modelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        },
+        "generatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatedat"
+        },
+        "humanReviewed": {
+          "default": false,
+          "title": "Humanreviewed",
+          "type": "boolean"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RegionRhythm": {
+      "additionalProperties": false,
+      "description": "Where the resident is across the clock, reconstructed from her movements.\n\nA movement says she arrived somewhere at a known instant; she stays there until the next\nmovement departs. Before the first movement of the run her position is taken from that\nmovement's origin. This is presence, not activity: it holds while she sleeps, and it is the\nhalf of a profile that explains why a PIR in the hallway fires when it does.",
+      "properties": {
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "totalMinutes": {
+          "minimum": 0,
+          "title": "Totalminutes",
+          "type": "number"
+        },
+        "occupancyShare": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Occupancyshare",
+          "type": "array"
+        }
+      },
+      "required": [
+        "regionId",
+        "totalMinutes"
+      ],
+      "title": "RegionRhythm",
+      "type": "object"
+    },
+    "ResidentBehaviour": {
+      "additionalProperties": false,
+      "description": "One resident's profile, with the sentences that describe it in words.\n\n`narrative` exists because a heatmap answers questions you already knew to ask. The sentences\nare generated from the same numbers, deterministically, and say the things a person would say\nfirst: when she sleeps, how reliably, what fills her day, where the weekend departs from the\nweek.",
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "activityCount": {
+          "minimum": 0,
+          "title": "Activitycount",
+          "type": "integer"
+        },
+        "droppedActivityCount": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Droppedactivitycount",
+          "type": "integer"
+        },
+        "narrative": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Narrative",
+          "type": "array"
+        },
+        "slices": {
+          "items": {
+            "$ref": "#/$defs/BehaviourSlice"
+          },
+          "title": "Slices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "residentId",
+        "activityCount"
+      ],
+      "title": "ResidentBehaviour",
+      "type": "object"
+    },
+    "SlotSummary": {
+      "additionalProperties": false,
+      "description": "One slot of the clock, judged on how predictable it is.\n\n`dominant_share` is the fraction of the slot's observed time held by its most frequent\nactivity, and `entropy_bits` the Shannon entropy of the whole mix in it. Together they are the\nquantity a segmentation algorithm is trying to find without being told: a slot at 0 bits is a\nslot the resident always spends the same way, and a run of such slots is a habit band. Slots\nare reported even when nothing is labelled in them, because an empty stretch of the day is a\nboundary and deleting it would hide where the day divides.",
+      "properties": {
+        "slot": {
+          "minimum": 0,
+          "title": "Slot",
+          "type": "integer"
+        },
+        "start": {
+          "minLength": 1,
+          "title": "Start",
+          "type": "string"
+        },
+        "observedMinutes": {
+          "minimum": 0,
+          "title": "Observedminutes",
+          "type": "number"
+        },
+        "labelledShare": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Labelledshare",
+          "type": "number"
+        },
+        "dominantIntent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dominantintent"
+        },
+        "dominantShare": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Dominantshare",
+          "type": "number"
+        },
+        "entropyBits": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Entropybits",
+          "type": "number"
+        }
+      },
+      "required": [
+        "slot",
+        "start",
+        "observedMinutes",
+        "labelledShare"
+      ],
+      "title": "SlotSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:resident-profile:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What a run's residents are like, derived from the execution trace and nothing else.",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "resident_profile",
+      "default": "resident_profile",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "profileId": {
+      "minLength": 1,
+      "title": "Profileid",
+      "type": "string"
+    },
+    "runId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runid"
+    },
+    "traceId": {
+      "minLength": 1,
+      "title": "Traceid",
+      "type": "string"
+    },
+    "sourceTraceSemanticDigest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sourcetracesemanticdigest",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "startDate": {
+      "format": "date",
+      "title": "Startdate",
+      "type": "string"
+    },
+    "endDate": {
+      "format": "date",
+      "title": "Enddate",
+      "type": "string"
+    },
+    "dayCount": {
+      "minimum": 0,
+      "title": "Daycount",
+      "type": "integer"
+    },
+    "slotMinutes": {
+      "maximum": 1440,
+      "minimum": 1,
+      "title": "Slotminutes",
+      "type": "integer"
+    },
+    "slotLabels": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Slotlabels",
+      "type": "array"
+    },
+    "residents": {
+      "items": {
+        "$ref": "#/$defs/ResidentBehaviour"
+      },
+      "title": "Residents",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "profileId",
+    "traceId",
+    "sourceTraceSemanticDigest",
+    "seed",
+    "startDate",
+    "endDate",
+    "dayCount",
+    "slotMinutes",
+    "provenance"
+  ],
+  "title": "Smart Home Resident Profile 1.0.0",
+  "type": "object"
+}

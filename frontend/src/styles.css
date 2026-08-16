@@ -448,6 +448,20 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .diary-entry > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
 .diary-entry small { color: var(--text-faint); }
 .diary-inspector { overflow: auto; background: var(--surface-raised); }
+.profile-layout { padding: 1.2rem 1.4rem 1.6rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.profile-layout h3 { margin: 1.7rem 0 .5rem; color: var(--text-soft); font-size: .76rem; text-transform: uppercase; letter-spacing: .08em; }
+.profile-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.2rem; margin: .9rem 0 0; }
+.profile-narrative { display: flex; flex-direction: column; gap: .3rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.profile-narrative li { border-inline-start: 3px solid var(--teal); padding: .2rem 0 .2rem .7rem; }
+.profile-heatmap, .profile-rhythm { display: block; width: 100%; height: auto; color: var(--teal); }
+.profile-track { fill: var(--surface-cool); }
+.profile-rule { stroke: var(--line); stroke-width: 1; }
+.profile-heatmap text, .profile-rhythm text { font-size: 10px; fill: var(--text-faint); }
+.profile-row-label { text-anchor: end; fill: var(--text); }
+.profile-legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin: .5rem 0 0; padding: 0; color: var(--text-soft); font-size: .78rem; list-style: none; }
+.profile-legend span { display: inline-block; width: .7rem; height: .7rem; margin-inline-end: .35rem; border-radius: 2px; vertical-align: -1px; }
+.profile-table { margin-top: 1.4rem; }
+.profile-table .artifact-head, .profile-table .artifact-row { grid-template-columns: minmax(0, 1.6fr) repeat(5, minmax(0, 1fr)); }
 .action-sequence { padding: 1rem; }
 .action-sequence > div { display: grid; grid-template-columns: 28px 9px 1fr; gap: .5rem; min-height: 62px; }
 .action-sequence > div > span { color: var(--text-faint); font: .68rem "Cascadia Code", monospace; }

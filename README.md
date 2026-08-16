@@ -13,8 +13,8 @@ seed, snapshot, resume e failure isolation. M6 proietta la traccia in osservazio
 contatto e temperatura mantenendo le etichette causali in un oracle mapping separato.
 M6.1 genera deterministicamente casa e sensori dai due JSON M3. M7 espone l'intero flusso
 in un'applicazione web locale: workspace SQLite persistente, editor 2D, worker durevoli,
-diario della ground truth, vista observable/oracle, replay verificato ed export streaming
-JSONL/CSV/XES.
+diario della ground truth, profilo leggibile del residente, vista observable/oracle, replay
+verificato ed export streaming JSONL/CSV/XES.
 
 Il runtime richiede Python 3.12 e supporta Windows, macOS e Linux. La CI impone su tutti e
 tre i sistemi suite completa, lint e benchmark multiprocesso.
@@ -53,6 +53,7 @@ make bundle
 make simulate
 make replay
 make project-sensors
+make resident-profile
 make run-synthetic
 make benchmark-environment
 make benchmark-simulation
@@ -260,6 +261,46 @@ per i PIR, entità/stato o azioni per i contatti e regione/sorgenti per la tempe
 bundle passato con `--bundle` incorpora la planimetria sintetica effettivamente usata dalla
 simulazione; cataloghi, posizioni e coverage vengono controllati contro quella planimetria
 prima di produrre qualsiasi record.
+
+### Profilo del residente
+
+Trace e diario dicono cosa è successo evento per evento; nessuno dei due dice **chi è** la persona
+simulata. Il profilo del residente aggrega la traccia di esecuzione — quindi il comportamento
+realizzato, deviazioni comprese, non il piano — nella forma in cui un essere umano la legge:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim resident-profile \
+  examples/execution/mario_week.execution-trace.json \
+  --output generated/mario_week.resident-profile.json
+```
+
+Il comando scrive tre file: il documento `resident_profile 1.0.0`, una **pagina HTML
+autoconsistente** (nessuno script, nessun riferimento esterno, figure in SVG inline) e la
+**matrice CSV** delle heatmap, in formato largo — una riga per serie, una colonna per fascia —
+pronta per essere riplottata in matplotlib.
+
+Il giorno è tagliato in fasce da 15 minuti (`--slot-minutes`), la stessa discretizzazione della
+reference di habit segmentation su CASAS Aruba. Per ogni residente il profilo pubblica:
+
+- la **heatmap attività × orario**, con la quota di tempo *osservato* occupata da ogni intent;
+- la **heatmap delle stanze**, ricostruita dai movimenti: dove la persona sta, non cosa fa;
+- la **striscia del ritmo**: per ogni fascia l'attività dominante, la quota che tiene e l'entropia
+  del mix, cioè dove il giorno si divide — la domanda a cui un algoritmo di segmentazione deve
+  rispondere senza vedere queste etichette;
+- **orario tipico e dispersione** per ogni attività, calcolati come media circolare: un'attività
+  che comincia alle 23:50 e alle 00:10 ha orario tipico mezzanotte, non mezzogiorno;
+- lo **split feriale/festivo**, perché per la maggior parte dei residenti sono due comportamenti
+  diversi e una heatmap mediata li impasta in rumore;
+- una **narrativa** deterministica generata dagli stessi numeri ("sleep: 8 giorni su 8, verso le
+  23:19, per 7h 45m in media").
+
+Le quote sono rapportate al tempo effettivamente osservato, non al calendario: una finestra che
+apre a mezzogiorno non riporta la mattina come comportamento assente. Un'attività `dropped` non
+occupa nulla — non è mai avvenuta — ma viene contata a parte.
+
+Nell'applicazione locale lo stesso profilo è la scheda **profile** del dettaglio run, con il
+pulsante per scaricare la pagina; nell'export completo è il ruolo `resident_profile`, che pubblica
+documento, pagina e matrice dentro il bundle verificato dal manifest.
 
 Per eseguire più simulazioni indipendenti in parallelo:
 
@@ -510,6 +551,7 @@ simulazione si avvia come qualsiasi altra run.
 - [Materializzazione scenario-first di casa e sensori](docs/decisions/ADR-015-scenario-first-environment-materialization.md)
 - [Applicazione locale e workspace SQLite](docs/decisions/ADR-016-local-application-and-sqlite-workspace.md)
 - [Planimetria rivista come input della run](docs/decisions/ADR-020-researcher-approved-plan-as-run-input.md)
+- [Profilo del residente come evidenza pubblicata](docs/decisions/ADR-022-resident-profile-as-published-evidence.md)
 - [Design: pianificazione ibrida locale](docs/plans/2026-07-22-hybrid-local-planning-design.md)
 - [Design: ground truth delle abitudini](docs/plans/2026-07-22-behavioral-profile-habit-ground-truth-design.md)
 - [Design: da persona locale a dataset simulabile](docs/plans/2026-07-24-local-persona-to-simulatable-dataset-design.md)

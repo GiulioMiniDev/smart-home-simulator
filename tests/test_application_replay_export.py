@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 import shutil
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from xml.etree import ElementTree
 from xml.sax.saxutils import XMLGenerator
 
 import pytest
+from pydantic import ValidationError
 
 from smart_home_sim.application.export import (
     ExportService,
@@ -22,7 +23,13 @@ from smart_home_sim.application.export import (
 )
 from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
-from smart_home_sim.domain.application import ExportFormat, ExportRequest, JobProgress, JobStatus
+from smart_home_sim.domain.application import (
+    ExportFormat,
+    ExportManifest,
+    ExportRequest,
+    JobProgress,
+    JobStatus,
+)
 
 PROJECT_ROOT = Path(__file__).parents[1]
 SOURCE = PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30"
@@ -427,16 +434,17 @@ def test_the_export_offers_every_role_the_backend_defines() -> None:
     """
     import re
 
-    from smart_home_sim.application.export import ROLE_SOURCES
+    from smart_home_sim.application.export import PROFILE_ROLE, ROLE_SOURCES
 
     source = (PROJECT_ROOT / "frontend/src/App.tsx").read_text(encoding="utf-8")
     match = re.search(r"roles: \[([^\]]+)\]", source)
     assert match is not None, "the export button no longer names its roles"
     requested = set(re.findall(r'"([a-z_]+)"', match.group(1)))
+    offered = set(ROLE_SOURCES) | {PROFILE_ROLE}
 
-    assert requested == set(ROLE_SOURCES), {
-        "missing from the UI": sorted(set(ROLE_SOURCES) - requested),
-        "unknown to the backend": sorted(requested - set(ROLE_SOURCES)),
+    assert requested == offered, {
+        "missing from the UI": sorted(offered - requested),
+        "unknown to the backend": sorted(requested - offered),
     }
 
 
@@ -469,3 +477,76 @@ def test_an_identical_export_is_reused_rather_than_written_again(tmp_path: Path)
     rebuilt = service.export(request)
     assert rebuilt.export_id != first.export_id
     assert (workspace.exports_path / rebuilt.export_id / "manifest.json").is_file()
+
+
+def test_export_publishes_the_resident_profile_as_document_page_and_matrix(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+
+    manifest = service.export(
+        ExportRequest(run_id=run_id, formats=[ExportFormat.jsonl], roles=["resident_profile"])
+    )
+
+    assert {item.format for item in manifest.files} == {
+        ExportFormat.json,
+        ExportFormat.html,
+        ExportFormat.csv,
+    }
+    # The requested format applies to record roles only: a profile is published in the shapes it
+    # has, whatever a caller asked for the rest of the dataset.
+    assert {item.role for item in manifest.files} == {"resident_profile"}
+    assert service.verify_manifest(manifest.export_id) == manifest
+    document = next(item for item in manifest.files if item.format == ExportFormat.json)
+    payload = json.loads(
+        (workspace.exports_path / document.relative_path).read_text(encoding="utf-8")
+    )
+    assert payload["documentType"] == "resident_profile"
+    assert payload["runId"] == run_id
+    assert payload["residents"][0]["narrative"]
+    page = next(item for item in manifest.files if item.format == ExportFormat.html)
+    assert (
+        (workspace.exports_path / page.relative_path)
+        .read_text(encoding="utf-8")
+        .startswith("<!doctype html>")
+    )
+
+
+def test_a_windowed_export_profiles_only_the_window(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+    whole = service.export(
+        ExportRequest(run_id=run_id, formats=[ExportFormat.jsonl], roles=["resident_profile"])
+    )
+    trace = json.loads(
+        workspace.artifact_path(
+            workspace.run_artifacts(run_id)["execution_trace"].artifact_id
+        ).read_text(encoding="utf-8")
+    )
+    opened = datetime.fromisoformat(trace["startedAt"])
+
+    windowed = service.export(
+        ExportRequest(
+            run_id=run_id,
+            formats=[ExportFormat.jsonl],
+            roles=["resident_profile"],
+            include_start=opened,
+            include_end=opened + timedelta(days=1),
+        )
+    )
+
+    def day_count(manifest: ExportManifest) -> int:
+        document = next(item for item in manifest.files if item.format == ExportFormat.json)
+        return json.loads(
+            (workspace.exports_path / document.relative_path).read_text(encoding="utf-8")
+        )["dayCount"]
+
+    assert day_count(windowed) < day_count(whole)
+
+
+def test_only_record_formats_can_be_requested() -> None:
+    with pytest.raises(ValidationError, match="only jsonl, csv and xes"):
+        ExportRequest(run_id="run", formats=[ExportFormat.html], roles=["observable"])

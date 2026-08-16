@@ -17,7 +17,7 @@ from datetime import date as _date
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, field_validator
@@ -37,6 +37,7 @@ from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import ExportRequest, JobStatus
+from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, render_profile_html
 
 
 class ApiModel(BaseModel):
@@ -669,6 +670,24 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
             "total": total,
             "mode": "oracle" if include_oracle else "observable",
         }
+
+    @app.get("/api/runs/{run_id}/profile", dependencies=[secured])
+    def resident_profile(run_id: str, slot_minutes: int = DEFAULT_SLOT_MINUTES) -> dict[str, Any]:
+        return replay.profile(run_id, slot_minutes=slot_minutes).model_dump(
+            mode="json", by_alias=True
+        )
+
+    @app.get("/api/runs/{run_id}/profile/page", dependencies=[secured])
+    def resident_profile_page(run_id: str, slot_minutes: int = DEFAULT_SLOT_MINUTES) -> Response:
+        """The same profile as a standalone page, for keeping beside a thesis chapter."""
+        profile = replay.profile(run_id, slot_minutes=slot_minutes)
+        return Response(
+            content=render_profile_html(profile),
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{run_id}-resident-profile.html"'
+            },
+        )
 
     @app.get("/api/runs/{run_id}/timeline", dependencies=[secured])
     def timeline(run_id: str, limit: int = 2000) -> list[dict[str, Any]]:

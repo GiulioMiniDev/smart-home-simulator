@@ -390,3 +390,40 @@ def test_compile_invalid_input_returns_report_and_exit_one() -> None:
 
     assert result.exit_code == 1
     assert json.loads(result.stdout)["issues"][0]["code"] == "INPUT_SCENARIO_INVALID"
+
+
+def test_resident_profile_writes_document_page_and_matrix(tmp_path: Path) -> None:
+    document = tmp_path / "nested/profile.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "resident-profile",
+            str(EXAMPLES / "execution/mario_week.execution-trace.json"),
+            "--output",
+            str(document),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(document.read_text(encoding="utf-8"))
+    assert payload["documentType"] == "resident_profile"
+    assert payload["residents"][0]["residentId"] == "resident_mario_rossi"
+    assert (tmp_path / "nested/profile.html").read_text(encoding="utf-8").startswith("<!doctype")
+    assert "residentId,dayType,measure" in (tmp_path / "nested/profile-heatmap.csv").read_text(
+        encoding="utf-8"
+    )
+    assert "sleep:" in result.stdout
+
+
+def test_resident_profile_reports_a_trace_it_cannot_read(tmp_path: Path) -> None:
+    broken = tmp_path / "broken.json"
+    broken.write_text('{"documentType":"execution_trace"}', encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["resident-profile", str(broken), "--output", str(tmp_path / "profile.json")],
+    )
+
+    assert result.exit_code == 1
+    assert "Cannot profile this trace" in result.output

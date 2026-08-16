@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
-import type { HomeModel, JobRecord, SensorModel } from "../types";
+import type { BehaviourSlice, HomeModel, IntentRhythm, JobRecord, ResidentProfile, SensorModel } from "../types";
 
 const now = "2026-07-22T10:00:00Z";
 const job: JobRecord = { jobId: "run_1", homeId: "home_1", kind: "materialization", status: "completed", progress: { phase: "completed", percent: 100, completedUnits: 1, totalUnits: 1, message: "Done" }, requestedAt: now, startedAt: now, finishedAt: now, seed: 7 };
@@ -10,6 +10,15 @@ const homeModel: HomeModel = { schemaVersion: "1.0.0", documentType: "home_model
 const sensorModel: SensorModel = { schemaVersion: "1.0.0", documentType: "sensor_model", sensorModelId: "s", sensorModelVersion: "1", sourceBundleId: "b", sourceBundleSha256: "a".repeat(64), seed: 7, regionIds: ["room"], entityIds: ["door"], sensors: [{ sensorId: "pir", sensorType: "pir", position: { x: 2, y: 2 }, regionIds: ["room"], coverage: homeModel.regions[0].boundary, timing: { latencyMilliseconds: 0, clockJitterMilliseconds: 0, cooldownMilliseconds: 0 }, errorModel: { dropoutProbability: 0, falseNegativeProbability: 0, falsePositiveProbabilityPerDay: 0, measurementNoiseStandardDeviation: 0 }, failureWindows: [] }] };
 const home = { homeId: "home_1", name: "Golden home", description: "Acceptance", residentCount: 1, runCount: 1, issueCount: 0, currentHomeArtifactId: "artifact_home", currentSensorArtifactId: "artifact_sensor", createdAt: now, updatedAt: now };
 const resident = { residentId: "resident_1", homeId: "home_1", sourceResidentId: "mario", displayName: "Mario", scenarioArtifactId: "scenario", behaviorArtifactId: "behavior", createdAt: now };
+function rhythm(intent: string, share: number, start: string | null): IntentRhythm {
+  return { intent, occurrences: 7, daysObserved: 7, totalMinutes: 420, meanDurationMinutes: 60, medianDurationMinutes: 60, typicalStart: start, startSpreadMinutes: start ? 12 : null, occupancyMinutes: Array.from({ length: 96 }, (_, slot) => (slot % 4 === 0 ? 15 : 0)), occupancyShare: Array.from({ length: 96 }, (_, slot) => (slot % 4 === 0 ? share : 0)), starts: Array.from({ length: 96 }, () => 0) };
+}
+
+function slice(dayType: BehaviourSlice["dayType"], dayCount: number): BehaviourSlice {
+  return { dayType, dayCount, observedMinutes: dayCount * 1440, activityCount: dayCount * 3, intents: [rhythm("sleep", 0.9, "23:15"), rhythm("prepare_meal", 0.3, null)], regions: [{ regionId: "bedroom", totalMinutes: 400, occupancyShare: Array.from({ length: 96 }, () => 0.5) }], slots: Array.from({ length: 96 }, (_, slot) => ({ slot, start: `${String(Math.floor(slot / 4)).padStart(2, "0")}:${String((slot % 4) * 15).padStart(2, "0")}`, observedMinutes: 15 * dayCount, labelledShare: slot < 24 ? 0.8 : 0, dominantIntent: slot < 24 ? "sleep" : null, dominantShare: slot < 24 ? 0.8 : 0, entropyBits: 0.1 })) };
+}
+
+const profile: ResidentProfile = { profileId: "profile_trace", runId: "run_1", traceId: "trace", sourceTraceSemanticDigest: "b".repeat(64), seed: 7, startDate: "2026-07-01", endDate: "2026-07-08", dayCount: 8, slotMinutes: 15, slotLabels: Array.from({ length: 96 }, (_, slot) => `slot_${slot}`), residents: [{ residentId: "resident_mario", activityCount: 24, droppedActivityCount: 1, narrative: ["24 activities over 8 observed day(s), across 2 distinct intents."], slices: [slice("all", 8), slice("weekday", 6), slice("weekend", 2)] }, { residentId: "resident_lucia", activityCount: 4, droppedActivityCount: 0, narrative: ["The trace records no activity for this resident."], slices: [slice("all", 8), slice("weekday", 6), slice("weekend", 2)] }] };
 const overview = { workspace: { workspaceId: "workspace", name: "Test lab", formatVersion: "1.0.0", createdAt: now, updatedAt: now, diagnosticMode: false, homeCount: 1, residentCount: 1, runCount: 1, activeJobCount: 0, artifactCount: 8 }, homes: [home], residents: [resident], jobs: [job] };
 
 function response(value: unknown, init: ResponseInit = {}): Promise<Response> {
@@ -35,6 +44,8 @@ function installApi() {
     if (url.startsWith("/runs/run_1/diary")) return response({ total: 1, items: [{ activityExecutionId: "activity_1", sourceActivityId: "source_1", actorId: "mario", intent: "prepare_meal", processModelId: "process", plannedStart: now, plannedEnd: now, actualStart: now, actualEnd: now, status: "completed", actions: [{ actionExecutionId: "action_1", nodeId: "node", actionType: "open_door", startedAt: now, endedAt: now, status: "completed", providerIds: ["door"] }], movementIds: ["move"], deviationIds: [], traceId: "trace", traceSemanticDigest: "b".repeat(64) }] });
     if (url.startsWith("/runs/run_1/observations")) return response({ total: 1, mode: url.includes("true") ? "oracle" : "observable", items: [{ observationId: "observation", sensorId: "pir", sensorType: "pir", observedAt: now, measurement: "motion", value: "ON", quality: "nominal", ...(url.includes("true") ? { oracleCause: { origin: "simulated_cause", causeType: "movement", causeIds: ["move"], residentIds: ["mario"], activityExecutionIds: ["activity_1"], actionExecutionIds: [] } } : {}) }] });
     if (url.startsWith("/runs/run_1/timeline")) return response([{ at: now, end: now, kind: "movement", id: "move", actorId: "mario", label: "walk", status: "completed", waypoints: [{ at: now, regionId: "room", position: { x: 1, y: 1 } }] }]);
+    if (url.startsWith("/runs/run_1/profile/page")) return Promise.resolve(new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } }));
+    if (url.startsWith("/runs/run_1/profile")) return response(profile);
     if (url === "/runs/run_1/models") return response({ homeModel, sensorModel });
     if (url === "/runs/run_1/replay/verify") return response({ matches: true, actualSemanticDigest: "b".repeat(64) });
     if (url === "/runs/run_1/exports") return response({ exportId: "export_1", runId: "run_1", sourceBundleSha256: "a".repeat(64), sourceTraceSemanticDigest: "b".repeat(64), seed: 7, createdAt: now, observableOracleSeparated: true, files: [{ role: "observable", format: "jsonl", relativePath: "export_1/observable.jsonl", mediaType: "application/x-ndjson", recordCount: 1, sizeBytes: 10, sha256: "c".repeat(64) }] }, { status: 201 });
@@ -338,6 +349,30 @@ describe("complete application routes", () => {
     fireEvent.click(await screen.findByRole("button", { name: /walk/ }));
     fireEvent.click(screen.getByRole("button", { name: /Verify semantic digest/ }));
     await waitFor(() => expect(screen.getByText(/Replay verified/)).toBeInTheDocument());
+  });
+
+  it("profiles the resident, switches class of day and person, and downloads the page", async () => {
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    fireEvent.click(screen.getByRole("button", { name: /Read the resident profile/ }));
+    expect(await screen.findByRole("heading", { name: "Who this resident is" })).toBeInTheDocument();
+    expect(screen.getByText(/24 activities over 8 observed day/)).toBeInTheDocument();
+    expect(screen.getAllByText("sleep").length).toBeGreaterThan(0);
+    expect(screen.getByText(/8 day\(s\) · 24 activities/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Weekends" }));
+    expect(await screen.findByText(/2 day\(s\) · 6 activities/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "resident lucia" }));
+    expect(await screen.findByText(/no activity for this resident/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Download page/ }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/profile/page"))).toBe(true));
+  });
+
+  it("says so when a run has no resident to profile", async () => {
+    overrides["/runs/run_1/profile"] = { ...profile, residents: [] };
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    fireEvent.click(screen.getByRole("tab", { name: "profile" }));
+    expect(await screen.findByText("No resident behaviour")).toBeInTheDocument();
   });
 
   it("shows structured failed-run diagnostics without requesting unavailable evidence", async () => {

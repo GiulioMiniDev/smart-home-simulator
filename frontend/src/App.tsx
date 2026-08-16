@@ -69,6 +69,7 @@ import {
 import type { ResizeHandle } from "./editor";
 import { authoringPrompts } from "./prompts";
 import type {
+  BehaviourSlice,
   DiaryEntry,
   ExportManifest,
   ExportRecord,
@@ -80,6 +81,7 @@ import type {
   MaintenanceSummary,
   Observation,
   Overview,
+  ResidentProfile,
   SensorModel,
   TimelineEvent,
   WorkspaceIntegrity,
@@ -1061,7 +1063,7 @@ function RunPage() {
   const navigate = useNavigate();
   const detail = useResource<JobDetail>(`/jobs/${runId}`);
   useJobRefresh(detail.data ? [detail.data.job] : [], detail.reload);
-  const [tab, setTab] = useState<"summary" | "diary" | "observations" | "replay" | "artifacts">("summary");
+  const [tab, setTab] = useState<"summary" | "diary" | "profile" | "observations" | "replay" | "artifacts">("summary");
   const [oracle, setOracle] = useState(false);
   const [selectedDiary, setSelectedDiary] = useState<string>();
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent>();
@@ -1072,6 +1074,9 @@ function RunPage() {
   // without a trace: offering the diary or the replay for it would open empty views.
   const evidenceAvailable = detail.data?.job.status === "completed" && detail.data.job.kind !== "environment";
   const diary = useResource<{ items: DiaryEntry[]; total: number }>(evidenceAvailable ? `/runs/${runId}/diary?limit=500` : undefined);
+  // Only once the tab is opened: profiling a long horizon is real work, and most visits to a run
+  // never ask for it.
+  const profile = useResource<ResidentProfile>(evidenceAvailable && tab === "profile" ? `/runs/${runId}/profile` : undefined);
   const observations = useResource<{ items: Observation[]; total: number; mode: string }>(evidenceAvailable ? `/runs/${runId}/observations?limit=500&include_oracle=${oracle}` : undefined);
   const timeline = useResource<TimelineEvent[]>(evidenceAvailable ? `/runs/${runId}/timeline?limit=5000` : undefined);
   useEffect(() => {
@@ -1095,18 +1100,93 @@ function RunPage() {
     catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); }
   };
   const verify = async () => { try { const result = await api<{ matches: boolean; actualSemanticDigest: string }>(`/runs/${runId}/replay/verify`, { method: "POST" }); setExportNotice(result.matches ? `Replay verified: ${result.actualSemanticDigest}` : "Replay digest did not match"); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
-  const createExport = async () => { try { const result = await api<ExportManifest>(`/runs/${runId}/exports`, { method: "POST", body: JSON.stringify({ runId, formats: ["jsonl", "csv", "xes"], roles: ["observable", "oracle", "activities", "actions", "movements", "state_transitions", "resources", "runtime_events", "plan_deviations", "final_state", "habit_ground_truth"] }) }); setExportManifest(result); setExportNotice(`Export ${result.exportId} published with ${result.files.length} verified files.`); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
+  const createExport = async () => { try { const result = await api<ExportManifest>(`/runs/${runId}/exports`, { method: "POST", body: JSON.stringify({ runId, formats: ["jsonl", "csv", "xes"], roles: ["observable", "oracle", "activities", "actions", "movements", "state_transitions", "resources", "runtime_events", "plan_deviations", "final_state", "habit_ground_truth", "resident_profile"] }) }); setExportManifest(result); setExportNotice(`Export ${result.exportId} published with ${result.files.length} verified files.`); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
   return <div className="page run-page">
     <Breadcrumbs items={[{ label: "Simulations", to: "/simulations" }, { label: runId }]} />
     <PageHeader eyebrow="Run evidence" title={runId} description={job.progress.message} actions={<><StatusBadge status={job.status} />{!terminal.has(job.status) ? <button className="button danger" onClick={() => void cancel()}><Square size={15} /> Cancel safely</button> : <ConfirmAction label="Delete run" title="Delete this run and its evidence?" consequence="The execution trace, observable log, oracle mapping and every export built from this run are deleted from the workspace folder. The home and its inputs are untouched." onConfirm={removeRun} />}</>} />
     {!terminal.has(job.status) && <section className="active-run-detail"><div className="phase-orbit" aria-hidden="true"><i /><span>{Math.round(job.progress.percent)}%</span></div><div><p className="eyebrow">Current backend phase</p><h2>{job.progress.phase}</h2><p>{job.progress.message}</p><ProgressBar value={job.progress.percent} label="Overall progress" /></div><ol>{detail.data.events.slice(-6).map((event) => <li key={event.sequence}><time>{formatTime(event.occurredAt)}</time><span>{event.message}</span></li>)}</ol></section>}
-    <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "diary", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={!evidenceAvailable && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
+    <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "diary", "profile", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={!evidenceAvailable && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
     {exportNotice && <div className="notice notice-success" role="status"><Check size={17} /><span>{exportNotice}</span><button className="icon-button" aria-label="Dismiss" onClick={() => setExportNotice(undefined)}><X size={15} /></button></div>}
-    {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : job.kind === "environment" ? "This job built the home and its sensor field and executed nothing. Review the plan on the home, then start a run to produce evidence from exactly these models." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button primary" onClick={() => void download(`/exports/${exportManifest.exportId}/zip`, `${exportManifest.exportId}.zip`)}><Download size={15} /> Download ZIP</button><StatusBadge status="valid" /></div></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
+    {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : job.kind === "environment" ? "This job built the home and its sensor field and executed nothing. Review the plan on the home, then start a run to produce evidence from exactly these models." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => setTab("profile")}><UserRound size={16} /> Read the resident profile</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button primary" onClick={() => void download(`/exports/${exportManifest.exportId}/zip`, `${exportManifest.exportId}.zip`)}><Download size={15} /> Download ZIP</button><StatusBadge status="valid" /></div></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
     {tab === "diary" && <section className="diary-layout"><div className="diary-list"><div className="section-heading"><div><p className="eyebrow">Authoritative execution trace</p><h2>Ground-truth diary</h2></div><span>{diary.data?.total ?? 0} activities</span></div>{diary.loading ? <Skeleton lines={8} /> : diary.error ? <ErrorPanel message={diary.error.message} /> : diary.data?.items?.map((entry) => <button key={entry.activityExecutionId} className={`diary-entry ${selectedDiary === entry.activityExecutionId ? "is-selected" : ""}`} onClick={() => setSelectedDiary(entry.activityExecutionId)}><time>{formatTime(entry.actualStart)}</time><span><strong>{entry.intent.replaceAll("_", " ")}</strong><small>{entry.actorId} · {duration(entry.actualStart, entry.actualEnd)} · {entry.actions.length} actions</small></span><StatusBadge status={entry.status} /></button>)}</div><DiaryInspector entry={diary.data?.items?.find((item) => item.activityExecutionId === selectedDiary) ?? diary.data?.items?.[0]} /></section>}
     {tab === "observations" && <section><div className="observable-toolbar"><div><p className="eyebrow">Sensor projection</p><h2>{oracle ? "Oracle-linked observations" : "Observable device log"}</h2></div><div className="mode-switch" role="group" aria-label="Data visibility"><button aria-pressed={!oracle} onClick={() => setOracle(false)}>Observable</button><button aria-pressed={oracle} onClick={() => setOracle(true)}>Oracle links</button></div></div><p className="mode-explanation">{oracle ? "Identity and activity appear only through the separate oracle mapping." : "This view contains only fields a physical device could expose."}</p>{observations.loading ? <Skeleton lines={8} /> : observations.error ? <ErrorPanel message={observations.error.message} /> : <div className="observation-table"><div className="observation-head"><span>Time</span><span>Sensor</span><span>Measurement</span><span>Value</span><span>Quality</span>{oracle && <span>Ground-truth cause</span>}</div>{observations.data?.items?.map((record) => <div className="observation-row" key={record.observationId}><time>{formatTime(record.observedAt)}</time><span><code>{record.sensorId}</code><small>{record.sensorType}</small></span><span>{record.measurement}</span><strong>{String(record.value)}{record.unit ? ` ${record.unit}` : ""}</strong><StatusBadge status={record.quality} />{oracle && <span className="cause-cell">{record.oracleCause ? <><b>{record.oracleCause.origin.replaceAll("_", " ")}</b><small>{record.oracleCause.residentIds.join(", ") || "No resident identity"} · {record.oracleCause.causeType}</small></> : "No oracle link"}</span>}</div>)}</div>}</section>}
     {tab === "replay" && <section className="replay-workbench"><div className="replay-toolbar"><button className="button secondary" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={15} /> : <Play size={15} />}{playing ? "Pause" : "Play movements"}</button><button className="button secondary" onClick={() => void verify()}><ShieldCheck size={15} /> Verify semantic digest</button><span>{selectedEvent ? `${formatTime(selectedEvent.at)} · ${selectedEvent.label}` : "Select an event on the timeline"}</span></div><div className="replay-stage">{homeModelArtifact ? <ReplayPlan runId={runId} activeMovement={selectedEvent} /> : <EmptyState title="Home artifact unavailable"><p>The plan cannot be reconstructed without the persisted home model.</p></EmptyState>}<aside className="timeline-panel"><div className="section-heading"><div><p className="eyebrow">Synchronized trace</p><h2>Timeline</h2></div><Activity size={19} /></div>{timeline.loading ? <Skeleton lines={7} /> : timeline.error ? <ErrorPanel message={timeline.error.message} /> : timeline.data?.slice(0, 800).map((event) => <button key={event.id} className={`timeline-event kind-${event.kind} ${selectedEvent?.id === event.id ? "is-selected" : ""}`} onClick={() => setSelectedEvent(event)}><time>{formatTime(event.at)}</time><i /><span><strong>{event.label.replaceAll("_", " ")}</strong><small>{event.kind} · {event.actorId}</small></span></button>)}</aside></div></section>}
+    {tab === "profile" && <section>{profile.loading ? <Skeleton lines={8} /> : profile.error ? <ErrorPanel message={profile.error.message} /> : profile.data ? <ProfileView runId={runId} profile={profile.data} /> : null}</section>}
     {tab === "artifacts" && <div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Artifact</span><span>Size</span><span>SHA-256</span></div>{Object.entries(detail.data.artifacts).map(([role, artifact]) => <div className="artifact-row" key={artifact.artifactId}><span>{role.replaceAll("_", " ")}</span><code>{artifact.artifactId}</code><span>{new Intl.NumberFormat(undefined, { style: "unit", unit: "megabyte", maximumFractionDigits: 2 }).format(artifact.sizeBytes / 1_000_000)}</span><code title={artifact.sha256}>{artifact.sha256.slice(0, 16)}…</code></div>)}</div>}
+  </div>;
+}
+
+/** Twelve hues far enough apart to be told apart in an eleven-pixel cell. */
+const RHYTHM_HUES = [25, 200, 145, 70, 300, 185, 340, 110, 260, 45, 320, 90];
+
+function minutesLabel(minutes: number): string {
+  const total = Math.round(minutes);
+  return total >= 60 ? `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m` : `${total} min`;
+}
+
+/**
+ * A row of the day against the clock, drawn as opacity rather than colour.
+ *
+ * Opacity carries the share because the same markup then reads on both themes: the cell inherits
+ * the surrounding colour and only says how much of the slot it holds. The square root is not
+ * decoration — at fifteen-minute slots most shares sit under a fifth, and a linear ramp draws a
+ * settled routine as an empty grid.
+ */
+function HeatmapRows({ rows, slotCount }: { rows: Array<{ label: string; shares: number[] }>; slotCount: number }) {
+  const cell = 11, height = 19, gutter = 150;
+  if (!rows.length) return <p className="hint">Nothing measured in this slice.</p>;
+  return <svg className="profile-heatmap" viewBox={`0 0 ${gutter + slotCount * cell} ${22 + rows.length * height}`} role="img" aria-label="Activity against the clock" preserveAspectRatio="xMinYMin meet">
+    {Array.from({ length: Math.ceil(slotCount / 8) }, (_, index) => index * 8).map((slot) => <g key={slot}><text className="profile-tick" x={gutter + slot * cell} y={13}>{String(Math.round((slot * 24) / slotCount)).padStart(2, "0")}</text><line className="profile-rule" x1={gutter + slot * cell} y1={22} x2={gutter + slot * cell} y2={22 + rows.length * height} /></g>)}
+    {rows.map((row, index) => <g key={row.label} transform={`translate(0 ${22 + index * height})`}>
+      <rect className="profile-track" x={gutter} y={0} width={slotCount * cell} height={height} />
+      <text className="profile-row-label" x={gutter - 8} y={13.5}>{row.label.replaceAll("_", " ")}</text>
+      {row.shares.map((share, slot) => share > 0 ? <rect key={slot} x={gutter + slot * cell} y={0} width={cell} height={height} fill="currentColor" opacity={Math.sqrt(Math.min(share, 1))}><title>{`${row.label.replaceAll("_", " ")} · ${(share * 100).toFixed(0)}%`}</title></rect> : null)}
+    </g>)}
+  </svg>;
+}
+
+/** Which activity owns each slot, and how firmly: the figure a segmentation algorithm is after. */
+function RhythmStrip({ slice, order }: { slice: BehaviourSlice; order: Map<string, number> }) {
+  const cell = 11;
+  return <svg className="profile-rhythm" viewBox={`0 0 ${slice.slots.length * cell} 46`} role="img" aria-label="Dominant activity by slot" preserveAspectRatio="xMinYMin meet">
+    {slice.slots.map((slot, index) => <g key={slot.slot}>
+      <rect className="profile-track" x={index * cell} y={18} width={cell} height={26} />
+      {slot.dominantIntent ? <rect x={index * cell} y={18} width={cell} height={26} fill={`oklch(62% 0.13 ${RHYTHM_HUES[(order.get(slot.dominantIntent) ?? order.size) % RHYTHM_HUES.length]})`} opacity={Math.sqrt(Math.min(slot.dominantShare, 1))}><title>{`${slot.start} · ${slot.dominantIntent.replaceAll("_", " ")} · ${(slot.dominantShare * 100).toFixed(0)}% · ${slot.entropyBits.toFixed(2)} bits`}</title></rect> : null}
+    </g>)}
+    {slice.slots.filter((_, index) => index % 8 === 0).map((slot) => <text key={slot.slot} className="profile-tick" x={slot.slot * cell} y={12}>{slot.start.slice(0, 2)}</text>)}
+  </svg>;
+}
+
+function ProfileView({ runId, profile }: { runId: string; profile: ResidentProfile }) {
+  const [residentId, setResidentId] = useState(profile.residents[0]?.residentId);
+  const [dayType, setDayType] = useState<"all" | "weekday" | "weekend">("all");
+  const resident = profile.residents.find((item) => item.residentId === residentId) ?? profile.residents[0];
+  if (!resident) return <EmptyState title="No resident behaviour" icon={<Users size={25} />}><p>This trace records no executed activity to profile.</p></EmptyState>;
+  const slice = resident.slices.find((item) => item.dayType === dayType) ?? resident.slices[0];
+  if (!slice) return <EmptyState title="No resident behaviour" icon={<Users size={25} />}><p>This trace records no executed activity to profile.</p></EmptyState>;
+  const shown = slice.intents.slice(0, 24);
+  const order = new Map(shown.map((item, index) => [item.intent, index]));
+  return <div className="profile-layout">
+    <div className="section-heading"><div><p className="eyebrow">Realized behaviour · {profile.startDate} → {profile.endDate}</p><h2>Who this resident is</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button secondary" onClick={() => void download(`/runs/${runId}/profile/page`, `${runId}-resident-profile.html`)}><Download size={15} /> Download page</button></div></div>
+    <p>Aggregated from the authoritative execution trace, not from the plan: this is what the person did, deviations included. Shares are measured against observed time, so a partial first day cannot read as an empty morning.</p>
+    <div className="profile-controls">
+      {profile.residents.length > 1 && <div className="mode-switch" role="group" aria-label="Resident">{profile.residents.map((item) => <button key={item.residentId} aria-pressed={item.residentId === resident.residentId} onClick={() => setResidentId(item.residentId)}>{item.residentId.replaceAll("_", " ")}</button>)}</div>}
+      <div className="mode-switch" role="group" aria-label="Class of day">{(["all", "weekday", "weekend"] as const).map((item) => <button key={item} aria-pressed={dayType === item} disabled={!resident.slices.find((entry) => entry.dayType === item)?.dayCount} onClick={() => setDayType(item)}>{item === "all" ? "Every day" : item === "weekday" ? "Weekdays" : "Weekends"}</button>)}</div>
+      <span className="hint">{slice.dayCount} day(s) · {slice.activityCount} activities · {minutesLabel(slice.observedMinutes)} observed · {profile.slotMinutes} min slots</span>
+    </div>
+    <ul className="profile-narrative">{resident.narrative.map((line) => <li key={line}>{line}</li>)}</ul>
+    <h3>Who owns each part of the day</h3>
+    <RhythmStrip slice={slice} order={order} />
+    <ul className="profile-legend">{shown.slice(0, 12).map((item, index) => <li key={item.intent}><span style={{ background: `oklch(62% 0.13 ${RHYTHM_HUES[index % RHYTHM_HUES.length]})` }} />{item.intent.replaceAll("_", " ")}</li>)}</ul>
+    <h3>Activities against the clock</h3>
+    <HeatmapRows rows={shown.map((item) => ({ label: item.intent, shares: item.occupancyShare }))} slotCount={profile.slotLabels.length} />
+    {slice.intents.length > shown.length && <p className="hint">{slice.intents.length - shown.length} rarer activity row(s) omitted here; the exported document and matrix carry them all.</p>}
+    <h3>Where she is</h3>
+    <HeatmapRows rows={slice.regions.slice(0, 12).map((item) => ({ label: item.regionId, shares: item.occupancyShare }))} slotCount={profile.slotLabels.length} />
+    <div className="artifact-table profile-table">
+      <div className="artifact-head"><span>Activity</span><span>Times</span><span>Days</span><span>Typical start</span><span>Spread</span><span>Mean length</span></div>
+      {shown.map((item) => <div className="artifact-row" key={item.intent}><span>{item.intent.replaceAll("_", " ")}</span><span>{item.occurrences}</span><span>{item.daysObserved} / {slice.dayCount}</span><span>{item.typicalStart ?? "—"}</span><span>{item.startSpreadMinutes === null ? "—" : `±${Math.round(item.startSpreadMinutes)} min`}</span><span>{minutesLabel(item.meanDurationMinutes)}</span></div>)}
+    </div>
   </div>;
 }
 

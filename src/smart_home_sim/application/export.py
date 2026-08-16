@@ -26,6 +26,11 @@ from smart_home_sim.domain.application import (
     ExportRequest,
     utc_now,
 )
+from smart_home_sim.profiling import (
+    profile_from_trace_file,
+    render_profile_html,
+    write_heatmap_csv,
+)
 
 ROLE_SOURCES: dict[str, tuple[str, str]] = {
     "observable": ("observable_sensor_log", "records.item"),
@@ -43,6 +48,12 @@ ROLE_SOURCES: dict[str, tuple[str, str]] = {
     # across the horizon: the answer sheet for a segmentation algorithm.
     "habit_ground_truth": ("scenario", "extensions.habitGroundTruth.habits.item"),
 }
+
+# The one role that is computed rather than projected. It reads the execution trace and answers a
+# question no row of it can: what is this resident like. Its files do not follow the requested
+# formats — a profile is a document, a page and a matrix — so it takes its own path through the
+# export.
+PROFILE_ROLE = "resident_profile"
 
 # Fields the pipeline keeps internally but must not publish, by export role.
 #
@@ -515,6 +526,46 @@ class ExportService:
             )
         return results
 
+    def _profile_files(
+        self, staging: Path, export_id: str, trace_path: Path, request: ExportRequest
+    ) -> list[ExportManifestFile]:
+        """The resident profile, in the three shapes it is useful in.
+
+        The window of the request applies here as it does everywhere else: an export cut to one
+        month must not ship the profile of the whole horizon, or the page would describe a person
+        the accompanying sensor log never shows.
+        """
+        profile = profile_from_trace_file(
+            trace_path,
+            run_id=request.run_id,
+            start=request.include_start,
+            end=request.include_end,
+        )
+        document = staging / "resident_profile.json"
+        document.write_text(
+            profile.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8", newline="\n"
+        )
+        page = staging / "resident_profile.html"
+        page.write_text(render_profile_html(profile), encoding="utf-8", newline="\n")
+        matrix = staging / "resident_profile.csv"
+        series = write_heatmap_csv(matrix, profile)
+        return [
+            ExportManifestFile(
+                role=PROFILE_ROLE,
+                format=output_format,
+                relative_path=f"{export_id}/{path.name}",
+                media_type=media_type,
+                record_count=count,
+                size_bytes=path.stat().st_size,
+                sha256=_digest(path),
+            )
+            for path, output_format, media_type, count in (
+                (document, ExportFormat.json, "application/json", len(profile.residents)),
+                (page, ExportFormat.html, "text/html", len(profile.residents)),
+                (matrix, ExportFormat.csv, "text/csv", series),
+            )
+        ]
+
     def export(self, request: ExportRequest) -> ExportManifest:
         existing = self._reusable_export(request)
         if existing is not None:
@@ -541,6 +592,9 @@ class ExportService:
         files: list[ExportManifestFile] = []
         try:
             for role in request.roles:
+                if role == PROFILE_ROLE:
+                    files.extend(self._profile_files(staging, export_id, trace_path, request))
+                    continue
                 artifact_role, prefix = ROLE_SOURCES[role]
                 source = artifacts.get(artifact_role)
                 if source is None:

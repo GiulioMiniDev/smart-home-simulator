@@ -50,6 +50,7 @@ from smart_home_sim.domain.materialization import (
 )
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
+from smart_home_sim.domain.profile import ResidentProfile
 from smart_home_sim.domain.report import ValidationReport
 from smart_home_sim.domain.sensors import (
     ObservableSensorLog,
@@ -99,6 +100,12 @@ from smart_home_sim.materialization.service import (
     load_sensor_policy,
     load_source_models,
 )
+from smart_home_sim.profiling import (
+    DEFAULT_SLOT_MINUTES,
+    profile_from_trace_file,
+    render_profile_html,
+    write_heatmap_csv,
+)
 from smart_home_sim.sensors import project_sensor_files
 from smart_home_sim.simulation import (
     BatchLockedError,
@@ -135,6 +142,7 @@ class SchemaContract(StrEnum):
     environment_validation_report = "environment-validation-report"
     simulation_bundle = "simulation-bundle"
     execution_trace = "execution-trace"
+    resident_profile = "resident-profile"
     simulation_report = "simulation-report"
     replay_report = "replay-report"
     simulation_batch_manifest = "simulation-batch-manifest"
@@ -1110,6 +1118,50 @@ def build_cadence_calendar_command(
     )
 
 
+@app.command("resident-profile")
+def resident_profile_command(
+    trace_path: Path,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    html_output: Annotated[Path | None, typer.Option("--html-output")] = None,
+    csv_output: Annotated[Path | None, typer.Option("--csv-output")] = None,
+    slot_minutes: Annotated[int, typer.Option("--slot-minutes", min=1, max=1440)] = (
+        DEFAULT_SLOT_MINUTES
+    ),
+) -> None:
+    """Describe the resident a run produced: heatmaps, typical hours and a readable page.
+
+    Reads the authoritative execution trace and nothing else, so it says what the person actually
+    did rather than what the plan asked of her. The HTML page and the CSV matrix land beside the
+    document unless other paths are given.
+    """
+    try:
+        profile = profile_from_trace_file(trace_path, slot_minutes=slot_minutes)
+    except (OSError, UnicodeDecodeError, ValidationError, ValueError) as error:
+        typer.echo(f"Cannot profile this trace: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        profile.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
+    typer.echo(
+        f"Resident profile written to: {output.resolve()} "
+        f"({len(profile.residents)} resident(s), {profile.day_count} observed day(s))"
+    )
+    page_path = html_output or output.with_suffix(".html")
+    page_path.parent.mkdir(parents=True, exist_ok=True)
+    page_path.write_text(render_profile_html(profile), encoding="utf-8", newline="\n")
+    typer.echo(f"Readable page written to: {page_path.resolve()}")
+    matrix_path = csv_output or output.with_name(f"{output.stem}-heatmap.csv")
+    matrix_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = write_heatmap_csv(matrix_path, profile)
+    typer.echo(f"Heatmap matrix written to: {matrix_path.resolve()} ({rows} series)")
+    for resident in profile.residents:
+        typer.echo(f"\n{resident.resident_id}")
+        for line in resident.narrative:
+            typer.echo(f"  {line}")
+
+
 @app.command()
 def schema(
     contract: Annotated[SchemaContract, typer.Option("--contract")] = SchemaContract.scenario,
@@ -1136,6 +1188,7 @@ def schema(
         SchemaContract.environment_validation_report: EnvironmentValidationReport,
         SchemaContract.simulation_bundle: SimulationBundle,
         SchemaContract.execution_trace: ExecutionTrace,
+        SchemaContract.resident_profile: ResidentProfile,
         SchemaContract.simulation_report: SimulationReport,
         SchemaContract.replay_report: ReplayReport,
         SchemaContract.simulation_batch_manifest: SimulationBatchManifest,

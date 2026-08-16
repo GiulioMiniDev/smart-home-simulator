@@ -31,6 +31,14 @@ class ExportFormat(StrEnum):
     jsonl = "jsonl"
     csv = "csv"
     xes = "xes"
+    # Not record streams and never requested: the two shapes the resident profile takes, a single
+    # document and the page that reads it. They exist so that everything inside an export is
+    # described by its manifest and covered by its digests, including the parts meant for a person.
+    json = "json"
+    html = "html"
+
+
+RECORD_FORMATS = frozenset({ExportFormat.jsonl, ExportFormat.csv, ExportFormat.xes})
 
 
 class GraphicalReference(ContractModel):
@@ -246,6 +254,10 @@ class ExportRequest(ContractModel):
             "plan_deviations",
             "final_state",
             "habit_ground_truth",
+            # Not a projection of a stored artifact but an aggregate computed at export time, and
+            # the only role whose files do not follow the requested formats: a profile is a
+            # document, a page and a matrix, never a JSONL record stream.
+            "resident_profile",
         ]
     ] = Field(min_length=1)
     include_start: AwareDatetime | None = None
@@ -255,6 +267,8 @@ class ExportRequest(ContractModel):
     def check_request(self) -> ExportRequest:
         if len(self.formats) != len(set(self.formats)):
             raise ValueError("export formats must be unique")
+        if not set(self.formats) <= RECORD_FORMATS:
+            raise ValueError("only jsonl, csv and xes can be requested for a role")
         if len(self.roles) != len(set(self.roles)):
             raise ValueError("export roles must be unique")
         if self.include_start and self.include_end and self.include_start > self.include_end:
@@ -277,12 +291,15 @@ class ExportManifest(ContractModel):
         **ContractModel.model_config,
         json_schema_extra={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "urn:smart-home-simulator:schema:application-export-manifest:1.0.0",
-            "title": "Smart Home Application Export Manifest 1.0.0",
+            "$id": "urn:smart-home-simulator:schema:application-export-manifest:1.1.0",
+            "title": "Smart Home Application Export Manifest 1.1.0",
         },
     )
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    # 1.1.0 admits the two document formats the resident profile introduced. Manifests written by
+    # 1.0.0 are still read: they describe exports that are still on disk, and a workspace that
+    # could no longer list its older datasets would have lost them.
+    schema_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     document_type: Literal["application_export_manifest"] = "application_export_manifest"
     export_id: str = Field(min_length=1)
     run_id: str = Field(min_length=1)

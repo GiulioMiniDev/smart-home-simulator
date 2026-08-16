@@ -56,11 +56,25 @@ quality. Oracle information is joined only when `includeOracle=true`, through th
 persisted oracle mapping. Noise and false positives remain labelled and receive no invented
 resident or activity cause.
 
+## Resident profile
+
+The profile aggregates the execution trace into the day: activity and region occupancy per slot,
+typical start and circular spread per intent, dominant activity and entropy per slot, split by
+class of day, plus generated sentences. Shares divide by observed minutes, measured with the same
+projection used for occupancy, so a partial day cannot read as absent behaviour. It is derived
+from the realized trace only — the declared habit bands of `HabitGroundTruth` are a separate
+document and comparing the two is an evaluation, not a claim this document makes.
+
+It is served as JSON and as a standalone page (no script, no external reference) and exported as
+the `resident_profile` role in three files: document, page and heatmap matrix.
+
 ## Export and archive rules
 
 JSONL, CSV and XES writers iterate source records and write staging files incrementally.
 Roles are separate for observable data, oracle, activities, actions, movements, transitions,
-resources, runtime events, deviations and final state. The manifest records source bundle and
+resources, runtime events, deviations and final state. `resident_profile` is the exception: it is
+computed rather than projected, and publishes `json`, `html` and `csv` regardless of the requested
+record formats, which is what manifest 1.1.0 admits. The manifest records source bundle and
 trace digests, seed, count, size, format, media type and SHA-256 for every file. Publication is
 an atomic directory rename followed by catalogue registration. Any exception removes staging
 and the target directory.

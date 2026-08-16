@@ -328,7 +328,8 @@ export interface TimelineEvent {
 
 export interface ExportManifestFile {
   role: string;
-  format: "jsonl" | "csv" | "xes";
+  // json and html are never requested: they are the two shapes the resident profile takes.
+  format: "jsonl" | "csv" | "xes" | "json" | "html";
   relativePath: string;
   mediaType: string;
   recordCount: number;
@@ -345,4 +346,66 @@ export interface ExportManifest {
   createdAt: string;
   observableOracleSeparated: true;
   files: ExportManifestFile[];
+}
+
+export interface IntentRhythm {
+  intent: string;
+  occurrences: number;
+  daysObserved: number;
+  totalMinutes: number;
+  meanDurationMinutes: number;
+  medianDurationMinutes: number;
+  typicalStart: string | null;
+  startSpreadMinutes: number | null;
+  occupancyMinutes: number[];
+  occupancyShare: number[];
+  starts: number[];
+}
+
+export interface RegionRhythm {
+  regionId: string;
+  totalMinutes: number;
+  occupancyShare: number[];
+}
+
+export interface SlotSummary {
+  slot: number;
+  start: string;
+  observedMinutes: number;
+  labelledShare: number;
+  dominantIntent: string | null;
+  dominantShare: number;
+  entropyBits: number;
+}
+
+export interface BehaviourSlice {
+  dayType: "all" | "weekday" | "weekend";
+  dayCount: number;
+  observedMinutes: number;
+  activityCount: number;
+  intents: IntentRhythm[];
+  regions: RegionRhythm[];
+  slots: SlotSummary[];
+}
+
+export interface ResidentBehaviour {
+  residentId: string;
+  activityCount: number;
+  droppedActivityCount: number;
+  narrative: string[];
+  slices: BehaviourSlice[];
+}
+
+export interface ResidentProfile {
+  profileId: string;
+  runId: string | null;
+  traceId: string;
+  sourceTraceSemanticDigest: string;
+  seed: number;
+  startDate: string;
+  endDate: string;
+  dayCount: number;
+  slotMinutes: number;
+  slotLabels: string[];
+  residents: ResidentBehaviour[];
 }
