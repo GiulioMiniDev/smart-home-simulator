@@ -11,8 +11,10 @@ import {
   Download,
   FileJson,
   Filter,
+  FolderInput,
   FolderOpen,
   Gauge,
+  HardDrive,
   Home as HomeIcon,
   ListTree,
   Pause,
@@ -24,6 +26,7 @@ import {
   Route as RouteIcon,
   Save,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Square,
   Trash2,
@@ -39,7 +42,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, download, eventSourceUrl, health } from "./api";
+import { api, clearSession, download, eventSourceUrl, health } from "./api";
 import {
   Breadcrumbs,
   ConfirmAction,
@@ -54,7 +57,7 @@ import {
   Skeleton,
   StatusBadge,
 } from "./components";
-import { useResource, useStoredState } from "./hooks";
+import { useResource, useStoredState, type ResourceState } from "./hooks";
 import {
   addObstacle,
   addRoom,
@@ -70,6 +73,8 @@ import type { ResizeHandle } from "./editor";
 import { authoringPrompts } from "./prompts";
 import type {
   BehaviourSlice,
+  Configuration,
+  DestinationCheck,
   DiaryEntry,
   ExportManifest,
   ExportRecord,
@@ -81,9 +86,12 @@ import type {
   MaintenanceSummary,
   Observation,
   Overview,
+  PathSource,
   ResidentProfile,
   SensorModel,
+  StorageReport,
   TimelineEvent,
+  VolumeUsage,
   WorkspaceIntegrity,
 } from "./types";
 
@@ -189,6 +197,7 @@ export function App() {
         <Route path="/simulations/:runId" element={<RunPage />} />
         <Route path="/exports" element={<ExportsPage />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/help" element={<HelpPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -1290,6 +1299,361 @@ function MaintenancePage() {
   </div>;
 }
 
+const sourceNote: Record<PathSource, string> = {
+  "command-line": "chosen with the --workspace option when the application was started",
+  environment: "chosen by an environment variable",
+  configuration: "saved on this page",
+  default: "the default location, inside your home folder",
+};
+
+function VolumeBar({ volume, occupied, label }: { volume: VolumeUsage; occupied?: number; label: string }) {
+  const used = volume.totalBytes - volume.freeBytes;
+  const mine = Math.min(occupied ?? 0, used);
+  const percent = (value: number) => `${volume.totalBytes ? (value / volume.totalBytes) * 100 : 0}%`;
+  const free = volume.freeBytes / volume.totalBytes;
+  return (
+    <div className="volume">
+      <div className="volume-heading">
+        <strong>{label}</strong>
+        <span className={free < 0.1 ? "volume-critical" : free < 0.2 ? "volume-tight" : undefined}>
+          {formatBytes(volume.freeBytes)} free of {formatBytes(volume.totalBytes)}
+        </span>
+      </div>
+      <div
+        className="volume-track"
+        role="img"
+        aria-label={`${label}: ${formatBytes(volume.freeBytes)} free of ${formatBytes(volume.totalBytes)}`}
+      >
+        <i className="volume-other" style={{ width: percent(used - mine) }} />
+        <i className="volume-mine" style={{ width: percent(mine) }} />
+      </div>
+      {occupied !== undefined && <small>{formatBytes(mine)} of that is this workspace.</small>}
+    </div>
+  );
+}
+
+function StorageSection({ storage, onReveal }: { storage: ResourceState<StorageReport>; onReveal: () => void }) {
+  if (storage.loading) return <section className="surface settings-section"><div className="settings-form"><Skeleton lines={5} /></div></section>;
+  if (storage.error || !storage.data) {
+    return <ErrorPanel message={storage.error?.message ?? "Unknown error"} onRetry={() => void storage.reload()} />;
+  }
+  const report = storage.data;
+  const largest = Math.max(1, ...report.entries.map((entry) => entry.sizeBytes));
+  const exports = report.entries.find((entry) => entry.relativePath === "exports");
+  return (
+    <section className="surface" aria-labelledby="storage-title">
+      <div className="section-heading">
+        <div><p className="eyebrow">Disk usage</p><h2 id="storage-title">This workspace holds {formatBytes(report.totalBytes)}</h2></div>
+        <div className="button-row">
+          <button className="button secondary" onClick={onReveal}><FolderOpen size={15} /> Open folder</button>
+          <button className="button secondary" onClick={() => void storage.reload()}><RotateCw size={15} /> Measure again</button>
+        </div>
+      </div>
+      {report.volume && (
+        <div className="volume-panel">
+          <VolumeBar volume={report.volume} occupied={report.totalBytes} label={`Drive ${report.volume.root}`} />
+        </div>
+      )}
+      <div className="storage-table">
+        {report.entries.map((entry) => (
+          <div className="storage-row" key={entry.relativePath + entry.name}>
+            <span><strong>{entry.name}</strong><code>{entry.relativePath}</code></span>
+            <span className="storage-size"><b>{formatBytes(entry.sizeBytes)}</b><small>{entry.fileCount} file{entry.fileCount === 1 ? "" : "s"}</small></span>
+            <span className="storage-share"><i style={{ width: `${(entry.sizeBytes / largest) * 100}%` }} /></span>
+            <small>{entry.description}</small>
+          </div>
+        ))}
+      </div>
+      {exports && exports.sizeBytes > 0 && (
+        <div className="import-guide-link">
+          <Trash2 size={18} />
+          <span>
+            <strong>Exports are {formatBytes(exports.sizeBytes)} of that, and they can be rebuilt.</strong>
+            <small>Deleting one costs only the time to export it again; the run keeps every artifact it was built from.</small>
+          </span>
+          <Link className="button secondary" to="/maintenance">Open maintenance</Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RelocationForm({ configuration, total, onDone }: { configuration: Configuration; total: number; onDone: () => Promise<void> }) {
+  const [destination, setDestination] = useState("");
+  const [check, setCheck] = useState<DestinationCheck>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const separator = configuration.workspace.path.includes("\\") ? "\\" : "/";
+  useEffect(() => {
+    if (!destination.trim()) { setCheck(undefined); return; }
+    const timer = window.setTimeout(() => {
+      void api<DestinationCheck>("/configuration/destination", { method: "POST", body: JSON.stringify({ path: destination }) })
+        .then(setCheck)
+        .catch(() => setCheck(undefined));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [destination]);
+  const suggest = (root: string) =>
+    setDestination(`${root.endsWith(separator) ? root : root + separator}smart-home-simulator${separator}workspace`);
+  const submit = async (path: string, body: RequestInit) => {
+    setBusy(true); setError(undefined);
+    try {
+      await api(path, body);
+      setDestination("");
+      await onDone();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="settings-form">
+      <label>
+        <span>New folder for the workspace</span>
+        <input
+          value={destination}
+          onChange={(event) => setDestination(event.target.value)}
+          placeholder={`${configuration.volumes[0]?.root ?? "D:\\"}smart-home-simulator${separator}workspace`}
+          spellCheck={false}
+        />
+      </label>
+      {configuration.volumes.length > 0 && (
+        <div className="volume-picker">
+          <span>Drives on this machine</span>
+          <div>
+            {configuration.volumes.map((volume) => (
+              <button
+                key={volume.root}
+                type="button"
+                className="tool-button"
+                onClick={() => suggest(volume.root)}
+                disabled={busy}
+              >
+                <HardDrive size={14} /> {volume.root}
+                <small>{formatBytes(volume.freeBytes)} free</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {check && (
+        <p className={check.usable ? "settings-hint" : "field-error"} role="status">
+          {check.usable ? <Check size={15} /> : <AlertCircle size={15} />} {check.message}
+        </p>
+      )}
+      {error && <p className="field-error" role="alert">{error}</p>}
+      <div className="button-row">
+        <button
+          className="button primary"
+          disabled={busy || !check?.usable || check.holdsWorkspace}
+          onClick={() => void submit("/configuration/relocation", { method: "POST", body: JSON.stringify({ destination }) })}
+        >
+          <FolderInput size={16} /> Move {formatBytes(total)} here
+        </button>
+        <button
+          className="button secondary"
+          disabled={busy || !check?.usable}
+          onClick={() => void submit("/configuration", { method: "PUT", body: JSON.stringify({ workspace_directory: destination }) })}
+        >
+          <FolderOpen size={16} /> Just point here, leave the files
+        </button>
+      </div>
+      <small>
+        <strong>Move</strong> happens at the next start, when nothing has the database open: the files are copied
+        to the new drive and only then removed from the old one, so an interrupted move leaves the workspace
+        exactly where it is. <strong>Point here</strong> changes nothing on disk — use it for a folder that already
+        holds a workspace, or to start an empty one somewhere else.
+      </small>
+    </div>
+  );
+}
+
+function ApplicationForm({ configuration, onDone }: { configuration: Configuration; onDone: () => Promise<void> }) {
+  const [port, setPort] = useState(String(configuration.port));
+  const [openBrowser, setOpenBrowser] = useState(configuration.openBrowser);
+  const [dataDirectory, setDataDirectory] = useState(configuration.dataDirectory.path);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const parsed = Number(port);
+  const validPort = Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535;
+  const dirty = String(configuration.port) !== port
+    || configuration.openBrowser !== openBrowser
+    || configuration.dataDirectory.path !== dataDirectory;
+  const save = async () => {
+    setBusy(true); setError(undefined);
+    try {
+      await api("/configuration", {
+        method: "PUT",
+        body: JSON.stringify({ port: parsed, open_browser: openBrowser, data_directory: dataDirectory }),
+      });
+      await onDone();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="settings-form">
+      <div className="settings-field">
+        <label><span>Local port</span><input value={port} onChange={(event) => setPort(event.target.value)} inputMode="numeric" /></label>
+        <small>The application only ever listens on 127.0.0.1. Change this when another program already uses the port.</small>
+      </div>
+      <label className="settings-toggle">
+        <input type="checkbox" checked={openBrowser} onChange={(event) => setOpenBrowser(event.target.checked)} />
+        <span>Open the browser when the application starts</span>
+      </label>
+      <div className="settings-field">
+        <label><span>Application folder</span><input value={dataDirectory} onChange={(event) => setDataDirectory(event.target.value)} spellCheck={false} /></label>
+        <small>
+          Holds the Python environment the application runs from — around 270 MB, and no research data.
+          Moving it makes the next start reinstall that environment in the new folder.
+        </small>
+      </div>
+      {error && <p className="field-error" role="alert">{error}</p>}
+      <div className="button-row">
+        <button className="button primary" disabled={busy || !dirty || !validPort} onClick={() => void save()}>
+          <Save size={16} /> Save
+        </button>
+        {!validPort && <span className="field-error">A port is a number between 1 and 65535.</span>}
+      </div>
+    </div>
+  );
+}
+
+function SettingsPage() {
+  const configuration = useResource<Configuration>("/configuration");
+  const storage = useResource<StorageReport>("/configuration/storage");
+  const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
+  const [restarting, setRestarting] = useState(false);
+  const reload = async () => { await configuration.reload(); };
+  const reveal = (kind: string) => {
+    void api("/configuration/reveal", { method: "POST", body: JSON.stringify({ kind }) })
+      .catch((reason: unknown) => setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }));
+  };
+  const restart = async () => {
+    setRestarting(true);
+    setNotice(undefined);
+    try {
+      await api("/configuration/restart", { method: "POST" });
+    } catch (reason) {
+      setRestarting(false);
+      setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) });
+      return;
+    }
+    // The server is on its way down and its supervisor will start it again. Wait for it to answer
+    // on the same address before reloading, or the tab lands on a connection error instead.
+    clearSession();
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      if (attempt > 1 && (await health()) !== null) { window.location.reload(); return; }
+    }
+    setRestarting(false);
+    setNotice({ kind: "error", text: "The application did not come back within two minutes. Start it again from its window." });
+  };
+  const cancelMove = async () => {
+    try {
+      await api("/configuration/relocation", { method: "DELETE" });
+      await reload();
+      setNotice({ kind: "success", text: "The move was cancelled. The workspace stays where it is." });
+    } catch (reason) {
+      setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) });
+    }
+  };
+  if (configuration.loading) return <div className="page"><Skeleton lines={7} /></div>;
+  if (configuration.error || !configuration.data) {
+    return <div className="page"><ErrorPanel message={configuration.error?.message ?? "Unknown error"} onRetry={() => void configuration.reload()} /></div>;
+  }
+  const settings = configuration.data;
+  const pending = settings.pendingRelocation;
+  const moved = settings.configuredWorkspace.path !== settings.workspace.path;
+  const overridden = settings.workspace.source === "command-line" || settings.workspace.source === "environment";
+  return (
+    <div className="page settings-page">
+      <PageHeader
+        eyebrow="Installation"
+        title="Settings"
+        description="Where this application keeps its files, how much of the drive they take, and how to move them somewhere with room."
+      />
+      {notice && (
+        <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
+          {notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}
+          <span>{notice.text}</span>
+          <button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button>
+        </div>
+      )}
+      {(settings.restartRequired || restarting) && (
+        <div className="diagnostic-banner" role="status">
+          <RotateCw size={20} />
+          <div>
+            <strong>{restarting ? "Restarting…" : "These settings apply at the next start"}</strong>
+            <p>
+              {pending
+                ? `The workspace will be moved to ${pending.destination} before the application opens it.`
+                : moved
+                  ? `The application will open ${settings.configuredWorkspace.path} instead of the folder currently in use.`
+                  : "The saved settings differ from the ones this session is running with."}
+            </p>
+          </div>
+          {settings.supervised
+            ? <button className="button primary" disabled={restarting} onClick={() => void restart()}><RotateCw size={16} /> {restarting ? "Restarting" : "Restart now"}</button>
+            : <span className="row-meta">Close the application window and start it again.</span>}
+        </div>
+      )}
+      <section className="metrics-strip" aria-label="Storage summary">
+        <Metric label="Workspace" value={storage.data ? formatBytes(storage.data.totalBytes) : "…"} detail="Runs, exports and inputs" />
+        <Metric
+          label="Free on this drive"
+          value={settings.workspace.volume ? formatBytes(settings.workspace.volume.freeBytes) : "Unknown"}
+          detail={settings.workspace.volume?.root ?? "Volume not readable"}
+        />
+        <Metric label="Port" value={settings.port} detail="Loopback only" />
+        <Metric label="Drives" value={settings.volumes.length} detail="Available for the workspace" />
+      </section>
+
+      <StorageSection storage={storage} onReveal={() => reveal("workspace")} />
+
+      <section className="surface settings-section" aria-labelledby="location-title">
+        <div className="section-heading">
+          <div><p className="eyebrow">Workspace folder</p><h2 id="location-title">Where the research data lives</h2></div>
+          <HardDrive size={20} />
+        </div>
+        <dl className="definition-list">
+          <div><dt>In use now</dt><dd><code title={settings.workspace.path}>{settings.workspace.path}</code><small>({sourceNote[settings.workspace.source]})</small></dd></div>
+          {moved && <div><dt>From the next start</dt><dd><code title={settings.configuredWorkspace.path}>{settings.configuredWorkspace.path}</code></dd></div>}
+          <div><dt>Settings file</dt><dd><code title={settings.configurationPath}>{settings.configurationPath}</code><button className="icon-button" aria-label="Open the settings folder" onClick={() => reveal("configuration")}><FolderOpen size={15} /></button></dd></div>
+        </dl>
+        {overridden && (
+          <div className="notice" role="status" style={{ margin: "0 1.15rem 1rem" }}>
+            <AlertCircle size={18} />
+            <span>This session was started with an explicit workspace, so it wins over anything saved here. Start the application without that option for these settings to take effect.</span>
+          </div>
+        )}
+        {pending ? (
+          <div className="settings-form">
+            <div className="confirm-action">
+              <div>
+                <strong>A move is waiting for the next start</strong>
+                <small>{pending.source} → {pending.destination}. Nothing has been copied yet.</small>
+              </div>
+              <div className="button-row">
+                <button className="button secondary" onClick={() => void cancelMove()}>Cancel the move</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <RelocationForm configuration={settings} total={storage.data?.totalBytes ?? 0} onDone={reload} />
+        )}
+      </section>
+
+      <section className="surface settings-section" aria-labelledby="application-title">
+        <div className="section-heading">
+          <div><p className="eyebrow">Application</p><h2 id="application-title">How it starts</h2></div>
+          <SlidersHorizontal size={20} />
+        </div>
+        <ApplicationForm configuration={settings} onDone={reload} />
+      </section>
+    </div>
+  );
+}
+
 function promptWithCase(template: string, caseDescription: string): string {
   const description = caseDescription.trim() || "[DESCRIVI QUI PERSONA, ABITUDINI, VINCOLI, DATE E OBIETTIVO DELLO STUDIO]";
   return template
@@ -1316,7 +1680,7 @@ function PromptCard({ title, label, description, template, caseDescription }: { 
 
 function HelpPage() {
   const [caseDescription, setCaseDescription] = useState("");
-  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">Which file to use</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM to return one pure JSON object containing both the scenario and its personal process package.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into both prompts; the simplified prompt also receives a current ISO generation timestamp. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Complete prompt" label="Recommended · Advanced 1.3.0" description="The authoritative path: full frozen schemas and catalogs for strict reproducibility and detailed diagnostics, plus the action state contract the deterministic replay enforces across activities and days." template={authoringPrompts.advanced.text} caseDescription={caseDescription} /><PromptCard title="Simplified prompt" label="Corrected · compact 1.2.3" description="Generated from the frozen catalogs: neutral 1.2.0 intent labels, the proven process models with their container openings, and a chronological state ledger. Application validation remains mandatory." template={authoringPrompts.simplified.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><h3>Horizons longer than a month</h3><p>Asking one response for every day of a long horizon degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. The outline prompt asks for the <em>structure</em> of the period instead—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Long horizons · outline 1.0.0" description="Returns a horizon outline plus its process package, not days. Weeks or years cost the same size. The expander also publishes the habit ground truth a segmentation algorithm is scored against." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> Save it as JSON and choose it under <em>Horizon outline</em> in Resident context: the application computes the days and imports the result in one step. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the complete <code>authoring-bundle.json</code> in Resident context.</li><li>Resolve every reported validation issue; rejected bundles publish no authoring revision.</li><li>Choose <em>Generate home and sensors</em> to build the environment alone. The worker compiles, builds the home, binds behavior and deploys sensors, and executes nothing — so you can review the plan, move a wall or a PIR and confirm it before a single day is simulated.</li><li>Start the run. It executes the plan and the sensor field you approved, then projects the observations. <em>Generate and run in one step</em> does both at once when the recommended plan needs no review.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>Source, canonical and runtime files</h2><p><strong>Import the source bundle in the ordinary workflow.</strong> It has <code>documentType: simulation_authoring_bundle</code> and contains <code>scenario</code> plus <code>personalProcessPackage</code>. Canonical split files are internal validated projections. Runtime inputs may reference upgraded execution catalogs and are not a substitute for the researcher-authored source.</p><p>The collapsed Advanced importer accepts the two canonical documents separately for debugging or controlled migration. It does not silently repair or upgrade them.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and housekeeping</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
+  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">Which file to use</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery and disk space</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM to return one pure JSON object containing both the scenario and its personal process package.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into both prompts; the simplified prompt also receives a current ISO generation timestamp. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Complete prompt" label="Recommended · Advanced 1.3.0" description="The authoritative path: full frozen schemas and catalogs for strict reproducibility and detailed diagnostics, plus the action state contract the deterministic replay enforces across activities and days." template={authoringPrompts.advanced.text} caseDescription={caseDescription} /><PromptCard title="Simplified prompt" label="Corrected · compact 1.2.3" description="Generated from the frozen catalogs: neutral 1.2.0 intent labels, the proven process models with their container openings, and a chronological state ledger. Application validation remains mandatory." template={authoringPrompts.simplified.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><h3>Horizons longer than a month</h3><p>Asking one response for every day of a long horizon degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. The outline prompt asks for the <em>structure</em> of the period instead—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Long horizons · outline 1.0.0" description="Returns a horizon outline plus its process package, not days. Weeks or years cost the same size. The expander also publishes the habit ground truth a segmentation algorithm is scored against." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> Save it as JSON and choose it under <em>Horizon outline</em> in Resident context: the application computes the days and imports the result in one step. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the complete <code>authoring-bundle.json</code> in Resident context.</li><li>Resolve every reported validation issue; rejected bundles publish no authoring revision.</li><li>Choose <em>Generate home and sensors</em> to build the environment alone. The worker compiles, builds the home, binds behavior and deploys sensors, and executes nothing — so you can review the plan, move a wall or a PIR and confirm it before a single day is simulated.</li><li>Start the run. It executes the plan and the sensor field you approved, then projects the observations. <em>Generate and run in one step</em> does both at once when the recommended plan needs no review.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>Source, canonical and runtime files</h2><p><strong>Import the source bundle in the ordinary workflow.</strong> It has <code>documentType: simulation_authoring_bundle</code> and contains <code>scenario</code> plus <code>personalProcessPackage</code>. Canonical split files are internal validated projections. Runtime inputs may reference upgraded execution catalogs and are not a substitute for the researcher-authored source.</p><p>The collapsed Advanced importer accepts the two canonical documents separately for debugging or controlled migration. It does not silently repair or upgrade them.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and disk space</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p><p>A workspace grows with every run and every export, and the folder it starts in is on the system drive. <Link to="/settings">Settings</Link> weighs each part of it against the space left on that drive, and moves the whole workspace to another one. The move is agreed there and performed by the next start, when nothing has the database open: across drives the files are copied before anything is removed, so an interrupted move leaves the workspace where it was.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
 }
 
 function NotFound() {

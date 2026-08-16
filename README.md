@@ -119,14 +119,45 @@ il bootstrap si ferma con un messaggio e il collegamento ufficiale, senza esegui
 remoti o installazioni di sistema implicite.
 
 Il launcher ascolta soltanto su loopback, apre il browser per default e crea o riapre il
-workspace indicato. Se `--workspace` non viene specificato usa la directory locale
-`~/.smart-home-simulator/workspace`, esterna al repository e non sincronizzata da Git.
+workspace indicato. Se `--workspace` non viene specificato usa la cartella salvata nella
+pagina **Settings** e, in mancanza, la directory locale `~/.smart-home-simulator/workspace`,
+esterna al repository e non sincronizzata da Git.
 Database, run, export, ambienti virtuali e build locali non devono essere versionati;
 gli esperimenti da condividere vanno selezionati esplicitamente in `generated/` oppure
 trasferiti come archivio `.shw`. `--no-browser` è disponibile per server di test. I metadati applicativi
 sono in `workspace/workspace.sqlite3`; trace, log, oracle ed export restano file immutabili
 con dimensione e SHA-256 catalogati. Non spostare singoli file a mano: usare **Archive
 workspace** nella pagina Exports per produrre uno snapshot portabile `.shw` verificabile.
+
+### Dove finiscono i file, e come spostarli
+
+Un workspace cresce senza limite: ogni run lascia trace, log osservabile e oracle mapping,
+ogni export ne produce una proiezione. Sul disco di sistema questo diventa un problema della
+macchina, non dell'applicazione, quindi la posizione è una decisione del ricercatore. La pagina
+**Settings** mostra quanto pesa il workspace ripartito per ciò che lo occupa — run, export,
+input catalogati, database — con lo spazio libero del disco che lo ospita e quello di ogni
+altro disco montato, e permette di spostarlo.
+
+Lo spostamento non avviene mentre il workspace è aperto: viene concordato e registrato, e
+il **prossimo avvio** lo esegue prima che qualsiasi cosa apra il database. Fra dischi diversi
+i file vengono copiati e solo dopo rimossi dall'origine, quindi una copia interrotta lascia il
+workspace esattamente dov'era; all'interno dello stesso disco è una rinomina e finisce subito.
+In alternativa *Just point here* cambia soltanto la cartella di destinazione, senza toccare
+i file: serve per aprire un workspace che esiste già altrove o per cominciarne uno vuoto.
+Nella stessa pagina si scelgono la porta di loopback, l'apertura automatica del browser e la
+cartella applicativa che contiene l'ambiente Python (circa 270 MB, nessun dato di ricerca).
+
+Le impostazioni vivono in `~/.smart-home-simulator/configuration.json`, fuori dal workspace:
+sono ciò che dice dove il workspace si trova, quindi non possono stare dentro di esso. Le
+precedenze sono esplicite — l'opzione `--workspace` della riga di comando vince sulla variabile
+`SMART_HOME_SIM_WORKSPACE`, che vince sul file di configurazione, che vince sul default — e la
+pagina dichiara quale delle quattro ha deciso la cartella in uso, così un avvio con opzione
+esplicita non sembra ignorare ciò che è stato salvato. Con `SMART_HOME_SIM_HOME` si sposta il
+file di configurazione stesso, ed è quanto usano i test per non toccare l'installazione reale.
+Quando il server è stato avviato da `./start` o `start.cmd`, la pagina offre **Restart now** e
+lo script lo riavvia da solo; avviato a mano con `smart-home-sim-app`, chiede invece di chiudere
+la finestra e ripartire. Il razionale è in
+[ADR-023](docs/decisions/ADR-023-configurable-workspace-location.md).
 
 Il dettaglio di una run presenta tre viste distinte. **Diary** deriva direttamente dalla
 execution trace e mostra attività, azioni e identificativi di provenienza. **Observable**
@@ -552,6 +583,7 @@ simulazione si avvia come qualsiasi altra run.
 - [Applicazione locale e workspace SQLite](docs/decisions/ADR-016-local-application-and-sqlite-workspace.md)
 - [Planimetria rivista come input della run](docs/decisions/ADR-020-researcher-approved-plan-as-run-input.md)
 - [Profilo del residente come evidenza pubblicata](docs/decisions/ADR-022-resident-profile-as-published-evidence.md)
+- [Posizione del workspace configurabile](docs/decisions/ADR-023-configurable-workspace-location.md)
 - [Design: pianificazione ibrida locale](docs/plans/2026-07-22-hybrid-local-planning-design.md)
 - [Design: ground truth delle abitudini](docs/plans/2026-07-22-behavioral-profile-habit-ground-truth-design.md)
 - [Design: da persona locale a dataset simulabile](docs/plans/2026-07-24-local-persona-to-simulatable-dataset-design.md)

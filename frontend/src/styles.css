@@ -657,3 +657,51 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .plan-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
 .plan-preview-heading h3 { margin: .1rem 0 0; font-size: .95rem; }
 .recommended-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .5rem; border: 1px solid color-mix(in oklch, var(--indigo) 45%, var(--line)); border-radius: 999px; background: var(--indigo-soft); color: var(--text); font-size: .7rem; font-weight: 620; }
+
+/* Settings: where the files live, and how much of the drive they are taking. */
+.settings-page > .surface { margin-bottom: 1rem; }
+.settings-section .definition-list { padding-bottom: .4rem; }
+.settings-section .definition-list dd { flex-wrap: wrap; }
+.settings-section .definition-list small { color: var(--text-faint); font-size: .74rem; }
+.settings-form { display: grid; gap: .85rem; padding: 1.15rem; border-top: 1px solid var(--line); }
+.settings-form > label, .settings-field, .settings-field > label { display: grid; gap: .3rem; }
+.settings-form span:not(.sr-only) { font-size: .82rem; font-weight: 640; }
+.settings-field > small, .settings-form > small { max-width: 78ch; color: var(--text-soft); font-size: .76rem; line-height: 1.45; }
+.settings-form input[type="text"], .settings-form input:not([type]) { font-family: "Cascadia Code", ui-monospace, monospace; font-size: .82rem; }
+.settings-toggle { display: flex !important; align-items: center; gap: .55rem; }
+.settings-toggle input { width: 16px; height: 16px; }
+.settings-hint { display: flex; align-items: center; gap: .4rem; margin: 0; color: var(--green); font-size: .78rem; }
+.field-error { display: flex; align-items: center; gap: .4rem; }
+.volume-picker { display: grid; gap: .35rem; }
+.volume-picker > span { color: var(--text-soft); font-size: .76rem; }
+.volume-picker > div { display: flex; flex-wrap: wrap; gap: .35rem; }
+.volume-picker .tool-button { border-color: var(--line); background: var(--surface-cool); font-family: "Cascadia Code", ui-monospace, monospace; }
+.volume-picker .tool-button small { color: var(--text-faint); font-family: system-ui, sans-serif; }
+.volume-panel { padding: 1.1rem 1.2rem 0; }
+.volume { display: grid; gap: .35rem; }
+.volume-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; }
+.volume-heading strong { font-size: .88rem; }
+.volume-heading span { color: var(--text-soft); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.volume-heading .volume-tight { color: color-mix(in oklch, var(--amber) 82%, var(--text)); font-weight: 650; }
+.volume-heading .volume-critical { color: var(--red); font-weight: 700; }
+.volume-track { display: flex; overflow: hidden; height: 10px; border-radius: 99px; background: var(--surface-cool); box-shadow: inset 0 0 0 1px var(--line); }
+.volume-track i { display: block; height: 100%; }
+.volume-other { background: var(--text-faint); opacity: .45; }
+.volume-mine { background: var(--indigo); }
+.volume > small { color: var(--text-faint); font-size: .74rem; }
+.storage-table { display: grid; padding: 1rem 1.2rem 1.2rem; }
+.storage-row { display: grid; grid-template-columns: minmax(150px, .8fr) 110px minmax(90px, .6fr) minmax(0, 1.6fr); align-items: center; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
+.storage-row:last-child { border-bottom: 0; }
+.storage-row > span:first-child { display: grid; gap: .1rem; }
+.storage-row code { color: var(--text-faint); font-size: .72rem; }
+.storage-size { display: grid; gap: .1rem; text-align: right; font-variant-numeric: tabular-nums; }
+.storage-size small { color: var(--text-faint); font-size: .72rem; }
+.storage-share { display: block; overflow: hidden; height: 6px; border-radius: 99px; background: var(--surface-cool); }
+.storage-share i { display: block; height: 100%; border-radius: inherit; background: var(--teal); }
+.storage-row > small { color: var(--text-soft); font-size: .76rem; line-height: 1.4; }
+.settings-page .import-guide-link { margin: 0 1.2rem 1.2rem; }
+@media (max-width: 980px) {
+  .storage-row { grid-template-columns: 1fr auto; }
+  .storage-row .storage-share { grid-column: 1 / -1; }
+  .storage-row > small { grid-column: 1 / -1; }
+}

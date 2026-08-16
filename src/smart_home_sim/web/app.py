@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, field_validator
 from starlette.background import BackgroundTask
 
+from smart_home_sim.application import configuration as configuration_store
 from smart_home_sim.application.export import ExportService
 from smart_home_sim.application.generation_ingest import (
     GenerationIngestError,
@@ -84,8 +85,25 @@ class GenerationStart(ApiModel):
 
 
 class RevealRequest(ApiModel):
-    kind: Literal["workspace", "exports", "runs", "export", "run"]
+    kind: Literal["workspace", "exports", "runs", "export", "run", "data", "configuration"]
     identifier: str = Field(default="", max_length=120)
+
+
+class ConfigurationUpdate(ApiModel):
+    """Any subset of the installation settings. Omitted fields keep their stored value."""
+
+    workspace_directory: str | None = Field(default=None, max_length=4096)
+    data_directory: str | None = Field(default=None, max_length=4096)
+    port: int | None = Field(default=None, ge=1, le=65535)
+    open_browser: bool | None = None
+
+
+class DestinationQuery(ApiModel):
+    path: str = Field(max_length=4096)
+
+
+class RelocationRequest(ApiModel):
+    destination: str = Field(min_length=1, max_length=4096)
 
 
 class ModelPublish(ApiModel):
@@ -189,7 +207,13 @@ def _static_root() -> Path | None:
     return None
 
 
-def create_app(workspace_root: Path, *, workspace_name: str = "Research workspace") -> FastAPI:
+def create_app(
+    workspace_root: Path,
+    *,
+    workspace_name: str = "Research workspace",
+    workspace_source: configuration_store.PathSource = "command-line",
+    on_restart: Callable[[], None] | None = None,
+) -> FastAPI:
     workspace_root = workspace_root.resolve()
     _enable_fault_traces(workspace_root)
     if (workspace_root / "workspace.sqlite3").exists():
@@ -218,6 +242,7 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     app.state.workspace = workspace
     app.state.jobs = jobs
     app.state.session_token = session_token
+    app.state.request_restart = on_restart
 
     @app.exception_handler(WorkspaceError)
     async def workspace_error(_: Request, error: WorkspaceError) -> JSONResponse:
@@ -389,6 +414,104 @@ def create_app(workspace_root: Path, *, workspace_name: str = "Research workspac
     @app.put("/api/settings/{key}", dependencies=[secured])
     def set_setting(key: str, request: SettingUpdate) -> dict[str, Any]:
         return {"key": key, "value": workspace.set_setting(key, request.value)}
+
+    @app.exception_handler(configuration_store.ConfigurationError)
+    async def configuration_error(
+        _: Request, error: configuration_store.ConfigurationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"error": {"code": "CONFIGURATION_REJECTED", "message": str(error)}},
+        )
+
+    @app.get("/api/configuration", dependencies=[secured])
+    def read_configuration() -> dict[str, Any]:
+        return configuration_store.view(
+            active_workspace=workspace_root, workspace_source=workspace_source
+        ).model_dump(mode="json", by_alias=True)
+
+    @app.put("/api/configuration", dependencies=[secured])
+    def update_configuration(request: ConfigurationUpdate) -> dict[str, Any]:
+        """Record where the next start should keep its files. Nothing moves and nothing restarts."""
+        stored = configuration_store.load()
+        if request.workspace_directory is not None:
+            check = configuration_store.check_destination(
+                request.workspace_directory, current=workspace_root
+            )
+            if not check.usable:
+                raise configuration_store.ConfigurationError(check.message)
+            stored.workspace_directory = check.path
+        if request.data_directory is not None:
+            check = configuration_store.check_destination(
+                request.data_directory, current=workspace_root
+            )
+            if not check.usable and not check.holds_workspace:
+                raise configuration_store.ConfigurationError(check.message)
+            stored.data_directory = check.path
+        if request.port is not None:
+            stored.port = request.port
+        if request.open_browser is not None:
+            stored.open_browser = request.open_browser
+        configuration_store.save(stored)
+        return read_configuration()
+
+    @app.get("/api/configuration/storage", dependencies=[secured])
+    def workspace_storage() -> dict[str, Any]:
+        """What the open workspace is holding on disk, broken down by what each part is for."""
+        return configuration_store.storage_report(workspace_root).model_dump(
+            mode="json", by_alias=True
+        )
+
+    @app.post("/api/configuration/destination", dependencies=[secured])
+    def check_destination(request: DestinationQuery) -> dict[str, Any]:
+        """Answer, while the researcher types, whether a folder could hold the workspace."""
+        report = configuration_store.storage_report(workspace_root)
+        return configuration_store.check_destination(
+            request.path, current=workspace_root, required_bytes=report.total_bytes
+        ).model_dump(mode="json", by_alias=True)
+
+    @app.post("/api/configuration/relocation", dependencies=[secured])
+    def request_relocation(request: RelocationRequest) -> dict[str, Any]:
+        if workspace.summary().active_job_count:
+            raise configuration_store.ConfigurationError(
+                "wait for active jobs to finish before moving the workspace"
+            )
+        configuration_store.request_relocation(workspace_root, request.destination)
+        return read_configuration()
+
+    @app.delete("/api/configuration/relocation", dependencies=[secured])
+    def cancel_relocation() -> dict[str, Any]:
+        configuration_store.cancel_relocation()
+        return read_configuration()
+
+    @app.post("/api/configuration/reveal", dependencies=[secured])
+    def reveal(request: RevealRequest) -> dict[str, Any]:
+        """Show a folder in the desktop's own file manager."""
+        targets: dict[str, Path] = {
+            "workspace": workspace_root,
+            "exports": workspace.exports_path,
+            "runs": workspace.runs_path,
+            "export": workspace.exports_path / request.identifier,
+            "run": workspace.runs_path / request.identifier,
+            "data": configuration_store.resolve_data_directory()[0],
+            "configuration": configuration_store.configuration_path().parent,
+        }
+        target = targets[request.kind].resolve()
+        if request.kind in {"export", "run"} and workspace_root not in target.parents:
+            raise HTTPException(status_code=404, detail="Unknown workspace folder")
+        configuration_store.open_in_file_manager(target)
+        return {"revealed": str(target)}
+
+    @app.post("/api/configuration/restart", status_code=202, dependencies=[secured])
+    def restart() -> dict[str, Any]:
+        """Stop the server so its supervisor starts it again with the settings just saved."""
+        if on_restart is None:
+            raise configuration_store.ConfigurationError(
+                "this server was not started by the launcher, so it cannot restart itself; "
+                "close its window and start the application again"
+            )
+        on_restart()
+        return {"restarting": True}
 
     @app.get("/api/workspace/archive", dependencies=[secured])
     def workspace_archive() -> FileResponse:

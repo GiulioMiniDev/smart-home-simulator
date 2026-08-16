@@ -20,6 +20,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_ROOT = PROJECT_ROOT / "frontend"
 PACKAGE_NAME = "smart-home-simulator"
 MINIMUM_NODE_MAJOR = 20
+DEFAULT_PORT = 8765
+# Kept in step with smart_home_sim.application.configuration, which this script cannot import: it
+# runs on the system interpreter, before the virtual environment holding the package exists.
+RESTART_EXIT_CODE = 87
 
 
 class BootstrapError(RuntimeError):
@@ -68,13 +72,34 @@ def _node_tools() -> tuple[str, str]:
     return node, npm
 
 
-def _data_root(override: Path | None) -> Path:
+def _application_home() -> Path:
+    configured = os.environ.get("SMART_HOME_SIM_HOME")
+    return Path(configured).expanduser() if configured else Path.home() / ".smart-home-simulator"
+
+
+def _configuration() -> dict[str, Any]:
+    """The settings the application saved for itself, or nothing when it never has.
+
+    Read here rather than asked of the package: this script chooses where to build the virtual
+    environment, which is the thing that would have to exist first for the package to answer.
+    """
+    try:
+        value = json.loads((_application_home() / "configuration.json").read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _data_root(override: Path | None, configuration: dict[str, Any]) -> Path:
     if override is not None:
         return override.expanduser().resolve()
     configured = os.environ.get("SMART_HOME_SIM_DATA_DIR")
     if configured:
         return Path(configured).expanduser().resolve()
-    return Path.home() / ".smart-home-simulator"
+    saved = configuration.get("dataDirectory")
+    if isinstance(saved, str) and saved:
+        return Path(saved).expanduser().resolve()
+    return _application_home()
 
 
 def _files(roots: Iterable[Path]) -> list[Path]:
@@ -241,7 +266,8 @@ def _simulator_responds(port: int) -> bool:
 def _launch(
     application: Path,
     *,
-    workspace: Path,
+    workspace: Path | None,
+    data_root: Path,
     name: str,
     port: int,
     no_browser: bool,
@@ -255,21 +281,22 @@ def _launch(
             webbrowser.open(url)
         return 0
 
-    workspace.parent.mkdir(parents=True, exist_ok=True)
-    command = [
-        str(application),
-        "--workspace",
-        str(workspace),
-        "--name",
-        name,
-        "--port",
-        str(port),
-    ]
+    command = [str(application), "--name", name, "--port", str(port)]
+    if workspace is not None:
+        # Only when the caller asked for one: otherwise the application reads the folder saved in
+        # its settings page, which is the whole point of that page.
+        workspace.parent.mkdir(parents=True, exist_ok=True)
+        command += ["--workspace", str(workspace)]
     if no_browser:
         command.append("--no-browser")
+    environment = os.environ.copy()
+    environment["SMART_HOME_SIM_DATA_DIR"] = str(data_root)
+    # Tells the application it has a supervisor, so the settings page can offer to restart it
+    # rather than asking the researcher to close the window and start it again by hand.
+    environment["SMART_HOME_SIM_SUPERVISED"] = "1"
     _status(f"Avvio su {url}. Premi Ctrl+C per arrestare.")
     try:
-        return subprocess.run(command, cwd=PROJECT_ROOT, check=False).returncode
+        return subprocess.run(command, cwd=PROJECT_ROOT, env=environment, check=False).returncode
     except KeyboardInterrupt:
         _status("Arresto richiesto.")
         return 130
@@ -280,7 +307,7 @@ def _arguments() -> argparse.Namespace:
         description="Configura e avvia Smart Home Simulator con un solo comando."
     )
     parser.add_argument("--name", default="Smart Home Simulator")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=None)
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--no-browser", action="store_true")
@@ -298,18 +325,38 @@ def _arguments() -> argparse.Namespace:
 
 
 def main() -> int:
+    """Configure, launch, and start over whenever the settings page asks for a restart.
+
+    The whole cycle repeats rather than only the server process: a researcher who moved the
+    application folder needs its Python environment built in the new place before anything can be
+    started from it, and re-reading the configuration here is what makes a saved port or workspace
+    take effect on the very next run.
+    """
     arguments = _arguments()
-    if not 1 <= arguments.port <= 65535:
+    first = True
+    while True:
+        code = _configure_and_launch(arguments, open_browser=first and not arguments.no_browser)
+        if code != RESTART_EXIT_CODE:
+            return code
+        first = False
+        _status("Riavvio richiesto dalle impostazioni.")
+
+
+def _configure_and_launch(arguments: argparse.Namespace, *, open_browser: bool) -> int:
+    configuration = _configuration()
+    saved_port = configuration.get("port")
+    port = arguments.port
+    if port is None:
+        port = saved_port if isinstance(saved_port, int) else DEFAULT_PORT
+    if not 1 <= port <= 65535:
         raise BootstrapError("la porta deve essere compresa tra 1 e 65535")
 
     system = platform.system() or "Unknown"
     _status(f"Piattaforma rilevata: {system} ({platform.machine()}).")
-    data_root = _data_root(arguments.data_dir)
+    data_root = _data_root(arguments.data_dir, configuration)
     venv = data_root / "venv"
     workspace = (
-        arguments.workspace.expanduser().resolve()
-        if arguments.workspace is not None
-        else data_root / "workspace"
+        arguments.workspace.expanduser().resolve() if arguments.workspace is not None else None
     )
     state_path = data_root / "bootstrap-state.json"
     state = _load_state(state_path)
@@ -335,9 +382,10 @@ def main() -> int:
     return _launch(
         _application_executable(venv),
         workspace=workspace,
+        data_root=data_root,
         name=arguments.name,
-        port=arguments.port,
-        no_browser=arguments.no_browser,
+        port=port,
+        no_browser=not open_browser,
     )
 
 

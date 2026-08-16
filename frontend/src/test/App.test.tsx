@@ -21,6 +21,34 @@ function slice(dayType: BehaviourSlice["dayType"], dayCount: number): BehaviourS
 const profile: ResidentProfile = { profileId: "profile_trace", runId: "run_1", traceId: "trace", sourceTraceSemanticDigest: "b".repeat(64), seed: 7, startDate: "2026-07-01", endDate: "2026-07-08", dayCount: 8, slotMinutes: 15, slotLabels: Array.from({ length: 96 }, (_, slot) => `slot_${slot}`), residents: [{ residentId: "resident_mario", activityCount: 24, droppedActivityCount: 1, narrative: ["24 activities over 8 observed day(s), across 2 distinct intents."], slices: [slice("all", 8), slice("weekday", 6), slice("weekend", 2)] }, { residentId: "resident_lucia", activityCount: 4, droppedActivityCount: 0, narrative: ["The trace records no activity for this resident."], slices: [slice("all", 8), slice("weekday", 6), slice("weekend", 2)] }] };
 const overview = { workspace: { workspaceId: "workspace", name: "Test lab", formatVersion: "1.0.0", createdAt: now, updatedAt: now, diagnosticMode: false, homeCount: 1, residentCount: 1, runCount: 1, activeJobCount: 0, artifactCount: 8 }, homes: [home], residents: [resident], jobs: [job] };
 
+const volumes = [
+  { root: "C:\\", totalBytes: 500 * 2 ** 30, freeBytes: 13 * 2 ** 30 },
+  { root: "D:\\", totalBytes: 900 * 2 ** 30, freeBytes: 300 * 2 ** 30 },
+];
+const configuration = {
+  configurationPath: "C:\\Users\\r\\.smart-home-simulator\\configuration.json",
+  workspace: { path: "C:\\Users\\r\\.smart-home-simulator\\workspace", source: "default", exists: true, volume: volumes[0] },
+  configuredWorkspace: { path: "C:\\Users\\r\\.smart-home-simulator\\workspace", source: "default", exists: true, volume: volumes[0] },
+  dataDirectory: { path: "C:\\Users\\r\\.smart-home-simulator", source: "default", exists: true, volume: volumes[0] },
+  port: 8765,
+  openBrowser: true,
+  pendingRelocation: null,
+  restartRequired: false,
+  supervised: true,
+  volumes,
+};
+const storage = {
+  path: configuration.workspace.path,
+  exists: true,
+  totalBytes: 9 * 2 ** 30,
+  entries: [
+    { name: "Simulation runs", relativePath: "runs", sizeBytes: 2.6 * 2 ** 30, fileCount: 38, description: "Execution traces." },
+    { name: "Exports", relativePath: "exports", sizeBytes: 6.3 * 2 ** 30, fileCount: 68, description: "Datasets built from runs." },
+    { name: "Catalogue", relativePath: "workspace.sqlite3", sizeBytes: 860 * 1024, fileCount: 1, description: "The metadata database." },
+  ],
+  volume: volumes[0],
+};
+
 function response(value: unknown, init: ResponseInit = {}): Promise<Response> {
   return Promise.resolve(new Response(value === undefined ? null : JSON.stringify(value), { status: 200, headers: { "Content-Type": "application/json" }, ...init }));
 }
@@ -37,6 +65,8 @@ function installApi() {
       return response(override);
     }
     if (url === "/overview") return response(overview);
+    if (url === "/configuration") return response(configuration);
+    if (url === "/configuration/storage") return response(storage);
     if (url === "/homes") return init?.method === "POST" ? response(home, { status: 201 }) : response([home]);
     if (url === "/homes/home_1") return response({ home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job] });
     if (url === "/jobs?limit=500") return response([job]);
@@ -508,6 +538,170 @@ describe("complete application routes", () => {
     await screen.findByText("The folder and the catalogue agree");
     fireEvent.click(screen.getByRole("button", { name: /Reconcile now/ }));
     expect(await screen.findByText("the folder is read only")).toBeInTheDocument();
+  });
+
+  it("shows where the files are, what they weigh and how much room the drive has left", async () => {
+    mount("/settings");
+    expect(await screen.findByText(/This workspace holds 9.0 GB/)).toBeInTheDocument();
+    expect(screen.getByText(configuration.workspace.path)).toBeInTheDocument();
+    expect(screen.getByText(/13 GB free of 500 GB/)).toBeInTheDocument();
+    expect(screen.getByText(/the default location/)).toBeInTheDocument();
+    // Exports dominate and can be rebuilt, so the page says so instead of leaving it to be worked out.
+    expect(screen.getByText(/Exports are 6.3 GB of that/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open maintenance" })).toHaveAttribute("href", "/maintenance");
+  });
+
+  it("checks a destination while it is typed and records the move for the next start", async () => {
+    const moved = { ...configuration, pendingRelocation: { source: configuration.workspace.path, destination: "D:\\smart-home-simulator\\workspace" }, restartRequired: true };
+    let agreed = false;
+    overrides["/configuration"] = () => response(agreed ? moved : configuration);
+    overrides["/configuration/destination"] = () => response({ path: "D:\\smart-home-simulator\\workspace", usable: true, message: "Ready. 9.0 GB will be copied to D:\\.", empty: true, holdsWorkspace: false, sameVolume: false, volume: volumes[1] });
+    overrides["/configuration/relocation"] = () => { agreed = true; return response(moved); };
+    mount("/settings");
+    await screen.findByText(/This workspace holds/);
+
+    fireEvent.click(screen.getByRole("button", { name: /D:\\/ }));
+    expect(await screen.findByText(/9.0 GB will be copied/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Move 9.0 GB here/ }));
+
+    expect(await screen.findByText(/A move is waiting for the next start/)).toBeInTheDocument();
+    expect(screen.getByText(/These settings apply at the next start/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Restart now/ })).toBeInTheDocument();
+  });
+
+  it("refuses an impossible destination without offering to move there", async () => {
+    overrides["/configuration/destination"] = () => response({ path: "runs", usable: false, message: "Use a complete path, starting from the drive or the root folder.", empty: false, holdsWorkspace: false, sameVolume: false, volume: null });
+    mount("/settings");
+    await screen.findByText(/This workspace holds/);
+    fireEvent.change(screen.getByLabelText("New folder for the workspace"), { target: { value: "runs" } });
+    expect(await screen.findByText(/Use a complete path/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Move 9.0 GB here/ })).toBeDisabled();
+  });
+
+  it("reports a rejected relocation and lets the researcher take a pending one back", async () => {
+    const pending = { ...configuration, pendingRelocation: { source: configuration.workspace.path, destination: "D:\\workspace" }, restartRequired: true };
+    let cancelled = false;
+    overrides["/configuration"] = () => response(cancelled ? configuration : pending);
+    overrides["/configuration/relocation"] = (init?: RequestInit) =>
+      init?.method === "DELETE" ? ((cancelled = true), response(configuration)) : response({ error: { message: "wait for active jobs to finish" } }, { status: 409 });
+    mount("/settings");
+    expect(await screen.findByText(/A move is waiting for the next start/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel the move" }));
+    expect(await screen.findByText(/The move was cancelled/)).toBeInTheDocument();
+  });
+
+  it("saves the port and browser preference, and reports a refused folder", async () => {
+    const saved = vi.fn((init?: RequestInit) =>
+      String(init?.body).includes("not/absolute")
+        ? response({ error: { message: "Use a complete path, starting from the drive or the root folder." } }, { status: 409 })
+        : response({ ...configuration, port: 9300, restartRequired: true }));
+    overrides["/configuration"] = (init?: RequestInit) => (init?.method === "PUT" ? saved(init) : response(configuration));
+    mount("/settings");
+    await screen.findByText(/This workspace holds/);
+
+    fireEvent.change(screen.getByLabelText("Local port"), { target: { value: "9300" } });
+    fireEvent.click(screen.getByLabelText(/Open the browser/));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText("Application folder"), { target: { value: "not/absolute" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/Use a complete path/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Local port"), { target: { value: "0" } });
+    expect(screen.getByText("A port is a number between 1 and 65535.")).toBeInTheDocument();
+  });
+
+  it("tells an unsupervised installation to start itself again", async () => {
+    overrides["/configuration"] = { ...configuration, supervised: false, restartRequired: true, configuredWorkspace: { ...configuration.configuredWorkspace, path: "D:\\workspace" } };
+    mount("/settings");
+    expect(await screen.findByText(/will open D:\\workspace/)).toBeInTheDocument();
+    expect(screen.getByText("Close the application window and start it again.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Restart now/ })).not.toBeInTheDocument();
+  });
+
+  it("reads an empty workspace on a roomy drive, with no volume list to offer", async () => {
+    overrides["/configuration"] = {
+      ...configuration,
+      workspace: { path: "/home/r/.smart-home-simulator/workspace", source: "configuration", exists: true, volume: null },
+      configuredWorkspace: { path: "/home/r/.smart-home-simulator/workspace", source: "configuration", exists: true, volume: null },
+      volumes: [],
+      restartRequired: true,
+    };
+    overrides["/configuration/storage"] = { path: "/home/r/workspace", exists: true, totalBytes: 0, entries: [{ name: "Exports", relativePath: "exports", sizeBytes: 0, fileCount: 0, description: "Nothing yet." }], volume: { root: "/", totalBytes: 900 * 2 ** 30, freeBytes: 700 * 2 ** 30 } };
+    overrides["/configuration/destination"] = () => response({ path: "/data/workspace", usable: true, message: "A workspace already exists here; the application will open it.", empty: false, holdsWorkspace: true, sameVolume: true, volume: null });
+    mount("/settings");
+
+    expect(await screen.findByText(/This workspace holds 0 B/)).toBeInTheDocument();
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.queryByText(/can be rebuilt/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Drives on this machine")).not.toBeInTheDocument();
+    expect(screen.getByText(/The saved settings differ/)).toBeInTheDocument();
+
+    // A folder that already holds a workspace can be switched to, but nothing may be moved onto it.
+    fireEvent.change(screen.getByLabelText("New folder for the workspace"), { target: { value: "/data/workspace" } });
+    expect(await screen.findByText(/already exists here/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Move 0 B here/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Just point here/ })).toBeEnabled();
+  });
+
+  it("keeps quiet when the destination check itself cannot be reached", async () => {
+    overrides["/configuration/destination"] = () => Promise.reject(new TypeError("Failed to fetch"));
+    mount("/settings");
+    await screen.findByText(/This workspace holds/);
+    fireEvent.change(screen.getByLabelText("New folder for the workspace"), { target: { value: "D:\\somewhere" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Move 9.0 GB here/ })).toBeDisabled());
+    expect(screen.queryByText(/Ready\./)).not.toBeInTheDocument();
+  });
+
+  it("recovers from settings the server could not read, and from a move it could not cancel", async () => {
+    let failing = true;
+    overrides["/configuration"] = () =>
+      failing
+        ? response({ error: { message: "the settings file is locked" } }, { status: 500 })
+        : response({ ...configuration, pendingRelocation: { source: configuration.workspace.path, destination: "D:\\workspace" }, restartRequired: true });
+    overrides["/configuration/relocation"] = () => response({ error: { message: "the settings file is read only" } }, { status: 409 });
+    mount("/settings");
+
+    expect(await screen.findByText("the settings file is locked")).toBeInTheDocument();
+    failing = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    await screen.findByText(/A move is waiting for the next start/);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel the move" }));
+    expect(await screen.findByText("the settings file is read only")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Dismiss message"));
+    expect(screen.queryByText("the settings file is read only")).not.toBeInTheDocument();
+  });
+
+  it("says when a launch option overrides what the page can save", async () => {
+    overrides["/configuration"] = { ...configuration, workspace: { ...configuration.workspace, source: "command-line" } };
+    mount("/settings");
+    expect(await screen.findByText(/This session was started with an explicit workspace/)).toBeInTheDocument();
+  });
+
+  it("surfaces a file manager that refuses to open and a storage read that fails", async () => {
+    overrides["/configuration/reveal"] = () => response({ error: { message: "no file manager could be started" } }, { status: 409 });
+    overrides["/configuration/storage"] = () => response({ error: { message: "the folder disappeared" } }, { status: 500 });
+    mount("/settings");
+    expect(await screen.findByText("the folder disappeared")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Open the settings folder"));
+    expect(await screen.findByText("no file manager could be started")).toBeInTheDocument();
+  });
+
+  it("waits for the restarted server before reloading the page", async () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", { value: { reload }, writable: true });
+    overrides["/configuration"] = { ...configuration, restartRequired: true, configuredWorkspace: { ...configuration.configuredWorkspace, path: "D:\\workspace" } };
+    overrides["/configuration/restart"] = () => response({ restarting: true }, { status: 202 });
+    mount("/settings");
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: /Restart now/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /Restart now/ }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: /Restarting/ })).toBeDisabled());
+    await vi.advanceTimersByTimeAsync(4000);
+    await vi.waitFor(() => expect(reload).toHaveBeenCalled());
+    vi.useRealTimers();
   });
 
   it("deletes a home and its evidence from the home workspace", async () => {

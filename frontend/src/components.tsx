@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
+  Settings,
   Sparkles,
   Sun,
   Trash2,
@@ -45,6 +46,7 @@ const nav = [
   { to: "/simulations", label: "Simulations", icon: FlaskConical },
   { to: "/exports", label: "Exports", icon: Download },
   { to: "/maintenance", label: "Maintenance", icon: Wrench },
+  { to: "/settings", label: "Settings", icon: Settings },
   { to: "/help", label: "Guide", icon: BookOpen },
 ];
 

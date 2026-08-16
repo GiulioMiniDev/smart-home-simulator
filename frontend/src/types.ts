@@ -409,3 +409,62 @@ export interface ResidentProfile {
   slotLabels: string[];
   residents: ResidentBehaviour[];
 }
+
+export type PathSource = "command-line" | "environment" | "configuration" | "default";
+
+export interface VolumeUsage {
+  root: string;
+  totalBytes: number;
+  freeBytes: number;
+}
+
+export interface DirectoryLocation {
+  path: string;
+  source: PathSource;
+  exists: boolean;
+  volume: VolumeUsage | null;
+}
+
+export interface StorageEntry {
+  name: string;
+  relativePath: string;
+  sizeBytes: number;
+  fileCount: number;
+  description: string;
+}
+
+export interface StorageReport {
+  path: string;
+  exists: boolean;
+  totalBytes: number;
+  entries: StorageEntry[];
+  volume: VolumeUsage | null;
+}
+
+export interface DestinationCheck {
+  path: string;
+  usable: boolean;
+  message: string;
+  empty: boolean;
+  holdsWorkspace: boolean;
+  sameVolume: boolean;
+  volume: VolumeUsage | null;
+}
+
+export interface PendingRelocation {
+  source: string;
+  destination: string;
+}
+
+export interface Configuration {
+  configurationPath: string;
+  workspace: DirectoryLocation;
+  configuredWorkspace: DirectoryLocation;
+  dataDirectory: DirectoryLocation;
+  port: number;
+  openBrowser: boolean;
+  pendingRelocation: PendingRelocation | null;
+  restartRequired: boolean;
+  supervised: boolean;
+  volumes: VolumeUsage[];
+}
