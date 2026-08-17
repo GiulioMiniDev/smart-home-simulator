@@ -135,6 +135,72 @@ class AccessConstraint(ContractModel):
         return self
 
 
+# What a piece of furniture is actually for. Every entity used to receive the same list — the union
+# of everything the scenario needed — so a sofa declared `food_preparation`, a radio declared
+# `personal_care_support` and a storage cabinet declared `work_support`.
+#
+# `RESOURCE_ROLE_ALIASES` already steers the bindings whose process model names a role, which is why
+# `consume` on `prepared_meal` finds the fridge. But `perform_work` and `leisure` name no role, so
+# every entity matched and the binder fell back to `candidates[0]`, alphabetical by entity id. In
+# the twelve-month home that made `cabinet_living` the winner for both: the resident worked nine
+# hours a day at the storage cabinet, and read there too, while the scenario's own world declared a
+# "Grande tavolo-scrivania ibrido" and a "Poltrona senape" standing unused beside her. Both landed
+# under one detector, which is a large part of why three sensors carry 57% of the log.
+#
+# A type absent from this table keeps every capability. Scenarios name their own resource types and
+# an unrecognised one must not become unsimulable — better a permissive sofa than a run that cannot
+# bind. The per-region service point keeps the full set for the same reason, and
+# `_entity_candidates` now prefers real furniture over it.
+# Anything that holds things can be opened, looked into, taken from, put back into and organised.
+_CONTAINER = frozenset(
+    {"openable", "inspectable", "storage_support", "storable", "graspable", "cleanable"}
+)
+ENTITY_TYPE_CAPABILITIES: dict[str, frozenset[str]] = {
+    "bathtub": frozenset({"personal_care_support", "cleanable", "openable"}),
+    "bed": frozenset({"leisure_support", "cleanable"}),
+    "chair": frozenset({"leisure_support", "consumable", "cleanable"}),
+    "coffee_machine": frozenset(
+        {"food_preparation", "consumable", "switchable", "inspectable", "cleanable"}
+    ),
+    "desk": frozenset({"work_support", "storable", "graspable", "cleanable"}),
+    "drying_rack": frozenset({"laundry_support", "cleanable"}),
+    "kettle": frozenset({"food_preparation", "switchable", "inspectable", "cleanable"}),
+    "lamp": frozenset({"switchable"}),
+    # `RESOURCE_ROLE_ALIASES` routes every medication role to a cabinet, so a cabinet must be able
+    # to hold medicine even when the scenario never names a dedicated one.
+    "medicine_cabinet": _CONTAINER | frozenset({"medication_support"}),
+    "microwave": frozenset(
+        {"food_preparation", "openable", "switchable", "inspectable", "cleanable"}
+    ),
+    "moka_coffee_maker": frozenset(
+        {"food_preparation", "consumable", "switchable", "graspable", "inspectable", "cleanable"}
+    ),
+    "oven": frozenset({"food_preparation", "openable", "switchable", "inspectable", "cleanable"}),
+    "radio": frozenset({"switchable", "communication", "leisure_support"}),
+    "refrigerator": _CONTAINER | frozenset({"consumable"}),
+    "shower": frozenset({"personal_care_support", "switchable", "cleanable"}),
+    # A tap is where drinking water comes from, which is why it pours; it is not a hob.
+    "sink": frozenset({"consumable", "switchable", "cleanable"}),
+    "sofa": frozenset({"leisure_support", "consumable", "communication", "cleanable"}),
+    "storage_cabinet": _CONTAINER | frozenset({"medication_support"}),
+    "stove": frozenset({"food_preparation", "switchable", "inspectable", "cleanable"}),
+    # You eat and work at a table; you cook on a hob. Leaving `food_preparation` here made the table
+    # a candidate for every meal, and since `prepare_food` names no role the tie fell to the
+    # alphabet rather than to the appliance the process had just switched on.
+    "table": frozenset({"work_support", "consumable", "storable", "graspable", "cleanable"}),
+    "television": frozenset({"switchable", "leisure_support", "communication"}),
+    "toilet": frozenset({"personal_care_support", "cleanable"}),
+    # The wardrobe is also where worn clothes wait for the wash: `laundry_collection` is its role.
+    "wardrobe": _CONTAINER | frozenset({"wearable", "laundry_support"}),
+    "washbasin": frozenset({"personal_care_support", "switchable", "cleanable"}),
+    "washing_machine": frozenset(
+        {"laundry_support", "openable", "switchable", "inspectable", "cleanable"}
+    ),
+}
+# Every entity is somewhere a body can stand, whatever else it is or is not for.
+UNIVERSAL_ENTITY_CAPABILITIES = frozenset({"interaction_point", "reachable", "transport_reachable"})
+
+
 class HomeEntity(ContractModel):
     entity_id: str = Field(min_length=1)
     entity_type: str = Field(min_length=1)

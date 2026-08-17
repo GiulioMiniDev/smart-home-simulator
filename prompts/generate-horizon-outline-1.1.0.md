@@ -477,6 +477,24 @@ one physically touches. Cooking needs a `stove`, a `sink` and a `refrigerator`; 
 mistake, not a minimalist flat.** Give each one a `resourceId` of your choosing, a `resourceType`
 from the list above, and the `locationId` of the room it stands in.
 
+**Then read the list back the other way: every object you declared must have an activity that uses
+it.** The rule above stops you furnishing too thinly; this one stops you furnishing a home nobody
+lives in, and it is the failure that actually happens once the first rule has been learned.
+
+A five-month horizon for a father of two declared a wardrobe, a washing machine and three storage
+cabinets, and then gave him no laundry, no change of clothes and no cleaning — twenty recurring
+activities, not one of which reaches into any of the five. The furniture was right and the life was
+missing, so three contact sensors spent five months publishing nothing but their own false
+positives, and the wardrobe opening at 07:00 that tells a segmentation algorithm the resident is
+awake never happened once.
+
+So for each declared object, name the recurring activity that touches it. A `wardrobe` wants
+`change_clothes` or `dress`; a `washing_machine` wants `start_laundry` and `hang_laundry`; a
+`storage_cabinet` wants `clean_kitchen`, `tidy_living_room_and_hallway` or the medication routine.
+If no activity in your profile wants the object, you have two honest options and inventing neither
+is one of them: add the activity, because a household of that description almost certainly does the
+washing — or delete the object, and let the home be a home without one.
+
 ## The rhythm
 
 `outline.rhythm` gives the drive dynamics the few facts they need: `age`, any `health` conditions
@@ -814,6 +832,8 @@ Before answering, verify all of the following:
   imply, **and** the intents the rhythm adds by itself, listed above;
 - every action reaching inside a container — `take_item`, `put_item`, `laundry_step` — opens and
   closes it, so the fridge is not the only object in the home a contact sensor ever observes;
+- every object declared in `world.resources` is reached by at least one recurring activity, and any
+  object no activity wants has been removed from the home;
 - the process package satisfies the
   action state continuity rules above.
 

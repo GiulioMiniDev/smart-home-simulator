@@ -13,13 +13,16 @@ from smart_home_sim.authoring.preflight import (
     _resolve_arguments,
     validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
+    validate_declared_objects_are_reachable,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
 )
+from smart_home_sim.behavior.service import default_action_catalog_path
 from smart_home_sim.compiler.service import compile_payload
 from smart_home_sim.domain.behavior import (
+    ActionCatalog,
     EffectOperation,
     PersonalProcessPackage,
     ProcessNode,
@@ -504,3 +507,82 @@ def test_a_horizon_with_no_home_work_at_all_is_not_the_check_s_business() -> Non
     payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
 
     assert validate_home_work_is_fragmented(Scenario.model_validate_json(json.dumps(payload))) == []
+
+
+def _action_catalog() -> ActionCatalog:
+    return ActionCatalog.model_validate_json(
+        default_action_catalog_path("1.1.0").read_text(encoding="utf-8")
+    )
+
+
+def test_furniture_no_activity_can_reach_is_reported() -> None:
+    """A five-month horizon furnished a family flat and then wrote a life that used half of it.
+
+    A wardrobe, a washing machine and three cabinets were declared for a father of two who never
+    did the laundry, never changed his clothes and never cleaned. Every other gate passed: the
+    portfolio held twenty recurring activities and the process models were well formed.
+    """
+    findings = validate_declared_objects_are_reachable(
+        _scenario_with_resources("refrigerator", "wardrobe", "washing_machine"),
+        _package_opening("food_storage"),
+        _action_catalog(),
+    )
+
+    assert [finding.details["resourceType"] for finding in findings] == [
+        "wardrobe",
+        "washing_machine",
+    ]
+
+
+def test_furniture_the_binder_merely_did_not_choose_is_left_alone() -> None:
+    """Reachable is not the same as used, and only the first is the author's business.
+
+    `leisure` asks for `leisure_support` and names no role, so a sofa answers it — even though the
+    armchair beside it wins the tie on entity id. Reporting the sofa would ask the author to fix a
+    contest the binder decides.
+    """
+    package = _package_with(
+        [
+            {
+                "nodeId": "read",
+                "kind": "action",
+                "actionType": "leisure",
+                "arguments": {"kind": {"source": "literal", "value": "reading"}},
+            }
+        ],
+        intent="read_and_rest",
+    )
+
+    findings = validate_declared_objects_are_reachable(
+        _scenario_with_resources("sofa", "chair"), package, _action_catalog()
+    )
+
+    assert findings == []
+
+
+def test_a_resource_type_the_table_does_not_know_answers_any_request_without_a_role() -> None:
+    """An unrecognised type offers every capability, so nothing it could serve is denied to it.
+
+    It is still unreachable when every request names a role it does not answer to, and that is the
+    honest reading: the binder could not choose it either.
+    """
+    unknown = _scenario_with_resources("aquarium")
+    catalog = _action_catalog()
+
+    roleless = _package_with(
+        [
+            {
+                "nodeId": "read",
+                "kind": "action",
+                "actionType": "leisure",
+                "arguments": {"kind": {"source": "literal", "value": "reading"}},
+            }
+        ],
+        intent="read_and_rest",
+    )
+    assert validate_declared_objects_are_reachable(unknown, roleless, catalog) == []
+
+    named = validate_declared_objects_are_reachable(
+        unknown, _package_opening("food_storage"), catalog
+    )
+    assert [finding.details["resourceType"] for finding in named] == ["aquarium"]

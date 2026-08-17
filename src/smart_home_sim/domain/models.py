@@ -181,6 +181,16 @@ RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
 }
 
 
+def resource_roles_for_type(resource_type: str) -> frozenset[str]:
+    """Every role a declared resource of this type can answer to.
+
+    The inverse of `resource_types_for_role`, and the same table materialization uses to build an
+    entity's roles. Asking "can anything in this package reach this object?" needs the direction
+    that starts from the furniture.
+    """
+    return frozenset({resource_type}) | RESOURCE_ROLE_ALIASES.get(resource_type, frozenset())
+
+
 def resource_types_for_role(role: str) -> frozenset[str]:
     """Which declared resource types can satisfy a role a process model names.
 

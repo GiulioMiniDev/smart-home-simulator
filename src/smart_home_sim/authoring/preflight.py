@@ -17,10 +17,15 @@ from smart_home_sim.domain.behavior import (
     ValueSource,
     VariableCatalog,
 )
+from smart_home_sim.domain.environment import (
+    ENTITY_TYPE_CAPABILITIES,
+    UNIVERSAL_ENTITY_CAPABILITIES,
+)
 from smart_home_sim.domain.models import (
     DayPlan,
     LocationKind,
     Scenario,
+    resource_roles_for_type,
     resource_types_for_role,
 )
 from smart_home_sim.domain.plan import CanonicalActivity, CanonicalPlan
@@ -28,6 +33,10 @@ from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
 
 _UNKNOWN = object()
 _ABSENT = object()
+# Capabilities the resident carries or the floor provides, never a piece of furniture. The
+# materialiser excludes them when it assigns capabilities, and a reachability check has to exclude
+# them too or every object would look reachable through `move_to`.
+_SELF_CAPABILITIES = frozenset({"reachable", "transport_reachable", "posture_control"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -671,6 +680,83 @@ def validate_activities_do_not_park_the_resident(
                     },
                 )
             )
+    return findings
+
+
+def validate_declared_objects_are_reachable(
+    scenario: Scenario, package: PersonalProcessPackage, action_catalog: ActionCatalog
+) -> list[PreflightFinding]:
+    """Could any action in the package ever bind to this piece of furniture at all?
+
+    The sibling check above asks whether an *instrumented* object is ever opened, so it sees only
+    things with a door. This one asks the prior question of every declared object: is there any
+    action, anywhere in the package, that could reach it. A five-month horizon for a father of two
+    declared a wardrobe, a washing machine and three storage cabinets and then gave him no laundry,
+    no change of clothes and no cleaning — the furniture was right and the life was missing.
+
+    "Reachable" is deliberately weaker than "used". An action binds to a provider by asking for a
+    capability, optionally narrowed to a role, and the binder then picks one of the candidates. A
+    sofa that offers `leisure_support` is reachable by every `leisure` action even when the armchair
+    wins the tie, and flagging it would be wrong: nothing in the authored bundle decides that
+    contest. Only an object no request can name is reported, which is why this is a warning about a
+    hole in the *behaviour*, not about a piece of furniture the binder happened not to choose.
+
+    A resource type absent from `ENTITY_TYPE_CAPABILITIES` offers everything, so a scenario naming
+    its own furniture is never reported here.
+    """
+    definitions = {item.action_type: item for item in action_catalog.actions}
+    requests: set[tuple[str, str | None]] = set()
+    for model in package.process_models:
+        for node in model.nodes:
+            definition = definitions.get(node.action_type or "")
+            if definition is None:
+                continue
+            for requirement in definition.required_capabilities:
+                if requirement.capability in _SELF_CAPABILITIES:
+                    continue
+                role: str | None = None
+                if requirement.parameter_name is not None:
+                    argument = node.arguments.get(requirement.parameter_name)
+                    # A role the author did not spell as a literal is resolved at run time, so it
+                    # could name anything: treat it as the wildcard it is rather than guess.
+                    if argument is not None and argument.source is ValueSource.literal:
+                        role = str(argument.value)
+                requests.add((requirement.capability, role))
+
+    by_type: dict[str, list[str]] = defaultdict(list)
+    for resource in scenario.resources:
+        offered = ENTITY_TYPE_CAPABILITIES.get(resource.resource_type)
+        roles = {resource.resource_id, resource.resource_type} | resource_roles_for_type(
+            resource.resource_type
+        )
+        if any(
+            (
+                offered is None
+                or capability in offered
+                or capability in UNIVERSAL_ENTITY_CAPABILITIES
+            )
+            and (role is None or role in roles)
+            for capability, role in requests
+        ):
+            continue
+        by_type[resource.resource_type].append(resource.resource_id)
+
+    findings: list[PreflightFinding] = []
+    for resource_type in sorted(by_type):
+        resources = sorted(by_type[resource_type])
+        findings.append(
+            PreflightFinding(
+                path="$.world.resources",
+                message=(
+                    f"The home declares {len(resources)} {resource_type!r} "
+                    f"({', '.join(resources)}), but no activity in the profile ever reaches one: "
+                    "no action in any process model asks for a capability this object offers. It "
+                    "will stand in the home for the whole horizon untouched. Either add the "
+                    "recurring activity that uses it, or remove the object from the world."
+                ),
+                details={"resourceType": resource_type, "resources": resources},
+            )
+        )
     return findings
 
 

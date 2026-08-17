@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from smart_home_sim.authoring.preflight import (
     validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
+    validate_declared_objects_are_reachable,
     validate_deterministic_preconditions,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
@@ -119,6 +120,25 @@ def repair_instructions(*, valid: bool) -> list[str]:
     """What the request tells the author to do, given what the report actually found."""
     directives = _WARNING_DIRECTIVES if valid else (_ERROR_DIRECTIVE,)
     return [_SOURCE_GUARD, *directives, *_COMMON_INSTRUCTIONS]
+
+
+def _declared_action_catalog(behavior_payload: Any) -> ActionCatalog:
+    """The action catalog the package itself declares, not the newest one on disk.
+
+    Reading a package against a different catalog asks it to satisfy preconditions no reader of its
+    own catalog would expect.
+    """
+    return ActionCatalog.model_validate_json(
+        json.dumps(
+            _load_catalog(
+                default_action_catalog_path(
+                    _declared_catalog_version(
+                        behavior_payload, "actionCatalog", default_action_catalog_path
+                    )
+                )
+            )
+        )
+    )
 
 
 def _authoring_issue(
@@ -537,6 +557,22 @@ def validate_authoring_payload(
                             details=finding.details,
                         )
                     )
+                # The prior question to the one below: not "is this object ever opened" but "could
+                # anything in the package reach it at all". A home furnished for a life the profile
+                # never describes fails here and passes everything else.
+                for finding in validate_declared_objects_are_reachable(
+                    parsed_scenario, parsed_package, _declared_action_catalog(behavior_payload)
+                ):
+                    issues.append(
+                        _authoring_issue(
+                            "DECLARED_OBJECT_IS_NEVER_REACHED",
+                            "scenario",
+                            _prefix_path("$.scenario", finding.path),
+                            finding.message,
+                            severity="warning",
+                            details=finding.details,
+                        )
+                    )
                 # Both halves again: the scenario says what is instrumented, the models say
                 # whether anything ever touches it.
                 for finding in validate_instrumented_objects_are_opened(
@@ -586,17 +622,7 @@ def validate_authoring_payload(
             # its own catalog would expect: under 1.0.0 `prepare_food` has no effect, so a model
             # that cooks a meal and puts it in the fridge — correct under the 1.1.0 the package
             # declares — fails `put_item` on every meal of the horizon, 413 times on one year.
-            action_catalog = ActionCatalog.model_validate_json(
-                json.dumps(
-                    _load_catalog(
-                        default_action_catalog_path(
-                            _declared_catalog_version(
-                                behavior_payload, "actionCatalog", default_action_catalog_path
-                            )
-                        )
-                    )
-                )
-            )
+            action_catalog = _declared_action_catalog(behavior_payload)
             variable_catalog = VariableCatalog.model_validate_json(
                 json.dumps(_load_catalog(default_variable_catalog_path()))
             )
