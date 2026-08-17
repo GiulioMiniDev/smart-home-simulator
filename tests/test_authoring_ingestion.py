@@ -593,7 +593,7 @@ def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None
     that changes its counts, is then a build failure here rather than a prompt that quietly teaches
     the old contract — which is exactly how requirement 11 survived two versions unenforced.
     """
-    prompt = (ROOT / "prompts/generate-horizon-outline-1.0.0.md").read_text(encoding="utf-8")
+    prompt = (ROOT / "prompts/generate-horizon-outline-1.1.0.md").read_text(encoding="utf-8")
     frozen = (ROOT / "prompts/generate-simulation-inputs-1.3.0.md").read_text(encoding="utf-8")
 
     assert "{{PERSON_AND_CASE_DESCRIPTION}}" in prompt
@@ -601,8 +601,13 @@ def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None
     assert "{{CATALOG_INTENTS}}" not in prompt
     assert "{{ACTIVITY_PORTFOLIO}}" not in prompt
     assert "Return exactly one JSON object and nothing else." in prompt
-    assert "`promptTemplateVersion`: `generate-horizon-outline-1.0.0`" in prompt
+    assert "`promptTemplateVersion`: `generate-horizon-outline-1.1.0`" in prompt
     assert "**Do not write the days of the horizon.**" in prompt
+    # 1.1.0 teaches that splitting a band is only half the job. A generated year produced a weekend
+    # band with 68% of its minutes undeclared and a dominant intent at 5.8%, because it was authored
+    # as the weekday band with the work removed and nothing put back.
+    assert "every band names at least one recurring activity of `kind: anchor`" in prompt
+    assert "`unaccountedShare`" in prompt
 
     schema = json.loads(
         (ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json").read_text(encoding="utf-8")
