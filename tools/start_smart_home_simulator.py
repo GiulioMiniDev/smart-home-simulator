@@ -170,6 +170,11 @@ def _frontend_fingerprint() -> str:
         FRONTEND_ROOT / "tsconfig.json",
         FRONTEND_ROOT / "tsconfig.test.json",
         FRONTEND_ROOT / "vite.config.ts",
+        # `src/prompts.ts` imports the authoring prompt with `?raw`, so the prompt is compiled into
+        # the bundle. Left out of this list, editing it changed nothing the fingerprint could see:
+        # the guide went on handing out the text from the last build, and a researcher copying it
+        # got a prompt missing the rule that had just been written for them, with nothing to say so.
+        PROJECT_ROOT / "prompts",
     ]
     return _fingerprint(inputs)
 
