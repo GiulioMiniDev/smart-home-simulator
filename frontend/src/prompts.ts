@@ -1,21 +1,13 @@
-import outlinePrompt from "../../prompts/generate-horizon-outline-1.0.0.md?raw";
-import advancedPrompt from "../../prompts/generate-simulation-inputs-1.3.0.md?raw";
-import simplifiedPrompt from "../../prompts/generate-simulation-inputs-1.2.3-simplified.md?raw";
+import outlinePrompt from "../../prompts/generate-horizon-outline-1.1.0.md?raw";
 
+// Only the outline prompt is offered. The two `generate-simulation-inputs` prompts asked one
+// response for every day of the horizon, which degrades as the horizon grows: the share of distinct
+// days fell from 1.00 over a week to 0.03 over eight months, where 244 days collapsed into seven
+// templates. They stay in `prompts/` because the provenance of already-published exports names
+// them, and a file that a record points at must remain readable.
 export const authoringPrompts = {
-  simplified: {
-    version: "generate-simulation-inputs-1.2.3-simplified",
-    text: simplifiedPrompt,
-  },
-  advanced: {
-    version: "generate-simulation-inputs-1.3.0",
-    text: advancedPrompt,
-  },
-  // A different document, not a newer prompt: it returns a horizon outline that a deterministic
-  // expander rolls into days. Its output is not importable as it stands, which is why the guide
-  // presents it apart from the two above rather than beside them.
   outline: {
-    version: "generate-horizon-outline-1.0.0",
+    version: "generate-horizon-outline-1.1.0",
     text: outlinePrompt,
   },
 } as const;

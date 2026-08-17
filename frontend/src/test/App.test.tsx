@@ -201,51 +201,32 @@ describe("complete application routes", () => {
     vi.useRealTimers();
   });
 
-  it("offers the horizon outline prompt apart, since its output is expanded rather than imported", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
-    const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
-    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
-    mount("/help");
-    await screen.findByRole("heading", { name: "Horizons longer than a month" });
-    fireEvent.change(screen.getByLabelText(/Person and case description/), { target: { value: "Nicoletta Palmi, 8 months" } });
-    const copyButtons = screen.getAllByRole("button", { name: "Copy prompt" });
-    fireEvent.click(copyButtons[2]);
-    await waitFor(() => expect(writeText).toHaveBeenCalled());
-    const prompt = writeText.mock.calls[0]?.[0] ?? "";
-    expect(prompt).toContain("Nicoletta Palmi, 8 months");
-    expect(prompt).toContain("generate-horizon-outline-1.0.0");
-    expect(prompt).toContain("Do not write the days of the horizon.");
-    expect(prompt).not.toContain("{{PERSON_AND_CASE_DESCRIPTION}}");
-    // The guide must say the response cannot be imported as it stands, or a reader will try.
-    expect(screen.getByText(/Its response is expanded, not imported as it stands/)).toBeInTheDocument();
-    expect(screen.getByText(/expand-outline/)).toBeInTheDocument();
-    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
-  });
-
-  it("provides personalized simplified and Advanced prompts in the integrated guide", async () => {
+  it("offers the horizon outline prompt and no other, since the day-by-day ones do not survive a long horizon", async () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
     const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     mount("/help");
     await screen.findByRole("heading", { name: "Generate one authoring bundle" });
-    fireEvent.change(screen.getByLabelText(/Person and case description/), { target: { value: "Lucia Rossi, August 2026" } });
+    fireEvent.change(screen.getByLabelText(/Person and case description/), { target: { value: "Nicoletta Palmi, 8 months" } });
     const copyButtons = screen.getAllByRole("button", { name: "Copy prompt" });
+    // One card, not three: the two `generate-simulation-inputs` prompts are no longer offered.
+    expect(copyButtons).toHaveLength(1);
     fireEvent.click(copyButtons[0]);
     await waitFor(() => expect(writeText).toHaveBeenCalled());
-    expect(writeText.mock.calls[0]?.[0]).toContain("Lucia Rossi, August 2026");
-    expect(writeText.mock.calls[0]?.[0]).not.toContain("[PERSON_AND_CASE_DESCRIPTION]");
-    fireEvent.click(copyButtons[1]);
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
-    expect(writeText.mock.calls[1]?.[0]).toContain("simulation_authoring_bundle");
-    expect(writeText.mock.calls[1]?.[0]).toContain("generate-simulation-inputs-1.2.3-simplified");
-    expect(writeText.mock.calls[1]?.[0]).not.toContain("[GENERATION_TIMESTAMP]");
-    expect(writeText.mock.calls[1]?.[0]).toMatch(/20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/);
+    const prompt = writeText.mock.calls[0]?.[0] ?? "";
+    expect(prompt).toContain("Nicoletta Palmi, 8 months");
+    expect(prompt).toContain("generate-horizon-outline-1.1.0");
+    expect(prompt).toContain("Do not write the days of the horizon.");
+    expect(prompt).not.toContain("{{PERSON_AND_CASE_DESCRIPTION}}");
+    // The guide must say the response cannot be imported as it stands, or a reader will try.
+    expect(screen.getByText(/Its response is expanded, not imported as it stands/)).toBeInTheDocument();
+    expect(screen.getByText(/expand-outline/)).toBeInTheDocument();
     writeText.mockRejectedValueOnce(new Error("Clipboard denied"));
     fireEvent.click(copyButtons[0]);
     expect(await screen.findByRole("button", { name: "Copy failed" })).toBeInTheDocument();
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
-    fireEvent.click(copyButtons[1]);
-    await waitFor(() => expect(screen.getAllByRole("button", { name: "Copy failed" })).toHaveLength(2));
+    fireEvent.click(copyButtons[0]);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Copy failed" })).toHaveLength(1));
   });
 
   it("creates a home and exercises the undoable home and sensor editors", async () => {

@@ -392,12 +392,22 @@ La chiusura terminale della milestone, requisito per iniziare la M5, è document
 nell'[audit M4](docs/audits/milestone-4-closure.md).
 
 Il flusso di authoring consigliato usa un solo file:
-`prompts/generate-simulation-inputs-1.2.0.md`. Il ricercatore sostituisce il marcatore
-`PERSON_AND_CASE_DESCRIPTION` con una descrizione libera della persona, invia l'intero
-prompt a un LLM esterno e salva il solo JSON restituito. Non deve allegare separatamente
-schemi o cataloghi.
+`prompts/generate-horizon-outline-1.1.0.md`, ed è l'unico che la guida integrata offre. Il
+ricercatore sostituisce il marcatore `PERSON_AND_CASE_DESCRIPTION` con una descrizione libera
+della persona, invia l'intero prompt a un LLM esterno e salva il solo JSON restituito. Non
+deve allegare separatamente schemi o cataloghi. La risposta è un *outline* — abitudini,
+cadenze, fasi ed eventi — che `expand-outline` srotola nei giorni concreti pubblicando anche
+la ground truth delle abitudini.
 
-Per modelli locali è disponibile anche il prompt compatto corretto
+I due prompt `generate-simulation-inputs` qui sotto chiedevano invece ogni singolo giorno
+dell'orizzonte, e reggono solo su finestre brevi: la quota di giornate distinte scende da 1,00
+su una settimana a 0,03 su otto mesi, dove 244 giorni collassano in sette modelli. **Non sono
+più esposti dalla guida integrata**, e restano in `prompts/` perché la provenance degli export
+già pubblicati li nomina.
+
+Il flusso legacy usava `prompts/generate-simulation-inputs-1.2.0.md`.
+
+Per modelli locali era disponibile anche il prompt compatto corretto
 `prompts/generate-simulation-inputs-1.2.3-simplified.md`. La guida integrata inserisce
 automaticamente la descrizione del caso e il timestamp ISO di generazione; usando il file
 manualmente occorre sostituire sia `[PERSON_AND_CASE_DESCRIPTION]` sia
