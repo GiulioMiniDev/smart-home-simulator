@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
@@ -651,3 +652,32 @@ def test_executed_gestures_stay_short_across_a_whole_week(result) -> None:
         + 1.0
     ]
     assert not overruns
+
+
+def test_lying_down_takes_longer_than_sitting_down(result) -> None:
+    """`change_posture` must last what the bundle says it lasts, per posture.
+
+    `residentKinematics.postureTransitionSeconds` states 1.5 s to stand, 2.0 to sit and 3.0 to lie,
+    is validated by the home model contract and travels in every bundle — and was read by nothing.
+    A single constant for every posture would throw that away.
+    """
+    assert result.trace is not None
+    elastic_activities = {
+        item.activity_execution_id
+        for item in result.trace.action_executions
+        if item.action_type not in PUNCTUAL_ACTION_SECONDS
+    }
+    walked = {item.action_execution_id for item in result.trace.movements}
+    by_posture: dict[str, set[float]] = defaultdict(set)
+    for item in result.trace.action_executions:
+        if item.action_type != "change_posture" or item.action_execution_id in walked:
+            continue
+        # `wake_up` is nothing but gestures, so there the budget still stretches them and the
+        # kinematics have nothing to say.
+        if item.activity_execution_id not in elastic_activities:
+            continue
+        posture = item.resolved_arguments["posture"]
+        by_posture[str(posture)].add(round((item.ended_at - item.started_at).total_seconds(), 3))
+    assert by_posture["sitting"] == {2.0}
+    assert by_posture["standing"] == {1.5}
+    assert PUNCTUAL_ACTION_SECONDS["change_posture"] not in {2.0, 1.5}

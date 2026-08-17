@@ -5,7 +5,7 @@ import json
 import math
 import random
 from collections import Counter, defaultdict
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -101,6 +101,11 @@ EXECUTION_PACE_MAX_FACTOR = math.exp(EXECUTION_PACE_LOG_LIMIT)
 # the activity is made of, and it absorbs whatever the budget leaves. Travel actions are entered
 # at zero because their real length is the walk, which `_execute_action` floors them at once the
 # path is planned.
+#
+# `change_posture` is the one entry that is only a fallback. Lying down takes longer than standing
+# up, and by how much is already stated per resident in the bundle, in
+# `residentKinematics.postureTransitionSeconds` — so the engine reads it from there and this number
+# is used only where the target posture is not one the kinematics name.
 PUNCTUAL_ACTION_SECONDS = {
     "activate": 3.0,
     "change_posture": 4.0,
@@ -600,7 +605,16 @@ def _expand_process(
     return walk(select_edge(starts[0]).target_node_id)
 
 
-def _phase_durations(phases: list[list[ProcessNode]], intended: int) -> list[int]:
+def _gesture_seconds(node: ProcessNode) -> float | None:
+    """How long this node's gesture takes, or None when the node is elastic."""
+    return PUNCTUAL_ACTION_SECONDS.get(node.action_type or "")
+
+
+def _phase_durations(
+    phases: list[list[ProcessNode]],
+    intended: int,
+    gesture_seconds: Callable[[ProcessNode], float | None] = _gesture_seconds,
+) -> list[int]:
     """Share an activity's budget over its phases, holding gestures to their own length.
 
     A phase is elastic when at least one of its nodes is something the activity is *made* of —
@@ -615,11 +629,14 @@ def _phase_durations(phases: list[list[ProcessNode]], intended: int) -> list[int
     A process made of nothing but gestures has nothing to absorb anything, so there the budget is
     shared by weight exactly as before — a short process of taps and item handling is the one case
     where stretching the gestures is the only available answer.
+
+    `gesture_seconds` decides how long each gesture is. It defaults to the table, and the engine
+    passes one that first asks the resident's own kinematics.
     """
     weights = [max(node.duration_weight or 1 for node in phase) for phase in phases]
     fixed: list[int | None] = []
     for phase in phases:
-        seconds = [PUNCTUAL_ACTION_SECONDS.get(node.action_type or "") for node in phase]
+        seconds = [gesture_seconds(node) for node in phase]
         # A parallel phase is only punctual if every branch in it is: one elastic branch means the
         # phase lasts as long as that branch does.
         fixed.append(
@@ -854,6 +871,27 @@ class SimulationEngine:
         limit = EXECUTION_PACE_LOG_LIMIT
         factor = math.exp(limit * math.tanh(drawn / limit))
         return max(1, int(round(intended_us * factor)))
+
+    def _gesture_seconds(
+        self, activity_id: str, actor_id: str
+    ) -> Callable[[ProcessNode], float | None]:
+        """How long each gesture takes for *this* resident.
+
+        `change_posture` is the one gesture whose length the bundle already states, per resident and
+        per target posture: lying down takes three seconds where standing up takes one and a half.
+        The figures travel in `residentKinematics.postureTransitionSeconds`, are validated by the
+        home model contract — and were read by nothing until now.
+        """
+        transitions = self.kinematics[actor_id].posture_transition_seconds
+
+        def resolve(node: ProcessNode) -> float | None:
+            fallback = PUNCTUAL_ACTION_SECONDS.get(node.action_type or "")
+            if node.action_type != "change_posture":
+                return fallback
+            posture = self.bindings[(activity_id, node.node_id)].resolved_arguments.get("posture")
+            return transitions.get(str(posture), fallback)
+
+        return resolve
 
     def _process_model_id(self, activity_id: str) -> str:
         binding = next(
@@ -1470,7 +1508,9 @@ class SimulationEngine:
                 activity.source_activity_id,
                 activity.duration_microseconds + self.extension_us[activity.source_activity_id],
             )
-            phase_durations = _phase_durations(phases, intended)
+            phase_durations = _phase_durations(
+                phases, intended, self._gesture_seconds(activity.source_activity_id, actor_id)
+            )
             occurrences: Counter[str] = Counter()
             action_ids: list[str] = []
             self.active_processes[actor_id] = self.env.active_process

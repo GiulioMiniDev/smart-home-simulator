@@ -1689,7 +1689,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T08:15:00.000001+01:00",
-      "endedAt": "2026-10-30T08:15:04.000001+01:00",
+      "endedAt": "2026-10-30T08:15:02.000001+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -1707,8 +1707,8 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T08:15:04.000001+01:00",
-      "endedAt": "2026-10-30T08:49:01.202635+01:00",
+      "startedAt": "2026-10-30T08:15:02.000001+01:00",
+      "endedAt": "2026-10-30T08:49:03.702635+01:00",
       "status": "completed",
       "resolvedArguments": {
         "kind": "radio_news"
@@ -1726,8 +1726,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T08:15:04.000001+01:00",
-      "endedAt": "2026-10-30T08:49:01.202635+01:00",
+      "startedAt": "2026-10-30T08:15:02.000001+01:00",
+      "endedAt": "2026-10-30T08:49:03.702635+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "coffee_and_breakfast_food"
@@ -1745,7 +1745,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T08:49:01.202635+01:00",
+      "startedAt": "2026-10-30T08:49:03.702635+01:00",
       "endedAt": "2026-10-30T08:49:05.202635+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -2484,7 +2484,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T13:08:15.357243+01:00",
-      "endedAt": "2026-10-30T13:08:19.357243+01:00",
+      "endedAt": "2026-10-30T13:08:17.357243+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -2502,8 +2502,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T13:08:19.357243+01:00",
-      "endedAt": "2026-10-30T13:40:34.575889+01:00",
+      "startedAt": "2026-10-30T13:08:17.357243+01:00",
+      "endedAt": "2026-10-30T13:40:37.075889+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "prepared_meal"
@@ -2521,7 +2521,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T13:40:34.575889+01:00",
+      "startedAt": "2026-10-30T13:40:37.075889+01:00",
       "endedAt": "2026-10-30T13:40:38.575889+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -2560,7 +2560,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T14:05:07.846196+01:00",
-      "endedAt": "2026-10-30T14:05:11.846196+01:00",
+      "endedAt": "2026-10-30T14:05:09.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -2578,7 +2578,7 @@
       "occurrenceIndex": 0,
       "actionType": "wait",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T14:05:11.846196+01:00",
+      "startedAt": "2026-10-30T14:05:09.846196+01:00",
       "endedAt": "2026-10-30T14:36:17.568526+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -2615,7 +2615,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T14:36:17.568527+01:00",
-      "endedAt": "2026-10-30T14:36:21.568527+01:00",
+      "endedAt": "2026-10-30T14:36:19.568527+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -2633,7 +2633,7 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T14:36:21.568527+01:00",
+      "startedAt": "2026-10-30T14:36:19.568527+01:00",
       "endedAt": "2026-10-30T15:07:27.290857+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -2824,7 +2824,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T18:00:09.873088+01:00",
-      "endedAt": "2026-10-30T18:00:13.873088+01:00",
+      "endedAt": "2026-10-30T18:00:11.873088+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -2842,8 +2842,8 @@
       "occurrenceIndex": 0,
       "actionType": "communicate",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T18:00:13.873088+01:00",
-      "endedAt": "2026-10-30T18:23:01.655988+01:00",
+      "startedAt": "2026-10-30T18:00:11.873088+01:00",
+      "endedAt": "2026-10-30T18:23:04.155988+01:00",
       "status": "completed",
       "resolvedArguments": {
         "channel": "phone"
@@ -2861,7 +2861,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T18:23:01.655988+01:00",
+      "startedAt": "2026-10-30T18:23:04.155988+01:00",
       "endedAt": "2026-10-30T18:23:05.655988+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -3053,7 +3053,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T19:47:03.612820+01:00",
-      "endedAt": "2026-10-30T19:47:07.612820+01:00",
+      "endedAt": "2026-10-30T19:47:05.612820+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -3071,8 +3071,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T19:47:07.612820+01:00",
-      "endedAt": "2026-10-30T20:10:50.575563+01:00",
+      "startedAt": "2026-10-30T19:47:05.612820+01:00",
+      "endedAt": "2026-10-30T20:10:53.075563+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "prepared_meal"
@@ -3090,7 +3090,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T20:10:50.575563+01:00",
+      "startedAt": "2026-10-30T20:10:53.075563+01:00",
       "endedAt": "2026-10-30T20:10:54.575563+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -3129,7 +3129,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T20:40:07.846196+01:00",
-      "endedAt": "2026-10-30T20:40:11.846196+01:00",
+      "endedAt": "2026-10-30T20:40:09.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -3147,8 +3147,8 @@
       "occurrenceIndex": 0,
       "actionType": "activate",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T20:40:11.846196+01:00",
-      "endedAt": "2026-10-30T20:40:14.846196+01:00",
+      "startedAt": "2026-10-30T20:40:09.846196+01:00",
+      "endedAt": "2026-10-30T20:40:12.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "target": "television"
@@ -3166,7 +3166,7 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T20:40:14.846196+01:00",
+      "startedAt": "2026-10-30T20:40:12.846196+01:00",
       "endedAt": "2026-10-30T21:59:12.427592+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -3262,7 +3262,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T23:05:15.788314+01:00",
-      "endedAt": "2026-10-30T23:05:19.788314+01:00",
+      "endedAt": "2026-10-30T23:05:18.788314+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "lying"
@@ -3280,7 +3280,7 @@
       "occurrenceIndex": 0,
       "actionType": "wait",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T23:05:19.788314+01:00",
+      "startedAt": "2026-10-30T23:05:18.788314+01:00",
       "endedAt": "2026-10-31T08:05:12.973830+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -3698,7 +3698,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T09:06:23.462487+01:00",
-      "endedAt": "2026-10-31T09:06:27.462487+01:00",
+      "endedAt": "2026-10-31T09:06:25.462487+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -3716,8 +3716,8 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T09:06:27.462487+01:00",
-      "endedAt": "2026-10-31T09:37:01.037162+01:00",
+      "startedAt": "2026-10-31T09:06:25.462487+01:00",
+      "endedAt": "2026-10-31T09:37:03.537162+01:00",
       "status": "completed",
       "resolvedArguments": {
         "kind": "written_news"
@@ -3735,8 +3735,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T09:06:27.462487+01:00",
-      "endedAt": "2026-10-31T09:37:01.037162+01:00",
+      "startedAt": "2026-10-31T09:06:25.462487+01:00",
+      "endedAt": "2026-10-31T09:37:03.537162+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "coffee_and_breakfast_food"
@@ -3754,7 +3754,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T09:37:01.037162+01:00",
+      "startedAt": "2026-10-31T09:37:03.537162+01:00",
       "endedAt": "2026-10-31T09:37:05.037162+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -4669,7 +4669,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T13:02:33.881003+01:00",
-      "endedAt": "2026-10-31T13:02:37.881003+01:00",
+      "endedAt": "2026-10-31T13:02:35.881003+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -4687,8 +4687,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T13:02:37.881003+01:00",
-      "endedAt": "2026-10-31T13:32:13.353762+01:00",
+      "startedAt": "2026-10-31T13:02:35.881003+01:00",
+      "endedAt": "2026-10-31T13:32:15.853762+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "prepared_meal"
@@ -4706,7 +4706,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T13:32:13.353762+01:00",
+      "startedAt": "2026-10-31T13:32:15.853762+01:00",
       "endedAt": "2026-10-31T13:32:17.353762+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -4745,7 +4745,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T13:50:07.846196+01:00",
-      "endedAt": "2026-10-31T13:50:11.846196+01:00",
+      "endedAt": "2026-10-31T13:50:09.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -4763,7 +4763,7 @@
       "occurrenceIndex": 0,
       "actionType": "wait",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T13:50:11.846196+01:00",
+      "startedAt": "2026-10-31T13:50:09.846196+01:00",
       "endedAt": "2026-10-31T14:21:04.924501+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -4838,7 +4838,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T16:05:00.000001+01:00",
-      "endedAt": "2026-10-31T16:05:04.000001+01:00",
+      "endedAt": "2026-10-31T16:05:02.000001+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -4856,7 +4856,7 @@
       "occurrenceIndex": 0,
       "actionType": "wait",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T16:05:04.000001+01:00",
+      "startedAt": "2026-10-31T16:05:02.000001+01:00",
       "endedAt": "2026-10-31T16:33:54.477983+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -5213,7 +5213,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T20:40:37.702937+01:00",
-      "endedAt": "2026-10-31T20:40:41.702937+01:00",
+      "endedAt": "2026-10-31T20:40:39.702937+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -5231,8 +5231,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T20:40:41.702937+01:00",
-      "endedAt": "2026-10-31T21:07:51.971705+01:00",
+      "startedAt": "2026-10-31T20:40:39.702937+01:00",
+      "endedAt": "2026-10-31T21:07:54.471705+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "prepared_meal"
@@ -5250,7 +5250,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T21:07:51.971705+01:00",
+      "startedAt": "2026-10-31T21:07:54.471705+01:00",
       "endedAt": "2026-10-31T21:07:55.971705+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -5289,7 +5289,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T21:08:03.817901+01:00",
-      "endedAt": "2026-10-31T21:08:07.817901+01:00",
+      "endedAt": "2026-10-31T21:08:05.817901+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -5307,8 +5307,8 @@
       "occurrenceIndex": 0,
       "actionType": "activate",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T21:08:07.817901+01:00",
-      "endedAt": "2026-10-31T21:08:10.817901+01:00",
+      "startedAt": "2026-10-31T21:08:05.817901+01:00",
+      "endedAt": "2026-10-31T21:08:08.817901+01:00",
       "status": "completed",
       "resolvedArguments": {
         "target": "television"
@@ -5326,7 +5326,7 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T21:08:10.817901+01:00",
+      "startedAt": "2026-10-31T21:08:08.817901+01:00",
       "endedAt": "2026-10-31T22:16:51.728451+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -5422,7 +5422,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T23:10:15.788314+01:00",
-      "endedAt": "2026-10-31T23:10:19.788314+01:00",
+      "endedAt": "2026-10-31T23:10:18.788314+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "lying"
@@ -5440,7 +5440,7 @@
       "occurrenceIndex": 0,
       "actionType": "wait",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T23:10:19.788314+01:00",
+      "startedAt": "2026-10-31T23:10:18.788314+01:00",
       "endedAt": "2026-11-01T06:46:20.477684+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -5858,7 +5858,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-11-01T08:59:18.839772+01:00",
-      "endedAt": "2026-11-01T08:59:22.839772+01:00",
+      "endedAt": "2026-11-01T08:59:20.839772+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -5876,8 +5876,8 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T08:59:22.839772+01:00",
-      "endedAt": "2026-11-01T09:32:06.233797+01:00",
+      "startedAt": "2026-11-01T08:59:20.839772+01:00",
+      "endedAt": "2026-11-01T09:32:08.733797+01:00",
       "status": "completed",
       "resolvedArguments": {
         "kind": "written_news"
@@ -5895,8 +5895,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T08:59:22.839772+01:00",
-      "endedAt": "2026-11-01T09:32:06.233797+01:00",
+      "startedAt": "2026-11-01T08:59:20.839772+01:00",
+      "endedAt": "2026-11-01T09:32:08.733797+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "coffee_and_breakfast_food"
@@ -5914,7 +5914,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T09:32:06.233797+01:00",
+      "startedAt": "2026-11-01T09:32:08.733797+01:00",
       "endedAt": "2026-11-01T09:32:10.233797+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -6296,7 +6296,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-11-01T13:07:36.505871+01:00",
-      "endedAt": "2026-11-01T13:07:40.505871+01:00",
+      "endedAt": "2026-11-01T13:07:38.505871+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -6314,8 +6314,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T13:07:40.505871+01:00",
-      "endedAt": "2026-11-01T13:45:51.985104+01:00",
+      "startedAt": "2026-11-01T13:07:38.505871+01:00",
+      "endedAt": "2026-11-01T13:45:54.485104+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "prepared_meal"
@@ -6333,7 +6333,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T13:45:51.985104+01:00",
+      "startedAt": "2026-11-01T13:45:54.485104+01:00",
       "endedAt": "2026-11-01T13:45:55.985104+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -6372,7 +6372,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-11-01T16:15:07.846196+01:00",
-      "endedAt": "2026-11-01T16:15:11.846196+01:00",
+      "endedAt": "2026-11-01T16:15:09.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -6390,8 +6390,8 @@
       "occurrenceIndex": 0,
       "actionType": "communicate",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T16:15:11.846196+01:00",
-      "endedAt": "2026-11-01T16:35:23.522891+01:00",
+      "startedAt": "2026-11-01T16:15:09.846196+01:00",
+      "endedAt": "2026-11-01T16:35:26.022891+01:00",
       "status": "completed",
       "resolvedArguments": {
         "channel": "phone"
@@ -6409,7 +6409,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T16:35:23.522891+01:00",
+      "startedAt": "2026-11-01T16:35:26.022891+01:00",
       "endedAt": "2026-11-01T16:35:27.522891+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -6601,7 +6601,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-11-01T19:37:03.612820+01:00",
-      "endedAt": "2026-11-01T19:37:07.612820+01:00",
+      "endedAt": "2026-11-01T19:37:05.612820+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -6619,8 +6619,8 @@
       "occurrenceIndex": 0,
       "actionType": "consume",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T19:37:07.612820+01:00",
-      "endedAt": "2026-11-01T20:01:45.085036+01:00",
+      "startedAt": "2026-11-01T19:37:05.612820+01:00",
+      "endedAt": "2026-11-01T20:01:47.585036+01:00",
       "status": "completed",
       "resolvedArguments": {
         "itemRole": "prepared_meal"
@@ -6638,7 +6638,7 @@
       "occurrenceIndex": 0,
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T20:01:45.085036+01:00",
+      "startedAt": "2026-11-01T20:01:47.585036+01:00",
       "endedAt": "2026-11-01T20:01:49.085036+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -6677,7 +6677,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-11-01T20:30:07.846196+01:00",
-      "endedAt": "2026-11-01T20:30:11.846196+01:00",
+      "endedAt": "2026-11-01T20:30:09.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "sitting"
@@ -6695,8 +6695,8 @@
       "occurrenceIndex": 0,
       "actionType": "activate",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T20:30:11.846196+01:00",
-      "endedAt": "2026-11-01T20:30:14.846196+01:00",
+      "startedAt": "2026-11-01T20:30:09.846196+01:00",
+      "endedAt": "2026-11-01T20:30:12.846196+01:00",
       "status": "completed",
       "resolvedArguments": {
         "target": "television"
@@ -6714,7 +6714,7 @@
       "occurrenceIndex": 0,
       "actionType": "leisure",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T20:30:14.846196+01:00",
+      "startedAt": "2026-11-01T20:30:12.846196+01:00",
       "endedAt": "2026-11-01T21:50:14.829490+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -6810,7 +6810,7 @@
       "actionType": "change_posture",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-11-01T22:52:15.788314+01:00",
-      "endedAt": "2026-11-01T22:52:19.788314+01:00",
+      "endedAt": "2026-11-01T22:52:18.788314+01:00",
       "status": "completed",
       "resolvedArguments": {
         "posture": "lying"
@@ -6828,7 +6828,7 @@
       "occurrenceIndex": 0,
       "actionType": "wait",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T22:52:19.788314+01:00",
+      "startedAt": "2026-11-01T22:52:18.788314+01:00",
       "endedAt": "2026-11-02T06:48:34.087321+01:00",
       "status": "completed",
       "resolvedArguments": {
@@ -7467,15 +7467,15 @@
       "movementId": "movement_d3754f5c4237bcde",
       "actionExecutionId": "action_1c557396a1f8f640",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T08:15:04.000001+01:00",
-      "endedAt": "2026-10-30T08:15:06.517976+01:00",
+      "startedAt": "2026-10-30T08:15:02.000001+01:00",
+      "endedAt": "2026-10-30T08:15:04.517976+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 2.2661772326982734,
       "durationMicroseconds": 2517975,
       "waypoints": [
         {
-          "at": "2026-10-30T08:15:04.000001+01:00",
+          "at": "2026-10-30T08:15:02.000001+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 8.6834,
@@ -7484,7 +7484,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T08:15:06.517976+01:00",
+          "at": "2026-10-30T08:15:04.517976+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -8499,15 +8499,15 @@
       "movementId": "movement_c8d5358463ef27e4",
       "actionExecutionId": "action_7c47e10fdbb36a52",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T13:08:19.357243+01:00",
-      "endedAt": "2026-10-30T13:08:22.970063+01:00",
+      "startedAt": "2026-10-30T13:08:17.357243+01:00",
+      "endedAt": "2026-10-30T13:08:20.970063+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 3.251538097577822,
       "durationMicroseconds": 3612820,
       "waypoints": [
         {
-          "at": "2026-10-30T13:08:19.357243+01:00",
+          "at": "2026-10-30T13:08:17.357243+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -8516,7 +8516,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T13:08:22.970063+01:00",
+          "at": "2026-10-30T13:08:20.970063+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.8591,
@@ -9148,15 +9148,15 @@
       "movementId": "movement_6c21b2c1f4bd0c02",
       "actionExecutionId": "action_28dacb94523a890a",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T19:47:07.612820+01:00",
-      "endedAt": "2026-10-30T19:47:11.225640+01:00",
+      "startedAt": "2026-10-30T19:47:05.612820+01:00",
+      "endedAt": "2026-10-30T19:47:09.225640+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 3.251538097577822,
       "durationMicroseconds": 3612820,
       "waypoints": [
         {
-          "at": "2026-10-30T19:47:07.612820+01:00",
+          "at": "2026-10-30T19:47:05.612820+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -9165,7 +9165,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T19:47:11.225640+01:00",
+          "at": "2026-10-30T19:47:09.225640+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.8591,
@@ -9998,15 +9998,15 @@
       "movementId": "movement_1809c805664c1217",
       "actionExecutionId": "action_dc65a548422fca02",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T09:06:27.462487+01:00",
-      "endedAt": "2026-10-31T09:06:29.980462+01:00",
+      "startedAt": "2026-10-31T09:06:25.462487+01:00",
+      "endedAt": "2026-10-31T09:06:27.980462+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 2.2661772326982734,
       "durationMicroseconds": 2517975,
       "waypoints": [
         {
-          "at": "2026-10-31T09:06:27.462487+01:00",
+          "at": "2026-10-31T09:06:25.462487+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 8.6834,
@@ -10015,7 +10015,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T09:06:29.980462+01:00",
+          "at": "2026-10-31T09:06:27.980462+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -11208,15 +11208,15 @@
       "movementId": "movement_039f79f586d640cb",
       "actionExecutionId": "action_30966c60bbaea0ae",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T13:02:37.881003+01:00",
-      "endedAt": "2026-10-31T13:02:41.493823+01:00",
+      "startedAt": "2026-10-31T13:02:35.881003+01:00",
+      "endedAt": "2026-10-31T13:02:39.493823+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 3.251538097577822,
       "durationMicroseconds": 3612820,
       "waypoints": [
         {
-          "at": "2026-10-31T13:02:37.881003+01:00",
+          "at": "2026-10-31T13:02:35.881003+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -11225,7 +11225,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T13:02:41.493823+01:00",
+          "at": "2026-10-31T13:02:39.493823+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.8591,
@@ -11983,15 +11983,15 @@
       "movementId": "movement_0a007355e9801c4a",
       "actionExecutionId": "action_1cd50f0c0d75f29e",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T20:40:41.702937+01:00",
-      "endedAt": "2026-10-31T20:40:45.315757+01:00",
+      "startedAt": "2026-10-31T20:40:39.702937+01:00",
+      "endedAt": "2026-10-31T20:40:43.315757+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 3.251538097577822,
       "durationMicroseconds": 3612820,
       "waypoints": [
         {
-          "at": "2026-10-31T20:40:41.702937+01:00",
+          "at": "2026-10-31T20:40:39.702937+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -12000,7 +12000,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T20:40:45.315757+01:00",
+          "at": "2026-10-31T20:40:43.315757+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.8591,
@@ -12905,15 +12905,15 @@
       "movementId": "movement_ac976283eb4e4e0f",
       "actionExecutionId": "action_733bc475d29a6199",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T08:59:22.839772+01:00",
-      "endedAt": "2026-11-01T08:59:25.357747+01:00",
+      "startedAt": "2026-11-01T08:59:20.839772+01:00",
+      "endedAt": "2026-11-01T08:59:23.357747+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 2.2661772326982734,
       "durationMicroseconds": 2517975,
       "waypoints": [
         {
-          "at": "2026-11-01T08:59:22.839772+01:00",
+          "at": "2026-11-01T08:59:20.839772+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 8.6834,
@@ -12922,7 +12922,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-11-01T08:59:25.357747+01:00",
+          "at": "2026-11-01T08:59:23.357747+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -13496,15 +13496,15 @@
       "movementId": "movement_f0649ca6d147839b",
       "actionExecutionId": "action_788a4abe201049dd",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T13:07:40.505871+01:00",
-      "endedAt": "2026-11-01T13:07:44.118691+01:00",
+      "startedAt": "2026-11-01T13:07:38.505871+01:00",
+      "endedAt": "2026-11-01T13:07:42.118691+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 3.251538097577822,
       "durationMicroseconds": 3612820,
       "waypoints": [
         {
-          "at": "2026-11-01T13:07:40.505871+01:00",
+          "at": "2026-11-01T13:07:38.505871+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -13513,7 +13513,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-11-01T13:07:44.118691+01:00",
+          "at": "2026-11-01T13:07:42.118691+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.8591,
@@ -13811,15 +13811,15 @@
       "movementId": "movement_2e7b9771aaea2b2e",
       "actionExecutionId": "action_4df0a8bf07fd73b9",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-11-01T19:37:07.612820+01:00",
-      "endedAt": "2026-11-01T19:37:11.225640+01:00",
+      "startedAt": "2026-11-01T19:37:05.612820+01:00",
+      "endedAt": "2026-11-01T19:37:09.225640+01:00",
       "originRegionId": "kitchen",
       "destinationRegionId": "kitchen",
       "distanceMeters": 3.251538097577822,
       "durationMicroseconds": 3612820,
       "waypoints": [
         {
-          "at": "2026-11-01T19:37:07.612820+01:00",
+          "at": "2026-11-01T19:37:05.612820+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 6.6091,
@@ -13828,7 +13828,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-11-01T19:37:11.225640+01:00",
+          "at": "2026-11-01T19:37:09.225640+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.8591,
@@ -14781,8 +14781,8 @@
       }
     },
     {
-      "transitionId": "state_18d75dffa6148870",
-      "at": "2026-10-30T08:15:04.000001+01:00",
+      "transitionId": "state_bfa14d60fd73d113",
+      "at": "2026-10-30T08:15:02.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -14795,8 +14795,22 @@
       }
     },
     {
-      "transitionId": "state_56cf452aa9e6176b",
-      "at": "2026-10-30T08:15:04.000001+01:00",
+      "transitionId": "state_ca54e9ba34f36d27",
+      "at": "2026-10-30T08:15:02.000001+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_299ba01cab23bf9d"
+      }
+    },
+    {
+      "transitionId": "state_cac662e02699e404",
+      "at": "2026-10-30T08:15:02.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -14809,22 +14823,8 @@
       }
     },
     {
-      "transitionId": "state_5b5f42bf740859e8",
-      "at": "2026-10-30T08:15:04.000001+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_299ba01cab23bf9d"
-      }
-    },
-    {
-      "transitionId": "state_f70e8112ff76a6c4",
-      "at": "2026-10-30T08:15:06.517976+01:00",
+      "transitionId": "state_266f014c66dd5567",
+      "at": "2026-10-30T08:15:04.517976+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -14837,8 +14837,8 @@
       }
     },
     {
-      "transitionId": "state_085024b1ec91371c",
-      "at": "2026-10-30T08:49:01.202635+01:00",
+      "transitionId": "state_44de7681bab563de",
+      "at": "2026-10-30T08:49:03.702635+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
       "fact": "service_kitchen.coffee_and_breakfast_food.consumed",
@@ -16027,22 +16027,8 @@
       }
     },
     {
-      "transitionId": "state_70ede6ed4576fccb",
-      "at": "2026-10-30T13:08:19.357243+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_0bf5516174cc3840"
-      }
-    },
-    {
-      "transitionId": "state_76f9a04e989d0d53",
-      "at": "2026-10-30T13:08:19.357243+01:00",
+      "transitionId": "state_3c779e7895a3b20f",
+      "at": "2026-10-30T13:08:17.357243+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -16055,8 +16041,8 @@
       }
     },
     {
-      "transitionId": "state_86844e7595c2e57b",
-      "at": "2026-10-30T13:08:19.357243+01:00",
+      "transitionId": "state_bbac4c6269ed8af7",
+      "at": "2026-10-30T13:08:17.357243+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16069,8 +16055,22 @@
       }
     },
     {
-      "transitionId": "state_5f4f81b7adbb31e5",
-      "at": "2026-10-30T13:08:22.970063+01:00",
+      "transitionId": "state_f15495fce00cb0ca",
+      "at": "2026-10-30T13:08:17.357243+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_0bf5516174cc3840"
+      }
+    },
+    {
+      "transitionId": "state_bfb24bb67a3695a7",
+      "at": "2026-10-30T13:08:20.970063+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -16083,8 +16083,8 @@
       }
     },
     {
-      "transitionId": "state_a79fae0e67c727ce",
-      "at": "2026-10-30T13:40:34.575889+01:00",
+      "transitionId": "state_6c2895314007a0c9",
+      "at": "2026-10-30T13:40:37.075889+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
       "fact": "refrigerator.prepared_meal.consumed",
@@ -16167,8 +16167,8 @@
       }
     },
     {
-      "transitionId": "state_4c46d42128af63b4",
-      "at": "2026-10-30T14:05:11.846196+01:00",
+      "transitionId": "state_9e1a0ee8ecad61e3",
+      "at": "2026-10-30T14:05:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16181,8 +16181,8 @@
       }
     },
     {
-      "transitionId": "state_71fac56882cb81bd",
-      "at": "2026-10-30T14:05:11.846196+01:00",
+      "transitionId": "state_a6786b42806ce8e6",
+      "at": "2026-10-30T14:05:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16209,8 +16209,8 @@
       }
     },
     {
-      "transitionId": "state_738ae2efdc6e6e0d",
-      "at": "2026-10-30T14:36:21.568527+01:00",
+      "transitionId": "state_2007e91dc456ed3d",
+      "at": "2026-10-30T14:36:19.568527+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16223,8 +16223,8 @@
       }
     },
     {
-      "transitionId": "state_7f1c780b3f5c3f70",
-      "at": "2026-10-30T14:36:21.568527+01:00",
+      "transitionId": "state_967affe3cddbc9fb",
+      "at": "2026-10-30T14:36:19.568527+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16531,8 +16531,8 @@
       }
     },
     {
-      "transitionId": "state_3142732d10b6c065",
-      "at": "2026-10-30T18:00:13.873088+01:00",
+      "transitionId": "state_799f7a561aec8272",
+      "at": "2026-10-30T18:00:11.873088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16545,8 +16545,8 @@
       }
     },
     {
-      "transitionId": "state_871004aae08d2161",
-      "at": "2026-10-30T18:00:13.873088+01:00",
+      "transitionId": "state_907adc0c5d8e4bc2",
+      "at": "2026-10-30T18:00:11.873088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16909,8 +16909,8 @@
       }
     },
     {
-      "transitionId": "state_78db9e9c5670e668",
-      "at": "2026-10-30T19:47:07.612820+01:00",
+      "transitionId": "state_3c6454b0f26701d6",
+      "at": "2026-10-30T19:47:05.612820+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -16923,22 +16923,8 @@
       }
     },
     {
-      "transitionId": "state_832e72412f7bb082",
-      "at": "2026-10-30T19:47:07.612820+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_f8f70eaa16dc2b1d"
-      }
-    },
-    {
-      "transitionId": "state_f5ac1be2a8cdee00",
-      "at": "2026-10-30T19:47:07.612820+01:00",
+      "transitionId": "state_d81382fe1cf9002d",
+      "at": "2026-10-30T19:47:05.612820+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -16951,8 +16937,22 @@
       }
     },
     {
-      "transitionId": "state_0747bb3e16027e73",
-      "at": "2026-10-30T19:47:11.225640+01:00",
+      "transitionId": "state_f08da1a62219a325",
+      "at": "2026-10-30T19:47:05.612820+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_f8f70eaa16dc2b1d"
+      }
+    },
+    {
+      "transitionId": "state_6e42c6f96dbe2df2",
+      "at": "2026-10-30T19:47:09.225640+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -16965,8 +16965,8 @@
       }
     },
     {
-      "transitionId": "state_d49b8500624f2794",
-      "at": "2026-10-30T20:10:50.575563+01:00",
+      "transitionId": "state_2661b141f2193bef",
+      "at": "2026-10-30T20:10:53.075563+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
       "fact": "refrigerator.prepared_meal.consumed",
@@ -17049,8 +17049,8 @@
       }
     },
     {
-      "transitionId": "state_0be431eb50b28a56",
-      "at": "2026-10-30T20:40:11.846196+01:00",
+      "transitionId": "state_8093bde88be5303b",
+      "at": "2026-10-30T20:40:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -17063,8 +17063,8 @@
       }
     },
     {
-      "transitionId": "state_83ce8ec6f98e13c0",
-      "at": "2026-10-30T20:40:11.846196+01:00",
+      "transitionId": "state_dc5900f3b9274709",
+      "at": "2026-10-30T20:40:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -17077,8 +17077,8 @@
       }
     },
     {
-      "transitionId": "state_a79e75a21f5e1dba",
-      "at": "2026-10-30T20:40:14.846196+01:00",
+      "transitionId": "state_55af0c204613761d",
+      "at": "2026-10-30T20:40:12.846196+01:00",
       "subjectType": "entity",
       "subjectId": "service_living_room",
       "fact": "active",
@@ -17217,8 +17217,8 @@
       }
     },
     {
-      "transitionId": "state_3d1a73ea27bdc4cf",
-      "at": "2026-10-30T23:05:19.788314+01:00",
+      "transitionId": "state_8e07e27a81c6cffd",
+      "at": "2026-10-30T23:05:18.788314+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -17231,8 +17231,8 @@
       }
     },
     {
-      "transitionId": "state_4dfd187b5ede89c4",
-      "at": "2026-10-30T23:05:19.788314+01:00",
+      "transitionId": "state_8f3adcb8556f33c4",
+      "at": "2026-10-30T23:05:18.788314+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -17917,22 +17917,8 @@
       }
     },
     {
-      "transitionId": "state_45bc221f4f398f5c",
-      "at": "2026-10-31T09:06:27.462487+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_8d2a277cdda30bf9"
-      }
-    },
-    {
-      "transitionId": "state_a25606588bf76934",
-      "at": "2026-10-31T09:06:27.462487+01:00",
+      "transitionId": "state_03b742419a093aa2",
+      "at": "2026-10-31T09:06:25.462487+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -17945,8 +17931,8 @@
       }
     },
     {
-      "transitionId": "state_f56ef7dde3c63547",
-      "at": "2026-10-31T09:06:27.462487+01:00",
+      "transitionId": "state_a1acd70f91e5f3fd",
+      "at": "2026-10-31T09:06:25.462487+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -17959,8 +17945,22 @@
       }
     },
     {
-      "transitionId": "state_4d9154784438a828",
-      "at": "2026-10-31T09:06:29.980462+01:00",
+      "transitionId": "state_c746f55712d42508",
+      "at": "2026-10-31T09:06:25.462487+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8d2a277cdda30bf9"
+      }
+    },
+    {
+      "transitionId": "state_e8ac860e1330543f",
+      "at": "2026-10-31T09:06:27.980462+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -17973,8 +17973,8 @@
       }
     },
     {
-      "transitionId": "state_e18a4156638fc488",
-      "at": "2026-10-31T09:37:01.037162+01:00",
+      "transitionId": "state_c99531d14f9e15de",
+      "at": "2026-10-31T09:37:03.537162+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
       "fact": "service_kitchen.coffee_and_breakfast_food.consumed",
@@ -19373,8 +19373,8 @@
       }
     },
     {
-      "transitionId": "state_894cd7210562a1ef",
-      "at": "2026-10-31T13:02:37.881003+01:00",
+      "transitionId": "state_3f01af756b0cace7",
+      "at": "2026-10-31T13:02:35.881003+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -19387,8 +19387,22 @@
       }
     },
     {
-      "transitionId": "state_dfbcb40bd894a068",
-      "at": "2026-10-31T13:02:37.881003+01:00",
+      "transitionId": "state_c8b0aef6d32beb48",
+      "at": "2026-10-31T13:02:35.881003+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_1cde1782ac37954f"
+      }
+    },
+    {
+      "transitionId": "state_e8f2f5777d5d5ec9",
+      "at": "2026-10-31T13:02:35.881003+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -19401,22 +19415,8 @@
       }
     },
     {
-      "transitionId": "state_f1093c2b07721cb7",
-      "at": "2026-10-31T13:02:37.881003+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_1cde1782ac37954f"
-      }
-    },
-    {
-      "transitionId": "state_6fc50d64916bd6d5",
-      "at": "2026-10-31T13:02:41.493823+01:00",
+      "transitionId": "state_109f399826e97521",
+      "at": "2026-10-31T13:02:39.493823+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -19429,8 +19429,8 @@
       }
     },
     {
-      "transitionId": "state_6495675bfafc9b7c",
-      "at": "2026-10-31T13:32:13.353762+01:00",
+      "transitionId": "state_651fbe25ec28e6ae",
+      "at": "2026-10-31T13:32:15.853762+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
       "fact": "refrigerator.prepared_meal.consumed",
@@ -19513,8 +19513,8 @@
       }
     },
     {
-      "transitionId": "state_372cd816c7b318c5",
-      "at": "2026-10-31T13:50:11.846196+01:00",
+      "transitionId": "state_01d7a9ec2f4eb0cf",
+      "at": "2026-10-31T13:50:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -19527,8 +19527,8 @@
       }
     },
     {
-      "transitionId": "state_b965f1a297581d55",
-      "at": "2026-10-31T13:50:11.846196+01:00",
+      "transitionId": "state_6b6187da4e6e0ed0",
+      "at": "2026-10-31T13:50:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -19569,8 +19569,8 @@
       }
     },
     {
-      "transitionId": "state_7aaa38e2ef370d19",
-      "at": "2026-10-31T16:05:04.000001+01:00",
+      "transitionId": "state_5117afb574a5ee1d",
+      "at": "2026-10-31T16:05:02.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -19583,8 +19583,8 @@
       }
     },
     {
-      "transitionId": "state_a2b2e43826848b09",
-      "at": "2026-10-31T16:05:04.000001+01:00",
+      "transitionId": "state_56993ba16aa56c1b",
+      "at": "2026-10-31T16:05:02.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -20227,36 +20227,8 @@
       }
     },
     {
-      "transitionId": "state_86ea5ba95fd64e7a",
-      "at": "2026-10-31T20:40:41.702937+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "sitting",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_f08dcafb2100d576"
-      }
-    },
-    {
-      "transitionId": "state_8d5e7103b6ef61e5",
-      "at": "2026-10-31T20:40:41.702937+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "sitting",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_f08dcafb2100d576"
-      }
-    },
-    {
-      "transitionId": "state_cf4cf18e93fa7179",
-      "at": "2026-10-31T20:40:41.702937+01:00",
+      "transitionId": "state_5b3095b786ec79e5",
+      "at": "2026-10-31T20:40:39.702937+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -20269,8 +20241,36 @@
       }
     },
     {
-      "transitionId": "state_6ab0e60ad83e29db",
-      "at": "2026-10-31T20:40:45.315757+01:00",
+      "transitionId": "state_d0371d86d238b142",
+      "at": "2026-10-31T20:40:39.702937+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_f08dcafb2100d576"
+      }
+    },
+    {
+      "transitionId": "state_ed468be86eb227d0",
+      "at": "2026-10-31T20:40:39.702937+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "sitting",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_f08dcafb2100d576"
+      }
+    },
+    {
+      "transitionId": "state_458032f1f69a5701",
+      "at": "2026-10-31T20:40:43.315757+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -20283,8 +20283,8 @@
       }
     },
     {
-      "transitionId": "state_fb87ae2d8ed28209",
-      "at": "2026-10-31T21:07:51.971705+01:00",
+      "transitionId": "state_5b4924a5a2eccce7",
+      "at": "2026-10-31T21:07:54.471705+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
       "fact": "refrigerator.prepared_meal.consumed",
@@ -20367,8 +20367,8 @@
       }
     },
     {
-      "transitionId": "state_58e9f328cd3a6dc6",
-      "at": "2026-10-31T21:08:07.817901+01:00",
+      "transitionId": "state_4a8413e7a58dde48",
+      "at": "2026-10-31T21:08:05.817901+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -20381,8 +20381,8 @@
       }
     },
     {
-      "transitionId": "state_74ac356d7d6b9f48",
-      "at": "2026-10-31T21:08:07.817901+01:00",
+      "transitionId": "state_b555d730ad8a172c",
+      "at": "2026-10-31T21:08:05.817901+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -20395,8 +20395,8 @@
       }
     },
     {
-      "transitionId": "state_e7b92d6ee428865c",
-      "at": "2026-10-31T21:08:10.817901+01:00",
+      "transitionId": "state_73a5ebcee9a382b1",
+      "at": "2026-10-31T21:08:08.817901+01:00",
       "subjectType": "entity",
       "subjectId": "service_living_room",
       "fact": "active",
@@ -20535,8 +20535,8 @@
       }
     },
     {
-      "transitionId": "state_17e078680c7d6fa5",
-      "at": "2026-10-31T23:10:19.788314+01:00",
+      "transitionId": "state_9777c6e7cd3e80fe",
+      "at": "2026-10-31T23:10:18.788314+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -20549,8 +20549,8 @@
       }
     },
     {
-      "transitionId": "state_b5d2300d87e3c373",
-      "at": "2026-10-31T23:10:19.788314+01:00",
+      "transitionId": "state_aa1c79e84bacf8c9",
+      "at": "2026-10-31T23:10:18.788314+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -21235,8 +21235,36 @@
       }
     },
     {
-      "transitionId": "state_af42ebecf3748b40",
-      "at": "2026-11-01T08:59:22.839772+01:00",
+      "transitionId": "state_0258608915c5dffa",
+      "at": "2026-11-01T08:59:20.839772+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8326c9ca02a68f6e"
+      }
+    },
+    {
+      "transitionId": "state_e54a8258ae829a15",
+      "at": "2026-11-01T08:59:20.839772+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_8326c9ca02a68f6e"
+      }
+    },
+    {
+      "transitionId": "state_eace2645776b8a4e",
+      "at": "2026-11-01T08:59:20.839772+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -21249,36 +21277,8 @@
       }
     },
     {
-      "transitionId": "state_bf686a4783254b8d",
-      "at": "2026-11-01T08:59:22.839772+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_8326c9ca02a68f6e"
-      }
-    },
-    {
-      "transitionId": "state_dc731a29dff6fa76",
-      "at": "2026-11-01T08:59:22.839772+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_8326c9ca02a68f6e"
-      }
-    },
-    {
-      "transitionId": "state_6b81d147cfcdc732",
-      "at": "2026-11-01T08:59:25.357747+01:00",
+      "transitionId": "state_a95d395428f850f8",
+      "at": "2026-11-01T08:59:23.357747+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -21291,8 +21291,8 @@
       }
     },
     {
-      "transitionId": "state_432245278ff2d700",
-      "at": "2026-11-01T09:32:06.233797+01:00",
+      "transitionId": "state_c7ced4abcd3e5150",
+      "at": "2026-11-01T09:32:08.733797+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
       "fact": "service_kitchen.coffee_and_breakfast_food.consumed",
@@ -21991,8 +21991,36 @@
       }
     },
     {
-      "transitionId": "state_09462b808532fb94",
-      "at": "2026-11-01T13:07:40.505871+01:00",
+      "transitionId": "state_26e113ed336aeff8",
+      "at": "2026-11-01T13:07:38.505871+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_d190d7efb4f7558a"
+      }
+    },
+    {
+      "transitionId": "state_53549aae2f328bc4",
+      "at": "2026-11-01T13:07:38.505871+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "posture",
+      "previousValue": "standing",
+      "value": "sitting",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_d190d7efb4f7558a"
+      }
+    },
+    {
+      "transitionId": "state_e2fe49ebccaa5a1a",
+      "at": "2026-11-01T13:07:38.505871+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -22005,36 +22033,8 @@
       }
     },
     {
-      "transitionId": "state_cd8647900da084f0",
-      "at": "2026-11-01T13:07:40.505871+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_d190d7efb4f7558a"
-      }
-    },
-    {
-      "transitionId": "state_ef0eb210dbe7b258",
-      "at": "2026-11-01T13:07:40.505871+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "posture",
-      "previousValue": "standing",
-      "value": "sitting",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_d190d7efb4f7558a"
-      }
-    },
-    {
-      "transitionId": "state_d862143f7a21d2a0",
-      "at": "2026-11-01T13:07:44.118691+01:00",
+      "transitionId": "state_ffd30110b0845e30",
+      "at": "2026-11-01T13:07:42.118691+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -22047,8 +22047,8 @@
       }
     },
     {
-      "transitionId": "state_5fb12bf0dca53d3c",
-      "at": "2026-11-01T13:45:51.985104+01:00",
+      "transitionId": "state_815187a7b8f5af2d",
+      "at": "2026-11-01T13:45:54.485104+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
       "fact": "refrigerator.prepared_meal.consumed",
@@ -22131,8 +22131,8 @@
       }
     },
     {
-      "transitionId": "state_3f9871dab7c8d53d",
-      "at": "2026-11-01T16:15:11.846196+01:00",
+      "transitionId": "state_547e89300a3948e3",
+      "at": "2026-11-01T16:15:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22145,8 +22145,8 @@
       }
     },
     {
-      "transitionId": "state_9894082b9f286daf",
-      "at": "2026-11-01T16:15:11.846196+01:00",
+      "transitionId": "state_c836deeba24d042e",
+      "at": "2026-11-01T16:15:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22509,8 +22509,8 @@
       }
     },
     {
-      "transitionId": "state_9c9d6a858c937bc7",
-      "at": "2026-11-01T19:37:07.612820+01:00",
+      "transitionId": "state_5efbdad9825cb049",
+      "at": "2026-11-01T19:37:05.612820+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22523,8 +22523,8 @@
       }
     },
     {
-      "transitionId": "state_b68c2aea1db24a0c",
-      "at": "2026-11-01T19:37:07.612820+01:00",
+      "transitionId": "state_84f81feb7a4fdf49",
+      "at": "2026-11-01T19:37:05.612820+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22537,8 +22537,8 @@
       }
     },
     {
-      "transitionId": "state_d65bdd5158113fba",
-      "at": "2026-11-01T19:37:07.612820+01:00",
+      "transitionId": "state_9ad9d37c737b8c31",
+      "at": "2026-11-01T19:37:05.612820+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -22551,8 +22551,8 @@
       }
     },
     {
-      "transitionId": "state_0e468cc5b6191882",
-      "at": "2026-11-01T19:37:11.225640+01:00",
+      "transitionId": "state_214605a9b1116c6a",
+      "at": "2026-11-01T19:37:09.225640+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -22565,8 +22565,8 @@
       }
     },
     {
-      "transitionId": "state_e1134961b305b70e",
-      "at": "2026-11-01T20:01:45.085036+01:00",
+      "transitionId": "state_f94a881658b8bf82",
+      "at": "2026-11-01T20:01:47.585036+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
       "fact": "refrigerator.prepared_meal.consumed",
@@ -22649,8 +22649,8 @@
       }
     },
     {
-      "transitionId": "state_6d977f3ebfe3c64d",
-      "at": "2026-11-01T20:30:11.846196+01:00",
+      "transitionId": "state_4459d443189dea1a",
+      "at": "2026-11-01T20:30:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22663,8 +22663,8 @@
       }
     },
     {
-      "transitionId": "state_f9e885d66c542794",
-      "at": "2026-11-01T20:30:11.846196+01:00",
+      "transitionId": "state_459c358cc7ad1ee3",
+      "at": "2026-11-01T20:30:09.846196+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22677,8 +22677,8 @@
       }
     },
     {
-      "transitionId": "state_545e72a882593693",
-      "at": "2026-11-01T20:30:14.846196+01:00",
+      "transitionId": "state_1aff687de34bd90c",
+      "at": "2026-11-01T20:30:12.846196+01:00",
       "subjectType": "entity",
       "subjectId": "service_living_room",
       "fact": "active",
@@ -22817,8 +22817,8 @@
       }
     },
     {
-      "transitionId": "state_a10b2e88bce9731c",
-      "at": "2026-11-01T22:52:19.788314+01:00",
+      "transitionId": "state_3b8b5cbcf4de9a76",
+      "at": "2026-11-01T22:52:18.788314+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -22831,8 +22831,8 @@
       }
     },
     {
-      "transitionId": "state_dc955917d1ce441e",
-      "at": "2026-11-01T22:52:19.788314+01:00",
+      "transitionId": "state_ab695ae81dcb2e7c",
+      "at": "2026-11-01T22:52:18.788314+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "posture",
@@ -25744,5 +25744,5 @@
       "washing_machine": 1
     }
   },
-  "semanticDigest": "98520c65109aa143a10741e36f17825e58b8580a629ae8e281cc21d8ccff80c3"
+  "semanticDigest": "c5eba60cc0781ccc3a6b36222f6cbe64e7d425e3d9517020c835ca237fd25c6b"
 }
