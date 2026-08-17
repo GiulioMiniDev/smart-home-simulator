@@ -13872,66 +13872,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "bed",
@@ -13942,16 +13882,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
             "capability": "leisure_support",
             "roles": [
               "bed",
@@ -13959,78 +13889,6 @@
             ],
             "supportedOperations": [
               "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "bed",
-              "sleeping_area"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -14235,62 +14093,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
             "capability": "graspable",
             "roles": [
               "clothes",
@@ -14347,34 +14149,6 @@
             ]
           },
           {
-            "capability": "leisure_support",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
             "capability": "openable",
             "roles": [
               "clothes",
@@ -14387,34 +14161,6 @@
             "supportedOperations": [
               "close",
               "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "shop"
             ]
           },
           {
@@ -14443,21 +14189,6 @@
             ],
             "supportedOperations": [
               "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "clothes",
-              "clothing_storage",
-              "laundry_collection",
-              "laundry_storage",
-              "used_clothing",
-              "wardrobe"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -14487,66 +14218,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "personal_care_fixture",
@@ -14557,47 +14228,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
             "capability": "personal_care_support",
             "roles": [
               "personal_care_fixture",
@@ -14605,47 +14235,6 @@
             ],
             "supportedOperations": [
               "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "personal_care_fixture",
-              "toilet"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -14676,72 +14265,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "personal_care_fixture",
@@ -14753,51 +14276,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
             "capability": "personal_care_support",
             "roles": [
               "personal_care_fixture",
@@ -14806,39 +14284,6 @@
             ],
             "supportedOperations": [
               "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "personal_care_fixture",
-              "washbasin",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -14881,72 +14326,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "personal_care_fixture",
@@ -14958,51 +14337,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
             "capability": "personal_care_support",
             "roles": [
               "personal_care_fixture",
@@ -15011,39 +14345,6 @@
             ],
             "supportedOperations": [
               "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "personal_care_fixture",
-              "shower",
-              "shower_water"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -15086,61 +14387,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
             "capability": "inspectable",
             "roles": [
               "laundry",
@@ -15174,28 +14420,6 @@
             ]
           },
           {
-            "capability": "leisure_support",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
             "capability": "openable",
             "roles": [
               "laundry",
@@ -15205,50 +14429,6 @@
             "supportedOperations": [
               "close",
               "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "laundry",
-              "laundry_equipment",
-              "washing_machine"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -15294,20 +14474,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
             "capability": "consumable",
             "roles": [
               "coffee_and_breakfast_storage",
@@ -15319,34 +14485,6 @@
             ],
             "supportedOperations": [
               "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "prepare_food"
             ]
           },
           {
@@ -15392,48 +14530,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
             "capability": "openable",
             "roles": [
               "coffee_and_breakfast_storage",
@@ -15446,34 +14542,6 @@
             "supportedOperations": [
               "close",
               "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "shop"
             ]
           },
           {
@@ -15502,21 +14570,6 @@
             ],
             "supportedOperations": [
               "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "coffee_and_breakfast_storage",
-              "food_storage",
-              "ingredients",
-              "prepared_food_portions",
-              "prepared_meal",
-              "refrigerator"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -15548,39 +14601,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
             "capability": "food_preparation",
             "roles": [
               "cooking_appliance",
@@ -15589,17 +14609,6 @@
             ],
             "supportedOperations": [
               "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "take_item"
             ]
           },
           {
@@ -15622,95 +14631,6 @@
             ],
             "supportedOperations": [
               "move_to_capability"
-            ]
-          },
-          {
-            "capability": "laundry_support",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "cooking_appliance",
-              "food_preparation_area",
-              "stove"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -15753,17 +14673,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
             "capability": "consumable",
             "roles": [
               "coffee_equipment",
@@ -15772,17 +14681,6 @@
             ],
             "supportedOperations": [
               "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "exercise"
             ]
           },
           {
@@ -15827,95 +14725,6 @@
             ],
             "supportedOperations": [
               "move_to_capability"
-            ]
-          },
-          {
-            "capability": "laundry_support",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "coffee_equipment",
-              "moka",
-              "moka_coffee_maker"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -15961,20 +14770,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
             "capability": "consumable",
             "roles": [
               "drinking_water_source",
@@ -15989,62 +14784,6 @@
             ]
           },
           {
-            "capability": "exercise_support",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "drinking_water_source",
@@ -16056,119 +14795,6 @@
             ],
             "supportedOperations": [
               "move_to_capability"
-            ]
-          },
-          {
-            "capability": "laundry_support",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "drinking_water_source",
-              "food_preparation_area",
-              "kitchen_sink",
-              "sink",
-              "sink_faucet",
-              "washing_area"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -16215,18 +14841,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
             "capability": "consumable",
             "roles": [
               "consumption_area",
@@ -16236,30 +14850,6 @@
             ],
             "supportedOperations": [
               "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "prepare_food"
             ]
           },
           {
@@ -16275,18 +14865,6 @@
             ]
           },
           {
-            "capability": "inspectable",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "consumption_area",
@@ -16299,79 +14877,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
             "capability": "storable",
             "roles": [
               "consumption_area",
@@ -16381,31 +14886,6 @@
             ],
             "supportedOperations": [
               "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "consumption_area",
-              "dining_area",
-              "dining_table",
-              "table"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -16437,18 +14917,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
             "capability": "consumable",
             "roles": [
               "chair",
@@ -16458,54 +14926,6 @@
             ],
             "supportedOperations": [
               "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "inspect"
             ]
           },
           {
@@ -16521,18 +14941,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
             "capability": "leisure_support",
             "roles": [
               "chair",
@@ -16542,92 +14950,6 @@
             ],
             "supportedOperations": [
               "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "chair",
-              "consumption_area",
-              "dining_seat",
-              "kitchen_chair"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -16647,16 +14969,6 @@
         "interactionPointId": "point_radio",
         "capabilities": [
           {
-            "capability": "cleanable",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "clean"
-            ]
-          },
-          {
             "capability": "communication",
             "roles": [
               "media",
@@ -16664,56 +14976,6 @@
             ],
             "supportedOperations": [
               "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "inspect"
             ]
           },
           {
@@ -16727,16 +14989,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
             "capability": "leisure_support",
             "roles": [
               "media",
@@ -16744,67 +14996,6 @@
             ],
             "supportedOperations": [
               "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "media",
-              "radio"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -16868,50 +15059,6 @@
             ]
           },
           {
-            "capability": "exercise_support",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "inspect"
-            ]
-          },
-          {
             "capability": "interaction_point",
             "roles": [
               "rest_area",
@@ -16923,17 +15070,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
             "capability": "leisure_support",
             "roles": [
               "rest_area",
@@ -16942,85 +15078,6 @@
             ],
             "supportedOperations": [
               "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "rest_area",
-              "seating",
-              "sofa"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -17040,16 +15097,6 @@
         "interactionPointId": "point_television",
         "capabilities": [
           {
-            "capability": "cleanable",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "clean"
-            ]
-          },
-          {
             "capability": "communication",
             "roles": [
               "media",
@@ -17057,56 +15104,6 @@
             ],
             "supportedOperations": [
               "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
-            "capability": "graspable",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "take_item"
-            ]
-          },
-          {
-            "capability": "inspectable",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "inspect"
             ]
           },
           {
@@ -17120,16 +15117,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
             "capability": "leisure_support",
             "roles": [
               "media",
@@ -17137,67 +15124,6 @@
             ],
             "supportedOperations": [
               "leisure"
-            ]
-          },
-          {
-            "capability": "medication_support",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "manage_medication"
-            ]
-          },
-          {
-            "capability": "openable",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "close",
-              "open"
-            ]
-          },
-          {
-            "capability": "personal_care_support",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
-            "capability": "storable",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "put_item"
-            ]
-          },
-          {
-            "capability": "storage_support",
-            "roles": [
-              "media",
-              "television"
-            ],
-            "supportedOperations": [
-              "organize"
             ]
           },
           {
@@ -17245,74 +15171,6 @@
             ]
           },
           {
-            "capability": "communication",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "communicate"
-            ]
-          },
-          {
-            "capability": "consumable",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "consume"
-            ]
-          },
-          {
-            "capability": "exercise_support",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "exercise"
-            ]
-          },
-          {
-            "capability": "food_preparation",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "prepare_food"
-            ]
-          },
-          {
             "capability": "graspable",
             "roles": [
               "cleaning_product_storage",
@@ -17364,40 +15222,6 @@
             ]
           },
           {
-            "capability": "laundry_support",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "laundry_step"
-            ]
-          },
-          {
-            "capability": "leisure_support",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "leisure"
-            ]
-          },
-          {
             "capability": "medication_support",
             "roles": [
               "cleaning_product_storage",
@@ -17433,40 +15257,6 @@
             ]
           },
           {
-            "capability": "personal_care_support",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "personal_care"
-            ]
-          },
-          {
-            "capability": "retail_service",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "shop"
-            ]
-          },
-          {
             "capability": "storable",
             "roles": [
               "cleaning_product_storage",
@@ -17498,24 +15288,6 @@
             ],
             "supportedOperations": [
               "organize"
-            ]
-          },
-          {
-            "capability": "switchable",
-            "roles": [
-              "cleaning_product_storage",
-              "cleaning_products",
-              "household_storage",
-              "household_supplies",
-              "medication",
-              "medication_cabinet",
-              "medication_cleaning_cabinet",
-              "medication_storage",
-              "storage_cabinet"
-            ],
-            "supportedOperations": [
-              "activate",
-              "deactivate"
             ]
           }
         ],
@@ -35362,7 +33134,7 @@
     {
       "artifactId": "synthetic_mario_rome_apartment_logical_v1",
       "version": "1.0.0",
-      "sha256": "8671196a390cf2073ee7e1fa4651c5399b3a008fa63774adcf46e27d91e4b216"
+      "sha256": "280a4cc4f2fa1b2c54b64eec1978e365f5fec7cb0d9f972ddfe08c3a89deb256"
     }
   ],
   "residentKinematics": [
@@ -35441,14 +33213,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "toilet",
+          "interactionPointId": "point_toilet"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_toilet"
     },
     {
       "sourceActivityId": "fri_hygiene",
@@ -35465,14 +33237,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "fri_hygiene",
@@ -35537,14 +33309,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "fri_hygiene",
@@ -35778,14 +33550,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "fri_breakfast_prep",
@@ -35826,14 +33598,14 @@
           "role": "item",
           "capability": "storable",
           "providerType": "entity",
-          "providerId": "moka",
-          "interactionPointId": "point_moka"
+          "providerId": "service_kitchen",
+          "interactionPointId": "point_service_kitchen"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_moka"
+      "destinationInteractionPointId": "point_service_kitchen"
     },
     {
       "sourceActivityId": "fri_breakfast_prep",
@@ -35944,14 +33716,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "kitchen_chair",
+          "interactionPointId": "point_kitchen_chair"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_kitchen_chair"
     },
     {
       "sourceActivityId": "fri_breakfast",
@@ -36134,14 +33906,14 @@
           "role": "item",
           "capability": "medication_support",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "medication_cleaning_cabinet",
+          "interactionPointId": "point_medication_cleaning_cabinet"
         }
       ],
       "destinationRegionIds": [
-        "kitchen"
+        "hallway"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_medication_cleaning_cabinet"
     },
     {
       "sourceActivityId": "fri_medication",
@@ -36808,14 +34580,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "fri_prepare_lunch",
@@ -37078,14 +34850,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "sofa",
+          "interactionPointId": "point_sofa"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_sofa"
     },
     {
       "sourceActivityId": "fri_clean_kitchen",
@@ -37507,14 +35279,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "fri_prepare_dinner",
@@ -37671,14 +35443,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "fri_documentary",
@@ -37717,14 +35489,14 @@
           "role": "target",
           "capability": "switchable",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "fri_documentary",
@@ -37741,14 +35513,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "sofa",
+          "interactionPointId": "point_sofa"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_sofa"
     },
     {
       "sourceActivityId": "fri_documentary",
@@ -37765,14 +35537,14 @@
           "role": "target",
           "capability": "switchable",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "fri_evening_hygiene",
@@ -37813,14 +35585,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "fri_sleep",
@@ -37943,14 +35715,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "toilet",
+          "interactionPointId": "point_toilet"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_toilet"
     },
     {
       "sourceActivityId": "sat_hygiene_shower",
@@ -37967,14 +35739,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sat_hygiene_shower",
@@ -37991,14 +35763,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sat_hygiene_shower",
@@ -38039,14 +35811,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sat_hygiene_shower",
@@ -38280,14 +36052,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sat_breakfast_prep",
@@ -38328,14 +36100,14 @@
           "role": "item",
           "capability": "storable",
           "providerType": "entity",
-          "providerId": "moka",
-          "interactionPointId": "point_moka"
+          "providerId": "service_kitchen",
+          "interactionPointId": "point_service_kitchen"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_moka"
+      "destinationInteractionPointId": "point_service_kitchen"
     },
     {
       "sourceActivityId": "sat_breakfast_prep",
@@ -38446,14 +36218,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "kitchen_chair",
+          "interactionPointId": "point_kitchen_chair"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_kitchen_chair"
     },
     {
       "sourceActivityId": "sat_breakfast",
@@ -38636,14 +36408,14 @@
           "role": "item",
           "capability": "medication_support",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "medication_cleaning_cabinet",
+          "interactionPointId": "point_medication_cleaning_cabinet"
         }
       ],
       "destinationRegionIds": [
-        "kitchen"
+        "hallway"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_medication_cleaning_cabinet"
     },
     {
       "sourceActivityId": "sat_medication",
@@ -38756,14 +36528,14 @@
           "role": "equipment",
           "capability": "laundry_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_start_laundry",
@@ -38780,14 +36552,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_start_laundry",
@@ -38804,14 +36576,14 @@
           "role": "equipment",
           "capability": "laundry_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_start_laundry",
@@ -38828,14 +36600,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_start_laundry",
@@ -38852,14 +36624,14 @@
           "role": "equipment",
           "capability": "laundry_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_meal_prep",
@@ -38997,14 +36769,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sat_meal_prep",
@@ -39381,14 +37153,14 @@
           "role": "equipment",
           "capability": "laundry_support",
           "providerType": "entity",
-          "providerId": "service_balcony",
-          "interactionPointId": "point_service_balcony"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
-        "balcony"
+        "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_balcony"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_prepare_lunch",
@@ -39526,14 +37298,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sat_prepare_lunch",
@@ -40244,14 +38016,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sat_prepare_dinner",
@@ -40408,14 +38180,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "sat_tv",
@@ -40454,14 +38226,14 @@
           "role": "target",
           "capability": "switchable",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "sat_tv",
@@ -40478,14 +38250,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "sofa",
+          "interactionPointId": "point_sofa"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_sofa"
     },
     {
       "sourceActivityId": "sat_tv",
@@ -40502,14 +38274,14 @@
           "role": "target",
           "capability": "switchable",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "sat_evening_hygiene",
@@ -40550,14 +38322,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sat_sleep",
@@ -40680,14 +38452,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "toilet",
+          "interactionPointId": "point_toilet"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_toilet"
     },
     {
       "sourceActivityId": "sun_hygiene",
@@ -40704,14 +38476,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sun_hygiene",
@@ -40776,14 +38548,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sun_hygiene",
@@ -41017,14 +38789,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sun_breakfast_prep",
@@ -41065,14 +38837,14 @@
           "role": "item",
           "capability": "storable",
           "providerType": "entity",
-          "providerId": "moka",
-          "interactionPointId": "point_moka"
+          "providerId": "service_kitchen",
+          "interactionPointId": "point_service_kitchen"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_moka"
+      "destinationInteractionPointId": "point_service_kitchen"
     },
     {
       "sourceActivityId": "sun_breakfast_prep",
@@ -41183,14 +38955,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "kitchen_chair",
+          "interactionPointId": "point_kitchen_chair"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_kitchen_chair"
     },
     {
       "sourceActivityId": "sun_breakfast",
@@ -41373,14 +39145,14 @@
           "role": "item",
           "capability": "medication_support",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "medication_cleaning_cabinet",
+          "interactionPointId": "point_medication_cleaning_cabinet"
         }
       ],
       "destinationRegionIds": [
-        "kitchen"
+        "hallway"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_medication_cleaning_cabinet"
     },
     {
       "sourceActivityId": "sun_medication",
@@ -41623,14 +39395,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "sofa",
+          "interactionPointId": "point_sofa"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_sofa"
     },
     {
       "sourceActivityId": "sun_post_walk_shower",
@@ -41647,14 +39419,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sun_post_walk_shower",
@@ -41695,14 +39467,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sun_post_walk_shower",
@@ -41864,14 +39636,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sun_prepare_lunch",
@@ -42337,14 +40109,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "dining_table",
-          "interactionPointId": "point_dining_table"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_dining_table"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sun_prepare_dinner",
@@ -42501,14 +40273,14 @@
           "role": "target",
           "capability": "interaction_point",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "sun_documentary",
@@ -42547,14 +40319,14 @@
           "role": "target",
           "capability": "switchable",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "sun_documentary",
@@ -42571,14 +40343,14 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "sofa",
+          "interactionPointId": "point_sofa"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_sofa"
     },
     {
       "sourceActivityId": "sun_documentary",
@@ -42595,14 +40367,14 @@
           "role": "target",
           "capability": "switchable",
           "providerType": "entity",
-          "providerId": "service_living_room",
-          "interactionPointId": "point_service_living_room"
+          "providerId": "television",
+          "interactionPointId": "point_television"
         }
       ],
       "destinationRegionIds": [
         "living_room"
       ],
-      "destinationInteractionPointId": "point_service_living_room"
+      "destinationInteractionPointId": "point_television"
     },
     {
       "sourceActivityId": "sun_evening_hygiene",
@@ -42643,14 +40415,14 @@
           "role": "fixture",
           "capability": "personal_care_support",
           "providerType": "entity",
-          "providerId": "service_bathroom",
-          "interactionPointId": "point_service_bathroom"
+          "providerId": "shower",
+          "interactionPointId": "point_shower"
         }
       ],
       "destinationRegionIds": [
         "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_bathroom"
+      "destinationInteractionPointId": "point_shower"
     },
     {
       "sourceActivityId": "sun_sleep",

@@ -528,9 +528,18 @@ def _entity_candidates(
             operation_matches = action_type in provided.supported_operations
             if provided.capability == capability and role_matches and operation_matches:
                 candidates.append((entity, provided))
+    # The per-region service point exists so that a capability no furniture offers still binds
+    # somewhere. It is a backstop, not a choice: sorted by entity id alone it would beat
+    # `sofa_living` and `table_living` on the letter s, and the resident would work at a generated
+    # anchor while her desk stood idle. Real furniture first, the backstop only when nothing else
+    # answers.
     return sorted(
         candidates,
-        key=lambda item: (item[0].region_id not in preferred_regions, item[0].entity_id),
+        key=lambda item: (
+            item[0].region_id not in preferred_regions,
+            item[0].entity_type == "generated_environment_service",
+            item[0].entity_id,
+        ),
     )
 
 

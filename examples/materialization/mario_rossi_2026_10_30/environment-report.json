@@ -3,8 +3,8 @@
   "valid": true,
   "homeId": "synthetic_mario_rome_apartment_logical_v1",
   "homeVersion": "1.0.0",
-  "homeSha256": "8671196a390cf2073ee7e1fa4651c5399b3a008fa63774adcf46e27d91e4b216",
-  "bundleSha256": "3598118ffda69229687745a779d44e303f0a631291287fcada42589a44562fbe",
+  "homeSha256": "280a4cc4f2fa1b2c54b64eec1978e365f5fec7cb0d9f972ddfe08c3a89deb256",
+  "bundleSha256": "73693f8d615c4ec69e84060abba6c6b04d4c107e661dd84edd853c8742859b28",
   "issues": [],
   "summary": {
     "regionCount": 9,

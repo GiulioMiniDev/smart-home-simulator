@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "3598118ffda69229687745a779d44e303f0a631291287fcada42589a44562fbe",
+  "sourceBundleSha256": "73693f8d615c4ec69e84060abba6c6b04d4c107e661dd84edd853c8742859b28",
   "seed": 42,
   "regionIds": [
     "balcony",
@@ -656,7 +656,7 @@
       "heartbeatSeconds": 0.0,
       "sources": [
         {
-          "entityId": "service_living_room",
+          "entityId": "television",
           "fact": "active",
           "activeValue": true,
           "deltaCelsius": 0.5,
