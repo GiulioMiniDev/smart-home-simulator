@@ -20,6 +20,7 @@ from smart_home_sim.domain.environment import (
     Polygon2D,
     SimulationBundle,
 )
+from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.materialization import (
     EnvironmentMaterializationManifest,
     HomeGenerationPolicy,
@@ -32,6 +33,8 @@ from smart_home_sim.domain.materialization import (
 from smart_home_sim.domain.models import Location, LocationKind, Scenario
 from smart_home_sim.domain.sensors import (
     ContactSensor,
+    ObservableSensorLog,
+    OracleMapping,
     PirSensor,
     SensorModel,
     TemperatureSensor,
@@ -709,6 +712,27 @@ def test_a_cancelled_environment_build_publishes_nothing(tmp_path: Path) -> None
             cancelled=lambda: True,
         )
     assert not (tmp_path / "cancelled").exists()
+
+
+def test_the_projection_reproduces_the_golden_log_and_oracle_exactly() -> None:
+    """Pin what the projection produces, not merely that it produces it twice the same.
+
+    Every other check here is internal: same inputs give the same output, the counts are plausible,
+    the schema holds. All of those survive a change that shifts every observation by a second, or
+    consumes one random draw more per dwell — the log would still be self-consistent, and every
+    dataset measured against it would be quietly different. The golden pair is the only assertion
+    that fails when the sensor field stops seeing what it used to see.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    trace = golden_model("execution-trace.json", ExecutionTrace)
+    model = golden_model("sensor-model.json", SensorModel)
+
+    projection = project_sensors(trace, bundle, model)
+
+    assert projection.observable_log == golden_model(
+        "observable-sensor-log.json", ObservableSensorLog
+    )
+    assert projection.oracle_mapping == golden_model("oracle-mapping.json", OracleMapping)
 
 
 def test_building_an_environment_compiles_the_scenario_exactly_once(

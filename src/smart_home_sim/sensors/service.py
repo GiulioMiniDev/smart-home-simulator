@@ -252,6 +252,14 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
         by_actor_actions[action.actor_id].append(action)
     for series in by_actor_actions.values():
         series.sort(key=lambda item: item.started_at)
+    # Each series' bisection key, built once. `_ongoing_action` used to build it on every call, so
+    # the logarithmic lookup it performs was preceded by a linear scan of the whole horizon: on
+    # Marco's five months, 176_736 lookups over 15_359 actions copied 2.7 billion timestamps and
+    # accounted for 395 of the 400 seconds this function spent.
+    starts_by_actor: dict[str, list[datetime]] = {
+        actor_id: [item.started_at for item in series]
+        for actor_id, series in by_actor_actions.items()
+    }
 
     pulses: list[_MotionPulse] = []
 
@@ -317,7 +325,9 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
             # keeps every observation traceable to what the resident was doing, which is the whole
             # point of the observable/oracle split. Only in a true gap between activities does the
             # pulse fall back to the movement that parked her here.
-            ongoing = _ongoing_action(by_actor_actions[dwell.actor_id], at)
+            ongoing = _ongoing_action(
+                by_actor_actions[dwell.actor_id], starts_by_actor.get(dwell.actor_id, []), at
+            )
             if ongoing is not None:
                 cause_type = "action_execution"
                 cause_ids: tuple[str, ...] = (ongoing.action_execution_id,)
@@ -525,9 +535,14 @@ def _postures(trace: ExecutionTrace) -> dict[str, list[tuple[datetime, str]]]:
     return postures
 
 
-def _ongoing_action(actions: list[Any], moment: datetime) -> Any | None:
-    """Innermost action of one actor covering `moment`, latest start wins. `actions` is sorted."""
-    index = bisect.bisect_right([item.started_at for item in actions], moment) - 1
+def _ongoing_action(actions: list[Any], starts: list[datetime], moment: datetime) -> Any | None:
+    """Innermost action of one actor covering `moment`, latest start wins.
+
+    `actions` is sorted by start time and `starts` is its bisection key, which the caller holds
+    rather than rebuilds: a logarithmic lookup is only logarithmic if preparing it is not paid for
+    on every call.
+    """
+    index = bisect.bisect_right(starts, moment) - 1
     while index >= 0:
         action = actions[index]
         if action.ended_at > moment:
