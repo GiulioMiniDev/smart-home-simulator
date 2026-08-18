@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
+from smart_home_sim.compiler import CompilationResult, compile_scenario
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.environment import (
@@ -707,3 +708,84 @@ def test_a_cancelled_environment_build_publishes_nothing(tmp_path: Path) -> None
             cancelled=lambda: True,
         )
     assert not (tmp_path / "cancelled").exists()
+
+
+def test_a_reused_compilation_builds_the_same_environment_as_compiling_twice(
+    tmp_path: Path,
+) -> None:
+    """Handing back an already-computed solve must change the cost, not the result.
+
+    Validating an authoring bundle compiles the scenario, and materializing it compiled the same
+    scenario again: on a five-month horizon that second solve is half an hour spent to reproduce
+    bytes the caller already had. Reuse is only worth having if what comes out is indistinguishable
+    from what the duplicate solve produced, so that is what this asserts — every artifact, byte for
+    byte, including the compilation report.
+    """
+    scenario, _ = source_models()
+    compiled = compile_scenario(scenario)
+
+    fresh_path = tmp_path / "fresh"
+    reused_path = tmp_path / "reused"
+    fresh = materialize_environment(
+        SOURCE / "scenario.json", SOURCE / "personal-process-package.json", fresh_path
+    )
+    reused = materialize_environment(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        reused_path,
+        precompiled=compiled,
+    )
+
+    assert {item.relative_path for item in reused.artifacts} == {
+        item.relative_path for item in fresh.artifacts
+    }
+    for item in fresh.artifacts:
+        assert (reused_path / item.relative_path).read_bytes() == (
+            fresh_path / item.relative_path
+        ).read_bytes(), item.relative_path
+    assert reused.artifacts == fresh.artifacts
+
+
+def test_a_plan_compiled_from_another_scenario_is_refused(tmp_path: Path) -> None:
+    """The guard is an identity check, not a resemblance check.
+
+    A canonical plan records the digest of the document it was compiled from. Accepting a plan
+    without comparing it would let a caller materialize a home for a scenario nobody supplied —
+    silently, because every later artifact would be internally consistent with the wrong plan.
+    """
+    scenario, _ = source_models()
+    other = scenario.model_copy(update={"scenario_id": f"{scenario.scenario_id}_altered"})
+    foreign = compile_scenario(other)
+    assert foreign.plan is not None
+
+    with pytest.raises(RuntimeError, match="compiled from a different scenario"):
+        materialize_environment(
+            SOURCE / "scenario.json",
+            SOURCE / "personal-process-package.json",
+            tmp_path / "foreign",
+            precompiled=foreign,
+        )
+    assert not (tmp_path / "foreign").exists()
+
+    # Same identifier, edited content: the digest still separates them.
+    renamed = foreign.plan.model_copy(update={"source_scenario_id": scenario.scenario_id})
+    with pytest.raises(RuntimeError, match="compiled from a different scenario"):
+        materialize_environment(
+            SOURCE / "scenario.json",
+            SOURCE / "personal-process-package.json",
+            tmp_path / "renamed",
+            precompiled=CompilationResult(plan=renamed, report=foreign.report),
+        )
+    assert not (tmp_path / "renamed").exists()
+
+
+def test_a_compilation_without_a_plan_is_refused(tmp_path: Path) -> None:
+    failed = CompilationResult(plan=None, report=compile_scenario(source_models()[0]).report)
+    with pytest.raises(RuntimeError, match="carries no canonical plan"):
+        materialize_environment(
+            SOURCE / "scenario.json",
+            SOURCE / "personal-process-package.json",
+            tmp_path / "planless",
+            precompiled=failed,
+        )
+    assert not (tmp_path / "planless").exists()

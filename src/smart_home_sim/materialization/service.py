@@ -16,7 +16,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from smart_home_sim.behavior.service import default_action_catalog_path
-from smart_home_sim.compiler import compile_scenario
+from smart_home_sim.compiler import CompilationResult, compile_scenario
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
@@ -1149,6 +1149,32 @@ class _Environment:
     roles: dict[str, str]
 
 
+def _accepted_compilation(precompiled: CompilationResult, scenario: Scenario) -> CompilationResult:
+    """Take a caller's compilation only if its plan provably belongs to *this* scenario.
+
+    A canonical plan records the digest of the document it was compiled from, so the check is an
+    identity comparison rather than a judgement call: either the plan is the one this scenario
+    compiles to, or it is somebody else's and reusing it would silently materialize a home for a
+    document nobody supplied. There is no partial credit, and no way to pass by resembling.
+    """
+    plan = precompiled.plan
+    if plan is None:
+        raise MaterializationFailure(
+            "compilation",
+            "The supplied compilation carries no canonical plan.",
+            precompiled.report.issues,
+        )
+    digest = canonical_sha256(scenario)
+    if plan.source_scenario_id != scenario.scenario_id or plan.source_scenario_sha256 != digest:
+        raise MaterializationFailure(
+            "compilation",
+            "The supplied canonical plan was compiled from a different scenario: "
+            f"plan {plan.source_scenario_id}/{plan.source_scenario_sha256[:16]}, "
+            f"scenario {scenario.scenario_id}/{digest[:16]}.",
+        )
+    return precompiled
+
+
 def _build_environment(
     staging: Path,
     scenario_path: Path,
@@ -1159,6 +1185,7 @@ def _build_environment(
     approved_home: HomeModel | None,
     approved_sensors: SensorModel | None,
     emit: Callable[..., None],
+    precompiled: CompilationResult | None = None,
 ) -> _Environment:
     """Compile, build the home, bind the bundle and deploy the sensor field into ``staging``.
 
@@ -1175,7 +1202,11 @@ def _build_environment(
     _json(staging / "home-generation-policy.json", home_policy)
     _json(staging / "sensor-deployment-policy.json", sensor_policy)
 
-    compilation = compile_scenario(scenario)
+    compilation = (
+        compile_scenario(scenario)
+        if precompiled is None
+        else _accepted_compilation(precompiled, scenario)
+    )
     _json(staging / "compilation-report.json", compilation.report)
     if compilation.plan is None:
         raise MaterializationFailure(
@@ -1300,6 +1331,7 @@ def materialize_environment(
     sensor_policy: SensorDeploymentPolicy | None = None,
     approved_home: HomeModel | None = None,
     approved_sensors: SensorModel | None = None,
+    precompiled: CompilationResult | None = None,
     progress: Callable[[str, float, str, dict[str, int]], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
 ) -> EnvironmentMaterializationManifest:
@@ -1308,6 +1340,11 @@ def materialize_environment(
     The output is the plan a researcher reviews: rooms, furniture, providers and the deployed
     sensors, with the same validation gates a full run applies. Nothing about it is provisional —
     a run started afterwards executes exactly these artifacts once they are approved.
+
+    ``precompiled`` hands back a compilation the caller already paid for, which is what validating
+    an authoring bundle produces on the way to its deterministic-precondition gate. It is accepted
+    only when the plan's recorded source digest matches this scenario, so it saves the second solve
+    without widening what the run will execute.
     """
     if output_directory.exists():
         raise FileExistsError(f"output directory already exists: {output_directory}")
@@ -1337,6 +1374,7 @@ def materialize_environment(
             sensor_policy=sensor_policy,
             approved_home=approved_home,
             approved_sensors=approved_sensors,
+            precompiled=precompiled,
             emit=emit,
         )
         manifest = EnvironmentMaterializationManifest(
@@ -1377,6 +1415,7 @@ def materialize_workspace(
     sensor_policy: SensorDeploymentPolicy | None = None,
     approved_home: HomeModel | None = None,
     approved_sensors: SensorModel | None = None,
+    precompiled: CompilationResult | None = None,
     progress: Callable[[str, float, str, dict[str, int]], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
 ) -> SyntheticWorkspaceManifest:
@@ -1388,6 +1427,11 @@ def materialize_workspace(
     trusted blindly — the M4 bundle gate and the M6 sensor contract judge them exactly as they judge
     a generated model, and a rejected approved model fails the run instead of quietly falling back
     to the policy, which would simulate a home the researcher never agreed to.
+
+    ``precompiled`` is different in kind: not a model to approve but a solve already done, which
+    validating an authoring bundle produces on its way to the deterministic-precondition gate. It
+    is accepted only when the plan's recorded source digest matches this scenario, so it removes a
+    duplicate solve without changing what runs.
     """
     if output_directory.exists():
         raise FileExistsError(f"output directory already exists: {output_directory}")
@@ -1415,6 +1459,7 @@ def materialize_workspace(
             sensor_policy=sensor_policy,
             approved_home=approved_home,
             approved_sensors=approved_sensors,
+            precompiled=precompiled,
             emit=emit,
         )
         scenario = environment.scenario

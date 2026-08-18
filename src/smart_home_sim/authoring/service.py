@@ -28,7 +28,7 @@ from smart_home_sim.behavior.service import (
     default_variable_catalog_path,
     validate_behavior_payloads,
 )
-from smart_home_sim.compiler.service import compile_payload
+from smart_home_sim.compiler.service import CompilationResult, compile_payload
 from smart_home_sim.domain.authoring import (
     AuthoringArtifact,
     AuthoringIngestionIssue,
@@ -66,6 +66,14 @@ class AuthoringValidationResult:
     report: AuthoringIngestionReport
     scenario_json: str | None = None
     behavior_json: str | None = None
+    # The compilation this validation already paid for. Validating a bundle compiles the scenario,
+    # because the deterministic-precondition gate replays the horizon against the canonical plan;
+    # anything that validates a bundle and then materializes it used to compile the same scenario
+    # twice, and on a five-month horizon that is half an hour thrown away. Handing the result back
+    # lets `materialize_environment`/`materialize_workspace` take it as `precompiled`, which they
+    # accept only after checking the plan's `sourceScenarioSha256` against the scenario they were
+    # given — so reuse cannot smuggle in a plan belonging to another document.
+    compilation: CompilationResult | None = None
 
 
 @dataclass(frozen=True)
@@ -452,6 +460,7 @@ def validate_authoring_payload(
     issues: list[AuthoringIngestionIssue] = []
     canonical_plan_sha256: str | None = None
     compilation_plan = None
+    compilation: CompilationResult | None = None
 
     scenario_report = validate_payload(scenario_payload)
     for item in scenario_report.issues:
@@ -467,6 +476,7 @@ def validate_authoring_payload(
         )
     if scenario_report.valid:
         compilation_result = compile_payload(scenario_payload, on_progress)
+        compilation = compilation_result
         compilation_plan = compilation_result.plan
         canonical_plan_sha256 = compilation_result.report.canonical_plan_sha256
         for item in compilation_result.report.issues:
@@ -667,7 +677,8 @@ def validate_authoring_payload(
                 scenario_id=scenario_id,
                 package_id=package_id,
                 canonical_plan_sha256=canonical_plan_sha256,
-            )
+            ),
+            compilation=compilation,
         )
 
     try:
@@ -695,7 +706,8 @@ def validate_authoring_payload(
                 bundle_version=bundle_version,
                 scenario_id=scenario_id,
                 package_id=package_id,
-            )
+            ),
+            compilation=compilation,
         )
 
     scenario_json = bundle.scenario.model_dump_json(by_alias=True, indent=2) + "\n"
@@ -718,6 +730,7 @@ def validate_authoring_payload(
         ),
         scenario_json=scenario_json,
         behavior_json=behavior_json,
+        compilation=compilation,
     )
 
 

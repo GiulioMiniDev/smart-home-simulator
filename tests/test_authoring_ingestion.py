@@ -640,3 +640,40 @@ def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None
     # resident a role, and the rule above it said no such action existed.
     assert _retarget_action_state_contract(section) in prompt
     assert section not in prompt
+
+
+def test_validation_hands_back_the_compilation_it_already_paid_for() -> None:
+    """Validating compiles the scenario; discarding that solve made every caller pay for it twice.
+
+    The deterministic-precondition gate replays the horizon against the canonical plan, so a
+    compilation happens whether or not anyone else wants it. Returning it lets a caller that goes
+    on to materialize skip a second, identical solve — and on a five-month horizon the second solve
+    is roughly half an hour.
+    """
+    payload = _payload()
+    result = validate_authoring_payload(payload)
+
+    assert result.report.valid
+    assert result.compilation is not None
+    plan = result.compilation.plan
+    assert plan is not None
+    # The same solve the report already published, not a second one done quietly.
+    assert result.compilation.report.canonical_plan_sha256 == result.report.canonical_plan_sha256
+    assert plan.source_scenario_id == payload["scenario"]["scenarioId"]  # type: ignore[index]
+
+
+def test_a_rejected_bundle_still_reports_whatever_it_managed_to_compile() -> None:
+    """A behaviour error does not unmake a scenario that compiled: the plan is evidence, not a pass.
+
+    `report.valid` stays the gate. Carrying the compilation alongside it lets a caller show what
+    the horizon looked like without implying the bundle was accepted.
+    """
+    payload = _payload()
+    payload["personalProcessPackage"]["sourceScenarioId"] = "a_scenario_that_is_not_this_one"
+    result = validate_authoring_payload(payload)
+
+    assert not result.report.valid
+    if result.compilation is not None:
+        assert result.compilation.report.canonical_plan_sha256 == (
+            result.report.canonical_plan_sha256
+        )
