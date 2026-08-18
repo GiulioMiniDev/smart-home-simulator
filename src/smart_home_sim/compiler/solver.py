@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from math import gcd
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -27,6 +28,12 @@ FEASIBILITY_DETERMINISTIC_TIME = 30.0
 # that. Generous enough that no honest horizon meets it, small enough that a runaway is reported
 # in minutes rather than discovered by giving up.
 MAX_FEASIBILITY_PROBES = 20_000
+# Above this many ticks a probe's model is wide enough that CP-SAT's presolve earns its keep; below
+# it, propagation settles every probe on its own and presolving the same model thousands of times is
+# the dominant cost. The two regimes measured eight orders of magnitude apart — 2.2e5 ticks for a
+# minute-resolution five-month horizon against 1.3e13 for the same horizon in microseconds — so the
+# boundary only has to fall somewhere in between, not be tuned.
+PRESOLVE_FREE_HORIZON_TICKS = 10_000_000
 
 
 class CompilationBudgetError(RuntimeError):
@@ -105,8 +112,25 @@ class SolveOutcome:
 
 @dataclass(frozen=True, slots=True)
 class TimeAxis:
+    """The scheduling model's unit of time, and the only place instants become integers.
+
+    ``step`` is how many microseconds one solver tick is worth. It is not a fixed constant but the
+    greatest common divisor of every instant and duration this scenario can ask for, so no
+    representable value is lost: every window bound, every duration and every day boundary is an
+    exact multiple of it, and therefore so is every schedule satisfying them.
+
+    The unit matters because it is the width of what the solver has to search. Working in
+    microseconds gave a two-day window start variables with 207 billion possible values to
+    represent 3 458 reachable minutes. That costs nothing while unit propagation settles the
+    schedule on its own, which is what happens on almost every day. But where propagation is not
+    enough and CP-SAT has to search, the fixed CHOOSE_FIRST/SELECT_MIN_VALUE strategy walks those
+    domains: one week of a five-month horizon took 714 seconds against 25 for its neighbours,
+    burning 258 887 branches for 2 399 conflicts — a hundred decisions per thing learned.
+    """
+
     origin: datetime
     zone: ZoneInfo
+    step: int
     simulation_end: int
     horizon: int
 
@@ -134,17 +158,101 @@ class TimeAxis:
                     ),
                 )
         horizon = simulation_end + max_duration
+        # Judged on the span itself, before the resolution shrinks it: how much time a scenario is
+        # allowed to ask for is a statement about the input, and must not quietly widen because
+        # this particular document happens to be expressible in coarser ticks.
         if horizon <= 0 or horizon > MAX_SOLVER_VALUE:
             raise SolverRangeError(f"solver horizon {horizon} is outside the safe range")
         if horizon * max(1, len(records)) > MAX_SOLVER_VALUE:
             raise SolverRangeError("aggregate scheduling horizon is outside the safe range")
-        return cls(origin=origin, zone=zone, simulation_end=simulation_end, horizon=horizon)
+        step = cls._resolution(scenario, records, origin, zone, simulation_end)
+        horizon //= step
+        return cls(
+            origin=origin,
+            zone=zone,
+            step=step,
+            simulation_end=simulation_end // step,
+            horizon=horizon,
+        )
+
+    @staticmethod
+    def _resolution(
+        scenario: Scenario,
+        records: list[SourceRecord],
+        origin: datetime,
+        zone: ZoneInfo,
+        simulation_end: int,
+    ) -> int:
+        """The coarsest tick that still lands exactly on everything this scenario declares.
+
+        Deliberately derived, not chosen: a scenario written in whole minutes gets minute ticks, one
+        that declares a ten-second gesture gets ten-second ticks, and one that needs microseconds
+        gets microseconds and is no worse off than before. The divisor has to cover every quantity
+        that becomes a bound in the model — window edges, durations, commitments and the local
+        midnights that delimit a day — because a value it did not divide would be unrepresentable
+        rather than merely coarse.
+        """
+        step = simulation_end
+
+        def observe(value: int) -> None:
+            nonlocal step
+            step = gcd(step, abs(value))
+
+        def observe_instant(value: datetime) -> None:
+            observe(timedelta_microseconds(value.astimezone(UTC) - origin))
+
+        for record in records:
+            activity = record.activity
+            for window in (activity.start_window, activity.end_window):
+                if window is not None:
+                    observe_instant(window.earliest)
+                    observe_instant(window.preferred)
+                    observe_instant(window.latest)
+            if activity.duration is not None:
+                for field_name, value in (
+                    ("minimumMinutes", activity.duration.minimum_minutes),
+                    ("preferredMinutes", activity.duration.preferred_minutes),
+                    ("maximumMinutes", activity.duration.maximum_minutes),
+                ):
+                    observe(duration_microseconds(activity.activity_id, field_name, value))
+            for group in activity.dependency_groups:
+                for field_name, lag in (
+                    ("minimumLagMinutes", group.minimum_lag_minutes),
+                    ("maximumLagMinutes", group.maximum_lag_minutes),
+                ):
+                    if lag is not None and lag > 0:
+                        observe(duration_microseconds(activity.activity_id, field_name, lag))
+        for commitment in scenario.commitments:
+            observe_instant(commitment.start)
+            observe_instant(commitment.end)
+        for day in scenario.days:
+            for boundary in (day.date, day.date + timedelta(days=1)):
+                observe_instant(datetime.combine(boundary, time.min, zone))
+        return max(1, step)
+
+    def ticks(self, microseconds: int) -> int:
+        quotient, remainder = divmod(microseconds, self.step)
+        if remainder:
+            raise SolverRangeError(
+                f"{microseconds} microseconds is not a multiple of the {self.step} microsecond "
+                "resolution this scenario resolves to"
+            )
+        return quotient
+
+    def to_microseconds(self, value: int) -> int:
+        """A tick count back in the unit every published document reports."""
+        return value * self.step
+
+    def duration_ticks(self, activity_id: str, field_name: str, value: float) -> int:
+        return self.ticks(duration_microseconds(activity_id, field_name, value))
 
     def to_tick(self, value: datetime) -> int:
-        return timedelta_microseconds(value.astimezone(UTC) - self.origin)
+        return self.ticks(timedelta_microseconds(value.astimezone(UTC) - self.origin))
 
     def to_datetime(self, value: int) -> datetime:
-        return (self.origin + timedelta(microseconds=value)).astimezone(self.zone)
+        return (self.origin + timedelta(microseconds=self.to_microseconds(value))).astimezone(
+            self.zone
+        )
 
     def day_bounds(self, value: date) -> tuple[int, int]:
         local_start = datetime.combine(value, time.min, self.zone)
@@ -322,7 +430,7 @@ class ScheduleSolver:
                 preference_requests.append(
                     LockRequest(
                         variables.duration,
-                        duration_microseconds(
+                        self.axis.duration_ticks(
                             activity.activity_id,
                             "preferredMinutes",
                             activity.duration.preferred_minutes,
@@ -396,13 +504,16 @@ class ScheduleSolver:
             else ObjectiveValues(
                 optional_priority_score=solver.value(objective_variables["optional_priority"]),
                 optional_activity_count=solver.value(objective_variables["optional_count"]),
-                duration_deviation_microseconds=solver.value(
-                    objective_variables["duration_deviation"]
+                # The model counts in ticks; every published number is in microseconds.
+                duration_deviation_microseconds=self.axis.to_microseconds(
+                    solver.value(objective_variables["duration_deviation"])
                 ),
-                temporal_deviation_microseconds=solver.value(
-                    objective_variables["temporal_deviation"]
+                temporal_deviation_microseconds=self.axis.to_microseconds(
+                    solver.value(objective_variables["temporal_deviation"])
                 ),
-                scheduled_start_sum_microseconds=solver.value(objective_variables["start_sum"]),
+                scheduled_start_sum_microseconds=self.axis.to_microseconds(
+                    solver.value(objective_variables["start_sum"])
+                ),
             )
         )
         return SolveOutcome(
@@ -451,9 +562,9 @@ class ScheduleSolver:
         return ObjectiveValues(
             optional_priority_score=priority,
             optional_activity_count=count,
-            duration_deviation_microseconds=deviation,
-            temporal_deviation_microseconds=temporal,
-            scheduled_start_sum_microseconds=start_sum,
+            duration_deviation_microseconds=self.axis.to_microseconds(deviation),
+            temporal_deviation_microseconds=self.axis.to_microseconds(temporal),
+            scheduled_start_sum_microseconds=self.axis.to_microseconds(start_sum),
         )
 
     def _declare_lock(self, request: LockRequest) -> cp_model.IntVar:
@@ -609,11 +720,23 @@ class ScheduleSolver:
         plan. The linear relaxation and probing only pay off when search has to backtrack, which
         never happens here: dropping them keeps long horizons conclusive within the frozen
         deterministic-time budget instead of exhausting it and reporting `UNKNOWN`.
+
+        Presolve is dropped too once the axis is tight, and that condition is not decoration. There
+        is no incremental solving: the value-fixing loop hands CP-SAT the same model thousands of
+        times over — 13 183 on a five-month horizon — and presolves it from scratch every time. On
+        a tight model that is the whole cost, since the probes settle by propagation with zero
+        conflicts and zero branches. On a model whose variables span 10^11 microseconds it is the
+        opposite: presolve is what keeps the search tractable, and removing it made one week of
+        Marco's horizon four times *worse* (831s to 3 296s) where the tight axis with no presolve
+        does it in 18s. So the two travel together, and a scenario that genuinely needs microsecond
+        resolution keeps the presolve it depends on.
         """
         solver = self._new_solver()
         solver.parameters.linearization_level = 0
         solver.parameters.cp_model_probing_level = 0
         solver.parameters.max_deterministic_time = FEASIBILITY_DETERMINISTIC_TIME
+        if self.axis.horizon <= PRESOLVE_FREE_HORIZON_TICKS:
+            solver.parameters.cp_model_presolve = False
         return solver
 
     def _create_activity_variables(self) -> None:
@@ -637,17 +760,17 @@ class ScheduleSolver:
             start = self.model.new_int_var(start_min, start_max, f"start__{activity_id}")
 
             if activity.duration is not None:
-                duration_min = duration_microseconds(
+                duration_min = self.axis.duration_ticks(
                     activity_id,
                     "minimumMinutes",
                     activity.duration.minimum_minutes,
                 )
-                duration_max = duration_microseconds(
+                duration_max = self.axis.duration_ticks(
                     activity_id,
                     "maximumMinutes",
                     activity.duration.maximum_minutes,
                 )
-                preferred_duration = duration_microseconds(
+                preferred_duration = self.axis.duration_ticks(
                     activity_id,
                     "preferredMinutes",
                     activity.duration.preferred_minutes,
@@ -770,7 +893,7 @@ class ScheduleSolver:
             activity = variables.record.activity
             for group_index, group in enumerate(activity.dependency_groups):
                 minimum_lag = (
-                    duration_microseconds(
+                    self.axis.duration_ticks(
                         activity_id,
                         f"dependencyGroups[{group_index}].minimumLagMinutes",
                         group.minimum_lag_minutes,
@@ -779,7 +902,7 @@ class ScheduleSolver:
                     else 0
                 )
                 maximum_lag = (
-                    duration_microseconds(
+                    self.axis.duration_ticks(
                         activity_id,
                         f"dependencyGroups[{group_index}].maximumLagMinutes",
                         group.maximum_lag_minutes,

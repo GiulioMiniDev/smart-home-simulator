@@ -13,7 +13,12 @@ from smart_home_sim.compiler import compile_file, compile_payload
 from smart_home_sim.compiler import service as compiler_service
 from smart_home_sim.compiler.issues import compilation_issue
 from smart_home_sim.compiler.service import canonical_sha256
-from smart_home_sim.compiler.solver import SolveOutcome
+from smart_home_sim.compiler.solver import (
+    MICROSECONDS_PER_MINUTE,
+    SolveOutcome,
+    TimeAxis,
+    activity_records,
+)
 from smart_home_sim.domain.compilation import COMPILATION_ISSUE_CODES
 from smart_home_sim.domain.models import Scenario
 
@@ -522,3 +527,41 @@ def test_an_infeasible_horizon_names_the_day_that_cannot_be_scheduled() -> None:
     assert {item["activityId"] for item in infeasible[0].details["mandatoryActivities"]} >= {
         "clashing_activity"
     }
+
+
+def test_the_time_axis_resolves_to_what_the_scenario_actually_declares() -> None:
+    """The solver's unit of time is derived from the document, and no plan depends on it.
+
+    Instants used to become integers in microseconds regardless of what the scenario said, so a
+    horizon written entirely in whole minutes gave CP-SAT start variables with sixty million times
+    more values than it could ever use. That is free while propagation settles a day on its own, and
+    ruinous where it does not: one week of a five-month horizon cost 714 seconds against 25 for its
+    neighbours. The resolution is now the greatest common divisor of everything the scenario
+    declares, which is exactly the coarsest unit that loses nothing.
+    """
+    payload = _payload()
+    scenario = Scenario.model_validate_json(json.dumps(payload))
+    axis = TimeAxis.from_scenario(scenario, activity_records(scenario))
+    # This example is written entirely in five-minute steps, and the axis says so: 294 ticks stand
+    # in for the 88 200 000 000 microseconds the same horizon used to be measured in.
+    assert axis.step == 5 * MICROSECONDS_PER_MINUTE
+    assert axis.horizon == 294
+
+    # Round-tripping through the axis has to be exact, or a scheduled instant would drift.
+    for day in scenario.days:
+        for activity in day.activities:
+            if activity.start_window is not None:
+                moment = activity.start_window.preferred
+                assert axis.to_datetime(axis.to_tick(moment)) == moment
+
+    # A scenario that needs a finer unit gets one rather than being rounded into the coarse one.
+    finer = copy.deepcopy(payload)
+    finer["days"][0]["activities"][0]["duration"]["minimumMinutes"] = 0.5
+    finer_scenario = Scenario.model_validate_json(json.dumps(finer))
+    finer_axis = TimeAxis.from_scenario(finer_scenario, activity_records(finer_scenario))
+    assert finer_axis.step == MICROSECONDS_PER_MINUTE // 2
+
+    # And the plan it produces does not depend on which unit was chosen.
+    assert canonical_sha256(compile_payload(payload).plan) == canonical_sha256(
+        compile_file(EXAMPLES / "valid" / "minimal.json").plan
+    )

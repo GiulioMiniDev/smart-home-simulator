@@ -628,7 +628,7 @@ def _canonical_activities(
                 location_ids=activity.location_ids,
                 scheduled_start=axis.to_datetime(value.start),
                 scheduled_end=axis.to_datetime(value.end),
-                duration_microseconds=value.end - value.start,
+                duration_microseconds=axis.to_microseconds(value.end - value.start),
                 mandatory=activity.mandatory,
                 priority=activity.priority,
                 can_overlap_for_actor=activity.can_overlap_for_actor,
