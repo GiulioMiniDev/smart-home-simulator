@@ -29,6 +29,7 @@ from smart_home_sim.domain.environment import (
     TraversalMode,
 )
 from smart_home_sim.domain.models import Scenario
+from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.environment.navigation import plan_path
 from smart_home_sim.environment.service import (
     _entity_candidates,
@@ -412,6 +413,39 @@ def test_bundle_preflight_and_compatibility_failures(tmp_path: Path) -> None:
     inaccessible_home = write_json(tmp_path / "unknown-access-resident.json", home_payload)
     result = build_bundle_files(SCENARIO, PLAN, PACKAGE, inaccessible_home)
     assert "ENTITY_INVALID" in issue_codes(result.report)
+
+
+def test_a_supplied_plan_digest_answers_the_m2_gate_without_weakening_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A digest answers the M2 gate exactly as compiling would: same acceptance, same refusal.
+
+    The gate re-compiles the scenario to learn which plan it should have been handed, which on a
+    long horizon is tens of minutes spent reproducing bytes its caller already holds. A caller that
+    ran the compiler can hand back the answer — but the shortcut is only sound if it is still a
+    comparison: the same good plan passes, and the same doctored plan is refused, without the
+    compiler being consulted at all.
+    """
+    true_digest = canonical_sha256(CanonicalPlan.model_validate_json(PLAN.read_text("utf-8")))
+
+    def unreachable(*_: Any, **__: Any) -> None:
+        raise AssertionError("the gate compiled the scenario despite being handed the digest")
+
+    # Patching the memoized digest itself, not `compile_scenario`: a warm cache would otherwise let
+    # the gate consult it and still never reach the compiler, hiding the very thing under test.
+    monkeypatch.setattr("smart_home_sim.environment.service._compiled_plan_digest", unreachable)
+
+    accepted = build_bundle_files(SCENARIO, PLAN, PACKAGE, HOME, compiled_plan_digest=true_digest)
+    assert accepted.bundle is not None
+    assert issue_codes(accepted.report) == set()
+
+    plan_payload = load(PLAN)
+    plan_payload["objectiveValues"]["optionalActivityCount"] += 1
+    doctored = write_json(tmp_path / "doctored-plan.json", plan_payload)
+    refused = build_bundle_files(
+        SCENARIO, doctored, PACKAGE, HOME, compiled_plan_digest=true_digest
+    )
+    assert "INPUT_PLAN_INVALID" in issue_codes(refused.report)
 
 
 def test_bundle_reports_missing_scenario_and_action_bindings(tmp_path: Path) -> None:

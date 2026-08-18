@@ -786,7 +786,22 @@ def build_bundle_files(
     plan_path: Path,
     package_path: Path,
     home_path: Path,
+    *,
+    compiled_plan_digest: str | None = None,
 ) -> BundleBuildResult:
+    """Bind a scenario, its canonical plan, a behaviour package and a home into one bundle.
+
+    ``compiled_plan_digest`` is the digest of a compilation the caller performed itself. The M2
+    gate below proves that the supplied plan is the deterministic compilation output, and with no
+    digest to compare against it obtains one the only way it can: by compiling the scenario again.
+    For a horizon of hundreds of days that is half an hour of CP-SAT to re-derive bytes the caller
+    is already holding. A caller that compiled this very scenario passes the digest instead, and
+    the gate keeps its meaning — the plan file still has to equal that compilation, byte for byte.
+
+    It is deliberately not a way to vouch for a plan compiled elsewhere: only the caller that ran
+    the compiler can know the answer without asking it, so a plan arriving from anywhere else is
+    still checked by re-compiling.
+    """
     inputs = [
         (scenario_path, "scenario"),
         (plan_path, "canonical plan"),
@@ -856,7 +871,11 @@ def build_bundle_files(
                 "Canonical plan does not match the supplied scenario and digest.",
             )
         )
-    elif canonical_sha256(plan) != _compiled_plan_digest(scenario.model_dump_json(by_alias=True)):
+    elif canonical_sha256(plan) != (
+        compiled_plan_digest
+        if compiled_plan_digest is not None
+        else _compiled_plan_digest(scenario.model_dump_json(by_alias=True))
+    ):
         issues.append(
             environment_issue(
                 "INPUT_PLAN_INVALID",

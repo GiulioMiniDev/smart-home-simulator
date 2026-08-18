@@ -36,6 +36,7 @@ from smart_home_sim.domain.sensors import (
     SensorModel,
     TemperatureSensor,
 )
+from smart_home_sim.environment import service as environment_service
 from smart_home_sim.environment import validate_home_model
 from smart_home_sim.materialization import (
     bind_sensor_model,
@@ -708,6 +709,39 @@ def test_a_cancelled_environment_build_publishes_nothing(tmp_path: Path) -> None
             cancelled=lambda: True,
         )
     assert not (tmp_path / "cancelled").exists()
+
+
+def test_building_an_environment_compiles_the_scenario_exactly_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One materialization, one solve.
+
+    The plan is compiled here and then handed to the binder, whose M2 gate used to obtain the plan
+    it should have been given the only way it could: by compiling the same scenario over again. On
+    Marco's five-month horizon that duplicate was measured at roughly twenty minutes — the larger
+    half of everything spent before execution — to re-derive `canonical-plan.json` byte for byte.
+    """
+    calls: list[str] = []
+
+    def counted(scenario: Scenario, on_progress: Any = None) -> CompilationResult:
+        calls.append(scenario.scenario_id)
+        return compile_scenario(scenario, on_progress)
+
+    monkeypatch.setattr("smart_home_sim.materialization.service.compile_scenario", counted)
+    monkeypatch.setattr("smart_home_sim.environment.service.compile_scenario", counted)
+    # The gate memoizes its digest per scenario, so a cache warmed by an earlier test would hide a
+    # duplicate that a fresh process still pays for.
+    environment_service._compiled_plan_digest.cache_clear()
+
+    materialize_environment(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        tmp_path / "once",
+    )
+
+    assert calls == [
+        Scenario.model_validate_json((SOURCE / "scenario.json").read_bytes()).scenario_id
+    ]
 
 
 def test_a_reused_compilation_builds_the_same_environment_as_compiling_twice(

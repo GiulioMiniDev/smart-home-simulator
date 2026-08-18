@@ -1243,11 +1243,18 @@ def _build_environment(
             {"regions": home_result.report.summary.region_count},
         )
 
+    # The plan staged above is this function's own compilation output, so the binder's M2 gate can
+    # be answered from what we already hold instead of solving the horizon a second time to
+    # re-derive it — on a five-month horizon, roughly twenty minutes of CP-SAT that reproduces the
+    # bytes in `canonical-plan.json`. The gate is not skipped: the staged file still has to equal
+    # this digest. A plan handed in by a caller is a different matter — nothing here compiled it —
+    # so that path keeps re-compiling as its independent check.
     bundle_result = build_bundle_files(
         staging / "scenario.json",
         staging / "canonical-plan.json",
         staging / "personal-process-package.json",
         staging / "home-model.json",
+        compiled_plan_digest=(canonical_sha256(compilation.plan) if precompiled is None else None),
     )
     _json(staging / "environment-report.json", bundle_result.report)
     if bundle_result.bundle is None:
