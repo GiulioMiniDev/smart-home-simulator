@@ -7,7 +7,7 @@ import os
 import shutil
 import tempfile
 import zipfile
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import chain
@@ -26,11 +26,15 @@ from smart_home_sim.domain.application import (
     ExportRequest,
     utc_now,
 )
+from smart_home_sim.domain.environment import HomeModel
+from smart_home_sim.domain.profile import ResidentProfile
+from smart_home_sim.domain.sensors import SensorModel
 from smart_home_sim.profiling import (
     profile_from_trace_file,
     render_profile_html,
     write_heatmap_csv,
 )
+from smart_home_sim.summary import ScenarioFacts, SummaryInputs, render_summary_html
 
 ROLE_SOURCES: dict[str, tuple[str, str]] = {
     "observable": ("observable_sensor_log", "records.item"),
@@ -54,6 +58,14 @@ ROLE_SOURCES: dict[str, tuple[str, str]] = {
 # formats — a profile is a document, a page and a matrix — so it takes its own path through the
 # export.
 PROFILE_ROLE = "resident_profile"
+
+# The second computed role, and the only one that reads artifacts no other role touches: the home
+# model, the sensor model and the scenario never leave the workspace otherwise, so a researcher
+# holding an export has the readings of a sensor field they cannot see. It is built last, because
+# part of what it publishes is the index of everything else in the export.
+SUMMARY_ROLE = "summary"
+
+COMPUTED_ROLES = frozenset({PROFILE_ROLE, SUMMARY_ROLE})
 
 # Fields the pipeline keeps internally but must not publish, by export role.
 #
@@ -527,7 +539,7 @@ class ExportService:
         return results
 
     def _profile_files(
-        self, staging: Path, export_id: str, trace_path: Path, request: ExportRequest
+        self, staging: Path, export_id: str, profile: ResidentProfile
     ) -> list[ExportManifestFile]:
         """The resident profile, in the three shapes it is useful in.
 
@@ -535,12 +547,6 @@ class ExportService:
         month must not ship the profile of the whole horizon, or the page would describe a person
         the accompanying sensor log never shows.
         """
-        profile = profile_from_trace_file(
-            trace_path,
-            run_id=request.run_id,
-            start=request.include_start,
-            end=request.include_end,
-        )
         document = staging / "resident_profile.json"
         document.write_text(
             profile.model_dump_json(by_alias=True, indent=2) + "\n", encoding="utf-8", newline="\n"
@@ -566,6 +572,99 @@ class ExportService:
             )
         ]
 
+    def _summary_sources(
+        self, artifacts: dict[str, Any]
+    ) -> tuple[
+        HomeModel | None, SensorModel | None, ScenarioFacts | None, dict[str, Any], dict[str, Any]
+    ]:
+        """The four documents the summary reads besides the trace, every one of them optional.
+
+        A run assembled before one of them existed, or a horizon whose merge left it out, still
+        gets a page: a summary that refuses to build because a report is missing would be a summary
+        nobody can rely on. The scenario is read key by key rather than validated, because five
+        months of day plans are four megabytes of material with no place on this page, and the keys
+        that do belong on it all sit ahead of those days in the document.
+        """
+
+        def path_of(role: str) -> Path | None:
+            descriptor = artifacts.get(role)
+            if descriptor is None:
+                return None
+            return self.workspace.artifact_path(descriptor.artifact_id)
+
+        home_path, sensor_path = path_of("home_model"), path_of("sensor_model")
+        home = (
+            HomeModel.model_validate_json(home_path.read_text(encoding="utf-8"))
+            if home_path is not None
+            else None
+        )
+        sensors = (
+            SensorModel.model_validate_json(sensor_path.read_text(encoding="utf-8"))
+            if sensor_path is not None
+            else None
+        )
+        scenario_path = path_of("scenario")
+        scenario = None
+        habits: dict[str, Any] = {}
+        if scenario_path is not None:
+            scenario = ScenarioFacts(
+                title=_metadata(scenario_path, "title"),
+                language=_metadata(scenario_path, "language"),
+                time_zone=_metadata(scenario_path, "timeZone"),
+                residents=list(_metadata(scenario_path, "residents") or []),
+            )
+            habits = _metadata(scenario_path, "extensions.habitGroundTruth") or {}
+        report_path = path_of("sensor_projection_report")
+        stats: dict[str, Any] = {}
+        if report_path is not None:
+            counters = json.loads(report_path.read_text(encoding="utf-8")).get("sensors") or []
+            stats = {item["sensorId"]: item for item in counters if "sensorId" in item}
+        return home, sensors, scenario, habits, stats
+
+    def _summary_file(
+        self,
+        staging: Path,
+        export_id: str,
+        artifacts: dict[str, Any],
+        request: ExportRequest,
+        profile: ResidentProfile,
+        manifest_files: Sequence[ExportManifestFile],
+        seed: int,
+        trace_digest: str,
+    ) -> ExportManifestFile:
+        """The dataset summary: one page, written last so it can index the rest of the export."""
+        home, sensors, scenario, habits, stats = self._summary_sources(artifacts)
+        page = staging / "summary.html"
+        page.write_text(
+            render_summary_html(
+                SummaryInputs(
+                    run_id=request.run_id,
+                    seed=seed,
+                    trace_digest=trace_digest,
+                    profile=profile,
+                    files=tuple(manifest_files),
+                    home=home,
+                    sensors=sensors,
+                    scenario=scenario,
+                    habits=habits,
+                    sensor_stats=stats,
+                    include_start=request.include_start,
+                    include_end=request.include_end,
+                )
+            ),
+            encoding="utf-8",
+            newline="\n",
+        )
+        return ExportManifestFile(
+            role=SUMMARY_ROLE,
+            format=ExportFormat.html,
+            relative_path=f"{export_id}/{page.name}",
+            media_type="text/html",
+            record_count=len(profile.residents),
+            size_bytes=page.stat().st_size,
+            sha256=_digest(page),
+        )
+
     def export(self, request: ExportRequest) -> ExportManifest:
         existing = self._reusable_export(request)
         if existing is not None:
@@ -590,11 +689,26 @@ class ExportService:
         self.workspace.exports_path.mkdir(parents=True, exist_ok=True)
         staging = Path(tempfile.mkdtemp(prefix=f".{export_id}.", dir=self.workspace.exports_path))
         files: list[ExportManifestFile] = []
+        profile: ResidentProfile | None = None
+
+        def resident_profile() -> ResidentProfile:
+            """Aggregated once and shared: both computed roles want the same document, and a second
+            pass over an eight month trace costs more than everything else here put together."""
+            nonlocal profile
+            if profile is None:
+                profile = profile_from_trace_file(
+                    trace_path,
+                    run_id=request.run_id,
+                    start=request.include_start,
+                    end=request.include_end,
+                )
+            return profile
+
         try:
-            for role in request.roles:
-                if role == PROFILE_ROLE:
-                    files.extend(self._profile_files(staging, export_id, trace_path, request))
-                    continue
+            # The computed roles come last whatever order they were requested in: the summary
+            # publishes an index of the export, and an index written halfway through lists half of
+            # it.
+            for role in [item for item in request.roles if item not in COMPUTED_ROLES]:
                 artifact_role, prefix = ROLE_SOURCES[role]
                 source = artifacts.get(artifact_role)
                 if source is None:
@@ -623,6 +737,21 @@ class ExportService:
                             sha256=_digest(output),
                         )
                     )
+            if PROFILE_ROLE in request.roles:
+                files.extend(self._profile_files(staging, export_id, resident_profile()))
+            if SUMMARY_ROLE in request.roles:
+                files.append(
+                    self._summary_file(
+                        staging,
+                        export_id,
+                        artifacts,
+                        request,
+                        resident_profile(),
+                        files,
+                        seed,
+                        trace_digest,
+                    )
+                )
             manifest = ExportManifest(
                 export_id=export_id,
                 run_id=request.run_id,

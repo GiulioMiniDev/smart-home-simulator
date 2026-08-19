@@ -258,6 +258,11 @@ class ExportRequest(ContractModel):
             # the only role whose files do not follow the requested formats: a profile is a
             # document, a page and a matrix, never a JSONL record stream.
             "resident_profile",
+            # The other computed role: one page saying what the dataset is — the flat with its
+            # sensors drawn on it, the resident's declared traits, the habit bands in words, the
+            # realized behaviour beside them and an index of the export. It reads the home model,
+            # the sensor model and the scenario, which no other role publishes at all.
+            "summary",
         ]
     ] = Field(min_length=1)
     include_start: AwareDatetime | None = None

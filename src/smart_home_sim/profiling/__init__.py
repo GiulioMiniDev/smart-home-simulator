@@ -14,6 +14,7 @@ from smart_home_sim.profiling.builder import (
 from smart_home_sim.profiling.render import (
     heatmap_rows,
     render_profile_html,
+    resident_sections,
     write_heatmap_csv,
 )
 
@@ -24,6 +25,7 @@ __all__ = [
     "profile_from_trace",
     "profile_from_trace_file",
     "render_profile_html",
+    "resident_sections",
     "slot_labels",
     "write_heatmap_csv",
 ]

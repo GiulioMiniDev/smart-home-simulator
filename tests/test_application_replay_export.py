@@ -434,13 +434,13 @@ def test_the_export_offers_every_role_the_backend_defines() -> None:
     """
     import re
 
-    from smart_home_sim.application.export import PROFILE_ROLE, ROLE_SOURCES
+    from smart_home_sim.application.export import PROFILE_ROLE, ROLE_SOURCES, SUMMARY_ROLE
 
     source = (PROJECT_ROOT / "frontend/src/App.tsx").read_text(encoding="utf-8")
     match = re.search(r"roles: \[([^\]]+)\]", source)
     assert match is not None, "the export button no longer names its roles"
     requested = set(re.findall(r'"([a-z_]+)"', match.group(1)))
-    offered = set(ROLE_SOURCES) | {PROFILE_ROLE}
+    offered = set(ROLE_SOURCES) | {PROFILE_ROLE, SUMMARY_ROLE}
 
     assert requested == offered, {
         "missing from the UI": sorted(offered - requested),
@@ -511,6 +511,50 @@ def test_export_publishes_the_resident_profile_as_document_page_and_matrix(
         .read_text(encoding="utf-8")
         .startswith("<!doctype html>")
     )
+
+
+def test_export_publishes_one_summary_page_that_indexes_the_dataset(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+
+    manifest = service.export(
+        ExportRequest(
+            run_id=run_id,
+            formats=[ExportFormat.jsonl],
+            roles=["summary", "observable", "activities"],
+        )
+    )
+
+    summary = next(item for item in manifest.files if item.role == "summary")
+    assert summary.format is ExportFormat.html
+    assert service.verify_manifest(manifest.export_id) == manifest
+    page = (workspace.exports_path / summary.relative_path).read_text(encoding="utf-8")
+    assert page.startswith("<!doctype html>")
+    # The home model and the sensor field reach a reader for the first time here: no other role
+    # publishes them, so without this page the log names sensors that are nowhere to be found.
+    assert "The home" in page and 'class="plan"' in page
+    assert "pir_kitchen" in page
+    # And the page indexes the rest of the export, which is why it is written last whatever order
+    # the roles were requested in.
+    assert "observable.jsonl" in page and "activities.jsonl" in page
+
+
+def test_a_rebuilt_summary_is_the_same_page(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    """The export promises that deleting a dataset costs nothing but the time to rebuild it."""
+    workspace, run_id = completed_workspace
+    service = ExportService(workspace)
+    request = ExportRequest(run_id=run_id, formats=[ExportFormat.csv], roles=["summary"])
+    first = service.export(request)
+
+    shutil.rmtree(workspace.exports_path / first.export_id)
+    rebuilt = service.export(request)
+
+    assert rebuilt.export_id != first.export_id
+    assert [item.sha256 for item in rebuilt.files] == [item.sha256 for item in first.files]
 
 
 def test_a_windowed_export_profiles_only_the_window(

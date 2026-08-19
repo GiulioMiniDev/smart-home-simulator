@@ -257,11 +257,20 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: .95em; }
 """
 
 
-def render_profile_html(profile: ResidentProfile) -> str:
-    """The whole profile as one standalone page."""
-    residents = "".join(_resident_section(item, profile) for item in profile.residents) or (
+def resident_sections(profile: ResidentProfile) -> str:
+    """The per-resident half of the page: narrative, rhythm, heatmaps and the activity table.
+
+    Separate from the page around it because the dataset summary embeds these same figures under
+    its own header. Two renderings of one profile that could drift apart would be two profiles.
+    """
+    return "".join(_resident_section(item, profile) for item in profile.residents) or (
         '<p class="empty">This trace records no resident behaviour.</p>'
     )
+
+
+def render_profile_html(profile: ResidentProfile) -> str:
+    """The whole profile as one standalone page."""
+    residents = resident_sections(profile)
     title = f"Resident profile · {profile.trace_id}"
     return (
         "<!doctype html>\n"

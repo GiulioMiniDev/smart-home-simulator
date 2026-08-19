@@ -333,6 +333,35 @@ Nell'applicazione locale lo stesso profilo è la scheda **profile** del dettagli
 pulsante per scaricare la pagina; nell'export completo è il ruolo `resident_profile`, che pubblica
 documento, pagina e matrice dentro il bundle verificato dal manifest.
 
+### Riassunto del dataset
+
+Il profilo dice com'è fatta la persona, ma non dice **dov'è**: la planimetria e il campo di sensori
+restano nel workspace, e chi riceve l'export legge `pir_kitchen` senza avere modo di sapere dove
+sia, cosa copra e com'è fatta la casa. Il ruolo `summary` pubblica quel pezzo mancante come **una
+sola pagina HTML autoconsistente** (`summary.html`, niente script, niente riferimenti esterni,
+SVG inline):
+
+- **la casa**: la planimetria disegnata dalla stessa geometria su cui naviga il path planner —
+  stanze con nome e superficie, muri distinti fra involucro e tramezzi, porte con l'anta e il
+  verso di apertura, mobili con il loro ingombro e il loro simbolo, i sensori dove sono stati
+  deployati con il cono di copertura dei PIR — più la tabella stanza per stanza;
+- **i sensori**: inventario per tipo, cosa osserva ciascuno, come è tarato, quante letture ha
+  prodotto e con quale tasso di perdita e di falsi positivi. Le percentuali sono dichiarate per
+  sensore e mai per singola lettura: il log esportato non contiene una colonna che ammette quali
+  delle proprie letture sono inaffidabili, perché nessun log reale ce l'ha;
+- **la persona**: i tratti dichiarati dallo scenario, resi come testo leggibile;
+- **le abitudini dichiarate**: una scheda per fascia con la finestra, i giorni in cui vale,
+  l'attività che la tiene, dove quell'attività *effettivamente* cade rispetto alla finestra
+  dichiarata, la composizione in percentuale e lo split feriale/festivo. È la ground truth in
+  chiaro, in italiano corrente se in italiano è scritto l'outline;
+- **il comportamento realizzato**: le stesse figure del profilo, sotto lo stesso tetto;
+- **l'indice dell'export**: ogni file, cosa contiene e a che serve.
+
+La pagina non contiene alcuna lettura di orologio e non nomina l'export che la contiene, quindi
+la stessa run con la stessa richiesta ricostruisce gli stessi byte. Le fasce abituali esistono
+soltanto per gli orizzonti espansi da un outline; per le altre run la sezione lo dice invece di
+restare vuota.
+
 Per eseguire più simulazioni indipendenti in parallelo:
 
 ```bash

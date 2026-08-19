@@ -68,13 +68,32 @@ document and comparing the two is an evaluation, not a claim this document makes
 It is served as JSON and as a standalone page (no script, no external reference) and exported as
 the `resident_profile` role in three files: document, page and heatmap matrix.
 
+## Dataset summary
+
+The `summary` role publishes one self-contained page saying what the exported dataset *is*: the
+floor plan drawn from the home model with the deployed sensors and their coverage on it, the
+sensor inventory with per-sensor reading counts and declared loss rates, the resident's declared
+traits, the habit bands stated in prose with the activity mix each one holds, the realized
+behaviour reusing the profile figures, and an index of every file in the export. It reads the home
+model, the sensor model, the scenario and the sensor projection report — artifacts no other role
+publishes — and every one of them is optional, so a run missing any still gets a page.
+
+Loss and false-positive rates are stated per sensor and never per reading: the observable log
+carries no field admitting which of its own readings are unreliable, and an aggregate rate is what
+a dataset owes its reader without handing over part of the answer.
+
+The page carries no clock reading and does not name the export directory it sits in, so the same
+run and the same request rebuild the same bytes. It is written after every other role, because
+part of what it publishes is the index of them.
+
 ## Export and archive rules
 
 JSONL, CSV and XES writers iterate source records and write staging files incrementally.
 Roles are separate for observable data, oracle, activities, actions, movements, transitions,
-resources, runtime events, deviations and final state. `resident_profile` is the exception: it is
-computed rather than projected, and publishes `json`, `html` and `csv` regardless of the requested
-record formats, which is what manifest 1.1.0 admits. The manifest records source bundle and
+resources, runtime events, deviations and final state. `resident_profile` and `summary` are the
+exceptions: they are computed rather than projected, and publish `json`, `html` and `csv`
+regardless of the requested record formats, which is what manifest 1.1.0 admits. Both are built
+after the projected roles, from one aggregation of the trace shared between them. The manifest records source bundle and
 trace digests, seed, count, size, format, media type and SHA-256 for every file. Publication is
 an atomic directory rename followed by catalogue registration. Any exception removes staging
 and the target directory.
