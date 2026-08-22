@@ -404,6 +404,45 @@ def test_a_night_past_midnight_is_planned_on_the_day_it_happens_on() -> None:
                 assert item.start_window.preferred < wake.start_window.preferred
 
 
+def test_a_disturbed_night_survives_compilation() -> None:
+    """A bathroom trip happens *inside* the night, so it must not compete with it for the hours.
+
+    The compiler keeps one actor in one place at a time, and the night is the only activity in the
+    day marked optional. So a trip and the night that contains it were two claims on the same hours
+    and the solver resolved them the only way it could: by dropping the night. On a year of Giulia
+    that was 64 nights with no sleep at all, every one of them a night the drive model had given
+    trips to, and not one undisturbed night among them.
+    """
+    _, horizon, rhythms = _rhythm_horizon(days=8, nocturia_base_probability=0.95)
+    disturbed = 0
+    for day in horizon:
+        rhythm = rhythms[day.isoformat()]
+        calendar_day = _day(
+            day.isoformat(),
+            Weekday.monday,
+            [_occ("morning coffee", "07:10"), _occ("evening pill", "20:00")],
+        )
+        scenario = build_day_scenario(_world(), calendar_day, rhythm=rhythm, seed=1)
+        visits = [
+            item
+            for item in scenario.days[0].activities
+            if "night_visit" in item.labels and item.start_window is not None
+        ]
+        disturbed += bool(visits)
+        for visit in visits:
+            assert visit.can_overlap_for_actor
+        result = compile_scenario(scenario)
+        assert result.plan is not None, [i.message for i in result.report.issues]
+        omitted = [
+            entry.source_activity_id
+            for planned in result.plan.days
+            for entry in planned.omitted_activities
+        ]
+        assert omitted == [], omitted
+
+    assert disturbed, "a 0.95 nocturia probability has to produce disturbed nights"
+
+
 def test_rhythm_days_still_compile() -> None:
     _, horizon, rhythms = _rhythm_horizon(days=6, nocturia_base_probability=0.9)
     for day in horizon:

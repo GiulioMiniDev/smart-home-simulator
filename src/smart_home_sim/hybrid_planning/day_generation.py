@@ -189,6 +189,10 @@ class TimelineEntry:
     hhmm: str
     recurring_activity_id: str | None = None
     truncatable: bool = False
+    # Nested inside another activity rather than competing with it for the resident. The compiler
+    # keeps one actor in one place at a time, so without this a bathroom trip and the night that
+    # contains it are two claims on the same hours and one of them has to go.
+    nested: bool = False
     label: str | None = None
     # An exact (minimum, preferred, maximum) band, used where the value is already decided (the
     # night length comes from the sleep model).
@@ -222,6 +226,7 @@ def plan_from_entries(
             index=index,
             recurring_activity_id=entry.recurring_activity_id,
             truncatable=entry.truncatable,
+            nested=entry.nested,
             label=entry.label,
             duration=entry.duration,
             duration_shape=entry.duration_shape,
@@ -284,6 +289,7 @@ def build_day_plan(
                 visit,
                 label=_NIGHT_VISIT_LABEL,
                 duration_shape=_NIGHT_VISIT_SHAPE,
+                nested=True,
             )
             for visit in morning.night_visits
             if visit < wake_time
@@ -485,6 +491,7 @@ def _activity(
     index: int,
     recurring_activity_id: str | None = None,
     truncatable: bool = False,
+    nested: bool = False,
     label: str | None = None,
     duration: tuple[int, int, int] | None = None,
     duration_shape: tuple[int, int, int, float] | None = None,
@@ -527,6 +534,7 @@ def _activity(
         duration=DurationRange(minimum_minutes=low, preferred_minutes=pref, maximum_minutes=high),
         mandatory=not truncatable,
         allow_boundary_truncation=truncatable,
+        can_overlap_for_actor=nested,
         labels=labels,
     )
 
