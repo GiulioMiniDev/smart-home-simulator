@@ -245,7 +245,9 @@ For each recurring activity:
   the case honestly allows;
 - `cadence.jitterMinutes` is how *irregular* this recurring activity is — how far a single occurrence wanders
   around its usual moment. A rigid anchor takes a small value, a loose optional one a large value.
-  It is not the width of the band and must not duplicate it;
+  It is not the width of the band and must not duplicate it. Read it as the *typical* wander rather
+  than the largest one: about two thirds of occurrences fall inside it, and a few land much further
+  out, the way a real routine has its off days;
 - `miningDifficulty` records how hard the activity should be to recover from sensor data: `easy` for
   a punctual daily anchor, `hard` for something sporadic or easily confused with another.
 

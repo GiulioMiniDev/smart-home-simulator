@@ -30,7 +30,9 @@ import math
 import random
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
+
+from smart_home_sim.hybrid_planning.irregularity import fold_into, stray_minutes
 
 # National Sleep Foundation consensus bands, collapsed to a single nightly target per age group.
 _SLEEP_NEED_BY_AGE: tuple[tuple[int, int], ...] = (
@@ -46,13 +48,26 @@ _MAX_NIGHT_VISITS = 3
 # Keeps a trip clear of midnight and of the morning wake, and keeps two trips from colliding.
 _NIGHT_VISIT_MARGIN_MINUTES = 25.0
 
-# Lights-out is the last activity of its own calendar day, so it has to fall before midnight. Past
-# it the night wraps to the small hours and is emitted as the *first* activity of the same day,
-# which both duplicates the night already in progress and leaves the night that day was supposed to
-# begin with no sleep at all — one horizon had the resident awake from 09:38 to 23:30 the next
-# evening. A late chronotype plus the weekend shift plus the sigma reaches past midnight often, so
-# the ceiling belongs here rather than in the author's hands.
-_LATEST_LIGHTS_OUT_MINUTES = 23 * 60 + 50
+# Lights-out is measured from the midnight the evening started after, and it may pass 24:00: a
+# bedtime of 1590 is 02:30 of the following morning. `DayRhythm` describes one *night*, and a night
+# that begins on Monday evening belongs to Monday however far past midnight it starts.
+#
+# This used to be capped at 23:50 so that `_hhmm` would never wrap. The cap was guarding the wrong
+# thing. Wrapping is correct — 02:30 really is the small hours — and the defect it was hiding was
+# that the wrapped entry stayed on the *same* day's timeline, where it sorted ahead of that day's
+# own wake and left the evening with no night at all. `build_day_plan` now hands a night that
+# passes midnight to the following day, which is the day it happens on, so nothing wraps into the
+# wrong list and this bound goes back to meaning what it says.
+#
+# What it says is a plausibility bound, not an encoding one: past three in the morning the resident
+# has not had a late night, she has had a different kind of night, and the drive model has no
+# vocabulary for that.
+_LATEST_LIGHTS_OUT_MINUTES = 27 * 60
+# The other edge. An early night is real behaviour and the wide component of the bedtime mixture
+# produces them, but the fold can reflect a draw arbitrarily far down, and a resident who goes to
+# bed at 18:40 has not had an early night, she has lost her evening. Late enough to leave dinner
+# and the wind-down their hours.
+_EARLIEST_LIGHTS_OUT_MINUTES = 20 * 60 + 30
 # How long before a fixed commitment the resident is up: the wake itself, washing, breakfast and
 # getting out of the door. An alarm shortens the night rather than moving lights-out, which is what
 # builds weekday sleep debt and repays it at the weekend — the social-jetlag pattern.
@@ -101,7 +116,27 @@ class RhythmProfile:
     age: int = 70
     # Preferred lights-out and the spread the resident actually keeps around it, in minutes.
     chronotype_bedtime_minutes: int = 22 * 60 + 30
-    bedtime_sigma_minutes: float = 22.0
+    # The width of an ordinary evening, not of the whole year: `stray_minutes` adds the rare wide
+    # night on top. 22 minutes was a guess and far too tidy — it kept 96% of Giulia's nights within
+    # an hour of her usual bedtime where Aruba's resident keeps 60%.
+    #
+    # It is not set to the width that would reproduce Aruba, because it cannot be. Lights-out is
+    # capped at 23:50 and Giulia's outline declares a 23:30 chronotype, so every minute of extra
+    # width is spent below the anchor and drags the whole distribution earlier. Measured on her
+    # horizon, plan-level dispersion against the centre it lands on:
+    #
+    # | sigma | dispersion | centre | within an hour |
+    # |------:|-----------:|-------:|---------------:|
+    # |    22 |     28 min |  23:19 |            96% |
+    # |    45 |     40 min |  23:00 |            92% |
+    # |    70 |     48 min |  22:43 |            81% |
+    # |    90 |     54 min |  22:30 |            68% |
+    #
+    # Aruba is 85 minutes at 60%, and no row reaches it: the ceiling caps the night at about 54
+    # whatever this number says, and buying the last of that costs an hour of systematic error in a
+    # bedtime the author declared. 45 is the knee — it doubles the dispersion for half an hour of
+    # drift. The rest of the gap is `_LATEST_LIGHTS_OUT_MINUTES`, not this constant.
+    bedtime_sigma_minutes: float = 45.0
     wake_sigma_minutes: float = 24.0
     # Weekends and holidays drift later; social jetlag is one of the most robust routine effects.
     weekend_shift_minutes: float = 35.0
@@ -152,6 +187,16 @@ class DayRhythm:
     night_visits: tuple[str, ...]
     state_at_start: DriveState
     meal_shift_minutes: int
+    # Whether lights-out falls after midnight, and so on the following day's timeline. `sleep_hhmm`
+    # is already wrapped — 02:30, not 26:30 — because that is the wall-clock time it happens at;
+    # this says which day's list it happens on. The wake and the night trips are always on that
+    # same following day, since they come after lights-out by construction.
+    sleep_starts_next_day: bool = False
+    # How far tonight's lights-out sits from the one this kind of day usually gets. The evening
+    # reads it the way the morning reads the wake: an early night is an early evening, not an
+    # ordinary evening the night overtakes. Without it the wide component of the bedtime mixture
+    # put the resident in bed at 22:01 and had her doing the washing-up at 22:32.
+    bedtime_shift_minutes: int = 0
     # An unscheduled reach-out, emitted when the need for company ran high and the calendar was
     # empty. Like the debt nap it is behaviour, not a habit occurrence.
     unplanned_social_contact: bool = False
@@ -185,6 +230,13 @@ def plan_rhythms(
     corresponding drives are spent as well as accumulated; omitting them leaves both climbing.
     ``first_commitment_by_day`` carries the start of the earliest fixed commitment, in minutes after
     midnight, so the day the resident is expected somewhere gets an alarm.
+
+    Both that map and ``rest_days`` are keyed by calendar day, which is how a caller thinks about
+    them, and both are read here for the day **after** the one being shaped. A `DayRhythm` is a
+    night, and a night runs from one evening into the next morning: it is tomorrow's alarm that
+    cuts it short, and tomorrow's day off that lets it start late. Reading them for the same day
+    put the whole effect a day early — the horizon had the resident up late on Sunday night before
+    a working Monday, and in bed early on Friday.
     """
     state = initial_state(profile, seed)
     rhythms: dict[str, DayRhythm] = {}
@@ -194,11 +246,13 @@ def plan_rhythms(
             day,
             state,
             seed=seed,
-            rest_day=day in rest_days,
+            rest_day=day + timedelta(days=1) in rest_days,
             meals=0 if meals_by_day is None else meals_by_day.get(day, 0),
             social_contacts=0 if social_by_day is None else social_by_day.get(day, 0),
             first_commitment_minutes=(
-                None if first_commitment_by_day is None else first_commitment_by_day.get(day)
+                None
+                if first_commitment_by_day is None
+                else first_commitment_by_day.get(day + timedelta(days=1))
             ),
         )
         rhythms[day.isoformat()] = rhythm
@@ -221,14 +275,19 @@ def advance(
     ``meals`` and ``social_contacts`` are what the calendar actually scheduled for this day. They
     are what closes the loop: without them hunger and social need only accumulate.
 
-    ``first_commitment_minutes`` is when the day's earliest fixed commitment starts. It is the one
-    thing in the day the resident does not choose, so it sets an alarm: without it the night runs to
-    its own length and a 23:45 chronotype puts the wake at 09:38 on a day whose shift began at
-    08:30, which is not a late morning but an unschedulable day.
+    ``first_commitment_minutes`` is when the earliest fixed commitment starts on the morning this
+    night ends — tomorrow, not today. It is the one thing the resident does not choose, so it sets
+    an alarm: without it the night runs to its own length and a 23:45 chronotype puts the wake at
+    09:38 on a day whose shift began at 08:30, which is not a late morning but an unschedulable
+    day. ``rest_day`` is read the same way, for the same reason: what makes an evening a late one
+    is having nowhere to be the morning after.
     """
     key = day.isoformat()
     rng = _rng(seed, profile.persona_id, "rhythm", key)
-    relaxed = rest_day or day.weekday() >= 5
+    # `day` is the evening this night starts on, so the free day that lets it run late is the next
+    # one. Callers pass `rest_day` already resolved for that day; the weekday test has to make the
+    # same step itself, or Friday evening reads as a work night and Sunday evening as a free one.
+    relaxed = rest_day or (day + timedelta(days=1)).weekday() >= 5
 
     need = profile.sleep_need_minutes
     debt_pressure = state.sleep_debt_minutes / _MAX_SLEEP_DEBT_MINUTES
@@ -236,11 +295,17 @@ def advance(
     # Lights out: chronotype anchor, later on a free day, earlier when sleep pressure is high.
     bedtime = (
         profile.chronotype_bedtime_minutes
-        + rng.gauss(0, profile.bedtime_sigma_minutes)
+        + stray_minutes(rng, profile.bedtime_sigma_minutes)
         + (profile.weekend_shift_minutes if relaxed else 0.0)
         - 45.0 * debt_pressure
     )
-    bedtime = min(bedtime, float(_LATEST_LIGHTS_OUT_MINUTES))
+    # Folded rather than clamped: see `irregularity.fold_into`.
+    bedtime = fold_into(
+        bedtime, float(_EARLIEST_LIGHTS_OUT_MINUTES), float(_LATEST_LIGHTS_OUT_MINUTES)
+    )
+    usual_bedtime = profile.chronotype_bedtime_minutes + (
+        profile.weekend_shift_minutes if relaxed else 0.0
+    )
 
     # Night length: log-normal so it keeps a right tail, lengthened by part of the standing debt.
     target = need + _DEBT_RECOVERY_FRACTION * state.sleep_debt_minutes
@@ -296,15 +361,21 @@ def advance(
     baseline_wake = profile.chronotype_bedtime_minutes + need
     meal_shift = int(_clip(round(-28.0 * (hunger - 0.5) + 0.25 * (wake - baseline_wake)), -45, 60))
 
+    # Rounded once, so the string and the flag cannot disagree. Read straight off `bedtime`, a
+    # draw of 1439.6 is "before midnight" while `_hhmm` rounds it to 1440 and prints 00:00 — a
+    # night marked as belonging to today, timed at a moment that is tomorrow.
+    lights_out = int(round(bedtime))
     rhythm = DayRhythm(
         date=key,
         wake_hhmm=_hhmm(wake),
-        sleep_hhmm=_hhmm(bedtime),
+        sleep_hhmm=_hhmm(lights_out),
         sleep_minutes=int(round(sleep_minutes)),
+        sleep_starts_next_day=lights_out >= 24 * 60,
         nap=nap,
         night_visits=visits,
         state_at_start=state,
         meal_shift_minutes=meal_shift,
+        bedtime_shift_minutes=int(round(bedtime - usual_bedtime)),
         unplanned_social_contact=unplanned_social,
     )
     following = DriveState(

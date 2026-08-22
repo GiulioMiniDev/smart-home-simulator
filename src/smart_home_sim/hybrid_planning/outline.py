@@ -26,9 +26,13 @@ Two sources shape when an occurrence actually lands, and they are not interchang
 - the **drives** (`drives.py`) supply the slow, autocorrelated shift. A short night moves the whole
   following morning and makes a nap likely; yesterday still matters. This is state, and it is the
   reason the variation reads as a person rather than as noise.
-- **`ActivityCadence.jitter_minutes`** bounds the fast, day-to-day wobble around that shift, per
+- **`ActivityCadence.jitter_minutes`** sizes the fast, day-to-day wobble around that shift, per
   habit. It is what lets an anchor be punctual and an optional habit wander, which is the property
-  `mining_difficulty` already presumes and which a single global spread cannot express.
+  `mining_difficulty` already presumes and which a single global spread cannot express. It is the
+  spread of an *ordinary* occurrence, not a bound on every one: `irregularity.stray_minutes` draws
+  the wobble from a narrow body of that width plus a rare wide tail, because a bounded draw made
+  the generated resident keep 96% of her nights within an hour of her usual bedtime where the
+  Aruba resident keeps 60%.
 
 The expander owns both. Neither is a field an author fills with a time.
 """

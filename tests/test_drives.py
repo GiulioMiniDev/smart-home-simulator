@@ -53,8 +53,12 @@ def test_wake_time_varies_instead_of_repeating_one_minute() -> None:
     rhythms = plan_rhythms(_profile(), HORIZON, seed=1)
     wake = [_minutes(item.wake_hhmm) for item in rhythms.values()]
     assert len(set(wake)) > 40
-    # Broad enough to look human, tight enough to still be a routine.
-    assert 15 < statistics.pstdev(wake) < 75
+    # Broad enough to look human, tight enough to still be a routine. The upper bound used to be
+    # 75 minutes, which was the old bedtime sigma showing through rather than a measured claim:
+    # against CASAS Aruba the generated resident kept 96% of her nights within an hour of her usual
+    # one where the real one keeps 60%. This profile has no fixed commitment, so nothing sets an
+    # alarm and the morning is as loose as the drive model ever makes it.
+    assert 15 < statistics.pstdev(wake) < 110
 
 
 def test_night_length_is_right_skewed_rather_than_a_constant() -> None:
@@ -66,11 +70,20 @@ def test_night_length_is_right_skewed_rather_than_a_constant() -> None:
 
 
 def test_sleep_debt_carries_across_days_instead_of_resetting() -> None:
-    """This is the property plain per-day jitter cannot produce: yesterday still matters."""
-    rhythms = plan_rhythms(_profile(), HORIZON, seed=1)
-    debt = [item.state_at_start.sleep_debt_minutes for item in rhythms.values()]
-    assert max(debt) > 0
-    assert _lag_one_autocorrelation(debt) > 0.25
+    """This is the property plain per-day jitter cannot produce: yesterday still matters.
+
+    Read across seeds rather than on one. Lag-one autocorrelation over 91 days is a noisy estimator
+    of a real effect: on twenty seeds of this profile it ranges from -0.10 to 0.56 around a median
+    of 0.27, so a single-seed threshold tests the seed. The claim is about the process, and the
+    median is what states it.
+    """
+    coefficients = []
+    for seed in range(1, 21):
+        rhythms = plan_rhythms(_profile(), HORIZON, seed=seed)
+        debt = [item.state_at_start.sleep_debt_minutes for item in rhythms.values()]
+        assert max(debt) > 0
+        coefficients.append(_lag_one_autocorrelation(debt))
+    assert statistics.median(coefficients) > 0.25
 
 
 def test_a_short_night_leaves_more_debt_than_a_long_one() -> None:
@@ -239,16 +252,26 @@ def test_drive_state_is_clamped_to_its_bands() -> None:
     assert clamped.fatigue == 1.0
 
 
-def test_lights_out_never_crosses_midnight() -> None:
-    """A late chronotype must not wrap the night into the small hours of its own day.
+def test_a_late_night_is_flagged_for_the_following_day() -> None:
+    """A late chronotype reaches past midnight, and says so rather than being capped there.
 
-    Past midnight the block is emitted as the day's *first* activity, duplicating the night already
-    in progress and leaving the night that day was meant to start with none at all.
+    `sleep_hhmm` is the wall-clock moment, so it wraps: 02:10, not 26:10. What tells a caller which
+    day that moment falls on is `sleep_starts_next_day`, and `build_day_plan` routes the block by
+    it. Capping the bedtime instead — which is what this test used to assert — kept the night
+    inside its own calendar day at the cost of a distribution truncated twenty minutes above a
+    23:30 chronotype.
     """
     profile = _profile(chronotype_bedtime_minutes=_minutes("23:45"))
     rhythms = plan_rhythms(profile, LONG_HORIZON, seed=3)
     assert rhythms
-    assert max(_minutes(item.sleep_hhmm) for item in rhythms.values()) <= _minutes("23:50")
+
+    crossing = [item for item in rhythms.values() if item.sleep_starts_next_day]
+    assert crossing, "a 23:45 chronotype has to reach past midnight sometimes"
+    for item in crossing:
+        assert _minutes(item.sleep_hhmm) < _minutes("03:00")
+    for item in rhythms.values():
+        if not item.sleep_starts_next_day:
+            assert _minutes(item.sleep_hhmm) >= _minutes("12:00")
 
 
 def test_a_fixed_commitment_sets_an_alarm() -> None:
@@ -258,8 +281,19 @@ def test_a_fixed_commitment_sets_an_alarm() -> None:
     alarmed = plan_rhythms(
         profile, HORIZON, seed=4, first_commitment_by_day={day: work for day in HORIZON}
     )
-    assert max(_minutes(item.wake_hhmm) for item in free.values()) > work
-    assert max(_minutes(item.wake_hhmm) for item in alarmed.values()) <= work
+    # The last rhythm's wake happens on the morning after the horizon ends, so no day plan ever
+    # uses it and no commitment in the map constrains it. Reading it here would measure a morning
+    # that does not exist.
+    inside = [day.isoformat() for day in HORIZON[:-1]]
+    latest_free = max(_minutes(free[key].wake_hhmm) for key in inside)
+    latest_alarmed = max(_minutes(alarmed[key].wake_hhmm) for key in inside)
+    # The alarm has to have something to bite on, which is what this first line says. It used to say
+    # `latest_free > work` and passed by twenty minutes; a 23:45 chronotype has five minutes of room
+    # under the lights-out ceiling, so widening the bedtime spread pulls the whole night earlier and
+    # the free morning with it, and the margin went the other way. Comparing the two runs states the
+    # same precondition without depending on where that margin lands.
+    assert latest_free > latest_alarmed
+    assert latest_alarmed <= work
 
 
 def test_the_alarm_shortens_the_night_rather_than_moving_lights_out() -> None:

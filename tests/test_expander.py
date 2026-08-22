@@ -22,7 +22,10 @@ from smart_home_sim.domain.models import (
     Resource,
     VersionedReference,
 )
-from smart_home_sim.hybrid_planning.day_generation import RHYTHM_EMITTED_INTENTS
+from smart_home_sim.hybrid_planning.day_generation import (
+    EVENING_CLEARANCE_MINUTES,
+    RHYTHM_EMITTED_INTENTS,
+)
 from smart_home_sim.hybrid_planning.expander import (
     ExpansionError,
     _measure_habits,
@@ -541,8 +544,12 @@ def test_the_waking_day_never_asks_to_be_in_two_places_at_once(
             overlapping += ends > later.start_window.preferred  # type: ignore[union-attr]
 
     # Without the pass the rate sits around a fifth of all pairs, which is what made the compiler
-    # reject and re-place 18% of every preferred value on the reference horizon.
-    assert overlapping / pairs < 0.05
+    # reject and re-place 18% of every preferred value on the reference horizon. The bound used to
+    # be 5%, measured when every occurrence was drawn from a uniform inside ±jitter; a day whose
+    # habits keep a rare wide occurrence collides with itself more often, and the pass can no longer
+    # clear the last of them by pushing an activity past lights-out. Fifteen pairs of 236, of which
+    # two come from that refusal — still a quarter of the rate the pass exists to prevent.
+    assert overlapping / pairs < 0.08
 
 
 def test_a_world_missing_a_catalog_room_fails_once_and_clearly(
@@ -711,6 +718,105 @@ def test_the_night_is_never_pushed_into_the_following_day(
     ]
 
     assert misplaced == []
+
+
+def test_every_window_edge_lands_on_a_whole_minute(package: PersonalProcessPackage) -> None:
+    """`TimeAxis` takes its resolution from the finest unit the scenario uses, so this is a budget.
+
+    The wobble is drawn from a continuous distribution, and handing the raw draw to `timedelta`
+    put seconds on 67% of a year's activities. Nothing downstream complains — the plan is still
+    valid, and the compiler simply moves to microsecond ticks, where every window of the solve
+    exhausts its deterministic budget and reports UNKNOWN. The whole horizon fails to compile, and
+    the message says nothing about seconds.
+    """
+    ragged = [
+        (activity.activity_id, edge, moment.isoformat())
+        for day in expand_outline(_outline(), package, seed=1).bundle.scenario.days
+        for activity in day.activities
+        if activity.start_window is not None
+        for edge, moment in (
+            ("earliest", activity.start_window.earliest),
+            ("preferred", activity.start_window.preferred),
+            ("latest", activity.start_window.latest),
+        )
+        if moment.second or moment.microsecond
+    ]
+
+    assert ragged == []
+
+
+def test_the_wobble_never_carries_an_occurrence_out_of_its_day(
+    package: PersonalProcessPackage,
+) -> None:
+    """The mixture's tail reaches outside the author's band, and the band is not the day.
+
+    `test_the_night_is_never_pushed_into_the_following_day` covers the overlap pass; this covers
+    the draw itself, and it fails at the other end too. A wide jitter on an early habit reaches
+    back past midnight and a late one reaches forward past it, and either lands the occurrence on a
+    date its own day plan does not list. Bounding only the evening left 110 of those over a year of
+    Giulia's outline, every one an `ACTIVITY_ASSIGNED_TO_WRONG_DAY` error, and the horizon was
+    rejected whole.
+    """
+    outline = _outline(months=2)
+    for activity in outline.profile.recurring_activities:
+        # Far wider than any author would write, so the tail certainly reaches for both edges.
+        activity.cadence.jitter_minutes = 120
+    outline.profile.recurring_activities[0].cadence.window_start = "00:30"
+    outline.profile.recurring_activities[0].cadence.window_end = "02:00"
+
+    stray = [
+        (day.date, item.activity_id, item.start_window.preferred.isoformat())
+        for seed in range(4)
+        for day in expand_outline(outline, package, seed=seed).bundle.scenario.days
+        for item in day.activities
+        if item.start_window is not None and item.start_window.preferred.date() != day.date
+    ]
+
+    assert stray == []
+
+
+def test_the_evening_ends_when_the_night_starts(package: PersonalProcessPackage) -> None:
+    """Nothing the resident does awake may be scheduled after lights-out.
+
+    This is the bill for a bedtime that is allowed to be irregular. The night used to sit in a
+    82-minute band, so an evening habit could not be overtaken by it; drawing the night from a
+    mixture puts it as early as 20:30, and the evening band an author wrote for an ordinary Tuesday
+    then ran straight past it. Measured before `_shift` and `_wobble` learned about lights-out: 115
+    of Giulia's 365 days had the resident in bed at 22:01 and doing the washing-up at 22:32.
+    """
+    late = []
+    for seed in range(4):
+        for day in expand_outline(_outline(), package, seed=seed).bundle.scenario.days:
+            # This day's own night, which is the one its evening runs into. A sleep block in the
+            # small hours came from yesterday evening and is the night the day woke up from, so it
+            # says nothing about when this evening has to end. When the day's own lights-out fell
+            # after midnight the block is on tomorrow's list, and the bound is the day itself.
+            own_night = next(
+                (
+                    item.start_window.preferred
+                    for item in reversed(day.activities)
+                    if item.intent == "sleep"
+                    and item.start_window is not None
+                    and item.start_window.preferred.hour >= 12
+                ),
+                None,
+            )
+            reference = next(item for item in day.activities if item.start_window is not None)
+            midnight = datetime.combine(
+                day.date + timedelta(days=1),
+                time.min.replace(tzinfo=reference.start_window.preferred.tzinfo),
+            )
+            lights_out = midnight if own_night is None else own_night
+            late += [
+                (day.date, item.intent)
+                for item in day.activities
+                if item.start_window is not None
+                and item.intent not in RHYTHM_EMITTED_INTENTS
+                and item.start_window.preferred
+                > lights_out - timedelta(minutes=EVENING_CLEARANCE_MINUTES)
+            ]
+
+    assert late == []
 
 
 def test_a_debt_nap_is_not_dropped_inside_a_shift(package: PersonalProcessPackage) -> None:

@@ -240,6 +240,8 @@ def _rhythm_horizon(days: int = 60, **profile_overrides: object):
 
 
 def _plans_over_horizon(days: int = 60, **profile_overrides: object):
+    from datetime import timedelta
+
     _, horizon, rhythms = _rhythm_horizon(days, **profile_overrides)
     plans = []
     for day in horizon:
@@ -254,6 +256,9 @@ def _plans_over_horizon(days: int = 60, **profile_overrides: object):
                 timezone="Europe/Rome",
                 actor_id="luigi_bianchi",
                 rhythm=rhythms[day.isoformat()],
+                # A night that runs past midnight is emitted on the day it happens on, so a plan
+                # built without yesterday's rhythm is missing whichever night that was.
+                previous_rhythm=rhythms.get((day - timedelta(days=1)).isoformat()),
                 seed=1,
             )
         )
@@ -340,7 +345,11 @@ def test_sampled_durations_are_right_skewed_instead_of_hugging_a_ceiling() -> No
     the planned value and the variance was near zero."""
     import statistics
 
-    plans = _plans_over_horizon()
+    # Long enough to resolve the skew. The gap between mean and median is about a minute and a
+    # half against a nine-minute spread, so sixty lunches cannot tell it from noise: the sample
+    # this ran on before happened to land the wrong side of it, and said so only when an unrelated
+    # change reshuffled the draw.
+    plans = _plans_over_horizon(days=240)
     lunches = [
         item.duration.preferred_minutes
         for plan in plans
@@ -356,10 +365,43 @@ def test_sampled_durations_are_right_skewed_instead_of_hugging_a_ceiling() -> No
 def test_night_lengths_vary_across_the_horizon() -> None:
     plans = _plans_over_horizon()
     nights = {
-        next(item for item in plan.activities if item.intent == "sleep").duration.preferred_minutes
+        item.duration.preferred_minutes
         for plan in plans
+        for item in plan.activities
+        if item.intent == "sleep"
     }
     assert len(nights) > 20
+
+
+def test_a_night_past_midnight_is_planned_on_the_day_it_happens_on() -> None:
+    """The horizon has exactly one night per evening, wherever the clock puts its start.
+
+    Lights-out used to be capped at 23:50 so that it could not leave its own calendar day. Lifting
+    the cap moves a late night onto the following day's plan, which is the list its wall-clock time
+    belongs to — so the count that has to stay right is one night per *evening*, not one per plan.
+    A day may legitimately hold two: the late night it inherited, and its own.
+    """
+    plans = _plans_over_horizon(days=90, bedtime_sigma_minutes=90.0)
+    nights = [
+        item.start_window.preferred
+        for plan in plans
+        for item in plan.activities
+        if item.intent == "sleep"
+    ]
+    small_hours = [moment for moment in nights if moment.hour < 4]
+
+    assert small_hours, "a wide bedtime draw has to produce nights that start after midnight"
+    for plan in plans:
+        on_this_day = [item for item in plan.activities if item.intent == "sleep"]
+        assert len(on_this_day) <= 2
+        for item in on_this_day:
+            assert item.start_window.preferred.date() == plan.date
+    # Every night still sits before the wake it leads to.
+    for plan in plans:
+        wake = next(item for item in plan.activities if item.intent == "wake_up")
+        for item in plan.activities:
+            if item.intent == "sleep" and item.start_window.preferred.hour < 4:
+                assert item.start_window.preferred < wake.start_window.preferred
 
 
 def test_rhythm_days_still_compile() -> None:

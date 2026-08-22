@@ -152,6 +152,13 @@ RHYTHM_EMITTED_INTENTS: frozenset[str] = frozenset(
 )
 _UNPLANNED_SOCIAL_LABEL = "social_need_contact"
 _UNPLANNED_SOCIAL_SHAPE = (8, 18, 35, 0.30)
+# From when a habit counts as part of the evening, and so follows lights-out rather than the wake.
+_EVENING_FROM_MINUTES = 16 * 60
+# What share of tonight's deviation from the usual bedtime the evening takes with it.
+_EVENING_FOLLOWS_THE_NIGHT = 0.6
+# The last minutes before lights-out, left clear so a habit and the night do not start together.
+EVENING_CLEARANCE_MINUTES = 20
+
 # Evening band a spontaneous call may occupy, in minutes after midnight (17:00-21:30).
 _UNPLANNED_SOCIAL_WINDOW = (17 * 60, 21 * 60 + 30)
 # A debt nap is its own thing, much shorter than the generic leisure band it would otherwise
@@ -231,6 +238,7 @@ def build_day_plan(
     timezone: str,
     actor_id: str,
     rhythm: DayRhythm | None = None,
+    previous_rhythm: DayRhythm | None = None,
     seed: int | None = None,
     busy_minutes: Sequence[tuple[int, int]] = (),
 ) -> DayPlan:
@@ -250,11 +258,26 @@ def build_day_plan(
     entries: list[TimelineEntry] = []
     wake_time = WAKE_TIME
     sleep_time = SLEEP_TIME
-    if rhythm is not None:
-        wake_time = rhythm.wake_hhmm
-        sleep_time = rhythm.sleep_hhmm
-        # The trips belong to the night that is *ending*, so they precede the wake and land in the
-        # small hours the log was previously silent through.
+    # The morning belongs to the night that is *ending*, which began yesterday evening. On the
+    # first day of a horizon there is no yesterday, so the day borrows its own night's wake as the
+    # initial condition — one morning out of a horizon, and the alternative is a day that starts
+    # from nothing.
+    morning = previous_rhythm if previous_rhythm is not None else rhythm
+    if morning is not None:
+        wake_time = morning.wake_hhmm
+        # Lights-out after midnight happens on this day, so this is the list it belongs on, ahead
+        # of the wake it leads to. `sleep_starts_next_day` is what routes it here.
+        if morning.sleep_starts_next_day and morning is previous_rhythm:
+            entries.append(
+                TimelineEntry(
+                    "sleep",
+                    morning.sleep_hhmm,
+                    truncatable=True,
+                    duration=_sleep_duration(morning.sleep_minutes),
+                )
+            )
+        # The trips belong to the same night, so they precede the wake and land in the small hours
+        # the log was previously silent through.
         entries.extend(
             TimelineEntry(
                 _NIGHT_VISIT_INTENT,
@@ -262,15 +285,19 @@ def build_day_plan(
                 label=_NIGHT_VISIT_LABEL,
                 duration_shape=_NIGHT_VISIT_SHAPE,
             )
-            for visit in rhythm.night_visits
+            for visit in morning.night_visits
             if visit < wake_time
         )
+    if rhythm is not None:
+        # The evening is this day's own. A night that runs past midnight leaves this timeline at
+        # 23:59 as far as the daytime is concerned; it is emitted on tomorrow's list, above.
+        sleep_time = "23:59" if rhythm.sleep_starts_next_day else rhythm.sleep_hhmm
     entries.append(TimelineEntry("wake_up", wake_time))
     for occurrence in day.occurrences:
         entries.append(
             TimelineEntry(
                 occurrence.intent or label_to_intent(occurrence.label, occurrence.kind.value),
-                _shift(occurrence.target_time, rhythm, wake_time),
+                _shift(occurrence.target_time, rhythm, morning, wake_time, sleep_time),
                 recurring_activity_id=occurrence.recurring_activity_id,
             )
         )
@@ -292,14 +319,15 @@ def build_day_plan(
                     duration_shape=_UNPLANNED_SOCIAL_SHAPE,
                 )
             )
-    entries.append(
-        TimelineEntry(
-            "sleep",
-            sleep_time,
-            truncatable=True,
-            duration=None if rhythm is None else _sleep_duration(rhythm.sleep_minutes),
+    if rhythm is None or not rhythm.sleep_starts_next_day:
+        entries.append(
+            TimelineEntry(
+                "sleep",
+                sleep_time,
+                truncatable=True,
+                duration=None if rhythm is None else _sleep_duration(rhythm.sleep_minutes),
+            )
         )
-    )
     entries.sort(key=lambda item: item.hhmm)
     return plan_from_entries(
         date.fromisoformat(day.date),
@@ -361,13 +389,40 @@ def _sleep_duration(sleep_minutes: int) -> tuple[int, int, int]:
     return low, max(low, min(sleep_minutes, high)), high
 
 
-def _shift(hhmm: str, rhythm: DayRhythm | None, wake_time: str) -> str:
-    """Slide a activity's target time by the day's meal shift, never before the resident is up."""
-    if rhythm is None or rhythm.meal_shift_minutes == 0:
+def _shift(
+    hhmm: str,
+    rhythm: DayRhythm | None,
+    morning: DayRhythm | None,
+    wake_time: str,
+    sleep_time: str,
+) -> str:
+    """Slide an occurrence by the meal shift and by tonight's night, and keep it inside the day.
+
+    Two anchors, one at each end, and they come from two different nights. The meal shift is the
+    morning's — a hungry resident eats earlier, a late riser eats later — so it is read from the
+    rhythm whose wake opened this day, which is yesterday's. The bedtime shift is the evening's and
+    belongs to the night this day is heading into, which is today's. Taking both from one rhythm
+    read the morning off a night that had not happened yet.
+
+    The bedtime shift is the one the day used to be missing: every occurrence stayed where the band
+    put it however early the night started, so a 22:01 lights-out was followed by the washing-up at
+    22:32 and the hygiene after that. An evening that ends early started early.
+
+    The share is a fraction rather than the whole shift because the evening compresses as well as
+    moves: a resident going to bed two hours early does not also eat dinner two hours early, she
+    spends less of the evening in front of the television.
+    """
+    if rhythm is None:
         return hhmm
-    shifted = _to_minutes(hhmm) + rhythm.meal_shift_minutes
+    minutes = _to_minutes(hhmm)
+    shifted = minutes + (0 if morning is None else morning.meal_shift_minutes)
+    if minutes >= _EVENING_FROM_MINUTES:
+        shifted += rhythm.bedtime_shift_minutes * _EVENING_FOLLOWS_THE_NIGHT
     floor = _to_minutes(wake_time) + 5
-    return _to_hhmm(max(floor, min(shifted, 23 * 60 + 30)))
+    # Lights-out is the end of the day, so nothing the resident does while awake may be placed after
+    # it. `_wobble` applies the same bound again after it has moved the preferred moment.
+    ceiling = max(floor, _to_minutes(sleep_time) - EVENING_CLEARANCE_MINUTES)
+    return _to_hhmm(int(round(max(floor, min(shifted, ceiling)))))
 
 
 def build_scenario_from_day_plan(world: PlanningWorld, day_plan: DayPlan) -> Scenario:

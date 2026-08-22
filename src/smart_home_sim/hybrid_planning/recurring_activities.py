@@ -135,6 +135,10 @@ class ActivityCadence(ContractModel):
     weekdays: list[Weekday] = Field(default_factory=list)
     window_start: str
     window_end: str
+    # How far an occurrence ordinarily wanders from its usual moment — the spread of the common
+    # case, not a bound on every day. `irregularity.stray_minutes` reads it as the width of the
+    # mixture's body and adds the rare wide occurrence itself, so an author who wants a habit to be
+    # occasionally very late does not have to widen the number until it is late every day.
     jitter_minutes: int = Field(default=30, ge=0)
 
     @model_validator(mode="after")

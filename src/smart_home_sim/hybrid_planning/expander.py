@@ -14,7 +14,9 @@ Four rules, all decided in ADR-018 and none left to chance here:
    same habit, so at most one variant is ever active on a day.
 2. **Drives and jitter do different jobs.** `plan_rhythms` supplies the slow autocorrelated
    shift — a short night moves the whole following morning — and each habit's `jitter_minutes`
-   bounds the fast wobble around it. An anchor stays punctual, an optional habit wanders.
+   sizes the fast wobble around it. An anchor stays punctual, an optional habit wanders. Both draw
+   their wobble from `irregularity.stray_minutes`, so both keep a rare wide occurrence that no
+   bounded draw can produce.
 3. **Displacement is per habit.** An event names the recurring activities it pushes off the day and
 says, for
    each, whether that occurrence is skipped or rescheduled onto the nearest free day.
@@ -59,6 +61,7 @@ from smart_home_sim.hybrid_planning.cadence import (
 )
 from smart_home_sim.hybrid_planning.day_generation import (
     DEFAULT_INTENT,
+    EVENING_CLEARANCE_MINUTES,
     RHYTHM_EMITTED_INTENTS,
     at_offset,
     build_day_plan,
@@ -68,6 +71,10 @@ from smart_home_sim.hybrid_planning.day_generation import (
 from smart_home_sim.hybrid_planning.drives import DayRhythm, RhythmProfile, plan_rhythms
 from smart_home_sim.hybrid_planning.horizon import _scheduled_drive_load
 from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG, intent_spec
+from smart_home_sim.hybrid_planning.irregularity import (
+    EXCEPTION_WIDTH_MULTIPLE,
+    stray_minutes,
+)
 from smart_home_sim.hybrid_planning.outline import (
     Displacement,
     FixedCommitment,
@@ -485,6 +492,7 @@ def _wobble(
     tz: ZoneInfo,
     seed: int,
     band: tuple[str, str] | None = None,
+    lights_out: datetime | None = None,
 ) -> Activity:
     """Wobble the preferred time by the habit's jitter, and open the window to its declared band.
 
@@ -497,6 +505,11 @@ def _wobble(
 
     ``band`` narrows that statement for one occurrence of a habit that recurs several times a day,
     where the author's band is divided rather than shared: see `_sub_bands`.
+
+    ``lights_out`` is tonight's, and it bounds the result whatever the band says. `_shift` already
+    placed the occurrence before it; the wobble is the last thing to touch the preferred moment, so
+    it is the last place the bound can be honoured. An author's band that runs to 23:15 is a
+    statement about her usual evenings, not about the evening she went to bed at 22:01.
     """
     if activity.start_window is None:
         return activity
@@ -512,14 +525,53 @@ def _wobble(
         recurring.cadence.window_start,
         recurring.cadence.window_end,
     )
-    earliest, latest = _band(activity.start_window.preferred.date(), window_start, window_end, tz)
+    day_date = activity.start_window.preferred.date()
+    earliest, latest = _band(day_date, window_start, window_end, tz)
     jitter = max(recurring.cadence.jitter_minutes, 0)
     if jitter > 0:
-        offset = _rng(seed, "jitter", activity.activity_id).randint(-jitter, jitter)
-        # Clamped to the declared band: the wobble says how irregular the habit is, it does not
-        # give it permission to leave the hours its author allowed. Unclamped, a 45-minute jitter
-        # pushed an evening habit whose band closed at 22:30 past bedtime.
-        preferred = max(earliest, min(preferred + timedelta(minutes=offset), latest))
+        # `jitter_minutes` is now the standard deviation of an ordinary occurrence rather than a
+        # hard bound on every one: about two thirds of them fall inside the declared minutes, and
+        # the mixture's rare wide component supplies the tail no uniform inside ±jitter can have.
+        # The reading the author is given — how far a single occurrence wanders — is unchanged, and
+        # so is the ranking their numbers express; only the punctual habits stop being unnaturally
+        # punctual. Read as a bound, Giulia's evening hygiene kept 84% of its occurrences within an
+        # hour of the usual time; read as a deviation, 76%, against Aruba's 46% for its own
+        # closest daily habit.
+        # Rounded to the minute, and that is not cosmetic. `TimeAxis` takes its resolution from the
+        # finest unit the scenario actually uses, so one preferred time carrying seconds drags the
+        # whole horizon down to microsecond ticks: 67% of a year's activities landed off the minute
+        # and every window of the compile returned UNKNOWN inside its deterministic budget. The
+        # plan has always been written in whole minutes; the mixture must not be what changes that.
+        offset = round(stray_minutes(_rng(seed, "jitter", activity.activity_id), float(jitter)))
+        # Clamped to the declared band, plus the width of the tail. The band is the author's
+        # statement that anywhere in there is ordinary, and the excursion is precisely the day that
+        # is not ordinary, so a clamp on the band alone deletes the component that was added: with
+        # it, dinner over a year never once left 19:30-21:45 and hygiene never left 21:15-23:15.
+        # The allowance is bounded rather than absent because unclamped, a 45-minute jitter pushed
+        # an evening habit whose band closed at 22:30 past bedtime. It costs the compiler nothing:
+        # the guard below widens the *window* to follow the occurrence, so the placement engine
+        # keeps every hour it had and gains the ones the excursion reached into.
+        allowance = timedelta(minutes=round(jitter * EXCEPTION_WIDTH_MULTIPLE))
+        preferred = max(
+            earliest - allowance, min(preferred + timedelta(minutes=offset), latest + allowance)
+        )
+    if activity.intent not in RHYTHM_OWNED_INTENTS:
+        # Kept inside the day, at both ends. The tail of the mixture is deliberately allowed to
+        # reach outside the author's band, and the band is not the day: a 45-minute jitter on an
+        # early breakfast reaches back past midnight, and the evening reaches forward past it, and
+        # either one lands the occurrence on a date its own day plan does not list —
+        # `ACTIVITY_ASSIGNED_TO_WRONG_DAY`, an error, 110 of them over a year when only the
+        # evening was bounded. The night is the one activity exempt from this: it is emitted onto
+        # the day it happens on, which is what `sleep_starts_next_day` decides.
+        opens = datetime.combine(day_date, time.min.replace(tzinfo=preferred.tzinfo))
+        closes = datetime.combine(
+            day_date + timedelta(days=1), time.min.replace(tzinfo=preferred.tzinfo)
+        )
+        if lights_out is not None:
+            closes = min(closes, lights_out)
+        preferred = max(
+            opens, min(preferred, closes - timedelta(minutes=EVENING_CLEARANCE_MINUTES))
+        )
     # The drives may have carried the occurrence outside its declared band; the band then follows
     # the occurrence rather than contradicting it. The guard is built in real elapsed time so the
     # band cannot end up straddling a DST transition on the wrong side of its own preferred moment.
@@ -532,6 +584,34 @@ def _wobble(
             "mandatory": recurring.kind not in _SACRIFICIAL_KINDS,
         }
     )
+
+
+# A night on this list that starts before this hour came from yesterday evening: it is the night
+# the day woke up from, not the one it is heading into, and it must not bound the evening.
+_INHERITED_NIGHT_BEFORE_HOUR = 12
+
+
+def _lights_out(plan: DayPlan) -> datetime | None:
+    """The moment this day's evening has to be over by.
+
+    Normally that is when its own night begins. Two cases make it less obvious than it was. A day
+    whose lights-out falls after midnight has that night on *tomorrow's* list, so there is nothing
+    here to read and the bound is midnight — the evening still has to end when the day does. And a
+    day that inherited a night from yesterday evening has a sleep block in the small hours, which
+    is the night it is waking from; bounding the evening by that one clamps the whole day back to
+    00:15, so it is skipped by the hour it starts at.
+    """
+    for activity in reversed(plan.activities):
+        if activity.intent != "sleep" or activity.start_window is None:
+            continue
+        moment = activity.start_window.preferred
+        if moment.hour >= _INHERITED_NIGHT_BEFORE_HOUR:
+            return moment
+    for activity in plan.activities:
+        if activity.start_window is not None:
+            midnight = time.min.replace(tzinfo=activity.start_window.preferred.tzinfo)
+            return datetime.combine(plan.date + timedelta(days=1), midnight)
+    return None
 
 
 def _event_placement(placed: _PlacedEvent, seed: int) -> tuple[int, int, int]:
@@ -607,8 +687,19 @@ def _resolve_overlaps(activities: list[Activity]) -> list[Activity]:
     the wide windows stay available for the collisions that are genuine, like an all-day event.
 
     Only the preferred moment moves; the declared window is never narrowed, so nothing the author
-    allowed becomes unreachable.
+    allowed becomes unreachable. And it never moves past lights-out: overlapping the night is
+    legitimate work for the compiler, which can shorten either side, but *starting* after it is not
+    something the compiler can repair into sense — the resident would be going to bed and then
+    turning the television on.
     """
+    night = min(
+        (
+            item.start_window.preferred - timedelta(minutes=EVENING_CLEARANCE_MINUTES)
+            for item in activities
+            if item.intent == "sleep" and item.start_window is not None
+        ),
+        default=None,
+    )
     ordered = sorted(
         activities,
         key=lambda item: (
@@ -639,6 +730,7 @@ def _resolve_overlaps(activities: list[Activity]) -> list[Activity]:
             # activity nothing follows, so leaving it on its own preferred moment costs nothing:
             # the window is untouched and the compiler still has the room to settle the overlap.
             and free_from.date() == preferred.date()
+            and (night is None or activity.intent == "sleep" or free_from <= night)
         ):
             preferred = free_from
         resolved.append(
@@ -1103,6 +1195,9 @@ def expand_outline(
             timezone=outline.time_zone,
             actor_id=outline.resident_id,
             rhythm=rhythms.get(calendar_day.date),
+            previous_rhythm=rhythms.get(
+                (date.fromisoformat(calendar_day.date) - timedelta(days=1)).isoformat()
+            ),
             seed=seed,
             busy_minutes=[
                 *_commitment_spans(outline, date.fromisoformat(calendar_day.date)),
@@ -1120,6 +1215,7 @@ def expand_outline(
                 tz,
                 seed,
                 bands.get(activity.activity_id),
+                _lights_out(plan),
             )
             for activity in plan.activities
         ]
