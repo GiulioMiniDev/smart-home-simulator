@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ReplayEvent, ReplayEventKind, SensorModel } from "../types";
 import { clusterEvents } from "./replay-clock";
 import type { ReplayController } from "./useReplayController";
@@ -15,14 +15,6 @@ const ALL_EVENT_KINDS = REPLAY_TRACKS.flatMap((track) => track.kinds);
 function clock(value: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.valueOf()) ? "Unknown time" : `${String(parsed.getUTCHours()).padStart(2, "0")}:${String(parsed.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-function grouped(events: ReplayEvent[]): Map<string, ReplayEvent[]> {
-  return events.reduce((result, event) => {
-    const key = event.at;
-    result.set(key, [...(result.get(key) ?? []), event]);
-    return result;
-  }, new Map<string, ReplayEvent[]>());
 }
 
 function options(values: Array<string | null | undefined>): string[] {
@@ -42,9 +34,6 @@ export function ReplayTimeline({ controller, sensorModel }: { controller: Replay
   // An empty persisted filter has one deliberate meaning: every evidence track is visible.
   const selectedKinds = controller.filters.eventKinds.length ? controller.filters.eventKinds : ALL_EVENT_KINDS;
   const visible = events.filter((event) => selectedKinds.includes(event.kind));
-  const clusters = useMemo(() => Number.isFinite(windowStart) && Number.isFinite(windowEnd)
-    ? clusterEvents(visible, windowStart, windowEnd, 1000) : [], [visible, windowEnd, windowStart]);
-  const byTime = useMemo(() => grouped(visible), [visible]);
   const ready = controller.status === "ready";
   const oracle = controller.filters.visibilityMode === "oracle";
   const sensorOptions = options([...(sensorModel?.sensors.map((sensor) => sensor.sensorId) ?? []), ...controller.filterOptions.sensorIds, ...controller.filters.sensorIds]);
@@ -77,23 +66,25 @@ export function ReplayTimeline({ controller, sensorModel }: { controller: Replay
       <button type="button" onClick={() => controller.updateFilters({ eventKinds: [], sensorIds: [], actorIds: [], selectedResidentId: undefined, statuses: [] })}>Clear filters</button>
     </div>
     <label className="replay-time-range"><span>Replay time <output>{controller.frame ? clock(controller.frame.at) : "Loading"}</output></span>
-      <input aria-label="Replay time" type="range" min={controller.traceStartMs ?? 0} max={controller.traceEndMs ?? 1} value={controller.positionMs} disabled={!ready || controller.evidenceIncomplete || controller.traceStartMs === undefined || controller.traceEndMs === undefined} onChange={(event) => controller.seek(Number(event.target.value))} />
+      <input aria-label="Replay time" type="range" min={controller.traceStartMs ?? 0} max={controller.traceEndMs ?? 1} value={controller.positionMs} disabled={!ready || controller.evidenceIncomplete || controller.evidenceLoading || controller.traceStartMs === undefined || controller.traceEndMs === undefined} onChange={(event) => controller.seek(Number(event.target.value))} />
     </label>
     {controller.error && <p className="replay-request-error" role="alert">Replay window unavailable: {controller.error.message}</p>}
     {controller.windowNotice && <p className={controller.evidenceIncomplete ? "replay-request-error" : "replay-window-notice"} role="status">{controller.windowNotice}</p>}
     <div className="replay-track-list">
       {REPLAY_TRACKS.map((track) => {
         const items = visible.filter((event) => track.kinds.includes(event.kind));
+        const trackClusters = Number.isFinite(windowStart) && Number.isFinite(windowEnd)
+          ? clusterEvents(items, windowStart, windowEnd, 1000) : [];
         return <div className="replay-track" key={track.label}><h3>{track.label}</h3><div className="replay-track-events" aria-label={`${track.label} events`}>
-          {clusters.filter((cluster) => byTime.has(events.find((event) => event.eventId === cluster.eventIds[0])?.at ?? "")).map((cluster, clusterIndex) => {
+          {trackClusters.map((cluster, clusterIndex) => {
             const clustered = cluster.eventIds.map((id) => items.find((event) => event.eventId === id)).filter((event): event is ReplayEvent => Boolean(event));
             if (!clustered.length) return null;
             const clusterId = `${track.label.toLowerCase()}-cluster-${clusterIndex}`;
             const expanded = expandedClusters.has(clusterId);
             return <div className="replay-event-cluster" style={{ left: `${Math.max(0, Math.min(100, cluster.x / 10))}%` }} key={cluster.eventIds.join("-")}>
               {clustered.length === 1
-                ? <button type="button" className={`replay-cluster-mark ${controller.selectedEventId === clustered[0]?.eventId ? "is-selected" : ""}`} aria-label={`${clock(clustered[0]!.at)} ${clustered[0]!.label}`} disabled={!ready || controller.evidenceIncomplete} onClick={() => controller.selectEvent(clustered[0]?.eventId)}>1</button>
-                : <button type="button" className="replay-cluster-mark" aria-label={`${clustered.length} clustered events`} aria-expanded={expanded} aria-controls={clusterId} disabled={!ready || controller.evidenceIncomplete} onClick={() => toggleCluster(clusterId)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleCluster(clusterId); } }}>{clustered.length}</button>}
+                ? <button type="button" className={`replay-cluster-mark ${controller.selectedEventId === clustered[0]?.eventId ? "is-selected" : ""}`} aria-label={`${clock(clustered[0]!.at)} ${clustered[0]!.label}`} disabled={!ready || controller.evidenceIncomplete || controller.evidenceLoading} onClick={() => controller.selectEvent(clustered[0]?.eventId)}>1</button>
+                : <button type="button" className="replay-cluster-mark" aria-label={`${clustered.length} clustered events`} aria-expanded={expanded} aria-controls={clusterId} disabled={!ready || controller.evidenceIncomplete || controller.evidenceLoading} onClick={() => toggleCluster(clusterId)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleCluster(clusterId); } }}>{clustered.length}</button>}
               {clustered.length > 1 && <div id={clusterId} className="replay-cluster-items" hidden={!expanded}>{clustered.map((event) => <button type="button" key={event.eventId} className={controller.selectedEventId === event.eventId ? "is-selected" : ""} aria-label={`${clock(event.at)} ${event.label}`} onClick={() => controller.selectEvent(event.eventId)}><time>{clock(event.at)}</time><span>{event.label}</span></button>)}</div>}
             </div>;
           })}

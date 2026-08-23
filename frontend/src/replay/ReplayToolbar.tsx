@@ -15,7 +15,7 @@ function CopyDigest({ label, digest }: { label: string; digest?: string | null }
 
 export function ReplayToolbar({ controller, oracleAvailable = false }: { controller: ReplayController; oracleAvailable?: boolean }) {
   const ready = controller.status === "ready";
-  const transportReady = ready && !controller.evidenceIncomplete;
+  const transportReady = ready && !controller.evidenceIncomplete && !controller.evidenceLoading;
   const analysis = controller.filters.detailMode === "analysis";
   const oracle = controller.filters.visibilityMode === "oracle";
   const status = controller.status === "blocked"

@@ -86,6 +86,7 @@ export interface ReplayController {
   error?: ApiError;
   windowSpanMs: number;
   evidenceIncomplete: boolean;
+  evidenceLoading: boolean;
   windowNotice?: string;
   filterOptions: { sensorIds: string[]; actorIds: string[]; statuses: string[] };
   play(): void;
@@ -114,6 +115,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const [windowSpanMs, setWindowSpanMs] = useState(DEFAULT_WINDOW_SPAN_MS);
   const [narrowedSpanMs, setNarrowedSpanMs] = useState<number>();
   const [evidenceIncomplete, setEvidenceIncomplete] = useState(false);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [windowNotice, setWindowNotice] = useState<string>();
   const [filterOptions, setFilterOptions] = useState<{ sensorIds: string[]; actorIds: string[]; statuses: string[] }>({ sensorIds: [], actorIds: [], statuses: [] });
   const positionRef = useRef<number | undefined>(undefined);
@@ -167,6 +169,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     saveRequest.current?.abort();
     windowLoadingRef.current = false;
     setPlaying(false);
+    setEvidenceLoading(false);
     setEvents(undefined);
     setFrame(undefined);
     setSelection(undefined);
@@ -203,7 +206,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     setRunError(undefined); setPlaying(false); setSelection(undefined); selectionAnchorRef.current = undefined; setFilters(defaultFilters());
     setClockPosition(undefined); setPositionInitialized(false); restoredPositionRef.current = undefined; lastFrameSchedule.current = undefined;
     rangeRef.current = undefined; windowRangeRef.current = undefined; windowLoadingRef.current = false; refreshedWindowRef.current = undefined;
-    densityAttemptsRef.current = 0; setWindowSpanMs(DEFAULT_WINDOW_SPAN_MS); setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined); setFilterOptions({ sensorIds: [], actorIds: [], statuses: [] });
+    densityAttemptsRef.current = 0; setWindowSpanMs(DEFAULT_WINDOW_SPAN_MS); setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setEvidenceLoading(false); setWindowNotice(undefined); setFilterOptions({ sensorIds: [], actorIds: [], statuses: [] });
     verifiedRun.current = undefined;
     checkedRun.current = undefined;
     void (async () => {
@@ -312,14 +315,14 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
           if (nextSpan < effectiveSpanMs && densityAttemptsRef.current < MAX_DENSITY_REQUERIES) {
             densityAttemptsRef.current += 1;
             frameVersion.current += 1; lastFrameSchedule.current = undefined;
-            setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceIncomplete(true);
+            setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceIncomplete(true); setEvidenceLoading(false);
             setNarrowedSpanMs(nextSpan);
             setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
             return;
           }
           windowLoadingRef.current = false;
           frameVersion.current += 1; lastFrameSchedule.current = undefined;
-          setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceIncomplete(true);
+          setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceIncomplete(true); setEvidenceLoading(false);
           setWindowNotice("Evidence window is incomplete at this density; narrow the evidence filters before inspecting results.");
           return;
         }
@@ -330,7 +333,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         }));
         const visibleItems = window.items.filter((item) => matchesFilters(item, filters));
         setEvents({ ...window, items: visibleItems }); setRunError(undefined); windowLoadingRef.current = false;
-        densityAttemptsRef.current = 0; setEvidenceIncomplete(false);
+        densityAttemptsRef.current = 0; setEvidenceIncomplete(false); setEvidenceLoading(false);
         const anchor = selectionAnchorRef.current;
         if (anchor) {
           selectionAnchorRef.current = undefined;
@@ -480,10 +483,13 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
       selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? []) : undefined;
     }
+    const replacesEvidence = patch.eventKinds !== undefined || patch.actorIds !== undefined || patch.sensorIds !== undefined || patch.statuses !== undefined;
     densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
     if (evidenceIncomplete) {
       setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
       setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
+    } else if (replacesEvidence) {
+      setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceLoading(true); setWindowNotice(undefined);
     } else {
       setEvidenceIncomplete(false); setWindowNotice(undefined);
     }
@@ -517,6 +523,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
       setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
     } else {
+      setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceLoading(true);
       setEvidenceIncomplete(false); setWindowNotice(undefined);
     }
     setWindowSpanMs(nextSpan); requestWindow(true);
@@ -540,7 +547,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     events: verifiedForCurrentRun ? events : undefined,
     frame: verifiedForCurrentRun ? frame : undefined,
     error: errorGeneration.current === runGeneration.current ? error : undefined,
-    windowSpanMs, evidenceIncomplete, windowNotice, filterOptions,
+    windowSpanMs, evidenceIncomplete, evidenceLoading, windowNotice, filterOptions,
     play, pause, seek, step, selectEvent, updateFilters, setWindowSpan,
   };
 }
