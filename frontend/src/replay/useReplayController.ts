@@ -437,7 +437,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     if (!isVerifiedRun() || evidenceIncomplete) return;
     const range = rangeRef.current;
     const clamped = range ? Math.min(range.end, Math.max(range.start, nextPosition)) : nextPosition;
-    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
+    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setWindowNotice(undefined);
     setPlaying(false); setClockPosition(clamped);
     if (positionInitialized) { refreshedWindowRef.current = undefined; requestWindow(true); requestFrame(clamped, true); }
   }, [evidenceIncomplete, isVerifiedRun, positionInitialized, requestFrame, requestWindow, setClockPosition]);
@@ -480,7 +480,13 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
       selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? []) : undefined;
     }
-    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
+    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
+    if (evidenceIncomplete) {
+      setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
+      setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
+    } else {
+      setEvidenceIncomplete(false); setWindowNotice(undefined);
+    }
     setFilters((current) => {
       const next = normalizeFilters({ ...current, ...patch });
       if (current.visibilityMode !== next.visibilityMode) {
@@ -503,12 +509,18 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       }
       return next;
     });
-  }, [events, filters.visibilityMode, isVerifiedRun, setSelection]);
+  }, [events, evidenceIncomplete, filters.visibilityMode, isVerifiedRun, setSelection]);
   const setWindowSpan = useCallback((nextSpan: number) => {
     if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isVerifiedRun()) return;
-    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
+    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
+    if (evidenceIncomplete) {
+      setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
+      setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
+    } else {
+      setEvidenceIncomplete(false); setWindowNotice(undefined);
+    }
     setWindowSpanMs(nextSpan); requestWindow(true);
-  }, [isVerifiedRun, requestWindow]);
+  }, [evidenceIncomplete, isVerifiedRun, requestWindow, setSelection]);
 
   const visibleStatus = verifiedForCurrentRun
     ? status
