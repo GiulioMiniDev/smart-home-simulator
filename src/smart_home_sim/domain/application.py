@@ -494,26 +494,48 @@ class ReplaySessionState(ContractModel):
 
 _OBSERVABLE_REPLAY_REDACTED_KEYS = frozenset(
     {
-        "actorId",
-        "actor_id",
-        "actorIds",
-        "actor_ids",
-        "residentId",
-        "resident_id",
-        "residentIds",
-        "resident_ids",
-        "activityExecutionId",
-        "activity_execution_id",
-        "activityExecutionIds",
-        "activity_execution_ids",
-        "actionExecutionId",
-        "action_execution_id",
-        "actionExecutionIds",
-        "action_execution_ids",
-        "oracleCause",
-        "oracle_cause",
+        "actorid",
+        "actorids",
+        "actoridlist",
+        "sourceactorid",
+        "sourceactorids",
+        "residentid",
+        "residentids",
+        "residentidlist",
+        "sourceresidentid",
+        "sourceresidentids",
+        "activityid",
+        "activityids",
+        "activityidlist",
+        "sourceactivityid",
+        "sourceactivityids",
+        "sourceactivityidlist",
+        "actionid",
+        "actionids",
+        "actionidlist",
+        "sourceactionid",
+        "sourceactionids",
+        "sourceactionidlist",
+        "activityexecutionid",
+        "activityexecutionids",
+        "activityexecutionidlist",
+        "actionexecutionid",
+        "actionexecutionids",
+        "actionexecutionidlist",
+        "oraclecause",
+        "oraclecauses",
+        "causeid",
+        "causeids",
     }
 )
+
+
+def _normalized_observable_replay_key(key: str) -> str:
+    return "".join(character for character in key.casefold() if character.isalnum())
+
+
+def _is_observable_replay_redacted_key(key: str) -> bool:
+    return _normalized_observable_replay_key(key) in _OBSERVABLE_REPLAY_REDACTED_KEYS
 
 
 def _observable_json_value(value: JsonValue) -> JsonValue:
@@ -521,7 +543,7 @@ def _observable_json_value(value: JsonValue) -> JsonValue:
         return {
             key: _observable_json_value(item)
             for key, item in value.items()
-            if key not in _OBSERVABLE_REPLAY_REDACTED_KEYS
+            if not _is_observable_replay_redacted_key(key)
         }
     if isinstance(value, list):
         return [_observable_json_value(item) for item in value]
@@ -532,7 +554,7 @@ def _observable_json_mapping(value: dict[str, JsonValue]) -> dict[str, JsonValue
     return {
         key: _observable_json_value(item)
         for key, item in value.items()
-        if key not in _OBSERVABLE_REPLAY_REDACTED_KEYS
+        if not _is_observable_replay_redacted_key(key)
     }
 
 

@@ -295,6 +295,63 @@ def test_observable_replay_payload_sanitizes_nested_sensitive_metadata() -> None
     assert "activeEventIds" not in payload["frame"]
 
 
+def test_observable_replay_payload_sanitizes_normalized_identity_key_variants() -> None:
+    contract = _verified_replay_contract()
+    contract.event_window.items[0].details = {
+        "activityId": "activity_1",
+        "source_activity_ids": ["activity_2"],
+        "heldResourceIds": ["cup_1"],
+        "activityCount": 2,
+        "nested": [
+            {"ACTION-ID": "action_1"},
+            {"sourceActionIds": ["action_2"]},
+            {"actionable": True},
+        ],
+    }
+    contract.frame.residents[0].facts = {
+        "residentIds": ["resident_1"],
+        "source-resident-id": "resident_2",
+        "residentCount": 2,
+        "nested": {"actor_ids": ["resident_1"], "actorLabel": "primary"},
+    }
+    contract.frame.entity_states.update(
+        {
+            "entity_1": {
+                "activity_id": "activity_1",
+                "source-activity-id": "activity_2",
+                "nested": [{"action_ids": ["action_1"]}, {"activityLabel": "cook"}],
+            }
+        }
+    )
+    contract.frame.environment_facts.update(
+        {
+            "actor_id": "resident_1",
+            "causeIds": ["movement_1"],
+            "held_resource_ids": ["cup_1"],
+            "nested": [{"source_action_id": "action_1"}, {"sourceActionCount": 1}],
+        }
+    )
+
+    payload = contract.playback_payload().model_dump(by_alias=True)
+
+    assert payload["eventWindow"]["items"][0]["details"] == {
+        "heldResourceIds": ["cup_1"],
+        "activityCount": 2,
+        "nested": [{}, {}, {"actionable": True}],
+    }
+    assert payload["frame"]["residents"][0]["facts"] == {
+        "residentCount": 2,
+        "nested": {"actorLabel": "primary"},
+    }
+    assert payload["frame"]["entityStates"] == {
+        "entity_1": {"nested": [{}, {"activityLabel": "cook"}]}
+    }
+    assert payload["frame"]["environmentFacts"] == {
+        "held_resource_ids": ["cup_1"],
+        "nested": [{}, {"sourceActionCount": 1}],
+    }
+
+
 def test_replay_event_window_rejects_more_than_5000_items() -> None:
     item = ReplayEventView(
         at=_REPLAY_AT,
