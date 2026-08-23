@@ -18,6 +18,7 @@ export function ReplayWorkbench({ runId, oracleAvailable = false }: { runId: str
     Boolean(controller.events) ||
     Boolean(controller.error) ||
     controller.evidenceIncomplete ||
+    controller.evidenceLoading ||
     Boolean(controller.windowNotice);
   return <section className="replay-workbench" data-mode={analysis ? "analysis" : "presentation"}>
     {prepared ? <ReplayToolbar controller={controller} oracleAvailable={oracleAvailable} /> : <p className="replay-preparing" role="status">Preparing replay timeline…</p>}

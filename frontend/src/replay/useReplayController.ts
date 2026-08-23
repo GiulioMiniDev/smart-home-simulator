@@ -142,7 +142,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const selectionAnchorRef = useRef<SelectionAnchor | undefined>(undefined);
   const oracleAvailableRef = useRef(oracleAvailable);
   const densityAttemptsRef = useRef(0);
+  const filtersRef = useRef(filters);
   oracleAvailableRef.current = oracleAvailable;
+  filtersRef.current = filters;
 
   // This render-time ref reset makes a prop switch safe before effects get a chance to run.
   if (activeRunId.current !== runId) {
@@ -187,12 +189,12 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     positionRef.current = next;
     setPositionMs(next);
   }, []);
-  const requestFrame = useCallback((at = positionRef.current, immediate = false, force = false) => {
+  const requestFrame = useCallback((at = positionRef.current, immediate = false) => {
     if (!isVerifiedRun() || at === undefined) return;
     const now = performance.now();
     const previous = lastFrameSchedule.current;
     if (!immediate && previous && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
-    if (!force && immediate && previous?.at === at && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
+    if (immediate && previous?.at === at && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
     lastFrameSchedule.current = { at, scheduledAt: now };
     setFrameRequest({ at, version: ++frameVersion.current });
   }, [isVerifiedRun]);
@@ -210,7 +212,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     const generation = runGeneration.current;
     let current = true;
     setStatus("verifying"); setVerification(undefined); setSession(undefined); setEvents(undefined); setFrame(undefined);
-    setRunError(undefined); setPlaying(false); setSelection(undefined); selectionAnchorRef.current = undefined; setFilters(defaultFilters());
+    const resetFilters = defaultFilters();
+    filtersRef.current = resetFilters;
+    setRunError(undefined); setPlaying(false); setSelection(undefined); selectionAnchorRef.current = undefined; setFilters(resetFilters);
     setClockPosition(undefined); setPositionInitialized(false); restoredPositionRef.current = undefined; lastFrameSchedule.current = undefined;
     rangeRef.current = undefined; windowRangeRef.current = undefined; windowLoadingRef.current = false; refreshedWindowRef.current = undefined;
     densityAttemptsRef.current = 0; setWindowSpanMs(DEFAULT_WINDOW_SPAN_MS); setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setEvidenceLoading(false); setWindowNotice(undefined); setFilterOptions({ sensorIds: [], actorIds: [], statuses: [] });
@@ -234,8 +238,10 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         }
         const trusted = restored.playable && restored.verifiedDigest === (checked.actualSemanticDigest ?? checked.expectedSemanticDigest);
         restoredPositionRef.current = trusted ? timestamp(restored.positionAt) : undefined;
+        const restoredFilters = trusted ? restored.filters : defaultFilters();
+        filtersRef.current = restoredFilters;
         setSession(restored);
-        setFilters(trusted ? restored.filters : defaultFilters());
+        setFilters(restoredFilters);
         setClockPosition(undefined);
         setPositionInitialized(false);
       } catch (reason) {
@@ -343,7 +349,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         const visibleItems = window.items.filter((item) => matchesFilters(item, filters));
         setEvents({ ...window, items: visibleItems }); setRunError(undefined); windowLoadingRef.current = false;
         densityAttemptsRef.current = 0; setEvidenceIncomplete(false); setEvidenceLoading(false);
-        requestFrame(center, true, true);
+        requestFrame(center, true);
         const anchor = selectionAnchorRef.current;
         if (anchor) {
           selectionAnchorRef.current = undefined;
@@ -489,13 +495,16 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
     if (!isVerifiedRun()) return;
     if (patch.visibilityMode === "oracle" && !oracleAvailableRef.current) return;
-    const visibilityWillChange = patch.visibilityMode !== undefined && patch.visibilityMode !== filters.visibilityMode;
+    const current = filtersRef.current;
+    const next = normalizeFilters({ ...current, ...patch });
+    const visibilityWillChange = current.visibilityMode !== next.visibilityMode;
     if (visibilityWillChange) {
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
       selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? []) : undefined;
     }
     const replacesEvidence = patch.eventKinds !== undefined || patch.actorIds !== undefined || patch.sensorIds !== undefined || patch.statuses !== undefined;
-    if (replacesEvidence) invalidateEvidence();
+    // Cancel obsolete evidence before React can commit a projection at another privacy level.
+    if (replacesEvidence || visibilityWillChange) invalidateEvidence();
     densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
     if (evidenceIncomplete) {
       setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
@@ -505,27 +514,23 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     } else {
       setEvidenceIncomplete(false); setWindowNotice(undefined);
     }
-    setFilters((current) => {
-      const next = normalizeFilters({ ...current, ...patch });
-      if (current.visibilityMode !== next.visibilityMode) {
-        // Projection data is cleared synchronously, before a lower-privacy render can occur.
-        invalidateEvidence();
-        saveVersion.current += 1;
-        saveRequest.current?.abort();
-        setEvents(undefined);
-        setFrame(undefined);
-        if (next.visibilityMode === "observable") setFilterOptions((options) => ({ ...options, actorIds: [] }));
-        setSelection(undefined);
-        setSession((existing) => existing ? { ...existing, filters: next } : existing);
-      }
-      const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
-      if (selected && !matchesFilters(selected, next)) {
-          selectionAnchorRef.current = undefined;
-          setSelection(undefined);
-      }
-      return next;
-    });
-  }, [events, evidenceIncomplete, filters.visibilityMode, invalidateEvidence, isVerifiedRun, setSelection]);
+    if (visibilityWillChange) {
+      saveVersion.current += 1;
+      saveRequest.current?.abort();
+      setEvents(undefined);
+      setFrame(undefined);
+      if (next.visibilityMode === "observable") setFilterOptions((options) => ({ ...options, actorIds: [] }));
+      setSelection(undefined);
+      setSession((existing) => existing ? { ...existing, filters: next } : existing);
+    }
+    const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
+    if (selected && !matchesFilters(selected, next)) {
+      selectionAnchorRef.current = undefined;
+      setSelection(undefined);
+    }
+    filtersRef.current = next;
+    setFilters(next);
+  }, [events, evidenceIncomplete, invalidateEvidence, isVerifiedRun, setSelection]);
   const setWindowSpan = useCallback((nextSpan: number) => {
     if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isVerifiedRun()) return;
     invalidateEvidence(); densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);

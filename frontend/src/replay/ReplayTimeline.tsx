@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReplayEvent, ReplayEventKind, SensorModel } from "../types";
 import { clusterEvents } from "./replay-clock";
 import type { ReplayController } from "./useReplayController";
@@ -29,17 +29,40 @@ const ZOOM_OPTIONS = [
 export function ReplayTimeline({ controller, sensorModel }: { controller: ReplayController; sensorModel?: SensorModel }) {
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(() => new Set());
   const [laneWidths, setLaneWidths] = useState<Record<string, number>>({});
+  const measuredLaneWidths = useRef<Record<string, number>>({});
   const observers = useRef(new Map<string, ResizeObserver>());
-  useEffect(() => () => observers.current.forEach((observer) => observer.disconnect()), []);
-  const observeLane = (track: string) => (node: HTMLDivElement | null) => {
-    observers.current.get(track)?.disconnect(); observers.current.delete(track);
-    if (!node) return;
-    const update = () => setLaneWidths((current) => ({ ...current, [track]: node.getBoundingClientRect().width || node.clientWidth || 720 }));
-    update();
-    if (typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver(update); observer.observe(node); observers.current.set(track, observer);
-    }
-  };
+  const laneRefs = useRef(new Map<string, (node: HTMLDivElement | null) => void>());
+  useEffect(() => () => {
+    observers.current.forEach((observer) => observer.disconnect());
+    observers.current.clear();
+  }, []);
+  const observeLane = useCallback((track: string) => {
+    const existing = laneRefs.current.get(track);
+    if (existing) return existing;
+    const callback = (node: HTMLDivElement | null) => {
+      observers.current.get(track)?.disconnect();
+      observers.current.delete(track);
+      if (!node) return;
+      const update = () => {
+        const measured = node.getBoundingClientRect().width;
+        const width = Number.isFinite(measured) && measured > 0
+          ? measured
+          : Number.isFinite(node.clientWidth) && node.clientWidth > 0 ? node.clientWidth : undefined;
+        if (width === undefined) return;
+        if (measuredLaneWidths.current[track] === width) return;
+        measuredLaneWidths.current = { ...measuredLaneWidths.current, [track]: width };
+        setLaneWidths(measuredLaneWidths.current);
+      };
+      update();
+      if (typeof ResizeObserver !== "undefined") {
+        const observer = new ResizeObserver(update);
+        observer.observe(node);
+        observers.current.set(track, observer);
+      }
+    };
+    laneRefs.current.set(track, callback);
+    return callback;
+  }, []);
   const events = controller.evidenceIncomplete ? [] : controller.events?.items ?? [];
   const windowStart = Date.parse(controller.events?.windowStart ?? "");
   const windowEnd = Date.parse(controller.events?.windowEnd ?? "");

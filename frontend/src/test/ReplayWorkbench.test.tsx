@@ -1,7 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReplayStage } from "../replay/ReplayStage";
+import { ReplayTimeline } from "../replay/ReplayTimeline";
 import { ReplayWorkbench } from "../replay/ReplayWorkbench";
+import type { ReplayController } from "../replay/useReplayController";
 import type { HomeModel, ReplayEventWindow, ReplayFrame, SensorModel } from "../types";
 
 const home: HomeModel = {
@@ -363,5 +366,58 @@ describe("ReplayWorkbench", () => {
     expect(screen.getByRole("button", { name: "Next event" })).toBeDisabled();
     const requests = fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=5000"));
     expect(requests.at(-1)).toContain("limit=5000");
+  });
+});
+
+describe("ReplayTimeline lane measurements", () => {
+  let width = 640;
+  let observers: Array<{ callback: ResizeObserverCallback; disconnect: ReturnType<typeof vi.fn> }> = [];
+
+  beforeEach(() => {
+    observers = [];
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() => ({
+      width, height: 20, x: 0, y: 0, top: 0, right: width, bottom: 20, left: 0, toJSON: () => ({}),
+    } as DOMRect));
+    vi.stubGlobal("ResizeObserver", class {
+      callback: ResizeObserverCallback;
+      disconnect = vi.fn();
+      constructor(callback: ResizeObserverCallback) { this.callback = callback; observers.push(this); }
+      observe(): void {}
+      unobserve(): void {}
+    });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const controller = {
+    status: "ready", positionMs: Date.parse(replayStart), traceStartMs: Date.parse(replayStart), traceEndMs: Date.parse(replayEnd),
+    playing: false, filters: { eventKinds: [], actorIds: [], sensorIds: [], statuses: [], detailMode: "analysis", visibilityMode: "observable", speed: 1 },
+    events: { ...events, items: simultaneousEvents, total: simultaneousEvents.length, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd },
+    windowSpanMs: 15 * 60 * 1000, evidenceIncomplete: false, evidenceLoading: false,
+    filterOptions: { sensorIds: [], actorIds: [], statuses: [] },
+    play: vi.fn(), pause: vi.fn(), seek: vi.fn(), step: vi.fn(), selectEvent: vi.fn(), updateFilters: vi.fn(), setWindowSpan: vi.fn(),
+  } as unknown as ReplayController;
+
+  it("does not re-render indefinitely when lane refs attach", () => {
+    expect(() => render(<ReplayTimeline controller={controller} />)).not.toThrow();
+    expect(observers).toHaveLength(8);
+  });
+
+  it("recomputes a lane after a resize but ignores the same finite width", () => {
+    const commits: number[] = [];
+    const { unmount } = render(<Profiler id="timeline" onRender={() => commits.push(1)}><ReplayTimeline controller={controller} /></Profiler>);
+    const initialObservers = [...observers];
+    act(() => initialObservers.forEach((observer) => observer.callback([], observer as unknown as ResizeObserver)));
+    const afterInitialMeasurement = commits.length;
+
+    width = 480;
+    act(() => initialObservers.forEach((observer) => observer.callback([], observer as unknown as ResizeObserver)));
+    const afterResize = commits.length;
+
+    act(() => initialObservers.forEach((observer) => observer.callback([], observer as unknown as ResizeObserver)));
+    expect(afterResize).toBeGreaterThan(afterInitialMeasurement);
+    expect(commits).toHaveLength(afterResize);
+    unmount();
+    expect(initialObservers.every((observer) => observer.disconnect.mock.calls.length > 0)).toBe(true);
   });
 });
