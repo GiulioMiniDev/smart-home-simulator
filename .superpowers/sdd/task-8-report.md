@@ -14,10 +14,9 @@ night, drives, or expander implementation/tests.
 - `tools/build_replay_e2e_workspace.py` mirrors `_completed_workspace` from
   `tests/test_application_replay_export.py`: creates a workspace/home/job, imports
   `examples/materialization/mario_rossi_2026_10_30`, and publishes a completed run metadata file.
-- Playwright starts that builder in the `webServer` command immediately before the launcher. This is
-  deliberately not `globalSetup`: Playwright starts `webServer` before `globalSetup`, so a destructive
-  fixture rebuild there races the open SQLite/log files. The configured command guarantees the required
-  ordering while retaining the loopback port, real launcher, desktop, and mobile projects.
+- Playwright `globalSetup` always builds the disposable workspace before it checks or starts the
+  backend. An occupied loopback port is a hard failure rather than permission to reuse a stale server;
+  readiness also proves that the freshly generated run ID is served by that backend.
 - The real E2E covers digest verification, timestamp-changing playback, Presentation → Analysis,
   evidence, Oracle cause, typed axe scan, keyboard stepping, reload/session restoration, and both
   Chromium projects.
@@ -45,15 +44,19 @@ random frame seeks and 100 30-minute bounded event windows per fixture. Repeated
 equal and every visible window is at most 37 events. The stated acceptance is median frame latency
 under 100 ms after index construction; timing failure is enabled only under CI.
 
-| Fixture | Events | Index ms | Median frame ms | Median window ms |
-| --- | ---: | ---: | ---: | ---: |
-| Weekly | 15,725 | 858.322 | 46.231 | 39.870 |
-| Monthly | 4,476 | 113.404 | 20.887 | 18.103 |
-| Yearly | 8,320 | 195.549 | 24.594 | 17.788 |
+| Fixture | Events | Observations | Index ms | Median frame ms | Median window ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Weekly | 15,725 | 14,306 | 955.775 | 2.513 | 5.118 |
+| Monthly | 62,626 | 54,701 | 3,898.841 | 6.562 | 4.963 |
+| Yearly | 817,700 | 743,912 | 26,000.832 | 87.962 | 4.789 |
 
-The monthly fixture is a deterministic bounded sample of the checked-in monthly run. The yearly
-fixture is a deterministic timestamp-shifted sample of the weekly run, with valid regenerated
-observable-log identifiers; neither fixture is a production artifact or a claim about runtime output.
+Weekly and monthly are complete checked-in artifacts. The 360.284-day annual fixture contains 52
+complete timestamp-shifted weekly periods: all trace families, observations, IDs, cross-references,
+semantic digests, and Observable-log metadata are regenerated. The builder validates the Oracle
+mapping before deliberately omitting it from the annual timing workspace: this benchmark measures
+Observable replay performance, not optional Oracle disclosure. The annual construction needs several
+GiB of memory (about 2.3 GiB observed); it is synthetic replay-load evidence, not a production
+year-long simulation claim.
 
 ## Verification
 

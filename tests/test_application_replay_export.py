@@ -348,6 +348,21 @@ def test_replay_observable_and_oracle_results_are_isolated_from_the_cache(
     assert "cacheMutation" not in fresh_frame.residents[0].facts
 
 
+def test_replay_indexes_do_not_cross_workspace_service_boundaries(tmp_path: Path) -> None:
+    root = tmp_path / "workspace"
+    workspace, run_id = _completed_workspace(root)
+    first = ReplayService(workspace)
+    first_index = first._index(run_id)
+
+    reopened = ReplayService(WorkspaceService.open(root))
+    second_index = reopened._index(run_id)
+
+    assert first_index is not second_index
+    assert first.frame(run_id, at=first_index.trace_start) == reopened.frame(
+        run_id, at=second_index.trace_start
+    )
+
+
 def test_replay_uses_right_continuous_duplicate_waypoints() -> None:
     from smart_home_sim.application import replay as replay_module
 

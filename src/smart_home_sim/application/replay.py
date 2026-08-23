@@ -77,6 +77,29 @@ def _bundle(path: str, digest: str) -> SimulationBundle:
 
 
 @dataclass(frozen=True)
+class _FrameSources:
+    residents: dict[str, dict[str, Any]]
+    resident_ids: tuple[str, ...]
+    entity_states: dict[str, dict[str, JsonValue]]
+    environment_facts: dict[str, JsonValue]
+    resources: dict[str, int]
+    activities: tuple[Any, ...]
+    activity_times: tuple[datetime, ...]
+    active_activity_times: tuple[datetime, ...]
+    active_activity_snapshots: tuple[tuple[Any, ...], ...]
+    actions: tuple[Any, ...]
+    action_times: tuple[datetime, ...]
+    active_action_times: tuple[datetime, ...]
+    active_action_snapshots: tuple[tuple[Any, ...], ...]
+    movements: tuple[Any, ...]
+    movement_times: tuple[datetime, ...]
+    transitions: tuple[Any, ...]
+    transition_times: tuple[datetime, ...]
+    resource_events: tuple[Any, ...]
+    resource_times: tuple[datetime, ...]
+
+
+@dataclass(frozen=True)
 class _ReplayIndex:
     trace_start: datetime
     trace_end: datetime
@@ -84,6 +107,8 @@ class _ReplayIndex:
     event_times: tuple[datetime, ...]
     trace: ExecutionTrace
     observations: ObservableSensorLog
+    sensor_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...]
+    frame_sources: _FrameSources
     oracle: OracleMapping | None
     bundle: SimulationBundle | None
 
@@ -134,6 +159,45 @@ def _fold_transition_value(
     target: dict[str, JsonValue] = {transition.fact: current}
     _apply_transition(target, transition)
     return target.get(transition.fact)
+
+
+def _active_interval_snapshots(
+    items: tuple[Any, ...], *, start: str, end: str, identifier: str
+) -> tuple[tuple[datetime, ...], tuple[tuple[Any, ...], ...]]:
+    """Precompute interval membership at every start/end boundary for seek-stable frames."""
+    boundaries: dict[datetime, list[tuple[bool, Any]]] = {}
+    for item in items:
+        if getattr(item, end) <= getattr(item, start):
+            continue
+        boundaries.setdefault(getattr(item, start), []).append((True, item))
+        boundaries.setdefault(getattr(item, end), []).append((False, item))
+    active: dict[str, Any] = {}
+    times: list[datetime] = []
+    snapshots: list[tuple[Any, ...]] = []
+    for at in sorted(boundaries):
+        # Intervals are [start, end): remove endings before accepting same-time starts.
+        for begins, item in sorted(boundaries[at], key=lambda entry: entry[0]):
+            if begins:
+                active[getattr(item, identifier)] = item
+            else:
+                active.pop(getattr(item, identifier), None)
+        times.append(at)
+        snapshots.append(
+            tuple(
+                sorted(
+                    active.values(),
+                    key=lambda item: (getattr(item, start), getattr(item, identifier)),
+                )
+            )
+        )
+    return tuple(times), tuple(snapshots)
+
+
+def _active_items_at(
+    times: tuple[datetime, ...], snapshots: tuple[tuple[Any, ...], ...], at: datetime
+) -> tuple[Any, ...]:
+    position = bisect_right(times, at)
+    return snapshots[position - 1] if position else ()
 
 
 def _events(
@@ -259,7 +323,6 @@ def _events(
     return tuple(sorted(events, key=lambda item: (item.at, item.kind, item.event_id)))
 
 
-@lru_cache(maxsize=8)
 def _replay_index(
     trace_path: str,
     trace_digest: str,
@@ -270,11 +333,33 @@ def _replay_index(
     bundle_path: str | None,
     bundle_digest: str | None,
 ) -> _ReplayIndex:
-    trace = _trace(trace_path, trace_digest)
-    observations = _observations(observations_path, observations_digest)
-    oracle = _oracle(oracle_path, oracle_digest or "") if oracle_path else None
-    bundle = _bundle(bundle_path, bundle_digest or "") if bundle_path else None
+    # An index is owned by one ReplayService instance.  Do not reuse it across reopened
+    # workspaces: artifact paths can be regenerated in place and a module-level index would
+    # retain an unrelated workspace's parsed run for the process lifetime.
+    del trace_digest, observations_digest, oracle_digest, bundle_digest
+    trace = ExecutionTrace.model_validate_json(Path(trace_path).read_text(encoding="utf-8"))
+    observations = ObservableSensorLog.model_validate_json(
+        Path(observations_path).read_text(encoding="utf-8")
+    )
+    oracle = (
+        OracleMapping.model_validate_json(Path(oracle_path).read_text(encoding="utf-8"))
+        if oracle_path
+        else None
+    )
+    bundle = (
+        SimulationBundle.model_validate_json(Path(bundle_path).read_text(encoding="utf-8"))
+        if bundle_path
+        else None
+    )
     events = _events(trace, observations)
+    sensor_records: dict[str, list[Any]] = {}
+    for record in observations.records:
+        sensor_records.setdefault(record.sensor_id, []).append(record)
+    sensor_timelines = tuple(
+        (sensor_id, tuple(item.observed_at for item in records), tuple(records))
+        for sensor_id, records in sorted(sensor_records.items())
+    )
+    frame_sources = _frame_sources(trace, bundle)
     return _ReplayIndex(
         trace_start=trace.started_at,
         trace_end=trace.ended_at,
@@ -282,6 +367,8 @@ def _replay_index(
         event_times=tuple(item.at for item in events),
         trace=trace,
         observations=observations,
+        sensor_timelines=sensor_timelines,
+        frame_sources=frame_sources,
         oracle=oracle,
         bundle=bundle,
     )
@@ -304,9 +391,7 @@ def _without_oracle(item: ReplayEventView) -> ReplayEventView:
     return projected.model_copy(deep=True)
 
 
-def _with_oracle(
-    item: ReplayEventView, oracle_links: Mapping[str, Any] | None
-) -> ReplayEventView:
+def _with_oracle(item: ReplayEventView, oracle_links: Mapping[str, Any] | None) -> ReplayEventView:
     result = item.model_copy(deep=True)
     if result.kind != "observation" or oracle_links is None:
         return result
@@ -346,20 +431,15 @@ def _initial_residents(
                     state["position"] = Point2D.model_validate(transition.previous_value)
                 seeded.add("position")
             elif (
-                transition.fact in {"posture", "execution_state"}
-                and transition.fact not in seeded
+                transition.fact in {"posture", "execution_state"} and transition.fact not in seeded
             ):
                 state[transition.fact] = transition.previous_value or "idle"
                 seeded.add(transition.fact)
             else:
                 state["facts"].setdefault(transition.fact, transition.previous_value)
         return residents
-    points = {
-        item.interaction_point_id: item for item in bundle.home_model.interaction_points
-    }
-    bindings = {
-        item.scenario_location_id: item for item in bundle.home_model.location_bindings
-    }
+    points = {item.interaction_point_id: item for item in bundle.home_model.interaction_points}
+    bindings = {item.scenario_location_id: item for item in bundle.home_model.location_bindings}
     for initial in bundle.scenario.initial_state.residents:
         binding = bindings.get(initial.location_id)
         point = points.get(binding.anchor_interaction_point_id) if binding else None
@@ -376,17 +456,23 @@ def _initial_residents(
 
 
 def _resident_frames(
-    trace: ExecutionTrace, bundle: SimulationBundle | None, at: datetime
+    trace: ExecutionTrace,
+    bundle: SimulationBundle | None,
+    at: datetime,
+    sources: _FrameSources | None = None,
 ) -> tuple[list[ReplayResidentFrame], list[str]]:
-    residents = _initial_residents(trace, bundle)
-    resident_ids = {item.actor_id for item in trace.activity_executions}
-    resident_ids.update(item.actor_id for item in trace.action_executions)
-    resident_ids.update(item.actor_id for item in trace.movements)
-    resident_ids.update(
-        item.subject_id
-        for item in trace.state_transitions
-        if item.subject_type == "resident"
+    residents = deepcopy(sources.residents) if sources else _initial_residents(trace, bundle)
+    resident_ids = (
+        set(sources.resident_ids)
+        if sources
+        else {item.actor_id for item in trace.activity_executions}
     )
+    if sources is None:
+        resident_ids.update(item.actor_id for item in trace.action_executions)
+        resident_ids.update(item.actor_id for item in trace.movements)
+        resident_ids.update(
+            item.subject_id for item in trace.state_transitions if item.subject_type == "resident"
+        )
     for resident_id in resident_ids:
         residents.setdefault(
             resident_id,
@@ -398,14 +484,17 @@ def _resident_frames(
                 "facts": {},
             },
         )
-    for transition in sorted(
-        (
-            item
-            for item in trace.state_transitions
-            if item.subject_type == "resident" and item.at <= at
-        ),
-        key=lambda item: (item.at, item.transition_id),
-    ):
+    transitions = (
+        sources.transitions[: bisect_right(sources.transition_times, at)]
+        if sources
+        else sorted(
+            (item for item in trace.state_transitions if item.at <= at),
+            key=lambda item: (item.at, item.transition_id),
+        )
+    )
+    for transition in transitions:
+        if transition.subject_type != "resident":
+            continue
         state = residents[transition.subject_id]
         if transition.fact in {"location", "position"}:
             continue
@@ -417,23 +506,38 @@ def _resident_frames(
         elif transition.fact == "execution_state":
             value = _fold_transition_value(state["execution_state"], transition)
             state["execution_state"] = value if isinstance(value, str) and value else "unknown"
-    active_activities = [
-        item for item in trace.activity_executions if item.actual_start <= at < item.actual_end
-    ]
-    active_actions = [
-        item for item in trace.action_executions if item.started_at <= at < item.ended_at
-    ]
-    active_ids = {
-        item.activity_execution_id for item in active_activities
-    } | {item.action_execution_id for item in active_actions}
+    active_activities = (
+        _active_items_at(
+            sources.active_activity_times, sources.active_activity_snapshots, at
+        )
+        if sources
+        else tuple(
+            item for item in trace.activity_executions if item.actual_start <= at < item.actual_end
+        )
+    )
+    active_actions = (
+        _active_items_at(sources.active_action_times, sources.active_action_snapshots, at)
+        if sources
+        else tuple(
+            item for item in trace.action_executions if item.started_at <= at < item.ended_at
+        )
+    )
+    active_ids = {item.activity_execution_id for item in active_activities} | {
+        item.action_execution_id for item in active_actions
+    }
     spatial_updates: list[tuple[datetime, int, str, str, Any]] = [
         (item.at, 1, item.transition_id, "transition", item)
-        for item in trace.state_transitions
+        for item in transitions
         if item.subject_type == "resident"
         and item.fact in {"location", "position"}
         and item.at <= at
     ]
-    for movement in sorted(trace.movements, key=lambda item: (item.ended_at, item.movement_id)):
+    movements = (
+        sources.movements[: bisect_right(sources.movement_times, at)]
+        if sources
+        else sorted(trace.movements, key=lambda item: (item.started_at, item.movement_id))
+    )
+    for movement in movements:
         state = residents[movement.actor_id]
         if movement.started_at <= at < movement.ended_at:
             spatial_updates.append((at, 0, movement.movement_id, "movement", movement))
@@ -462,10 +566,15 @@ def _resident_frames(
             value = _fold_transition_value(raw_current, transition)
             state["position"] = Point2D.model_validate(value) if isinstance(value, dict) else None
     held = {resident_id: set() for resident_id in residents}
-    for event in sorted(
-        (item for item in trace.resource_events if item.at <= at),
-        key=lambda item: (item.at, item.resource_event_id),
-    ):
+    resource_events = (
+        sources.resource_events[: bisect_right(sources.resource_times, at)]
+        if sources
+        else sorted(
+            (item for item in trace.resource_events if item.at <= at),
+            key=lambda item: (item.at, item.resource_event_id),
+        )
+    )
+    for event in resource_events:
         if event.actor_id not in held:
             held[event.actor_id] = set()
         if event.operation == "acquired":
@@ -502,15 +611,26 @@ def _resident_frames(
 
 
 def _world_state_at(
-    trace: ExecutionTrace, bundle: SimulationBundle | None, at: datetime
+    trace: ExecutionTrace,
+    bundle: SimulationBundle | None,
+    at: datetime,
+    sources: _FrameSources | None = None,
 ) -> tuple[dict[str, dict[str, JsonValue]], dict[str, JsonValue]]:
     entity_states = (
-        {item.entity_id: dict(item.initial_state) for item in bundle.home_model.entities}
-        if bundle
-        else {}
+        deepcopy(sources.entity_states)
+        if sources
+        else (
+            {item.entity_id: dict(item.initial_state) for item in bundle.home_model.entities}
+            if bundle
+            else {}
+        )
     )
-    environment_facts = dict(bundle.scenario.initial_state.environment_facts) if bundle else {}
-    if bundle is None:
+    environment_facts = (
+        deepcopy(sources.environment_facts)
+        if sources
+        else (dict(bundle.scenario.initial_state.environment_facts) if bundle else {})
+    )
+    if bundle is None and sources is None:
         for transition in sorted(
             trace.state_transitions, key=lambda item: (item.at, item.transition_id)
         ):
@@ -522,10 +642,15 @@ def _world_state_at(
                 )
             elif transition.subject_type == "environment":
                 environment_facts.setdefault(transition.fact, transition.previous_value)
-    for transition in sorted(
-        (item for item in trace.state_transitions if item.at <= at),
-        key=lambda item: (item.at, item.transition_id),
-    ):
+    transitions = (
+        sources.transitions[: bisect_right(sources.transition_times, at)]
+        if sources
+        else sorted(
+            (item for item in trace.state_transitions if item.at <= at),
+            key=lambda item: (item.at, item.transition_id),
+        )
+    )
+    for transition in transitions:
         if transition.subject_type == "entity":
             if transition.fact.startswith(f"{transition.subject_id}."):
                 continue
@@ -536,12 +661,21 @@ def _world_state_at(
 
 
 def _resource_state_at(
-    trace: ExecutionTrace, bundle: SimulationBundle | None, at: datetime
+    trace: ExecutionTrace,
+    bundle: SimulationBundle | None,
+    at: datetime,
+    sources: _FrameSources | None = None,
 ) -> dict[str, int]:
     resources = (
-        {item.resource_id: item.capacity for item in bundle.scenario.resources} if bundle else {}
+        deepcopy(sources.resources)
+        if sources
+        else (
+            {item.resource_id: item.capacity for item in bundle.scenario.resources}
+            if bundle
+            else {}
+        )
     )
-    if bundle is None:
+    if bundle is None and sources is None:
         for item in sorted(
             trace.resource_events, key=lambda item: (item.at, item.resource_event_id)
         ):
@@ -553,10 +687,15 @@ def _resource_state_at(
                 resources[item.resource_id] = max(item.available_units_after - item.units, 0)
             else:
                 resources[item.resource_id] = item.available_units_after
-    for item in sorted(
-        (item for item in trace.resource_events if item.at <= at),
-        key=lambda item: (item.at, item.resource_event_id),
-    ):
+    events = (
+        sources.resource_events[: bisect_right(sources.resource_times, at)]
+        if sources
+        else sorted(
+            (item for item in trace.resource_events if item.at <= at),
+            key=lambda item: (item.at, item.resource_event_id),
+        )
+    )
+    for item in events:
         resources[item.resource_id] = item.available_units_after
     return resources
 
@@ -566,13 +705,25 @@ def _sensor_state_at(
     oracle: OracleMapping | None,
     at: datetime,
     include_oracle: bool,
+    sensor_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...] | None = None,
 ) -> list[ReplaySensorFrame]:
-    latest: dict[str, Any] = {}
-    for item in observations.records:
-        if item.observed_at > at:
-            break
-        latest[item.sensor_id] = item
-    causes = {item.observation_id: item for item in oracle.links} if oracle else {}
+    if sensor_timelines is None:
+        latest: dict[str, Any] = {}
+        for item in observations.records:
+            if item.observed_at > at:
+                break
+            latest[item.sensor_id] = item
+    else:
+        latest = {}
+        for sensor_id, times, records in sensor_timelines:
+            position = bisect_right(times, at)
+            if position:
+                latest[sensor_id] = records[position - 1]
+    causes = (
+        {item.observation_id: item for item in oracle.links}
+        if include_oracle and oracle is not None
+        else {}
+    )
     changed_after = at - timedelta(milliseconds=500)
     return [
         ReplaySensorFrame(
@@ -591,6 +742,87 @@ def _sensor_state_at(
         )
         for item in sorted(latest.values(), key=lambda item: item.sensor_id)
     ]
+
+
+def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _FrameSources:
+    transitions = tuple(
+        sorted(trace.state_transitions, key=lambda item: (item.at, item.transition_id))
+    )
+    activities = tuple(sorted(trace.activity_executions, key=lambda item: item.actual_start))
+    actions = tuple(sorted(trace.action_executions, key=lambda item: item.started_at))
+    active_activity_times, active_activity_snapshots = _active_interval_snapshots(
+        activities,
+        start="actual_start",
+        end="actual_end",
+        identifier="activity_execution_id",
+    )
+    active_action_times, active_action_snapshots = _active_interval_snapshots(
+        actions,
+        start="started_at",
+        end="ended_at",
+        identifier="action_execution_id",
+    )
+    movements = tuple(sorted(trace.movements, key=lambda item: item.started_at))
+    resources = tuple(
+        sorted(trace.resource_events, key=lambda item: (item.at, item.resource_event_id))
+    )
+    residents = _initial_residents(trace, bundle)
+    resident_ids = {item.actor_id for item in trace.activity_executions}
+    resident_ids.update(item.actor_id for item in trace.action_executions)
+    resident_ids.update(item.actor_id for item in trace.movements)
+    resident_ids.update(
+        item.subject_id for item in trace.state_transitions if item.subject_type == "resident"
+    )
+    if bundle is None:
+        entity_states: dict[str, dict[str, JsonValue]] = {}
+        environment_facts: dict[str, JsonValue] = {}
+        for transition in transitions:
+            if transition.subject_type == "entity" and not transition.fact.startswith(
+                f"{transition.subject_id}."
+            ):
+                entity_states.setdefault(transition.subject_id, {}).setdefault(
+                    transition.fact, transition.previous_value
+                )
+            elif transition.subject_type == "environment":
+                environment_facts.setdefault(transition.fact, transition.previous_value)
+        capacities: dict[str, int] = {}
+        for event in resources:
+            if event.resource_id not in capacities:
+                if event.operation == "acquired":
+                    capacities[event.resource_id] = event.available_units_after + event.units
+                elif event.operation == "released":
+                    capacities[event.resource_id] = max(
+                        event.available_units_after - event.units, 0
+                    )
+                else:
+                    capacities[event.resource_id] = event.available_units_after
+    else:
+        entity_states = {
+            item.entity_id: dict(item.initial_state) for item in bundle.home_model.entities
+        }
+        environment_facts = dict(bundle.scenario.initial_state.environment_facts)
+        capacities = {item.resource_id: item.capacity for item in bundle.scenario.resources}
+    return _FrameSources(
+        residents=residents,
+        resident_ids=tuple(sorted(resident_ids)),
+        entity_states=entity_states,
+        environment_facts=environment_facts,
+        resources=capacities,
+        activities=activities,
+        activity_times=tuple(item.actual_start for item in activities),
+        active_activity_times=active_activity_times,
+        active_activity_snapshots=active_activity_snapshots,
+        actions=actions,
+        action_times=tuple(item.started_at for item in actions),
+        active_action_times=active_action_times,
+        active_action_snapshots=active_action_snapshots,
+        movements=movements,
+        movement_times=tuple(item.started_at for item in movements),
+        transitions=transitions,
+        transition_times=tuple(item.at for item in transitions),
+        resource_events=resources,
+        resource_times=tuple(item.at for item in resources),
+    )
 
 
 def _matches_final_state(frame: ReplayFrame, trace: ExecutionTrace) -> bool:
@@ -619,6 +851,9 @@ def _matches_final_state(frame: ReplayFrame, trace: ExecutionTrace) -> bool:
 class ReplayService:
     def __init__(self, workspace: WorkspaceService) -> None:
         self.workspace = workspace
+        # Completed run artifacts are immutable. Cached indexes avoid rehashing large traces
+        # for every scrubber seek while preserving a fresh index per service instance.
+        self._indices: dict[str, _ReplayIndex] = {}
 
     def _artifact(self, run_id: str, role: str) -> tuple[Path, str]:
         artifacts = self.workspace.run_artifacts(run_id)
@@ -633,6 +868,9 @@ class ReplayService:
         return self.workspace.artifact_path(artifact.artifact_id), artifact.sha256
 
     def _index(self, run_id: str) -> _ReplayIndex:
+        cached = self._indices.get(run_id)
+        if cached is not None:
+            return cached
         trace_path, trace_digest = self._artifact(run_id, "execution_trace")
         observations_path, observations_digest = self._artifact(run_id, "observable_sensor_log")
         artifacts = self.workspace.run_artifacts(run_id)
@@ -648,7 +886,7 @@ class ReplayService:
             if bundle_artifact is not None
             else None
         )
-        return _replay_index(
+        index = _replay_index(
             str(trace_path),
             trace_digest,
             str(observations_path),
@@ -658,6 +896,8 @@ class ReplayService:
             bundle_path,
             bundle_artifact.sha256 if bundle_artifact is not None else None,
         )
+        self._indices[run_id] = index
+        return index
 
     def events(
         self,
@@ -716,10 +956,20 @@ class ReplayService:
     ) -> ReplayFrame:
         index = self._index(run_id)
         instant = min(max(at, index.trace_start), index.trace_end)
-        residents, active_ids = _resident_frames(index.trace, index.bundle, instant)
-        entity_states, environment_facts = _world_state_at(index.trace, index.bundle, instant)
-        resources = _resource_state_at(index.trace, index.bundle, instant)
-        sensors = _sensor_state_at(index.observations, index.oracle, instant, include_oracle)
+        residents, active_ids = _resident_frames(
+            index.trace, index.bundle, instant, index.frame_sources
+        )
+        entity_states, environment_facts = _world_state_at(
+            index.trace, index.bundle, instant, index.frame_sources
+        )
+        resources = _resource_state_at(index.trace, index.bundle, instant, index.frame_sources)
+        sensors = _sensor_state_at(
+            index.observations,
+            index.oracle,
+            instant,
+            include_oracle,
+            index.sensor_timelines,
+        )
         frame = ReplayFrame(
             run_id=run_id,
             at=instant,

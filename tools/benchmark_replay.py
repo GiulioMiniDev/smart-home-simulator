@@ -1,4 +1,4 @@
-"""Measure bounded replay queries against weekly, monthly, and yearly fixtures."""
+"""Measure bounded replay queries against complete weekly, monthly, and yearly fixtures."""
 
 from __future__ import annotations
 
@@ -9,8 +9,7 @@ import shutil
 import statistics
 import tempfile
 import time
-from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -18,6 +17,8 @@ from typing import Any
 from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobStatus
+from smart_home_sim.domain.sensors import OracleObservationLink
+from smart_home_sim.simulation import trace_semantic_digest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEEKLY_SOURCE = PROJECT_ROOT / "examples" / "materialization" / "mario_rossi_2026_10_30"
@@ -25,21 +26,81 @@ MONTHLY_SOURCE = PROJECT_ROOT / "generated" / "lucia_rossi_august_2026" / "simul
 FRAME_COUNT = 100
 WINDOW_COUNT = 100
 WINDOW_LIMIT = 37
-YEARLY_SAMPLE_STRIDE = 100
-MONTHLY_SAMPLE_STRIDE = 14
+YEARLY_PERIODS = 52
+
+_TRACE_FAMILIES = (
+    "activityExecutions",
+    "actionExecutions",
+    "movements",
+    "stateTransitions",
+    "resourceEvents",
+    "runtimeEvents",
+    "planDeviations",
+    "dailySummaries",
+)
+_IDENTIFIER_FIELDS = (
+    "activityExecutionId",
+    "sourceActivityId",
+    "actionExecutionId",
+    "movementId",
+    "transitionId",
+    "resourceEventId",
+    "eventExecutionId",
+    "deviationId",
+)
+_REFERENCE_FIELDS = set(_IDENTIFIER_FIELDS) | {
+    "activityExecutionIds",
+    "actionExecutionIds",
+    "deviationIds",
+    "causeId",
+    "causeIds",
+    "triggerActivityId",
+}
 
 
-def _shift_timestamps(value: Any, delta: timedelta) -> Any:
+def _canonical_sha256(value: Any) -> str:
+    return sha256(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _shift_and_remap(
+    value: Any, delta: timedelta, identifiers: dict[str, str], key: str = ""
+) -> Any:
     if isinstance(value, list):
-        return [_shift_timestamps(item, delta) for item in value]
+        return [_shift_and_remap(item, delta, identifiers, key) for item in value]
     if isinstance(value, dict):
-        return {key: _shift_timestamps(item, delta) for key, item in value.items()}
-    if isinstance(value, str) and "T" in value:
+        return {
+            item_key: _shift_and_remap(item, delta, identifiers, item_key)
+            for item_key, item in value.items()
+        }
+    if not isinstance(value, str):
+        return value
+    if key in _REFERENCE_FIELDS:
+        return identifiers.get(value, value)
+    if "T" in value:
         try:
             return (datetime.fromisoformat(value.replace("Z", "+00:00")) + delta).isoformat()
         except ValueError:
             return value
+    if key == "date":
+        try:
+            return (date.fromisoformat(value) + delta).isoformat()
+        except ValueError:
+            return value
     return value
+
+
+def _period_identifiers(trace: dict[str, Any], period: int) -> dict[str, str]:
+    suffix = f"__benchmark_period_{period:02d}"
+    identifiers: dict[str, str] = {}
+    for family in _TRACE_FAMILIES:
+        for record in trace[family]:
+            for field in _IDENTIFIER_FIELDS:
+                value = record.get(field)
+                if isinstance(value, str):
+                    identifiers[value] = f"{value}{suffix}"
+    return identifiers
 
 
 def _finalize_observable_log(payload: dict[str, Any]) -> None:
@@ -48,81 +109,77 @@ def _finalize_observable_log(payload: dict[str, Any]) -> None:
         "sensorModelVersion": payload["sensorModelVersion"],
         "records": payload["records"],
     }
-    digest = sha256(
-        json.dumps(semantic, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    digest = _canonical_sha256(semantic)
     payload["semanticDigest"] = digest
     payload["logId"] = f"sensor_log_{digest[:16]}"
 
 
-def _yearly_fixture(target: Path) -> None:
-    """Expand the checked-in week into timestamp-shifted, deterministic calendar-year data."""
-    target.mkdir(parents=True)
-    trace = json.loads((WEEKLY_SOURCE / "execution-trace.json").read_text(encoding="utf-8"))
-    observations = json.loads(
-        (WEEKLY_SOURCE / "observable-sensor-log.json").read_text(encoding="utf-8")
-    )
-    trace_year = deepcopy(trace)
-    trace_lists = [
-        "activityExecutions",
-        "actionExecutions",
-        "movements",
-        "stateTransitions",
-        "resourceEvents",
-        "runtimeEvents",
-        "planDeviations",
+def _finalize_oracle_mapping(payload: dict[str, Any]) -> None:
+    semantic_links = [
+        OracleObservationLink.model_validate(item).model_dump(mode="json")
+        for item in payload["links"]
     ]
-    for name in trace_lists:
-        # Preserve an annual timestamp span without multiplying a browser-scale benchmark into
-        # hundreds of megabytes. The sample is deterministic and still includes every trace family.
-        records = [] if name == "planDeviations" else trace[name][::YEARLY_SAMPLE_STRIDE]
-        trace_year[name] = [
-            item
-            for week in range(52)
-            for item in _shift_timestamps(records, timedelta(days=7 * week))
-        ]
-    trace_year["endedAt"] = _shift_timestamps(trace["endedAt"], timedelta(days=7 * 51))
-    observation_year = deepcopy(observations)
-    observation_year["records"] = []
-    for week in range(52):
-        for item in _shift_timestamps(
-            observations["records"][::YEARLY_SAMPLE_STRIDE], timedelta(days=7 * week)
-        ):
-            item["observationId"] = f"{item['observationId']}_week_{week:02d}"
-            observation_year["records"].append(item)
-    observation_year["endedAt"] = _shift_timestamps(observations["endedAt"], timedelta(days=7 * 51))
-    _finalize_observable_log(observation_year)
-    (target / "execution-trace.json").write_text(
-        json.dumps(trace_year, separators=(",", ":")), encoding="utf-8"
-    )
-    (target / "observable-sensor-log.json").write_text(
-        json.dumps(observation_year, separators=(",", ":")), encoding="utf-8"
-    )
+    payload["mappingId"] = f"oracle_{_canonical_sha256(semantic_links)[:16]}"
 
 
-def _sampled_fixture(source: Path, target: Path, stride: int) -> None:
-    """Keep the real fixture's calendar span while making repeatable local benchmarks bounded."""
+def _expanded_fixture(source: Path, target: Path, *, periods: int = YEARLY_PERIODS) -> None:
+    """Expand every checked-in week record without sampling or losing causal references."""
+    if periods < 1:
+        raise ValueError("expanded replay fixture needs at least one period")
     target.mkdir(parents=True)
     trace = json.loads((source / "execution-trace.json").read_text(encoding="utf-8"))
-    for name in (
-        "activityExecutions",
-        "actionExecutions",
-        "movements",
-        "stateTransitions",
-        "resourceEvents",
-        "runtimeEvents",
-    ):
-        trace[name] = trace[name][::stride]
-    trace["planDeviations"] = []
     observations = json.loads((source / "observable-sensor-log.json").read_text(encoding="utf-8"))
-    observations["records"] = observations["records"][::stride]
-    _finalize_observable_log(observations)
-    (target / "execution-trace.json").write_text(
-        json.dumps(trace, separators=(",", ":")), encoding="utf-8"
+    oracle = json.loads((source / "oracle-mapping.json").read_text(encoding="utf-8"))
+    source_digest = _canonical_sha256(trace["semanticDigest"])
+    trace_id = f"trace_benchmark_expanded_{periods}_{source_digest[:12]}"
+    source_links = {item["observationId"]: item for item in oracle["links"]}
+    trace_year = {key: value for key, value in trace.items() if key not in _TRACE_FAMILIES}
+    trace_year.update({family: [] for family in _TRACE_FAMILIES})
+    observation_year = {key: value for key, value in observations.items() if key != "records"}
+    observation_year["records"] = []
+    oracle_year = {key: value for key, value in oracle.items() if key != "links"}
+    oracle_year["links"] = []
+    for period in range(periods):
+        delta = timedelta(days=7 * period)
+        identifiers = _period_identifiers(trace, period)
+        identifiers[trace["traceId"]] = trace_id
+        for family in _TRACE_FAMILIES:
+            trace_year[family].extend(
+                _shift_and_remap(record, delta, identifiers) for record in trace[family]
+            )
+        for record in observations["records"]:
+            item = _shift_and_remap(record, delta, identifiers)
+            observation_id = record["observationId"]
+            remapped_id = f"{observation_id}__benchmark_period_{period:02d}"
+            item["observationId"] = remapped_id
+            observation_year["records"].append(item)
+            link = _shift_and_remap(source_links[observation_id], delta, identifiers)
+            link["observationId"] = remapped_id
+            oracle_year["links"].append(link)
+    final_delta = timedelta(days=7 * (periods - 1))
+    trace_year["traceId"] = trace_id
+    trace_year["sourceBundleId"] = f"benchmark-expanded-week-{periods}"
+    trace_year["sourceBundleSha256"] = _canonical_sha256(
+        {"source": trace["sourceBundleSha256"], "periods": periods}
     )
-    (target / "observable-sensor-log.json").write_text(
-        json.dumps(observations, separators=(",", ":")), encoding="utf-8"
+    trace_year["endedAt"] = _shift_and_remap(trace["endedAt"], final_delta, {})
+    trace_year["finalState"] = _shift_and_remap(trace["finalState"], final_delta, {})
+    trace_year["semanticDigest"] = trace_semantic_digest(trace_year)
+    observation_year["endedAt"] = _shift_and_remap(observations["endedAt"], final_delta, {})
+    observation_year["records"].sort(
+        key=lambda item: (item["observedAt"], item["sensorId"], item["observationId"])
     )
+    _finalize_observable_log(observation_year)
+    oracle_year["observableLogId"] = observation_year["logId"]
+    oracle_year["sourceTraceId"] = trace_id
+    oracle_year["sourceTraceSemanticDigest"] = trace_year["semanticDigest"]
+    _finalize_oracle_mapping(oracle_year)
+    for filename, payload in (
+        ("execution-trace.json", trace_year),
+        ("observable-sensor-log.json", observation_year),
+        ("oracle-mapping.json", oracle_year),
+    ):
+        (target / filename).write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
 
 
 def _completed_workspace(
@@ -130,7 +187,6 @@ def _completed_workspace(
     source: Path | None,
     *,
     yearly: bool = False,
-    sample_stride: int | None = None,
 ) -> tuple[WorkspaceService, str]:
     workspace = WorkspaceService.create(root, "Replay benchmark")
     home = workspace.create_home("Benchmark home")
@@ -142,13 +198,13 @@ def _completed_workspace(
     )
     destination = workspace.runs_path / job.job_id
     if yearly:
-        _yearly_fixture(destination)
+        _expanded_fixture(WEEKLY_SOURCE, destination)
+        # Frame/window timings are Observable-only. Keeping 744k typed Oracle links resident
+        # would measure optional disclosure metadata rather than replay reconstruction.
+        (destination / "oracle-mapping.json").unlink()
     else:
         assert source is not None
-        if sample_stride is None:
-            shutil.copytree(source, destination)
-        else:
-            _sampled_fixture(source, destination, sample_stride)
+        shutil.copytree(source, destination)
     workspace.import_run_directory(job.job_id, destination)
     workspace.update_job(
         job.job_id,
@@ -163,7 +219,7 @@ def _milliseconds(seconds: float) -> float:
     return round(seconds * 1_000, 3)
 
 
-def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, float | int | str]:
+def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, Any]:
     replay = ReplayService(workspace)
     started = time.perf_counter()
     index = replay._index(run_id)
@@ -199,8 +255,23 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
         ), "repeated bounded windows must be equal"
 
     median_frame = statistics.median(frame_seconds)
+    trace = index.trace
     return {
         "fixture": label,
+        "construction": (
+            "complete checked-in artifact"
+            if label != "yearly"
+            else "52 complete timestamp-shifted weekly periods with remapped IDs and causality"
+        ),
+        "durationDays": round((index.trace_end - index.trace_start).total_seconds() / 86_400, 3),
+        "activities": len(trace.activity_executions),
+        "actions": len(trace.action_executions),
+        "movements": len(trace.movements),
+        "transitions": len(trace.state_transitions),
+        "resources": len(trace.resource_events),
+        "runtimeEvents": len(trace.runtime_events),
+        "planDeviations": len(trace.plan_deviations),
+        "observations": len(index.observations.records),
         "events": len(index.events),
         "indexMs": _milliseconds(index_seconds),
         "medianFrameMs": _milliseconds(median_frame),
@@ -212,21 +283,23 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
 
 def main() -> None:
     fixtures = [
-        ("weekly", WEEKLY_SOURCE, False, None),
-        ("monthly", MONTHLY_SOURCE, False, MONTHLY_SAMPLE_STRIDE),
-        ("yearly", None, True, None),
+        ("weekly", WEEKLY_SOURCE, False),
+        ("monthly", MONTHLY_SOURCE, False),
+        ("yearly", None, True),
     ]
     with tempfile.TemporaryDirectory(prefix="smart-home-replay-benchmark-") as temporary:
         results = []
-        for label, source, yearly, sample_stride in fixtures:
-            workspace, run_id = _completed_workspace(
-                Path(temporary) / label, source, yearly=yearly, sample_stride=sample_stride
-            )
+        for label, source, yearly in fixtures:
+            workspace, run_id = _completed_workspace(Path(temporary) / label, source, yearly=yearly)
             results.append(_measure(label, workspace, run_id))
     result = {
         "acceptance": {
             "frameMedianMs": "< 100 after index construction",
-            "invariants": ["bounded windows", "equal repeated frames", "no unbounded response"],
+            "invariants": [
+                "all trace families retained",
+                "bounded windows",
+                "equal repeated frames",
+            ],
             "timingsFailOnlyInCi": True,
         },
         "fixtures": results,
