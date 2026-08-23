@@ -20,7 +20,15 @@ from typing import Annotated, Any, Literal, cast, get_args
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import (
+    AliasChoices,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    field_validator,
+)
 from starlette.background import BackgroundTask
 
 from smart_home_sim.application import configuration as configuration_store
@@ -123,7 +131,14 @@ class SettingUpdate(ApiModel):
 
 
 class ReplaySessionUpdate(ApiModel):
-    position_at: Annotated[AwareDatetime | None, Field(strict=False, alias="positionAt")] = None
+    position_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            strict=False,
+            alias="positionAt",
+            validation_alias=AliasChoices("positionAt", "position_at"),
+        ),
+    ] = None
     filters: ReplayFilters = Field(default_factory=ReplayFilters)
 
 

@@ -358,6 +358,16 @@ describe("complete application routes", () => {
     expect(await screen.findByText("simulated cause")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
     fireEvent.click(await screen.findByRole("button", { name: /walk/ }));
+    await waitFor(() =>
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.some(([input]) =>
+            String(input).includes("/runs/run_1/timeline?limit=5000&include_oracle=true"),
+          ),
+      ).toBe(true),
+    );
+    expect(screen.getByText("movement · mario")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Verify semantic digest/ }));
     await waitFor(() => expect(screen.getByText(/Replay verified/)).toBeInTheDocument());
   });

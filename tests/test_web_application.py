@@ -410,6 +410,22 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
             },
         ).json()
         assert saved["filters"]["speed"] == 8
+        legacy_position = client.put(
+            f"/api/runs/{job.job_id}/replay/session",
+            headers=headers,
+            json={
+                "position_at": target,
+                "filters": {
+                    "eventKinds": ["movement"],
+                    "detailMode": "analysis",
+                    "visibilityMode": "observable",
+                    "speed": 4,
+                },
+            },
+        )
+        assert legacy_position.status_code == 200
+        assert legacy_position.json()["positionAt"] == target
+        assert legacy_position.json()["filters"]["speed"] == 4
         assert (
             client.put(
                 f"/api/runs/{job.job_id}/replay/session",

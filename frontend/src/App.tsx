@@ -1087,7 +1087,7 @@ function RunPage() {
   // never ask for it.
   const profile = useResource<ResidentProfile>(evidenceAvailable && tab === "profile" ? `/runs/${runId}/profile` : undefined);
   const observations = useResource<{ items: Observation[]; total: number; mode: string }>(evidenceAvailable ? `/runs/${runId}/observations?limit=500&include_oracle=${oracle}` : undefined);
-  const timeline = useResource<TimelineEvent[]>(evidenceAvailable ? `/runs/${runId}/timeline?limit=5000` : undefined);
+  const timeline = useResource<TimelineEvent[]>(evidenceAvailable ? `/runs/${runId}/timeline?limit=5000&include_oracle=true` : undefined);
   useEffect(() => {
     if (!evidenceAvailable && !["summary", "artifacts"].includes(tab)) setTab("summary");
   }, [evidenceAvailable, tab]);
