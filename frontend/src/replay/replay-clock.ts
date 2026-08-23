@@ -27,9 +27,9 @@ export function interpolateWaypoints(waypoints: ReplayWaypoint[], atMs: number):
   if (timed.length === 0) return undefined;
   const first = timed[0]!;
   const last = timed.at(-1)!;
-  if (atMs <= first.time) return first.waypoint.position;
+  if (atMs < first.time) return first.waypoint.position;
   if (atMs >= last.time) return last.waypoint.position;
-  const rightIndex = timed.findIndex((item) => item.time >= atMs);
+  const rightIndex = timed.findIndex((item) => item.time > atMs);
   const right = timed[rightIndex]!;
   const left = timed[rightIndex - 1]!;
   const ratio = (atMs - left.time) / (right.time - left.time);

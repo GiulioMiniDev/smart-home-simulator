@@ -35,6 +35,17 @@ describe("replay clock", () => {
     expect(point).toEqual({ x: 5, y: 3 });
   });
 
+  it("is right-continuous at duplicate waypoint timestamps", () => {
+    const waypoints = [
+      { at: "2026-08-23T08:00:00Z", regionId: "hall", traversalMode: "walking", position: { x: 0, y: 0 } },
+      { at: "2026-08-23T08:00:05Z", regionId: "door", traversalMode: "walking", position: { x: 4, y: 0 } },
+      { at: "2026-08-23T08:00:05Z", regionId: "kitchen", traversalMode: "walking", position: { x: 6, y: 0 } },
+      { at: "2026-08-23T08:00:10Z", regionId: "kitchen", traversalMode: "walking", position: { x: 10, y: 0 } },
+    ];
+    expect(interpolateWaypoints(waypoints, Date.parse("2026-08-23T08:00:05Z"))).toEqual({ x: 6, y: 0 });
+    expect(interpolateWaypoints(waypoints, Date.parse("2026-08-23T08:00:07.500Z"))).toEqual({ x: 8, y: 0 });
+  });
+
   it("returns no position for an empty trajectory", () => {
     expect(interpolateWaypoints([], Date.now())).toBeUndefined();
   });

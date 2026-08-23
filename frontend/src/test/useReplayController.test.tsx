@@ -62,6 +62,138 @@ describe("useReplayController", () => {
     expect(events).not.toContain("include_oracle=true");
   });
 
+  it("bootstraps a playable session without a saved position from trace start, never epoch zero", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/session") && init?.method !== "PUT") return Promise.resolve(new Response(JSON.stringify({
+        runId: "run_1", verifiedDigest: digest, playable: true, positionAt: null,
+        filters: { detailMode: "presentation", visibilityMode: "observable", speed: 1, eventKinds: [], sensorIds: [], statuses: [] },
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
+    const bootstrap = paths.find((path) => path.includes("/replay/events"));
+    expect(bootstrap).toContain("limit=1");
+    expect(bootstrap).not.toContain("start=");
+    expect(bootstrap).not.toContain("end=");
+    expect(paths.some((path) => path.includes("1970-"))).toBe(false);
+    expect(result.current.positionMs).toBe(Date.parse(start));
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    const saved = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(([input, init]) =>
+      String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
+    );
+    expect(String((saved?.[1] as RequestInit).body)).not.toContain("1970-");
+  });
+
+  it("normalizes an observable session into complete safe filters", async () => {
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    expect(result.current.filters.actorIds).toEqual([]);
+    expect(result.current.filters.selectedResidentId).toBeUndefined();
+    expect(result.current.session?.filters.actorIds).toEqual([]);
+    expect(result.current.session?.filters.selectedResidentId).toBeUndefined();
+  });
+
+  it("treats an invalid saved timestamp as an uninitialized session", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/session") && init?.method !== "PUT") return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, positionAt: "not-a-time",
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    expect(result.current.positionMs).toBe(Date.parse(start));
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([input]) => String(input).includes("1970-"))).toBe(false);
+  });
+
+  it("clears Oracle-only identity filters before an observable request or save", async () => {
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["resident"], selectedResidentId: "resident" }));
+    await settleController();
+    act(() => result.current.updateFilters({ visibilityMode: "observable" }));
+    expect(result.current.filters).toMatchObject({ visibilityMode: "observable", actorIds: [], selectedResidentId: undefined });
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    const save = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input, init]) =>
+      String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
+    ).at(-1);
+    expect(String(save?.[0])).not.toContain("include_oracle=true");
+    expect(String((save?.[1] as RequestInit).body)).toContain('"actorIds":[]');
+    expect(String((save?.[1] as RequestInit).body)).not.toContain("selectedResidentId");
+  });
+
+  it("keeps RAF playback local while bounding frame requests to ten per second", async () => {
+    const callbacks: Array<() => void> = [];
+    vi.stubGlobal("requestAnimationFrame", vi.fn((callback: () => void) => { callbacks.push(callback); return callbacks.length; }));
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    const initialFrames = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/replay/frame")).length;
+    act(() => result.current.play());
+    for (let frame = 0; frame < 60; frame += 1) {
+      now += 1000 / 60;
+      const callback = callbacks.shift();
+      await act(async () => { callback?.(); await Promise.resolve(); });
+    }
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    await settleController();
+    const requests = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/replay/frame")).length;
+    expect(requests - initialFrames).toBeLessThanOrEqual(10);
+  });
+
+  it("aborts an obsolete event window when a newer seek supersedes it", async () => {
+    const signals: AbortSignal[] = [];
+    let deferWindows = false;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/events") && deferWindows) {
+        signals.push(init?.signal as AbortSignal);
+        return new Promise<Response>(() => undefined);
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    deferWindows = true;
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    await settleController();
+    act(() => result.current.seek(Date.parse("2026-08-23T08:30:00.000Z")));
+    await settleController();
+    expect(signals).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  it("refreshes a window boundary once rather than once per animation frame", async () => {
+    const callbacks: Array<() => void> = [];
+    vi.stubGlobal("requestAnimationFrame", vi.fn((callback: () => void) => { callbacks.push(callback); return callbacks.length; }));
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/session") && init?.method !== "PUT") return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, positionAt: start,
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    const initialWindows = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/replay/events")).length;
+    act(() => result.current.play());
+    for (let frame = 0; frame < 20; frame += 1) {
+      now += 1000 / 60;
+      const callback = callbacks.shift();
+      await act(async () => { callback?.(); await Promise.resolve(); });
+    }
+    await settleController();
+    const windows = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/replay/events")).length;
+    expect(windows - initialWindows).toBeLessThanOrEqual(1);
+  });
+
   it("blocks playback when verification does not match", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => Promise.resolve(new Response(JSON.stringify({
       ...payload(String(input)) as object, matches: false, actualSemanticDigest: "b".repeat(64),
