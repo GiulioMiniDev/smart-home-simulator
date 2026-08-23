@@ -59,10 +59,14 @@ _NIGHT_VISIT_MARGIN_MINUTES = 25.0
 # passes midnight to the following day, which is the day it happens on, so nothing wraps into the
 # wrong list and this bound goes back to meaning what it says.
 #
-# What it says is a plausibility bound, not an encoding one: past three in the morning the resident
-# has not had a late night, she has had a different kind of night, and the drive model has no
-# vocabulary for that.
-_LATEST_LIGHTS_OUT_MINUTES = 27 * 60
+# What it says is a plausibility bound, not an encoding one, and the real log sets it: Aruba's
+# bedtimes reach 03:34 at the 98th percentile and 04:08 at the 99th, so 04:00 is about where a late
+# night stops being a late night. It matters more than it looks, because the tail is *reflected*
+# into this interval rather than clamped to it — a bound set too low does not shorten the tail, it
+# folds it back inside and turns it into noise. At the 03:00 this started as, widening the
+# exception component moved the dispersion by less than a minute; at 04:00 the same widening is
+# worth thirteen minutes of p95.
+_LATEST_LIGHTS_OUT_MINUTES = 28 * 60
 # The other edge. An early night is real behaviour and the wide component of the bedtime mixture
 # produces them, but the fold can reflect a draw arbitrarily far down, and a resident who goes to
 # bed at 18:40 has not had an early night, she has lost her evening. Late enough to leave dinner
@@ -120,23 +124,27 @@ class RhythmProfile:
     # night on top. 22 minutes was a guess and far too tidy — it kept 96% of Giulia's nights within
     # an hour of her usual bedtime where Aruba's resident keeps 60%.
     #
-    # It is not set to the width that would reproduce Aruba, because it cannot be. Lights-out is
-    # capped at 23:50 and Giulia's outline declares a 23:30 chronotype, so every minute of extra
-    # width is spent below the anchor and drags the whole distribution earlier. Measured on her
-    # horizon, plan-level dispersion against the centre it lands on:
+    # Measured on her horizon once the night was free to pass midnight, plan-level, against the
+    # 85 minutes and 60% the real log shows:
     #
-    # | sigma | dispersion | centre | within an hour |
-    # |------:|-----------:|-------:|---------------:|
-    # |    22 |     28 min |  23:19 |            96% |
-    # |    45 |     40 min |  23:00 |            92% |
-    # |    70 |     48 min |  22:43 |            81% |
-    # |    90 |     54 min |  22:30 |            68% |
+    # | sigma | dispersion | within an hour | p95 |
+    # |------:|-----------:|---------------:|----:|
+    # |    50 |     72 min |            65% | +118 |
+    # |    55 |     75 min |            61% | +130 |
+    # |    60 |     79 min |            57% | +143 |
+    # |    65 |     83 min |            53% | +156 |
     #
-    # Aruba is 85 minutes at 60%, and no row reaches it: the ceiling caps the night at about 54
-    # whatever this number says, and buying the last of that costs an hour of systematic error in a
-    # bedtime the author declared. 45 is the knee — it doubles the dispersion for half an hour of
-    # drift. The rest of the gap is `_LATEST_LIGHTS_OUT_MINUTES`, not this constant.
-    bedtime_sigma_minutes: float = 45.0
+    # No row reaches 85 minutes *and* 60% together, and no setting of the mixture does: the real
+    # distribution has a narrower peak with heavier extremes than two folded gaussians make.
+    # Matching the dispersion costs seven points of the within-an-hour share, and matching that
+    # share costs ten minutes of dispersion. 60 sits between them and puts all three residents
+    # inside both acceptance bands — dispersion 74-79, within an hour 57-65%.
+    #
+    # Widening past this stops paying: the tail is reflected back into
+    # [`_EARLIEST_LIGHTS_OUT_MINUTES`, `_LATEST_LIGHTS_OUT_MINUTES`], so a draw wider than that
+    # interval becomes noise inside it rather than a longer tail. Raising the exception's width
+    # multiple from 3.5 to 9 moves the dispersion by less than a minute for the same reason.
+    bedtime_sigma_minutes: float = 60.0
     wake_sigma_minutes: float = 24.0
     # Weekends and holidays drift later; social jetlag is one of the most robust routine effects.
     weekend_shift_minutes: float = 35.0
