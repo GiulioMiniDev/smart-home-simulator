@@ -58,6 +58,15 @@ describe("ReplayStage", () => {
     expect(marker).toHaveAttribute("data-motion", "step");
   });
 
+  it("does not manufacture a reduced-motion marker when an actor-associated resident has no frame position", () => {
+    reducedMotion();
+    const missingPosition = { ...frame, at: "2026-01-01T08:05:00Z", residents: [{ ...frame.residents[0]!, position: null, regionId: null }] };
+    render(<ReplayStage controller={{ frame: missingPosition, events, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} presentation />);
+
+    expect(screen.queryByLabelText("Mario in kitchen, moving")).not.toBeInTheDocument();
+    expect(screen.getByText("Mario: Position unknown; moving.")).toBeInTheDocument();
+  });
+
   it("uses the last duplicate waypoint at an exact reduced-motion timestamp", () => {
     reducedMotion();
     const duplicate = { ...events, items: [{ ...events.items[0]!, waypoints: [
@@ -233,6 +242,35 @@ describe("ReplayWorkbench", () => {
     const summary = screen.getByLabelText("Current replay state");
     expect(summary).toHaveTextContent("Current time 08:00");
     expect(summary).toHaveTextContent("Current activity Breakfast");
+  });
+
+  it("shows a selected activity only within its inclusive authoritative interval", async () => {
+    const activity = { at: "2026-01-01T08:15:00.000Z", end: "2026-01-01T08:20:00.000Z", kind: "activity", eventId: "breakfast", label: "Breakfast", status: "active", waypoints: [], details: {} };
+    response = (path) => {
+      if (path.includes("/events")) return { items: [activity], total: 1, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+      if (path.includes("/frame")) {
+        const at = new URL(path, "https://example.test").searchParams.get("at") ?? replayStart;
+        return { ...frame, runId: "run_1", at, traceStart: replayStart, traceEnd: replayEnd };
+      }
+      return replayResponse(path);
+    };
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+    const slider = screen.getByRole("slider", { name: "Replay time" });
+    fireEvent.click(screen.getByRole("button", { name: "Next event" }));
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
+
+    fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:14:59.000Z") } });
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity unavailable"));
+
+    fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:15:00.000Z") } });
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
+
+    fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:20:00.000Z") } });
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
+
+    fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:20:01.000Z") } });
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity unavailable"));
   });
 
   it("keeps the same instant when analysis mode and oracle evidence are opened", async () => {

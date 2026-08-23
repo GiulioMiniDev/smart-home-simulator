@@ -1,7 +1,8 @@
 import { useResource } from "../hooks";
 import type { HomeModel, ReplayEvent, ReplayResidentFrame, SensorModel } from "../types";
 import { ReplayInspector } from "./ReplayInspector";
-import { activeMovements, residentMovementAssociations, ReplayStage, waypointAtOrBefore } from "./ReplayStage";
+import { activeMovements, residentMovementAssociations, waypointAtOrBefore } from "./replay-positioning";
+import { ReplayStage } from "./ReplayStage";
 import { ReplayTimeline } from "./ReplayTimeline";
 import { ReplayToolbar, ReplayTransport } from "./ReplayToolbar";
 import { useReplayController } from "./useReplayController";
@@ -62,14 +63,23 @@ function sensorRegion(sensorModel: SensorModel | undefined, sensorId: string | n
   return sensor && typeof sensor.regionId === "string" ? sensor.regionId : undefined;
 }
 
+function activityIsCurrentAt(event: ReplayEvent | undefined, at: number): boolean {
+  if (event?.kind !== "activity" || !event.label || !Number.isFinite(at)) return false;
+  const startsAt = Date.parse(event.at);
+  if (!Number.isFinite(startsAt) || at < startsAt) return false;
+  if (event.end !== undefined && event.end !== null) {
+    const endsAt = Date.parse(event.end);
+    return Number.isFinite(endsAt) && at <= endsAt;
+  }
+  // An omitted end is current only when the event contract explicitly calls it active.
+  return event.status === "active";
+}
+
 function currentActivity(controller: ReturnType<typeof useReplayController>, selected: ReplayEvent | undefined): string {
-  if (selected?.kind === "activity" && selected.label) return selected.label;
   const at = controller.frame ? Date.parse(controller.frame.at) : Number.NaN;
-  if (!Number.isFinite(at)) return "Activity unavailable";
-  const activity = controller.events?.items.find((event) => event.kind === "activity" && Boolean(event.label)
-    && Date.parse(event.at) <= at
-    && event.end !== undefined && event.end !== null
-    && at <= Date.parse(event.end));
+  const activity = activityIsCurrentAt(selected, at)
+    ? selected
+    : controller.events?.items.find((event) => activityIsCurrentAt(event, at));
   return activity?.label || "Activity unavailable";
 }
 
