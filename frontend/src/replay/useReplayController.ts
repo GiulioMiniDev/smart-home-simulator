@@ -276,8 +276,17 @@ export function useReplayController(runId: string): ReplayController {
     if (saveTimer.current !== undefined) window.clearTimeout(saveTimer.current);
     saveRequest.current?.abort();
     const version = ++saveVersion.current;
+    const saveRunId = runId;
+    const saveGeneration = runGeneration.current;
     const timer = window.setTimeout(() => {
       saveTimer.current = undefined;
+      const verified = verifiedRun.current;
+      if (
+        activeRunId.current !== saveRunId
+        || runGeneration.current !== saveGeneration
+        || verified?.runId !== saveRunId
+        || verified.generation !== saveGeneration
+      ) return;
       const controller = new AbortController(); saveRequest.current = controller;
       const includeOracle = filters.visibilityMode === "oracle" ? "?include_oracle=true" : "";
       void api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session${includeOracle}`, {

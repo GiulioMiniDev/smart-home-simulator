@@ -104,6 +104,40 @@ describe("useReplayController", () => {
     expect(runBPaths.some((path) => path.includes("include_oracle=true"))).toBe(false);
   });
 
+  it("rejects an already-due save after rerender replaces its run", async () => {
+    let resolveRunBVerification: ((response: Response) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/runs/run_b/replay/verify")) {
+        return new Promise<Response>((resolve) => { resolveRunBVerification = resolve; });
+      }
+      const run = path.includes("/runs/run_b/") ? "run_b" : "run_a";
+      if (path.includes("/session") && init?.method === "PUT") return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, runId: run,
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify({ ...payload(path) as object, runId: run }), { status: 200 }));
+    }));
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const { result, rerender } = renderHook(({ runId }: { runId: string }) => useReplayController(runId), {
+      initialProps: { runId: "run_a" },
+    });
+    await settleController();
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    const dueSave = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 400).at(-1)?.[0];
+    expect(dueSave).toBeTypeOf("function");
+    rerender({ runId: "run_b" });
+    // Model a debounce task that became due just before React cleaned up the old effect.
+    act(() => { if (typeof dueSave === "function") dueSave(); });
+    await settleController();
+    const saves = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input, init]) =>
+      String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
+    );
+    expect(saves).toHaveLength(0);
+    expect(result.current.status).toBe("verifying");
+    resolveRunBVerification?.(new Response(JSON.stringify({ ...payload("/verify") as object, runId: "run_b" }), { status: 200 }));
+    await settleController();
+  });
+
   it("bootstraps a playable session without a saved position from trace start, never epoch zero", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
       const path = String(input);
