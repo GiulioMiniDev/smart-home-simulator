@@ -64,6 +64,46 @@ describe("useReplayController", () => {
     expect(events).not.toContain("include_oracle=true");
   });
 
+  it("fences a replaced run behind its own verification generation", async () => {
+    let resolveRunBVerification: ((response: Response) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/runs/run_b/replay/verify")) {
+        return new Promise<Response>((resolve) => { resolveRunBVerification = resolve; });
+      }
+      const run = path.includes("/runs/run_b/") ? "run_b" : "run_a";
+      return Promise.resolve(new Response(JSON.stringify({ ...payload(path) as object, runId: run }), { status: 200 }));
+    }));
+    const { result, rerender } = renderHook(({ runId }: { runId: string }) => useReplayController(runId), {
+      initialProps: { runId: "run_a" },
+    });
+    await settleController();
+    act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["mario"] }));
+    await settleController();
+    act(() => result.current.selectEvent("move"));
+    expect(result.current.selectedEventId).toBe("move");
+    rerender({ runId: "run_b" });
+    await settleController();
+    expect(result.current.status).toBe("verifying");
+    expect(result.current.session).toBeUndefined();
+    expect(result.current.events).toBeUndefined();
+    expect(result.current.frame).toBeUndefined();
+    expect(result.current.selectedEventId).toBeUndefined();
+    expect(result.current.filters).toMatchObject({ visibilityMode: "observable", actorIds: [] });
+    act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["mario"] }));
+    expect(result.current.filters).toMatchObject({ visibilityMode: "observable", actorIds: [] });
+    const beforeVerification = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/runs/run_b/"));
+    expect(beforeVerification).toHaveLength(1);
+    expect(String(beforeVerification[0]?.[0])).toContain("/runs/run_b/replay/verify");
+    resolveRunBVerification?.(new Response(JSON.stringify({
+      ...payload("/verify") as object, runId: "run_b",
+    }), { status: 200 }));
+    await settleController();
+    const runBPaths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/runs/run_b/"));
+    expect(runBPaths).toContain("/api/runs/run_b/replay/session");
+    expect(runBPaths.some((path) => path.includes("include_oracle=true"))).toBe(false);
+  });
+
   it("bootstraps a playable session without a saved position from trace start, never epoch zero", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
       const path = String(input);
@@ -181,6 +221,8 @@ describe("useReplayController", () => {
     await settleController();
     expect(result.current.events?.items[0]?.actorId).toBe("mario");
     expect(result.current.frame?.residents[0]?.residentId).toBe("mario");
+    act(() => result.current.selectEvent("oracle"));
+    expect(result.current.selectedEventId).toBe("oracle");
     deferOracle = true;
     act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
     await settleController();
@@ -188,6 +230,7 @@ describe("useReplayController", () => {
     act(() => result.current.updateFilters({ visibilityMode: "observable" }));
     expect(result.current.events).toBeUndefined();
     expect(result.current.frame).toBeUndefined();
+    expect(result.current.selectedEventId).toBeUndefined();
     expect(oracleSignals.every((signal) => signal.aborted)).toBe(true);
     delayed.forEach((resolve) => resolve(new Response(JSON.stringify({
       ...payload("/events") as object, items: [{ at: start, kind: "action", eventId: "oracle", actorId: "mario", label: "Oracle", waypoints: [], details: {} }],

@@ -61,6 +61,26 @@ describe("resource and persistent-state hooks", () => {
     expect(pending[1]?.signal.aborted).toBe(true);
   });
 
+  it("keeps the newest same-URL reload when an aborted earlier reload finishes late", async () => {
+    const pending: Array<{ signal: AbortSignal; resolve: (response: Response) => void }> = [];
+    vi.stubGlobal("fetch", vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((resolve) => {
+      pending.push({ signal: init?.signal as AbortSignal, resolve });
+    })));
+    const { result } = renderHook(() => useResource<{ value: string }>("/same"));
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await act(async () => { pending[0]?.resolve(new Response(JSON.stringify({ value: "initial" }))); });
+    await waitFor(() => expect(result.current.data?.value).toBe("initial"));
+    act(() => { void result.current.reload(); });
+    await waitFor(() => expect(pending).toHaveLength(2));
+    act(() => { void result.current.reload(); });
+    await waitFor(() => expect(pending).toHaveLength(3));
+    expect(pending[1]?.signal.aborted).toBe(true);
+    await act(async () => { pending[2]?.resolve(new Response(JSON.stringify({ value: "newest" }))); });
+    await waitFor(() => expect(result.current.data?.value).toBe("newest"));
+    await act(async () => { pending[1]?.resolve(new Response(JSON.stringify({ value: "stale" }))); });
+    expect(result.current.data?.value).toBe("newest");
+  });
+
   it("reads and writes stored values", () => {
     localStorage.setItem("setting", JSON.stringify("dark"));
     const { result } = renderHook(() => useStoredState("setting", "light"));
