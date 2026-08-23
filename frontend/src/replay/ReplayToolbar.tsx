@@ -15,6 +15,7 @@ function CopyDigest({ label, digest }: { label: string; digest?: string | null }
 
 export function ReplayToolbar({ controller, oracleAvailable = false }: { controller: ReplayController; oracleAvailable?: boolean }) {
   const ready = controller.status === "ready";
+  const transportReady = ready && !controller.evidenceIncomplete;
   const analysis = controller.filters.detailMode === "analysis";
   const oracle = controller.filters.visibilityMode === "oracle";
   const status = controller.status === "blocked"
@@ -29,12 +30,12 @@ export function ReplayToolbar({ controller, oracleAvailable = false }: { control
       <button type="button" aria-pressed={analysis} onClick={() => controller.updateFilters({ detailMode: "analysis" })}>Analysis</button>
     </div>
     <div className="replay-toolbar-group" role="group" aria-label="Replay transport">
-      <button type="button" aria-label="Previous event" disabled={!ready} onClick={() => controller.step(-1)} onKeyDown={keyboardAction(() => controller.step(-1))}>Previous</button>
-      <button type="button" disabled={!ready} onClick={() => controller.playing ? controller.pause() : controller.play()} onKeyDown={keyboardAction(() => controller.playing ? controller.pause() : controller.play())}>{controller.playing ? "Pause" : "Play"}</button>
-      <button type="button" aria-label="Next event" disabled={!ready} onClick={() => controller.step(1)} onKeyDown={keyboardAction(() => controller.step(1))}>Next</button>
+      <button type="button" aria-label="Previous event" disabled={!transportReady} onClick={() => controller.step(-1)} onKeyDown={keyboardAction(() => controller.step(-1))}>Previous</button>
+      <button type="button" disabled={!transportReady} onClick={() => controller.playing ? controller.pause() : controller.play()} onKeyDown={keyboardAction(() => controller.playing ? controller.pause() : controller.play())}>{controller.playing ? "Pause" : "Play"}</button>
+      <button type="button" aria-label="Next event" disabled={!transportReady} onClick={() => controller.step(1)} onKeyDown={keyboardAction(() => controller.step(1))}>Next</button>
     </div>
     <label className="replay-speed">Speed
-      <select aria-label="Playback speed" disabled={!ready} value={controller.filters.speed} onChange={(event) => controller.updateFilters({ speed: Number(event.target.value) })}>
+      <select aria-label="Playback speed" disabled={!transportReady} value={controller.filters.speed} onChange={(event) => controller.updateFilters({ speed: Number(event.target.value) })}>
         {SPEEDS.map((speed) => <option key={speed} value={speed}>{speed}×</option>)}
       </select>
     </label>

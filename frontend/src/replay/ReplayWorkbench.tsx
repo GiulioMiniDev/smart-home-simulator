@@ -13,7 +13,12 @@ export function ReplayWorkbench({ runId, oracleAvailable = false }: { runId: str
   const controller = useReplayController(runId, { oracleAvailable });
   const models = useResource<ReplayModels>(`/runs/${encodeURIComponent(runId)}/models`);
   const analysis = controller.filters.detailMode === "analysis";
-  const prepared = controller.status === "blocked" || Boolean(controller.events) || Boolean(controller.error);
+  const prepared =
+    controller.status === "blocked" ||
+    Boolean(controller.events) ||
+    Boolean(controller.error) ||
+    controller.evidenceIncomplete ||
+    Boolean(controller.windowNotice);
   return <section className="replay-workbench" data-mode={analysis ? "analysis" : "presentation"}>
     {prepared ? <ReplayToolbar controller={controller} oracleAvailable={oracleAvailable} /> : <p className="replay-preparing" role="status">Preparing replay timeline…</p>}
     {models.error && <p className="replay-request-error" role="alert">Replay models unavailable: {models.error.message}</p>}
@@ -21,6 +26,6 @@ export function ReplayWorkbench({ runId, oracleAvailable = false }: { runId: str
       <ReplayStage controller={controller} models={models.data ?? {}} />
       {analysis && <ReplayInspector controller={controller} />}
     </div>
-    <ReplayTimeline controller={controller} />
+    <ReplayTimeline controller={controller} sensorModel={models.data?.sensorModel} />
   </section>;
 }

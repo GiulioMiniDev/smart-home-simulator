@@ -14,6 +14,7 @@ function EvidenceRows({ title, entries }: { title: string; entries: Record<strin
 }
 
 function selected(controller: ReplayController): ReplayEvent | undefined {
+  if (controller.evidenceIncomplete) return undefined;
   return controller.events?.items.find((event) => event.eventId === controller.selectedEventId);
 }
 
@@ -23,7 +24,7 @@ export function ReplayInspector({ controller }: { controller: ReplayController }
   const frame = controller.frame;
   return <aside className="replay-inspector" aria-labelledby="replay-inspector-heading">
     <div className="replay-inspector-heading"><p className="eyebrow">Evidence and provenance</p><h2 id="replay-inspector-heading">Inspector</h2></div>
-    {event ? <section className="replay-inspector-section"><h3>{event.label}</h3><dl>
+    {controller.evidenceIncomplete ? <p className="replay-empty-inspector" role="status">Evidence window is incomplete; narrow the evidence filters before inspecting results.</p> : event ? <section className="replay-inspector-section"><h3>{event.label}</h3><dl>
       <div><dt>Kind</dt><dd>{event.kind}</dd></div><div><dt>Status</dt><dd>{event.status ?? "Not available"}</dd></div>
       <div><dt>Interval</dt><dd>{event.at}{event.end ? ` → ${event.end}` : ""}</dd></div>
       {event.sensorId && <div><dt>Sensor</dt><dd><code>{event.sensorId}</code></dd></div>}

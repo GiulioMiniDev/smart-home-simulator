@@ -3,9 +3,12 @@ import { api, ApiError } from "../api";
 import type { ReplayEvent, ReplayEventWindow, ReplayFilters, ReplayFrame, ReplaySessionState, ReplayStatus, ReplayVerification } from "../types";
 import { advanceTime } from "./replay-clock";
 
-const WINDOW_RADIUS_MS = 15 * 60 * 1000;
+const DEFAULT_WINDOW_SPAN_MS = 15 * 60 * 1000;
+const MIN_WINDOW_SPAN_MS = 60 * 1000;
 const WINDOW_REFRESH_MARGIN_MS = 5 * 60 * 1000;
-const WINDOW_LIMIT = 2_000;
+const WINDOW_LIMIT = 5_000;
+// Seven days needs fourteen halvings to reach the one-minute safe lower bound.
+const MAX_DENSITY_REQUERIES = 16;
 const SESSION_DEBOUNCE_MS = 400;
 const FRAME_CADENCE_MS = 100;
 
@@ -64,6 +67,13 @@ function remapAnchor(anchor: SelectionAnchor, items: ReplayEvent[]): ReplayEvent
   return candidates[anchor.occurrence] ?? candidates[0];
 }
 
+function matchesFilters(event: ReplayEvent, filters: ReplayFilters): boolean {
+  return (!filters.eventKinds.length || filters.eventKinds.includes(event.kind))
+    && (!filters.sensorIds.length || Boolean(event.sensorId && filters.sensorIds.includes(event.sensorId)))
+    && (!filters.actorIds.length || Boolean(event.actorId && filters.actorIds.includes(event.actorId)))
+    && (!filters.statuses.length || Boolean(event.status && filters.statuses.includes(event.status)));
+}
+
 export interface ReplayController {
   status: ReplayStatus;
   verification?: ReplayVerification;
@@ -75,12 +85,16 @@ export interface ReplayController {
   events?: ReplayEventWindow;
   frame?: ReplayFrame;
   error?: ApiError;
+  windowSpanMs: number;
+  evidenceIncomplete: boolean;
+  windowNotice?: string;
   play(): void;
   pause(): void;
   seek(positionMs: number): void;
   step(direction: -1 | 1): void;
   selectEvent(eventId?: string): void;
   updateFilters(patch: Partial<ReplayFilters>): void;
+  setWindowSpan(windowSpanMs: number): void;
 }
 
 export function useReplayController(runId: string, { oracleAvailable = false }: { oracleAvailable?: boolean } = {}): ReplayController {
@@ -97,6 +111,10 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const [error, setError] = useState<ApiError>();
   const [windowRequest, setWindowRequest] = useState(0);
   const [frameRequest, setFrameRequest] = useState<{ at: number; version: number }>();
+  const [windowSpanMs, setWindowSpanMs] = useState(DEFAULT_WINDOW_SPAN_MS);
+  const [narrowedSpanMs, setNarrowedSpanMs] = useState<number>();
+  const [evidenceIncomplete, setEvidenceIncomplete] = useState(false);
+  const [windowNotice, setWindowNotice] = useState<string>();
   const positionRef = useRef<number | undefined>(undefined);
   const restoredPositionRef = useRef<number | undefined>(undefined);
   const rangeRef = useRef<{ start: number; end: number } | undefined>(undefined);
@@ -117,6 +135,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const selectedEventIdRef = useRef<string | undefined>(undefined);
   const selectionAnchorRef = useRef<SelectionAnchor | undefined>(undefined);
   const oracleAvailableRef = useRef(oracleAvailable);
+  const densityAttemptsRef = useRef(0);
   oracleAvailableRef.current = oracleAvailable;
 
   // This render-time ref reset makes a prop switch safe before effects get a chance to run.
@@ -183,6 +202,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     setRunError(undefined); setPlaying(false); setSelection(undefined); selectionAnchorRef.current = undefined; setFilters(defaultFilters());
     setClockPosition(undefined); setPositionInitialized(false); restoredPositionRef.current = undefined; lastFrameSchedule.current = undefined;
     rangeRef.current = undefined; windowRangeRef.current = undefined; windowLoadingRef.current = false; refreshedWindowRef.current = undefined;
+    densityAttemptsRef.current = 0; setWindowSpanMs(DEFAULT_WINDOW_SPAN_MS); setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
     verifiedRun.current = undefined;
     checkedRun.current = undefined;
     void (async () => {
@@ -242,8 +262,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     const controller = new AbortController();
     const version = ++windowVersion.current;
     windowLoadingRef.current = true;
+    const effectiveSpanMs = narrowedSpanMs ?? windowSpanMs;
     const query = new URLSearchParams({
-      start: new Date(center - WINDOW_RADIUS_MS).toISOString(), end: new Date(center + WINDOW_RADIUS_MS).toISOString(), limit: String(WINDOW_LIMIT),
+      start: new Date(center - effectiveSpanMs / 2).toISOString(), end: new Date(center + effectiveSpanMs / 2).toISOString(), limit: String(WINDOW_LIMIT),
     });
     if (filters.eventKinds.length) query.set("kinds", filters.eventKinds.join(","));
     if (filters.sensorIds.length) query.set("sensor_id", filters.sensorIds[0] ?? "");
@@ -259,8 +280,22 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         const windowStart = timestamp(window.windowStart); const windowEnd = timestamp(window.windowEnd);
         if (start !== undefined && end !== undefined) rangeRef.current = { start, end };
         if (windowStart !== undefined && windowEnd !== undefined) windowRangeRef.current = { start: windowStart, end: windowEnd };
-        const visibleItems = window.items.filter((item) => filters.statuses.length === 0 || (item.status !== null && item.status !== undefined && filters.statuses.includes(item.status)));
+        if (window.total > window.items.length) {
+          const nextSpan = Math.max(MIN_WINDOW_SPAN_MS, Math.floor(effectiveSpanMs / 2));
+          if (nextSpan < effectiveSpanMs && densityAttemptsRef.current < MAX_DENSITY_REQUERIES) {
+            densityAttemptsRef.current += 1;
+            setNarrowedSpanMs(nextSpan);
+            setWindowNotice("Window narrowed because evidence density exceeded the complete retrieval limit.");
+            return;
+          }
+          windowLoadingRef.current = false;
+          setEvents(undefined); setSelection(undefined); setEvidenceIncomplete(true);
+          setWindowNotice("Evidence window is incomplete at this density; narrow the evidence filters before inspecting results.");
+          return;
+        }
+        const visibleItems = window.items.filter((item) => matchesFilters(item, filters));
         setEvents({ ...window, items: visibleItems }); setRunError(undefined); windowLoadingRef.current = false;
+        setEvidenceIncomplete(false);
         const anchor = selectionAnchorRef.current;
         if (anchor) {
           selectionAnchorRef.current = undefined;
@@ -274,7 +309,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         blockReplay(reason);
       });
     return () => controller.abort();
-  }, [blockReplay, filters, isVerifiedRun, positionInitialized, requestFrame, runId, setRunError, setSelection, status, verifiedForCurrentRun, windowRequest]);
+  }, [blockReplay, filters, isVerifiedRun, narrowedSpanMs, positionInitialized, requestFrame, runId, setRunError, setSelection, status, verifiedForCurrentRun, windowRequest, windowSpanMs]);
 
   useEffect(() => {
     if (!verifiedForCurrentRun || !frameRequest || !positionInitialized) return;
@@ -383,7 +418,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   }, [events, isVerifiedRun, seek, setSelection]);
 
   const step = useCallback((direction: -1 | 1) => {
-    if (!isVerifiedRun()) return;
+    if (!isVerifiedRun() || evidenceIncomplete) return;
     const ordered = [...(events?.items ?? [])].sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
     if (ordered.length === 0) return;
     const selectedIndex = ordered.findIndex((event) => event.eventId === selectedEventIdRef.current);
@@ -396,7 +431,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     setSelection(candidate.eventId);
     const at = timestamp(candidate.at);
     if (at !== undefined) seek(at);
-  }, [events, isVerifiedRun, seek, setSelection]);
+  }, [events, evidenceIncomplete, isVerifiedRun, seek, setSelection]);
 
   const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
     if (!isVerifiedRun()) return;
@@ -406,6 +441,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
       selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? [], filters.visibilityMode === "observable") : undefined;
     }
+    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
     setFilters((current) => {
       const next = normalizeFilters({ ...current, ...patch });
       if (current.visibilityMode !== next.visibilityMode) {
@@ -420,16 +456,19 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         setSelection(undefined);
         setSession((existing) => existing ? { ...existing, filters: next } : existing);
       }
-      if (patch.eventKinds && patch.eventKinds.length) {
-        const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
-        if (selected && !patch.eventKinds.includes(selected.kind)) {
+      const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
+      if (selected && !matchesFilters(selected, next)) {
           selectionAnchorRef.current = undefined;
           setSelection(undefined);
-        }
       }
       return next;
     });
   }, [events, filters.visibilityMode, isVerifiedRun, setSelection]);
+  const setWindowSpan = useCallback((nextSpan: number) => {
+    if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isVerifiedRun()) return;
+    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
+    setWindowSpanMs(nextSpan); requestWindow(true);
+  }, [isVerifiedRun, requestWindow]);
 
   const visibleStatus = verifiedForCurrentRun
     ? status
@@ -447,6 +486,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     events: verifiedForCurrentRun ? events : undefined,
     frame: verifiedForCurrentRun ? frame : undefined,
     error: errorGeneration.current === runGeneration.current ? error : undefined,
-    play, pause, seek, step, selectEvent, updateFilters,
+    windowSpanMs, evidenceIncomplete, windowNotice,
+    play, pause, seek, step, selectEvent, updateFilters, setWindowSpan,
   };
 }

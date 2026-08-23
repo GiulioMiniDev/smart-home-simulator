@@ -59,9 +59,67 @@ describe("useReplayController", () => {
     expect(paths).toContain("/api/runs/run_1/replay/verify");
     expect(paths).toContain("/api/runs/run_1/replay/session");
     expect(paths.find((path) => path.includes("/replay/events"))).toContain("limit=1");
-    const events = paths.find((path) => path.includes("/replay/events") && path.includes("limit=2000"));
-    expect(events).toContain("limit=2000");
+    const events = paths.find((path) => path.includes("/replay/events") && path.includes("limit=5000"));
+    expect(events).toContain("limit=5000");
     expect(events).not.toContain("include_oracle=true");
+  });
+
+  it("uses the chosen temporal span for centered event-window requests", async () => {
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    const windowPaths = () => (fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map(([input]) => String(input))
+      .filter((path) => path.includes("/replay/events?") && path.includes("limit=5000"));
+    const spanFor = (path: string) => {
+      const query = new URL(path, "http://localhost").searchParams;
+      return Date.parse(query.get("end") ?? "") - Date.parse(query.get("start") ?? "");
+    };
+    act(() => result.current.setWindowSpan(5 * 60 * 1000));
+    await settleController();
+    expect(spanFor(windowPaths().at(-1)!)).toBe(5 * 60 * 1000);
+    act(() => result.current.setWindowSpan(24 * 60 * 60 * 1000));
+    await settleController();
+    expect(spanFor(windowPaths().at(-1)!)).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it("narrows a dense event window before exposing evidence, then retains the complete response", async () => {
+    let denseResponses = 0;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/replay/events") && !path.includes("limit=1") && denseResponses++ === 0) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...payload(path) as object, total: 2_001,
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    expect(denseResponses).toBeGreaterThan(1);
+    expect(result.current.evidenceIncomplete).toBe(false);
+    expect(result.current.events?.items).toHaveLength(1);
+    expect(result.current.windowNotice).toMatch(/Window narrowed/);
+  });
+
+  it("blocks inspection instead of rendering a permanently truncated minimum-span window", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/replay/events") && !path.includes("limit=1")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...payload(path) as object, total: 5_001,
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.setWindowSpan(5 * 60 * 1000));
+    await act(async () => {
+      for (let tick = 0; tick < 30; tick += 1) await Promise.resolve();
+    });
+    expect(result.current.evidenceIncomplete).toBe(true);
+    expect(result.current.events).toBeUndefined();
+    expect(result.current.windowNotice).toMatch(/incomplete/);
   });
 
   it("fences a replaced run behind its own verification generation", async () => {

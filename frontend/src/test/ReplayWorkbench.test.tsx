@@ -117,8 +117,8 @@ const digest = "a".repeat(64);
 const replayStart = "2026-01-01T08:00:00.000Z";
 const replayEnd = "2026-01-01T09:00:00.000Z";
 const simultaneousEvents = [
-  { at: "2026-01-01T08:15:00.000Z", kind: "observation", eventId: "sensor-1", label: "motion detected", sensorId: "pir", waypoints: [], details: { measurement: "motion" } },
-  { at: "2026-01-01T08:15:00.000Z", kind: "observation", eventId: "sensor-2", label: "door opened", sensorId: "contact", waypoints: [], details: { measurement: "contact" } },
+  { at: "2026-01-01T08:15:00.000Z", kind: "observation", eventId: "sensor-1", label: "motion detected", status: "completed", sensorId: "pir", waypoints: [], details: { measurement: "motion" } },
+  { at: "2026-01-01T08:15:00.000Z", kind: "observation", eventId: "sensor-2", label: "door opened", status: "pending", sensorId: "contact", waypoints: [], details: { measurement: "contact" } },
 ];
 
 function replayResponse(path: string): unknown {
@@ -168,7 +168,7 @@ describe("ReplayWorkbench", () => {
   it("derives restored track checks from controller filters and composes additions", async () => {
     response = (path) => path.includes("/session") ? {
       runId: "run_1", verifiedDigest: digest, playable: true, positionAt: replayStart,
-      filters: { eventKinds: ["movement"], actorIds: [], sensorIds: [], statuses: [], detailMode: "analysis", visibilityMode: "observable", speed: 1 },
+      filters: { eventKinds: ["movement"], actorIds: [], sensorIds: ["pir"], statuses: ["completed"], detailMode: "analysis", visibilityMode: "observable", speed: 1 },
     } : replayResponse(path);
     const fetchMock = vi.mocked(fetch);
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
@@ -177,7 +177,9 @@ describe("ReplayWorkbench", () => {
     const sensors = screen.getByRole("checkbox", { name: "Sensors" });
     expect(movements).toBeChecked();
     expect(sensors).not.toBeChecked();
-    const eventRequests = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=2000"));
+    expect(screen.getByRole("combobox", { name: "Sensor" })).toHaveValue("pir");
+    expect(screen.getByRole("combobox", { name: "Event status" })).toHaveValue("completed");
+    const eventRequests = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=5000"));
     const beforeAddition = eventRequests().length;
     fireEvent.click(sensors);
     expect(movements).toBeChecked();
@@ -195,7 +197,7 @@ describe("ReplayWorkbench", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
     const sensors = screen.getByRole("checkbox", { name: "Sensors" });
     expect(screen.getAllByRole("checkbox").every((checkbox) => (checkbox as HTMLInputElement).checked)).toBe(true);
-    const eventRequests = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=2000"));
+    const eventRequests = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=5000"));
     const beforeExclusion = eventRequests().length;
     fireEvent.click(sensors);
     expect(sensors).not.toBeChecked();
@@ -291,5 +293,48 @@ describe("ReplayWorkbench", () => {
     render(<ReplayWorkbench runId="run_1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
     expect(await screen.findByText("No sensors in this window.")).toBeInTheDocument();
+  });
+
+  it("composes compact evidence filters, and keeps resident identity unavailable in Observable mode", async () => {
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    const resident = screen.getByRole("combobox", { name: "Resident" });
+    const sensor = screen.getByRole("combobox", { name: "Sensor" });
+    expect(resident).toBeDisabled();
+    expect(screen.getByText(/Resident filtering is available only in Oracle/)).toBeInTheDocument();
+    fireEvent.change(sensor, { target: { value: "pir" } });
+    await waitFor(() => expect(sensor).toHaveValue("pir"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Event status" }), { target: { value: "completed" } });
+    expect(screen.getByRole("combobox", { name: "Event status" })).toHaveValue("completed");
+    fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
+    await waitFor(() => expect(resident).toBeEnabled());
+    fireEvent.change(resident, { target: { value: "mario" } });
+    await waitFor(() => expect(resident).toHaveValue("mario"));
+    fireEvent.click(screen.getByRole("button", { name: "Observable" }));
+    expect(resident).toBeDisabled();
+    expect(resident).toHaveValue("");
+  });
+
+  it("requests the selected temporal zoom and does not claim a truncated dense window is complete", async () => {
+    let denseRequests = 0;
+    let dense = false;
+    response = (path) => {
+      if (dense && path.includes("/events?") && !path.includes("limit=1")) {
+        denseRequests += 1;
+        return { items: simultaneousEvents, total: 5_001, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+      }
+      return replayResponse(path);
+    };
+    const fetchMock = vi.mocked(fetch);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    dense = true;
+    fireEvent.change(screen.getByRole("combobox", { name: "Temporal zoom" }), { target: { value: String(5 * 60 * 1000) } });
+    await waitFor(() => expect(denseRequests).toBeGreaterThan(1));
+    expect((await screen.findAllByText(/Evidence window is incomplete/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/narrow the evidence filters/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Next event" })).toBeDisabled();
+    const requests = fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=5000"));
+    expect(requests.at(-1)).toContain("limit=5000");
   });
 });

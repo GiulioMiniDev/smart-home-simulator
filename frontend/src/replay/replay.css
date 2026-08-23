@@ -37,10 +37,16 @@
 .replay-resident-states li { display: grid; gap: .1rem; padding-top: .45rem; border-top: 1px solid var(--line); font-size: .75rem; }
 .replay-resident-states span { color: var(--text-soft); }
 .replay-timeline { border-top: 1px solid var(--line); }
-[data-mode="presentation"] .replay-track-filters, [data-mode="presentation"] .replay-track-list { display: none; }
+[data-mode="presentation"] .replay-track-filters, [data-mode="presentation"] .replay-analysis-filters, [data-mode="presentation"] .replay-track-list { display: none; }
 .replay-timeline-heading > span { color: var(--text-soft); font-size: .75rem; }
 .replay-track-filters { display: flex; flex-wrap: wrap; gap: .3rem .75rem; padding: .55rem .85rem; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: .73rem; }
 .replay-track-filters label { display: inline-flex; align-items: center; gap: .2rem; }
+.replay-analysis-filters { display: flex; flex-wrap: wrap; align-items: end; gap: .4rem .65rem; padding: .55rem .85rem; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: .73rem; }
+.replay-analysis-filters label { display: grid; gap: .18rem; }
+.replay-analysis-filters select, .replay-analysis-filters button { min-height: 29px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: .74rem; }
+.replay-analysis-filters button { padding: .22rem .45rem; cursor: pointer; }
+.replay-filter-help { max-width: 190px; color: var(--text-faint); font-size: .7rem; }
+.replay-window-notice { margin: 0; padding: .55rem .85rem; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: .75rem; }
 .replay-time-range { display: grid; gap: .3rem; padding: .7rem .85rem; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: .74rem; }
 .replay-time-range > span { display: flex; justify-content: space-between; gap: .75rem; }
 .replay-time-range output { color: var(--text); font-family: "Cascadia Code", monospace; }
