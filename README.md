@@ -213,6 +213,46 @@ rimuove lo staging e non presenta output parziali come validi. Architettura e in
 documentati in [ADR-016](docs/decisions/ADR-016-local-application-and-sqlite-workspace.md) e
 nella [specifica M7](docs/spec/12-application-workspace-export-replay.md).
 
+### Replay verificato (Presentazione e Analisi)
+
+La scheda **Replay** verifica automaticamente il digest semantico del trace contro il bundle
+pubblicato prima di abilitare il trasporto. Presentazione e Analisi sono due viste dello stesso
+orologio: cambiare modalità conserva istante, selezione, residente, velocità e filtri. Il
+movimento usa i timestamp di trace e waypoint autorevoli, mai un intervallo fisso per evento.
+
+I controlli disponibili sono play/pausa, evento precedente/successivo, seek con scrubber,
+zoom della timeline, velocità da `0.25x` a `32x` e filtri per residente, sensore, tipo e stato.
+Tutti hanno nome accessibile, focus visibile e operazione da tastiera; con `prefers-reduced-motion`
+il marker avanza tra waypoint invece di interpolare continuamente. La pianta ha anche una
+descrizione strutturata sincronizzata per lettori di schermo; identità e stato non dipendono
+solo dal colore.
+
+**Observable** espone esclusivamente letture che un sensore può misurare: non contiene identità
+del residente, attività, azione o causa simulata. **Oracle** è un passaggio esplicito che mostra
+il mapping separatamente conservato e lo etichetta come causa simulata. Se quel mapping manca,
+il controllo Oracle resta disabilitato con la spiegazione corrispondente. Una posizione assente
+è mostrata come *unknown*: il replay non inventa né interpola una collocazione non pubblicata.
+
+Un digest non coincidente blocca il playback e riporta valori atteso ed effettivo; un artefatto
+mancante nomina il ruolo indisponibile. Le sessioni salvano posizione, modalità, velocità e
+filtri solo insieme al digest verificato: al cambio del digest lo stato precedente è ignorato,
+non riapplicato a evidenza diversa. Per riprodurre l'accettazione browser con backend reale, il
+setup Playwright crea in modo deterministico `reports/e2e-workspace` dagli artefatti Mario e
+scrive esclusivamente `reports/e2e-replay-run.json`; la fixture viene ricreata a ogni esecuzione.
+
+Il controllo prestazionale dedicato usa campioni deterministici delle fixture settimanali e
+mensili e un anno derivato deterministicamente dalla fixture settimanale, costruisce l'indice,
+esegue 100 seek e 100 finestre limitate per ciascun caso, e verifica risposte limitate e frame
+ripetuti identici:
+
+```bash
+make benchmark-replay
+```
+
+L'obiettivo sulla macchina benchmark è una mediana dei frame inferiore a 100 ms dopo la
+costruzione dell'indice. I tempi sono sempre riportati; per evitare falsi negativi da rumore,
+il budget wall-clock interrompe l'esecuzione solo in CI.
+
 Per ottenere la prima simulazione dai due JSON pubblicati dall'ingestion, senza disegnare
 la casa o collocare manualmente i sensori:
 

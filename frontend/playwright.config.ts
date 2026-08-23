@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const applicationCommand = process.platform === "win32"
-  ? "..\\.venv\\Scripts\\python.exe -m smart_home_sim.web.launcher --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser"
-  : "uv --project .. run smart-home-sim-app --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser";
+  ? "..\\.venv\\Scripts\\python.exe ..\\tools\\build_replay_e2e_workspace.py && ..\\.venv\\Scripts\\python.exe -m smart_home_sim.web.launcher --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser"
+  : "uv --project .. run python ../tools/build_replay_e2e_workspace.py && uv --project .. run smart-home-sim-app --workspace ../reports/e2e-workspace --name E2E --port 8766 --no-browser";
 
 export default defineConfig({
   testDir: "./e2e",

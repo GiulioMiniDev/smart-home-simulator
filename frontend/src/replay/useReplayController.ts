@@ -138,6 +138,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const refreshedWindowRef = useRef<string | undefined>(undefined);
   const windowVersion = useRef(0);
   const frameVersion = useRef(0);
+  const verificationAbort = useRef<AbortController | undefined>(undefined);
   const windowAbort = useRef<AbortController | undefined>(undefined);
   const catalogAbort = useRef<AbortController | undefined>(undefined);
   const frameAbort = useRef<AbortController | undefined>(undefined);
@@ -235,7 +236,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
 
   useEffect(() => {
     const controller = new AbortController();
-    windowAbort.current?.abort(); windowAbort.current = controller;
+    verificationAbort.current?.abort(); verificationAbort.current = controller;
     const generation = runGeneration.current;
     let current = true;
     cancelPendingSave();

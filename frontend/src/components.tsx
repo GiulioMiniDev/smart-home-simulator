@@ -622,7 +622,7 @@ export function PlanCanvas({
         ref={svgRef}
         className={`plan-canvas ${editing ? "is-editable" : ""} ${sensors ? "shows-sensors" : ""}`}
         viewBox={`${viewX} ${viewY} ${width} ${height}`}
-        role="img"
+        role="group"
         aria-label={`Plan of ${home.homeId}, ${regionsShown.length} regions and ${sensorsShown.length} sensors`}
         onPointerDown={beginPan}
         onPointerMove={(event) => { continueDrag(event); continuePan(event); }}
@@ -637,7 +637,7 @@ export function PlanCanvas({
           <FurnitureSymbols />
         </defs>
         <rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill="url(#grid)" className="plan-grid" />
-        <g aria-label="Regions">
+        <g role="group" aria-label="Regions">
           {regionsShown.map((region) => (
             <g
               key={region.regionId}
@@ -655,7 +655,7 @@ export function PlanCanvas({
             </g>
           ))}
         </g>
-        <g aria-label="Walls" className="walls">
+        <g role="group" aria-label="Walls" className="walls">
           {wallPieces.map((piece, index) => (
             <line
               key={`wall-${index}`}
@@ -667,9 +667,9 @@ export function PlanCanvas({
             />
           ))}
         </g>
-        <g aria-label="Doors" className="doors">
+        <g role="group" aria-label="Doors" className="doors">
           {doorGlyphs.map((door) => (
-            <g key={door.connectionId} aria-label={`${door.kind} ${door.connectionId}`} className={`door door-${door.kind}`}>
+            <g key={door.connectionId} role="group" aria-label={`${door.kind} ${door.connectionId}`} className={`door door-${door.kind}`}>
               {/* A passage is an opening with no leaf; a doorway shows which way it swings. */}
               {door.kind !== "passage" && <>
                 <path d={door.arc} className="door-swing" />
@@ -689,7 +689,7 @@ export function PlanCanvas({
             </g>
           ))}
         </g>
-        {showExternalPlaces && <g aria-label="Connections" className="connections">
+        {showExternalPlaces && <g role="group" aria-label="Connections" className="connections">
           {connectionsShown.filter((item) => item.kind === "transit").map((connection) => {
             const a = connection.portalA ?? center(regions.get(connection.regionAId)?.boundary.vertices ?? []);
             const b = connection.portalB ?? center(regions.get(connection.regionBId)?.boundary.vertices ?? []);
@@ -697,7 +697,7 @@ export function PlanCanvas({
             return <line key={connection.connectionId} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="connection connection-transit" />;
           })}
         </g>}
-        <g aria-label="Obstacles">
+        <g role="group" aria-label="Obstacles">
           {obstaclesShown.map((obstacle) => {
             const entity = entityByObstacle.get(obstacle.obstacleId);
             const symbol = furnitureSymbol(entity?.entityType);
@@ -729,12 +729,12 @@ export function PlanCanvas({
             );
           })}
         </g>
-        {!sensors && <g aria-label="Interaction points">
+        {!sensors && <g role="group" aria-label="Interaction points">
           {interactionPointsShown.map((point) => (
             <circle key={point.interactionPointId} cx={point.position.x} cy={point.position.y} r=".13" className="interaction-point" />
           ))}
         </g>}
-        <g aria-label="Capability providers">
+        <g role="group" aria-label="Capability providers">
           {entitiesShown.map((entity) => {
             const point = interactionPoints.get(entity.interactionPointId);
             if (!point) return null;
@@ -764,7 +764,7 @@ export function PlanCanvas({
             );
           })}
         </g>
-        {sensors && <g aria-label="Sensors">
+        {sensors && <g role="group" aria-label="Sensors">
           {sensorsShown.map((sensor) => {
             const coverage = sensor.sensorType === "pir" ? (sensor.coverage as Polygon | undefined) : undefined;
             const isSelected = selectedId === sensor.sensorId;
@@ -794,7 +794,7 @@ export function PlanCanvas({
             );
           })}
         </g>}
-        {selection && <g aria-label="Resize handles" className="resize-handles">
+        {selection && <g role="group" aria-label="Resize handles" className="resize-handles">
           <rect
             x={selection.box.minX}
             y={selection.box.minY}
@@ -821,11 +821,11 @@ export function PlanCanvas({
             );
           })}
         </g>}
-        {(replayOverlay?.trajectory.length ?? 0) > 1 && <g aria-label="Active trajectory" className="active-trajectory">
+        {(replayOverlay?.trajectory.length ?? 0) > 1 && <g role="group" aria-label="Active trajectory" className="active-trajectory">
           <polyline points={polygonPoints(replayOverlay!.trajectory)} />
           {replayOverlay!.trajectory.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r=".12" />)}
         </g>}
-        <g aria-label="Replay residents" className="replay-residents">
+        <g role="group" aria-label="Replay residents" className="replay-residents">
           {replayOverlay?.residents.map((item, index) => item.position ? (
             <g
               key={item.residentId}
