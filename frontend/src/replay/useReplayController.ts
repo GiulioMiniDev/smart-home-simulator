@@ -187,12 +187,12 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     positionRef.current = next;
     setPositionMs(next);
   }, []);
-  const requestFrame = useCallback((at = positionRef.current, immediate = false) => {
+  const requestFrame = useCallback((at = positionRef.current, immediate = false, force = false) => {
     if (!isVerifiedRun() || at === undefined) return;
     const now = performance.now();
     const previous = lastFrameSchedule.current;
     if (!immediate && previous && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
-    if (immediate && previous?.at === at && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
+    if (!force && immediate && previous?.at === at && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
     lastFrameSchedule.current = { at, scheduledAt: now };
     setFrameRequest({ at, version: ++frameVersion.current });
   }, [isVerifiedRun]);
@@ -343,6 +343,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         const visibleItems = window.items.filter((item) => matchesFilters(item, filters));
         setEvents({ ...window, items: visibleItems }); setRunError(undefined); windowLoadingRef.current = false;
         densityAttemptsRef.current = 0; setEvidenceIncomplete(false); setEvidenceLoading(false);
+        requestFrame(center, true, true);
         const anchor = selectionAnchorRef.current;
         if (anchor) {
           selectionAnchorRef.current = undefined;

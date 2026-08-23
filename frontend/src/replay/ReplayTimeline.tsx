@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReplayEvent, ReplayEventKind, SensorModel } from "../types";
 import { clusterEvents } from "./replay-clock";
 import type { ReplayController } from "./useReplayController";
@@ -28,6 +28,18 @@ const ZOOM_OPTIONS = [
 
 export function ReplayTimeline({ controller, sensorModel }: { controller: ReplayController; sensorModel?: SensorModel }) {
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(() => new Set());
+  const [laneWidths, setLaneWidths] = useState<Record<string, number>>({});
+  const observers = useRef(new Map<string, ResizeObserver>());
+  useEffect(() => () => observers.current.forEach((observer) => observer.disconnect()), []);
+  const observeLane = (track: string) => (node: HTMLDivElement | null) => {
+    observers.current.get(track)?.disconnect(); observers.current.delete(track);
+    if (!node) return;
+    const update = () => setLaneWidths((current) => ({ ...current, [track]: node.getBoundingClientRect().width || node.clientWidth || 720 }));
+    update();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(update); observer.observe(node); observers.current.set(track, observer);
+    }
+  };
   const events = controller.evidenceIncomplete ? [] : controller.events?.items ?? [];
   const windowStart = Date.parse(controller.events?.windowStart ?? "");
   const windowEnd = Date.parse(controller.events?.windowEnd ?? "");
@@ -73,15 +85,16 @@ export function ReplayTimeline({ controller, sensorModel }: { controller: Replay
     <div className="replay-track-list">
       {REPLAY_TRACKS.map((track) => {
         const items = visible.filter((event) => track.kinds.includes(event.kind));
+        const laneWidth = laneWidths[track.label] ?? 720;
         const trackClusters = Number.isFinite(windowStart) && Number.isFinite(windowEnd)
-          ? clusterEvents(items, windowStart, windowEnd, 1000) : [];
-        return <div className="replay-track" key={track.label}><h3>{track.label}</h3><div className="replay-track-events" aria-label={`${track.label} events`}>
+          ? clusterEvents(items, windowStart, windowEnd, laneWidth) : [];
+        return <div className="replay-track" key={track.label}><h3>{track.label}</h3><div ref={observeLane(track.label)} className="replay-track-events" aria-label={`${track.label} events`}>
           {trackClusters.map((cluster, clusterIndex) => {
             const clustered = cluster.eventIds.map((id) => items.find((event) => event.eventId === id)).filter((event): event is ReplayEvent => Boolean(event));
             if (!clustered.length) return null;
             const clusterId = `${track.label.toLowerCase()}-cluster-${clusterIndex}`;
             const expanded = expandedClusters.has(clusterId);
-            return <div className="replay-event-cluster" style={{ left: `${Math.max(0, Math.min(100, cluster.x / 10))}%` }} key={cluster.eventIds.join("-")}>
+            return <div className="replay-event-cluster" style={{ left: `${Math.max(0, Math.min(100, cluster.x / laneWidth * 100))}%` }} key={cluster.eventIds.join("-")}>
               {clustered.length === 1
                 ? <button type="button" className={`replay-cluster-mark ${controller.selectedEventId === clustered[0]?.eventId ? "is-selected" : ""}`} aria-label={`${clock(clustered[0]!.at)} ${clustered[0]!.label}`} disabled={!ready || controller.evidenceIncomplete || controller.evidenceLoading} onClick={() => controller.selectEvent(clustered[0]?.eventId)}>1</button>
                 : <button type="button" className="replay-cluster-mark" aria-label={`${clustered.length} clustered events`} aria-expanded={expanded} aria-controls={clusterId} disabled={!ready || controller.evidenceIncomplete || controller.evidenceLoading} onClick={() => toggleCluster(clusterId)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleCluster(clusterId); } }}>{clustered.length}</button>}
