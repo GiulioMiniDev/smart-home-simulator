@@ -253,6 +253,48 @@ def test_oracle_replay_payload_requires_explicit_opt_in() -> None:
     assert payload.frame.sensor_states[0].oracle_cause is not None
 
 
+def test_observable_replay_payload_sanitizes_nested_sensitive_metadata() -> None:
+    contract = _verified_replay_contract()
+    contract.event_window.items[0].details = {
+        "safeLabel": "resident_1",
+        "actorId": "resident_1",
+        "nested": {
+            "activity_execution_ids": ["activity_1"],
+            "items": ["action_1", {"oracleCause": {"causeIds": ["movement_1"]}}],
+        },
+    }
+    contract.frame.residents[0].facts = {
+        "resident_id": "resident_1",
+        "safe": {"actionExecutionId": "action_1", "label": "action_1"},
+    }
+    contract.frame.entity_states.update(
+        {
+            "entity_1": {
+                "actor_id": "resident_1",
+                "nested": [{"residentIds": ["resident_1"]}],
+            }
+        }
+    )
+    contract.frame.environment_facts.update(
+        {
+            "oracle_cause": {"causeIds": ["movement_1"]},
+            "notes": ["resident_1", {"action_execution_id": "action_1"}],
+        }
+    )
+    contract.frame.active_event_ids.extend(["activity_1", "benign-event"])
+
+    payload = contract.playback_payload().model_dump(by_alias=True)
+
+    assert payload["eventWindow"]["items"][0]["details"] == {
+        "safeLabel": "resident_1",
+        "nested": {"items": ["action_1", {}]},
+    }
+    assert payload["frame"]["residents"][0]["facts"] == {"safe": {"label": "action_1"}}
+    assert payload["frame"]["entityStates"] == {"entity_1": {"nested": [{}]}}
+    assert payload["frame"]["environmentFacts"] == {"notes": ["resident_1", {}]}
+    assert "activeEventIds" not in payload["frame"]
+
+
 def test_replay_event_window_rejects_more_than_5000_items() -> None:
     item = ReplayEventView(
         at=_REPLAY_AT,
@@ -335,6 +377,28 @@ def test_playable_replay_session_requires_matching_verification(
         )
 
 
+def test_playable_replay_session_requires_frame_run_to_match_verification() -> None:
+    contract = _verified_replay_contract(playable=False)
+    frame = ReplayFrame(
+        run_id="run_2",
+        at=_REPLAY_AT,
+        trace_start=_REPLAY_AT,
+        trace_end=_REPLAY_AT,
+        residents=contract.frame.residents,
+        sensor_states=contract.frame.sensor_states,
+    )
+
+    with pytest.raises(ValidationError, match="frame run"):
+        ApplicationReplayContract(
+            verification=contract.verification,
+            event_window=contract.event_window,
+            frame=frame,
+            session=ReplaySessionState(
+                run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True
+            ),
+        )
+
+
 def test_non_playable_replay_session_can_represent_unverified_state() -> None:
     verified = _verified_replay_contract(playable=False)
     contract = ApplicationReplayContract(
@@ -362,6 +426,8 @@ def test_playable_replay_session_cannot_bypass_verification_by_mutation() -> Non
         contract.session.verified_digest = "b" * 64
     with pytest.raises(ValidationError):
         contract.session = ReplaySessionState(run_id="run_1", playable=False)
+    with pytest.raises(ValidationError):
+        contract.frame.run_id = "run_2"
 
 
 def load_schema() -> dict[str, object]:

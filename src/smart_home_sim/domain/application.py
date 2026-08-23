@@ -453,6 +453,8 @@ class ReplaySensorFrame(ContractModel):
 
 
 class ReplayFrame(ContractModel):
+    model_config = ConfigDict(**ContractModel.model_config, frozen=True)
+
     run_id: str = Field(min_length=1)
     at: AwareDatetime
     trace_start: AwareDatetime
@@ -489,6 +491,50 @@ class ReplaySessionState(ContractModel):
     updated_at: AwareDatetime | None = None
 
 
+_OBSERVABLE_REPLAY_REDACTED_KEYS = frozenset(
+    {
+        "actorId",
+        "actor_id",
+        "actorIds",
+        "actor_ids",
+        "residentId",
+        "resident_id",
+        "residentIds",
+        "resident_ids",
+        "activityExecutionId",
+        "activity_execution_id",
+        "activityExecutionIds",
+        "activity_execution_ids",
+        "actionExecutionId",
+        "action_execution_id",
+        "actionExecutionIds",
+        "action_execution_ids",
+        "oracleCause",
+        "oracle_cause",
+    }
+)
+
+
+def _observable_json_value(value: JsonValue) -> JsonValue:
+    if isinstance(value, dict):
+        return {
+            key: _observable_json_value(item)
+            for key, item in value.items()
+            if key not in _OBSERVABLE_REPLAY_REDACTED_KEYS
+        }
+    if isinstance(value, list):
+        return [_observable_json_value(item) for item in value]
+    return value
+
+
+def _observable_json_mapping(value: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    return {
+        key: _observable_json_value(item)
+        for key, item in value.items()
+        if key not in _OBSERVABLE_REPLAY_REDACTED_KEYS
+    }
+
+
 class ObservableReplayEventView(ContractModel):
     at: AwareDatetime
     end: AwareDatetime | None = None
@@ -511,7 +557,7 @@ class ObservableReplayEventView(ContractModel):
             status=event.status,
             sensor_id=event.sensor_id,
             waypoints=event.waypoints,
-            details=event.details,
+            details=_observable_json_mapping(event.details),
         )
 
 
@@ -551,7 +597,7 @@ class ObservableReplayResidentFrame(ContractModel):
             posture=resident.posture,
             execution_state=resident.execution_state,
             held_resource_ids=resident.held_resource_ids,
-            facts=resident.facts,
+            facts=_observable_json_mapping(resident.facts),
         )
 
 
@@ -591,7 +637,6 @@ class ObservableReplayFrame(ContractModel):
     entity_states: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
     environment_facts: dict[str, JsonValue] = Field(default_factory=dict)
     resource_available_units: dict[str, int] = Field(default_factory=dict)
-    active_event_ids: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_frame(cls, frame: ReplayFrame) -> ObservableReplayFrame:
@@ -606,10 +651,12 @@ class ObservableReplayFrame(ContractModel):
             sensor_states=[
                 ObservableReplaySensorFrame.from_sensor(item) for item in frame.sensor_states
             ],
-            entity_states=frame.entity_states,
-            environment_facts=frame.environment_facts,
+            entity_states={
+                entity_id: _observable_json_mapping(state)
+                for entity_id, state in frame.entity_states.items()
+            },
+            environment_facts=_observable_json_mapping(frame.environment_facts),
             resource_available_units=frame.resource_available_units,
-            active_event_ids=frame.active_event_ids,
         )
 
 
@@ -686,6 +733,8 @@ class ApplicationReplayContract(ContractModel):
             return self
         if self.session.run_id != self.verification.run_id:
             raise ValueError("playable replay session must match the verification run")
+        if self.frame.run_id != self.session.run_id:
+            raise ValueError("playable replay session frame run must match the verification run")
         if not self.verification.matches:
             raise ValueError("playable replay session requires a matching verification")
         if self.session.verified_digest is None:
