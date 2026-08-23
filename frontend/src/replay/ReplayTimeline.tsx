@@ -77,7 +77,7 @@ export function ReplayTimeline({ controller, sensorModel }: { controller: Replay
       <button type="button" onClick={() => controller.updateFilters({ eventKinds: [], sensorIds: [], actorIds: [], selectedResidentId: undefined, statuses: [] })}>Clear filters</button>
     </div>
     <label className="replay-time-range"><span>Replay time <output>{controller.frame ? clock(controller.frame.at) : "Loading"}</output></span>
-      <input aria-label="Replay time" type="range" min={Number.isFinite(windowStart) ? windowStart : 0} max={Number.isFinite(windowEnd) ? windowEnd : 1} value={controller.positionMs} disabled={!ready || controller.evidenceIncomplete || !Number.isFinite(windowStart) || !Number.isFinite(windowEnd)} onChange={(event) => controller.seek(Number(event.target.value))} />
+      <input aria-label="Replay time" type="range" min={controller.traceStartMs ?? 0} max={controller.traceEndMs ?? 1} value={controller.positionMs} disabled={!ready || controller.evidenceIncomplete || controller.traceStartMs === undefined || controller.traceEndMs === undefined} onChange={(event) => controller.seek(Number(event.target.value))} />
     </label>
     {controller.error && <p className="replay-request-error" role="alert">Replay window unavailable: {controller.error.message}</p>}
     {controller.windowNotice && <p className={controller.evidenceIncomplete ? "replay-request-error" : "replay-window-notice"} role="status">{controller.windowNotice}</p>}

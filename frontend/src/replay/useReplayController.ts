@@ -76,6 +76,8 @@ export interface ReplayController {
   verification?: ReplayVerification;
   session?: ReplaySessionState;
   positionMs: number;
+  traceStartMs?: number;
+  traceEndMs?: number;
   playing: boolean;
   filters: ReplayFilters;
   selectedEventId?: string;
@@ -309,8 +311,10 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
           const nextSpan = Math.max(MIN_WINDOW_SPAN_MS, Math.floor(effectiveSpanMs / 2));
           if (nextSpan < effectiveSpanMs && densityAttemptsRef.current < MAX_DENSITY_REQUERIES) {
             densityAttemptsRef.current += 1;
+            frameVersion.current += 1; lastFrameSchedule.current = undefined;
+            setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceIncomplete(true);
             setNarrowedSpanMs(nextSpan);
-            setWindowNotice("Window narrowed because evidence density exceeded the complete retrieval limit.");
+            setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
             return;
           }
           windowLoadingRef.current = false;
@@ -516,6 +520,8 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     verification: verifiedForCurrentRun || checkedRun.current?.generation === runGeneration.current ? verification : undefined,
     session: verifiedForCurrentRun ? session : undefined,
     positionMs: verifiedForCurrentRun ? positionMs ?? 0 : 0,
+    traceStartMs: verifiedForCurrentRun ? rangeRef.current?.start : undefined,
+    traceEndMs: verifiedForCurrentRun ? rangeRef.current?.end : undefined,
     playing: verifiedForCurrentRun && playing,
     filters: verifiedForCurrentRun ? filters : defaultFilters(),
     selectedEventId: verifiedForCurrentRun ? selectedEventId : undefined,

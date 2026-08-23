@@ -120,7 +120,7 @@ describe("useReplayController", () => {
     expect(denseResponses).toBeGreaterThan(1);
     expect(result.current.evidenceIncomplete).toBe(false);
     expect(result.current.events?.items).toHaveLength(1);
-    expect(result.current.windowNotice).toMatch(/Window narrowed/);
+    expect(result.current.windowNotice).toMatch(/Narrowing dense evidence/);
   });
 
   it("blocks inspection instead of rendering a permanently truncated minimum-span window", async () => {

@@ -18,6 +18,8 @@
 .replay-digest-details code { min-width: 0; overflow-wrap: anywhere; font: .68rem "Cascadia Code", monospace; }
 .replay-toolbar .replay-copy-digest { min-height: 25px; padding: .18rem .35rem; border: 1px solid var(--line); border-radius: 3px; color: var(--text); font-size: .7rem; }
 .replay-analysis-stage { display: grid; min-height: 430px; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .7fr); }
+[data-mode="presentation"] .replay-analysis-stage { grid-template-columns: minmax(0, 1fr); }
+[data-mode="presentation"] .replay-stage { border-right: 0; }
 .replay-stage { min-width: 0; padding: .85rem; border-right: 1px solid var(--line); }
 .replay-stage > .plan-canvas { min-height: 410px; }
 .replay-inspector { min-width: 0; max-height: 560px; overflow: auto; }
