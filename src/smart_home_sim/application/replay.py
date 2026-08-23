@@ -668,6 +668,8 @@ class ReplayService:
         include_oracle: bool = False,
         limit: int = 2_000,
     ) -> ReplayEventWindow:
+        if actor_id is not None and not include_oracle:
+            raise ValueError("replay actor filter requires include_oracle=True")
         index = self._index(run_id)
         window_start = max(start or index.trace_start, index.trace_start)
         window_end = min(end or index.trace_end, index.trace_end)

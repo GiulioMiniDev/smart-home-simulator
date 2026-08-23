@@ -136,6 +136,24 @@ def test_replay_indexes_every_trace_family_and_bounds_windows(
     assert "observation" in {item.kind for item in replay.events(run_id, limit=5000).items}
 
 
+def test_replay_actor_filter_requires_oracle_opt_in(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    trace = json.loads(
+        workspace.read_artifact(workspace.run_artifacts(run_id)["execution_trace"].artifact_id)
+    )
+    actor_id = trace["movements"][0]["actorId"]
+
+    with pytest.raises(ValueError, match="actor filter requires include_oracle=True"):
+        replay.events(run_id, actor_id=actor_id)
+
+    oracle = replay.events(run_id, actor_id=actor_id, include_oracle=True)
+    assert oracle.items
+    assert all(item.actor_id == actor_id for item in oracle.items)
+
+
 def test_replay_frame_is_random_seek_stable_and_oracle_is_opt_in(
     completed_workspace: tuple[WorkspaceService, str],
 ) -> None:

@@ -845,6 +845,14 @@ def create_app(
         include_oracle: bool = False,
         limit: int = Query(default=2_000, ge=1, le=5_000),
     ) -> dict[str, Any]:
+        if actor_id is not None and not include_oracle:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "ORACLE_REPLAY_OPT_IN_REQUIRED",
+                    "message": "Replay actor filters require include_oracle=true.",
+                },
+            )
         selected = {item for item in kinds.split(",") if item}
         unknown = selected - set(get_args(ReplayEventKind))
         if unknown:

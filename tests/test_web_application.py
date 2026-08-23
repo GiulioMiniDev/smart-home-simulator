@@ -283,6 +283,27 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert len(events.json()["items"]) <= 25
         assert {item["kind"] for item in events.json()["items"]} <= {"movement", "observation"}
         assert all("actorId" not in item for item in events.json()["items"])
+        observable_actor_filter = client.get(
+            f"/api/runs/{job.job_id}/replay/events",
+            params={"actor_id": trace["movements"][0]["actorId"]},
+            headers=headers,
+        )
+        assert observable_actor_filter.status_code == 422
+        assert observable_actor_filter.json()["detail"]["code"] == "ORACLE_REPLAY_OPT_IN_REQUIRED"
+        oracle_actor_filter = client.get(
+            f"/api/runs/{job.job_id}/replay/events",
+            params={
+                "actor_id": trace["movements"][0]["actorId"],
+                "include_oracle": "true",
+            },
+            headers=headers,
+        )
+        assert oracle_actor_filter.status_code == 200
+        assert oracle_actor_filter.json()["items"]
+        assert all(
+            item["actorId"] == trace["movements"][0]["actorId"]
+            for item in oracle_actor_filter.json()["items"]
+        )
 
         target = events.json()["items"][0]["at"]
         frame = client.get(
