@@ -201,7 +201,31 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
             f"/api/runs/{job.job_id}/observations?include_oracle=true", headers=headers
         ).json()
         assert oracle["mode"] == "oracle"
-        assert client.get(f"/api/runs/{job.job_id}/timeline?limit=5", headers=headers).json()
+        trace = json.loads(
+            workspace.read_artifact(
+                workspace.run_artifacts(job.job_id)["execution_trace"].artifact_id
+            )
+        )
+        raw_timeline_ids = {
+            item[key]
+            for records, key in (
+                (trace["activityExecutions"], "activityExecutionId"),
+                (trace["actionExecutions"], "actionExecutionId"),
+                (trace["movements"], "movementId"),
+            )
+            for item in records
+        }
+        timeline = client.get(f"/api/runs/{job.job_id}/timeline?limit=5000", headers=headers)
+        assert timeline.status_code == 200
+        assert {item["kind"] for item in timeline.json()} <= {"activity", "action", "movement"}
+        assert all("actorId" not in item for item in timeline.json())
+        assert raw_timeline_ids.isdisjoint({item["id"] for item in timeline.json()})
+        oracle_timeline = client.get(
+            f"/api/runs/{job.job_id}/timeline?limit=5000&include_oracle=true", headers=headers
+        )
+        assert any(
+            item["id"] in raw_timeline_ids and item["actorId"] for item in oracle_timeline.json()
+        )
         events = client.get(
             f"/api/runs/{job.job_id}/replay/events",
             params={"limit": 25, "kinds": "movement,observation", "include_oracle": "false"},
@@ -262,6 +286,47 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert client.get(f"/api/runs/{job.job_id}/replay/session", headers=headers).json()[
             "verifiedDigest"
         ]
+        oracle_filters = {
+            "eventKinds": ["movement"],
+            "actorIds": [trace["movements"][0]["actorId"]],
+            "detailMode": "analysis",
+            "visibilityMode": "oracle",
+            "speed": 8,
+            "selectedResidentId": trace["movements"][0]["actorId"],
+        }
+        rejected_oracle_session = client.put(
+            f"/api/runs/{job.job_id}/replay/session",
+            headers=headers,
+            json={"positionAt": target, "filters": oracle_filters},
+        )
+        assert rejected_oracle_session.status_code == 422
+        assert rejected_oracle_session.json()["detail"]["code"] == "ORACLE_REPLAY_OPT_IN_REQUIRED"
+        oracle_saved = client.put(
+            f"/api/runs/{job.job_id}/replay/session?include_oracle=true",
+            headers=headers,
+            json={"positionAt": target, "filters": oracle_filters},
+        )
+        assert oracle_saved.status_code == 200
+        assert oracle_saved.json()["filters"]["visibilityMode"] == "oracle"
+        assert oracle_saved.json()["filters"]["actorIds"] == oracle_filters["actorIds"]
+        assert (
+            oracle_saved.json()["filters"]["selectedResidentId"]
+            == oracle_filters["selectedResidentId"]
+        )
+        observable_session = client.get(
+            f"/api/runs/{job.job_id}/replay/session", headers=headers
+        ).json()
+        assert observable_session["filters"]["visibilityMode"] == "observable"
+        assert "actorIds" not in observable_session["filters"]
+        assert "selectedResidentId" not in observable_session["filters"]
+        oracle_session = client.get(
+            f"/api/runs/{job.job_id}/replay/session?include_oracle=true", headers=headers
+        ).json()
+        assert oracle_session["filters"]["visibilityMode"] == "oracle"
+        assert oracle_session["filters"]["actorIds"] == oracle_filters["actorIds"]
+        assert (
+            oracle_session["filters"]["selectedResidentId"] == oracle_filters["selectedResidentId"]
+        )
         saved = client.put(
             f"/api/runs/{job.job_id}/replay/session",
             headers=headers,

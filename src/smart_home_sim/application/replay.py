@@ -295,7 +295,7 @@ def _opaque_event_id(item: ReplayEventView) -> str:
 def _without_oracle(item: ReplayEventView) -> ReplayEventView:
     observable = ObservableReplayEventView.from_event(deepcopy(item))
     projected = ReplayEventView.model_validate(observable.model_dump(mode="python", by_alias=True))
-    if item.kind in {"activity", "action", "plan_deviation"}:
+    if item.kind in {"activity", "action", "movement", "plan_deviation"}:
         projected.event_id = _opaque_event_id(item)
     return projected.model_copy(deep=True)
 
@@ -876,57 +876,33 @@ class ReplayService:
         *,
         start: datetime | None = None,
         end: datetime | None = None,
+        include_oracle: bool = False,
         limit: int = 2000,
     ) -> list[dict[str, Any]]:
-        trace_path, trace_sha = self._artifact(run_id, "execution_trace")
-        trace = _trace(str(trace_path), trace_sha)
+        window = self.events(
+            run_id,
+            start=start,
+            end=end,
+            kinds={"activity", "action", "movement"},
+            include_oracle=include_oracle,
+            limit=limit,
+        )
         events: list[dict[str, Any]] = []
-
-        def accepted(at: datetime) -> bool:
-            return (start is None or at >= start) and (end is None or at <= end)
-
-        for activity in trace.activity_executions:
-            if accepted(activity.actual_start):
-                events.append(
-                    {
-                        "at": activity.actual_start.isoformat(),
-                        "kind": "activity",
-                        "id": activity.activity_execution_id,
-                        "actorId": activity.actor_id,
-                        "label": activity.intent,
-                        "status": activity.status,
-                        "end": activity.actual_end.isoformat(),
-                    }
-                )
-        for action in trace.action_executions:
-            if accepted(action.started_at):
-                events.append(
-                    {
-                        "at": action.started_at.isoformat(),
-                        "kind": "action",
-                        "id": action.action_execution_id,
-                        "actorId": action.actor_id,
-                        "label": action.action_type,
-                        "status": action.status,
-                        "end": action.ended_at.isoformat(),
-                    }
-                )
-        for movement in trace.movements:
-            if accepted(movement.started_at):
-                events.append(
-                    {
-                        "at": movement.started_at.isoformat(),
-                        "kind": "movement",
-                        "id": movement.movement_id,
-                        "actorId": movement.actor_id,
-                        "label": f"{movement.origin_region_id} → {movement.destination_region_id}",
-                        "status": "completed",
-                        "end": movement.ended_at.isoformat(),
-                        "waypoints": [
-                            item.model_dump(mode="json", by_alias=True)
-                            for item in movement.waypoints
-                        ],
-                    }
-                )
+        for event in window.items:
+            item: dict[str, Any] = {
+                "at": event.at.isoformat(),
+                "kind": event.kind,
+                "id": event.event_id,
+                "label": event.label,
+                "status": event.status,
+                "end": event.end.isoformat() if event.end else None,
+            }
+            if include_oracle:
+                item["actorId"] = event.actor_id
+            if event.kind == "movement":
+                item["waypoints"] = [
+                    waypoint.model_dump(mode="json", by_alias=True) for waypoint in event.waypoints
+                ]
+            events.append(item)
         events.sort(key=lambda item: (item["at"], item["kind"], item["id"]))
-        return events[: max(1, min(limit, 10_000))]
+        return events

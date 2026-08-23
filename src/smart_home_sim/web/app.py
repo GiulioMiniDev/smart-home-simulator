@@ -127,6 +127,14 @@ class ReplaySessionUpdate(ApiModel):
     filters: ReplayFilters = Field(default_factory=ReplayFilters)
 
 
+def _requires_oracle_replay_filters(filters: ReplayFilters) -> bool:
+    return (
+        filters.visibility_mode == "oracle"
+        or bool(filters.actor_ids)
+        or filters.selected_resident_id is not None
+    )
+
+
 class ExportCreate(ExportRequest):
     model_config = ConfigDict(strict=False)
 
@@ -821,8 +829,10 @@ def create_app(
         )
 
     @app.get("/api/runs/{run_id}/timeline", dependencies=[secured], deprecated=True)
-    def timeline(run_id: str, limit: int = 2000) -> list[dict[str, Any]]:
-        return replay.timeline(run_id, limit=limit)
+    def timeline(
+        run_id: str, limit: int = 2000, include_oracle: bool = False
+    ) -> list[dict[str, Any]]:
+        return replay.timeline(run_id, limit=limit, include_oracle=include_oracle)
 
     @app.get("/api/runs/{run_id}/replay/events", dependencies=[secured])
     def replay_events(
@@ -895,20 +905,34 @@ def create_app(
         return replay.verify(run_id).model_dump(mode="json", by_alias=True)
 
     @app.get("/api/runs/{run_id}/replay/session", dependencies=[secured])
-    def replay_session(run_id: str) -> dict[str, Any]:
-        session = ObservableReplaySessionState.from_session(workspace.replay_session(run_id))
-        return session.model_dump(mode="json", by_alias=True)
+    def replay_session(run_id: str, include_oracle: bool = False) -> dict[str, Any]:
+        session = workspace.replay_session(run_id)
+        if include_oracle:
+            return session.model_dump(mode="json", by_alias=True)
+        observable = ObservableReplaySessionState.from_session(session)
+        return observable.model_dump(mode="json", by_alias=True)
 
     @app.put("/api/runs/{run_id}/replay/session", dependencies=[secured])
-    def save_replay_session(run_id: str, request: ReplaySessionUpdate) -> dict[str, Any]:
+    def save_replay_session(
+        run_id: str, request: ReplaySessionUpdate, include_oracle: bool = False
+    ) -> dict[str, Any]:
+        if not include_oracle and _requires_oracle_replay_filters(request.filters):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "ORACLE_REPLAY_OPT_IN_REQUIRED",
+                    "message": "Oracle replay filters require include_oracle=true.",
+                },
+            )
         session = workspace.save_replay_session(
             run_id,
             position_at=request.position_at,
             filters=request.filters,
         )
-        return ObservableReplaySessionState.from_session(session).model_dump(
-            mode="json", by_alias=True
-        )
+        if include_oracle:
+            return session.model_dump(mode="json", by_alias=True)
+        observable = ObservableReplaySessionState.from_session(session)
+        return observable.model_dump(mode="json", by_alias=True)
 
     @app.post("/api/runs/{run_id}/exports", status_code=201, dependencies=[secured])
     def create_export(run_id: str, request: ExportCreate) -> dict[str, Any]:
