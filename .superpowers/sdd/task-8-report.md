@@ -59,11 +59,11 @@ random frame seeks and 100 30-minute bounded event windows per fixture. Repeated
 equal and every visible window is at most 37 events. The stated acceptance is median frame latency
 under 100 ms after index construction; timing failure is enabled only under CI.
 
-| Fixture | Span | Events | Observations | Runtime sentinels | Index ms | Median frame ms | Median window ms |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Weekly | 7 d | 31,452 | 28,612 | 2 | 1,920.771 | 1.186 | 5.269 |
-| Four-week month-scale | 28 d | 125,808 | 114,448 | 8 | 7,951.228 | 1.198 | 5.316 |
-| Yearly | 364 d | 1,635,504 | 1,487,824 | 104 | 56,574.115 | 1.468 | 5.061 |
+| Fixture | Span | Events | Observations | Runtime sentinels | Daily summaries | Bounded daily window | Index ms | Median frame ms | Median window ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Weekly | 7 d | 31,458 | 28,612 | 2 | 6 | 6 / 6 | 2,388.310 | 1.293 | 6.616 |
+| Four-week month-scale | 28 d | 125,832 | 114,448 | 8 | 24 | 24 / 24 | 10,885.630 | 1.664 | 7.138 |
+| Yearly | 364 d | 1,635,816 | 1,487,824 | 104 | 312 | 37 / 312 | 54,578.166 | 1.392 | 4.945 |
 
 The 7-day canonical week is two contiguous complete source periods with an affine monotonic
 timestamp normalization; four-week and yearly fixtures are respectively 8 and 104 source periods.
@@ -72,14 +72,16 @@ IDs, cross-references, semantic digests, and Observable-log metadata are regener
 source has no runtime events, each source period gains a valid, fixture-only
 `benchmark_runtime_coverage_sentinel`; it is coverage data, not simulated output. The builder
 validates the Oracle mapping before deliberately omitting it from the annual timing workspace: this
-benchmark measures Observable replay performance, not optional Oracle disclosure. The annual
-construction peaked at about 2.53 GiB and its 1.468 ms median meets the 100 ms CI target; it is
+benchmark measures Observable replay performance, not optional Oracle disclosure. Daily summaries
+are counted as a trace family and queried through a separately bounded `daily_summary` window; the
+annual window returns 37 of 312 summaries. The annual construction peaked at about 2.53 GiB and its
+1.392 ms median meets the 100 ms CI target; it is
 synthetic replay-load evidence, not a production year-long simulation claim.
 
 ## Verification
 
 - `uv run ruff check src tests tools` — passed.
-- `npm test` — passed: 8 files, 219 tests; jsdom emits its pre-existing non-fatal navigation notice.
+- `npm test` — passed: 8 files, 220 tests; jsdom emits its pre-existing non-fatal navigation notice.
 - `npm run lint`, `npm run typecheck`, `npm run build` — passed (Vite reports the existing >500 kB
   chunk advisory only).
 - `npx playwright test e2e/replay.spec.ts` — passed: 4 tests across desktop and mobile Chromium.

@@ -23,8 +23,9 @@ test counts applied transition deltas on a late 28-day seek and requires fewer t
 
 ## Canonical benchmark
 
-`reports/task8-frame-performance-current.json` contains the machine-readable capture. The annual
-fixture is the canonical 364-day, full-density fixture with 1,635,816 events (including 312 daily
+[`task-8-replay-benchmark.json`](task-8-replay-benchmark.json) contains the tracked machine-readable
+capture; the ignored `reports/task8-frame-performance-current.json` is its working-copy source. The
+annual fixture is the canonical 364-day, full-density fixture with 1,635,816 events (including 312 daily
 summaries) and 1,487,824 observations. It measured:
 
 | Measure | Result |
