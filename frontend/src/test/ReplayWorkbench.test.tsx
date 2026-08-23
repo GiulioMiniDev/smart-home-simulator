@@ -241,7 +241,10 @@ describe("ReplayWorkbench", () => {
     expect(oracle).toBeDisabled();
     expect(screen.getByText(/Oracle mapping unavailable/)).toBeInTheDocument();
     fireEvent.click(oracle);
-    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("include_oracle=true"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => {
+      const path = String(input);
+      return (path.includes("/replay/events") || path.includes("/replay/frame")) && path.includes("include_oracle=true");
+    })).toBe(false);
   });
 
   it("blocks transport when the authoritative replay window cannot be loaded", async () => {
@@ -306,6 +309,7 @@ describe("ReplayWorkbench", () => {
     await waitFor(() => expect(sensor).toHaveValue("pir"));
     fireEvent.change(screen.getByRole("combobox", { name: "Event status" }), { target: { value: "completed" } });
     expect(screen.getByRole("combobox", { name: "Event status" })).toHaveValue("completed");
+    expect(within(screen.getByRole("combobox", { name: "Event status" })).getByRole("option", { name: "pending" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
     await waitFor(() => expect(resident).toBeEnabled());
     fireEvent.change(resident, { target: { value: "mario" } });

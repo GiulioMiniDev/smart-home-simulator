@@ -255,6 +255,33 @@ def test_oracle_replay_payload_requires_explicit_opt_in() -> None:
     assert payload.frame.sensor_states[0].oracle_cause is not None
 
 
+def test_observable_replay_payload_never_serializes_raw_event_labels() -> None:
+    contract = _verified_replay_contract()
+    raw_label = "Mario carries groceries to the bedroom"
+    contract.event_window.items[0].label = raw_label
+    contract.event_window.items.append(
+        ReplayEventView(
+            at=_REPLAY_AT,
+            kind="activity",
+            event_id="activity_1",
+            label="Mario prepares dinner",
+            actor_id="resident_1",
+        )
+    )
+
+    observable = contract.playback_payload().model_dump(mode="json", by_alias=True)
+    oracle = contract.playback_payload(include_oracle=True).model_dump(mode="json", by_alias=True)
+
+    assert raw_label not in json.dumps(observable)
+    assert "Mario prepares dinner" not in json.dumps(observable)
+    assert [item["label"] for item in observable["eventWindow"]["items"]] == [
+        "Movement event",
+        "Activity event",
+    ]
+    assert raw_label in json.dumps(oracle)
+    assert "Mario prepares dinner" in json.dumps(oracle)
+
+
 def test_observable_replay_payload_sanitizes_nested_sensitive_metadata() -> None:
     contract = _verified_replay_contract()
     contract.event_window.items[0].details = {

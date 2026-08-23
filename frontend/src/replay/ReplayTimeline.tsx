@@ -47,9 +47,9 @@ export function ReplayTimeline({ controller, sensorModel }: { controller: Replay
   const byTime = useMemo(() => grouped(visible), [visible]);
   const ready = controller.status === "ready";
   const oracle = controller.filters.visibilityMode === "oracle";
-  const sensorOptions = options([...sensorModel?.sensors.map((sensor) => sensor.sensorId) ?? [], ...events.map((event) => event.sensorId), ...controller.filters.sensorIds]);
-  const residentOptions = options(oracle ? [...events.map((event) => event.actorId), ...controller.frame?.residents.map((resident) => resident.residentId) ?? [], ...controller.filters.actorIds] : []);
-  const statusOptions = options([...events.map((event) => event.status), ...controller.filters.statuses]);
+  const sensorOptions = options([...(sensorModel?.sensors.map((sensor) => sensor.sensorId) ?? []), ...controller.filterOptions.sensorIds, ...controller.filters.sensorIds]);
+  const residentOptions = options(oracle ? [...controller.filterOptions.actorIds, ...controller.filters.actorIds] : []);
+  const statusOptions = options([...controller.filterOptions.statuses, ...controller.filters.statuses]);
   const updateTrack = (track: typeof REPLAY_TRACKS[number], checked: boolean) => {
     const nextKinds = checked
       ? ALL_EVENT_KINDS.filter((kind) => selectedKinds.includes(kind) || track.kinds.includes(kind))
@@ -70,11 +70,11 @@ export function ReplayTimeline({ controller, sensorModel }: { controller: Replay
     </div>
     <div className="replay-analysis-filters" role="group" aria-label="Evidence filters">
       <label>Sensor<select aria-label="Sensor" value={controller.filters.sensorIds[0] ?? ""} onChange={(event) => controller.updateFilters({ sensorIds: event.target.value ? [event.target.value] : [] })}><option value="">All sensors</option>{sensorOptions.map((sensor) => <option key={sensor} value={sensor}>{sensor}</option>)}</select></label>
-      <label>Resident<select aria-label="Resident" value={controller.filters.actorIds[0] ?? ""} disabled={!oracle} aria-describedby={!oracle ? "resident-filter-help" : undefined} onChange={(event) => controller.updateFilters({ actorIds: event.target.value ? [event.target.value] : [] })}><option value="">All residents</option>{residentOptions.map((resident) => <option key={resident} value={resident}>{resident}</option>)}</select></label>
+      <label>Resident<select aria-label="Resident" value={controller.filters.actorIds[0] ?? ""} disabled={!oracle} aria-describedby={!oracle ? "resident-filter-help" : undefined} onChange={(event) => controller.updateFilters(event.target.value ? { actorIds: [event.target.value], selectedResidentId: event.target.value } : { actorIds: [], selectedResidentId: undefined })}><option value="">All residents</option>{residentOptions.map((resident) => <option key={resident} value={resident}>{resident}</option>)}</select></label>
       {!oracle && <span id="resident-filter-help" className="replay-filter-help">Resident filtering is available only in Oracle evidence.</span>}
       <label>Status<select aria-label="Event status" value={controller.filters.statuses[0] ?? ""} onChange={(event) => controller.updateFilters({ statuses: event.target.value ? [event.target.value] : [] })}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
       <label>Zoom<select aria-label="Temporal zoom" value={controller.windowSpanMs} onChange={(event) => controller.setWindowSpan(Number(event.target.value))}>{ZOOM_OPTIONS.map(([span, label]) => <option key={span} value={span}>{label}</option>)}</select></label>
-      <button type="button" onClick={() => controller.updateFilters({ eventKinds: [], sensorIds: [], actorIds: [], statuses: [] })}>Clear filters</button>
+      <button type="button" onClick={() => controller.updateFilters({ eventKinds: [], sensorIds: [], actorIds: [], selectedResidentId: undefined, statuses: [] })}>Clear filters</button>
     </div>
     <label className="replay-time-range"><span>Replay time <output>{controller.frame ? clock(controller.frame.at) : "Loading"}</output></span>
       <input aria-label="Replay time" type="range" min={Number.isFinite(windowStart) ? windowStart : 0} max={Number.isFinite(windowEnd) ? windowEnd : 1} value={controller.positionMs} disabled={!ready || controller.evidenceIncomplete || !Number.isFinite(windowStart) || !Number.isFinite(windowEnd)} onChange={(event) => controller.seek(Number(event.target.value))} />

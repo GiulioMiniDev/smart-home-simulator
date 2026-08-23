@@ -57,11 +57,33 @@ describe("useReplayController", () => {
     expect(result.current.positionMs).toBe(Date.parse("2026-08-23T08:15:00.000Z"));
     const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
     expect(paths).toContain("/api/runs/run_1/replay/verify");
-    expect(paths).toContain("/api/runs/run_1/replay/session");
+    expect(paths).toContain("/api/runs/run_1/replay/session?include_oracle=true");
     expect(paths.find((path) => path.includes("/replay/events"))).toContain("limit=1");
     const events = paths.find((path) => path.includes("/replay/events") && path.includes("limit=5000"));
     expect(events).toContain("limit=5000");
     expect(events).not.toContain("include_oracle=true");
+  });
+
+  it("restores a digest-verified Oracle session before requesting Oracle evidence", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/replay/session") && !path.includes("?include_oracle=true")) {
+        return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+      }
+      if (path.includes("/replay/session?include_oracle=true")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...payload(path) as object,
+          filters: { detailMode: "analysis", visibilityMode: "oracle", speed: 1, eventKinds: [], sensorIds: [], statuses: [], actorIds: ["resident"], selectedResidentId: "resident" },
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1", { oracleAvailable: true }));
+    await settleController();
+    expect(result.current.filters).toMatchObject({ visibilityMode: "oracle", actorIds: ["resident"], selectedResidentId: "resident" });
+    const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
+    expect(paths).toContain("/api/runs/run_1/replay/session?include_oracle=true");
+    expect(paths.some((path) => path.includes("include_oracle=true") && path.includes("actor_id=resident"))).toBe(true);
   });
 
   it("uses the chosen temporal span for centered event-window requests", async () => {
@@ -122,6 +144,29 @@ describe("useReplayController", () => {
     expect(result.current.windowNotice).toMatch(/incomplete/);
   });
 
+  it("recovers complete replay evidence when a narrower filter changes an incomplete window", async () => {
+    let dense = true;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (dense && path.includes("/replay/events") && !path.includes("limit=1")) {
+        return Promise.resolve(new Response(JSON.stringify({ ...payload(path) as object, total: 5_001 }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.setWindowSpan(5 * 60 * 1000));
+    await act(async () => { for (let tick = 0; tick < 30; tick += 1) await Promise.resolve(); });
+    expect(result.current.evidenceIncomplete).toBe(true);
+    expect(result.current.playing).toBe(false);
+    expect(result.current.frame).toBeUndefined();
+    dense = false;
+    act(() => result.current.updateFilters({ eventKinds: ["movement"] }));
+    await settleController();
+    expect(result.current.evidenceIncomplete).toBe(false);
+    expect(result.current.events?.items).toHaveLength(1);
+  });
+
   it("fences a replaced run behind its own verification generation", async () => {
     let resolveRunBVerification: ((response: Response) => void) | undefined;
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
@@ -158,8 +203,8 @@ describe("useReplayController", () => {
     }), { status: 200 }));
     await settleController();
     const runBPaths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/runs/run_b/"));
-    expect(runBPaths).toContain("/api/runs/run_b/replay/session");
-    expect(runBPaths.some((path) => path.includes("include_oracle=true"))).toBe(false);
+    expect(runBPaths).toContain("/api/runs/run_b/replay/session?include_oracle=true");
+    expect(runBPaths.filter((path) => path.includes("/replay/events") || path.includes("/replay/frame")).some((path) => path.includes("include_oracle=true"))).toBe(false);
   });
 
   it("rejects an already-due save after rerender replaces its run", async () => {
@@ -545,15 +590,15 @@ describe("useReplayController", () => {
       String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
     );
     expect(saves).toHaveLength(0);
-    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input)).some((path) =>
-      path.includes("/replay/session?include_oracle=true"),
-    )).toBe(false);
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input, init]) =>
+      String(input).includes("/replay/session?include_oracle=true") && (init as RequestInit | undefined)?.method === "PUT",
+    )).toHaveLength(0);
   });
 
   it("invalidates a stale session and sends identity filters only after Oracle is chosen", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
-      if (path.includes("/session") && !path.includes("?")) return Promise.resolve(new Response(JSON.stringify({
+      if (path.includes("/session?include_oracle=true")) return Promise.resolve(new Response(JSON.stringify({
         ...payload(path) as object, verifiedDigest: "b".repeat(64), positionAt: "2026-08-23T08:15:00.000Z",
         filters: { eventKinds: [], actorIds: ["resident"], sensorIds: [], statuses: [], detailMode: "analysis", visibilityMode: "oracle", speed: 8 },
       }), { status: 200 }));

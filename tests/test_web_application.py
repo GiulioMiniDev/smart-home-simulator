@@ -283,6 +283,11 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert len(events.json()["items"]) <= 25
         assert {item["kind"] for item in events.json()["items"]} <= {"movement", "observation"}
         assert all("actorId" not in item for item in events.json()["items"])
+        observable_serialized = json.dumps(events.json())
+        assert all(
+            item["label"] == f"{item['kind'].replace('_', ' ').title()} event"
+            for item in events.json()["items"]
+        )
         observable_actor_filter = client.get(
             f"/api/runs/{job.job_id}/replay/events",
             params={"actor_id": trace["movements"][0]["actorId"]},
@@ -302,6 +307,10 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert oracle_actor_filter.json()["items"]
         assert all(
             item["actorId"] == trace["movements"][0]["actorId"]
+            for item in oracle_actor_filter.json()["items"]
+        )
+        assert any(
+            item["label"] not in observable_serialized
             for item in oracle_actor_filter.json()["items"]
         )
 

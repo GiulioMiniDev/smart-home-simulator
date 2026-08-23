@@ -584,6 +584,11 @@ def _observable_json_mapping(value: dict[str, JsonValue]) -> dict[str, JsonValue
     }
 
 
+def _observable_event_label(kind: ReplayEventKind) -> str:
+    """A stable evidence label that cannot encode a resident's activity or action."""
+    return f"{kind.replace('_', ' ').title()} event"
+
+
 class ObservableReplayEventView(ContractModel):
     at: AwareDatetime
     end: AwareDatetime | None = None
@@ -602,7 +607,7 @@ class ObservableReplayEventView(ContractModel):
             end=event.end,
             kind=event.kind,
             event_id=event.event_id,
-            label=event.label,
+            label=_observable_event_label(event.kind),
             status=event.status,
             sensor_id=event.sensor_id,
             waypoints=event.waypoints,
