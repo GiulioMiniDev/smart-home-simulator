@@ -6,6 +6,7 @@ import zipfile
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 from xml.etree import ElementTree
 from xml.sax.saxutils import XMLGenerator
 
@@ -30,6 +31,8 @@ from smart_home_sim.domain.application import (
     JobProgress,
     JobStatus,
 )
+from smart_home_sim.domain.environment import Point2D
+from smart_home_sim.domain.execution import MovementExecution, StateTransition, TraceCausality
 
 PROJECT_ROOT = Path(__file__).parents[1]
 SOURCE = PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30"
@@ -96,6 +99,159 @@ def test_ground_truth_diary_observable_and_oracle_views(
     verification = replay.verify(run_id)
     assert verification.matches is True
     assert verification.actual_semantic_digest == verification.expected_semantic_digest
+
+
+def test_replay_indexes_every_trace_family_and_bounds_windows(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    trace = json.loads(
+        workspace.read_artifact(workspace.run_artifacts(run_id)["execution_trace"].artifact_id)
+    )
+    start = datetime.fromisoformat(trace["startedAt"])
+    end = start + timedelta(hours=12)
+
+    window = replay.events(run_id, start=start, end=end, limit=37)
+
+    assert len(window.items) <= 37
+    assert window.window_start == start
+    assert window.window_end == end
+    expected_kinds = {
+        kind
+        for kind, records in {
+            "activity": trace["activityExecutions"],
+            "action": trace["actionExecutions"],
+            "movement": trace["movements"],
+            "state_transition": trace["stateTransitions"],
+            "resource": trace["resourceEvents"],
+            "runtime_event": trace["runtimeEvents"],
+            "plan_deviation": trace["planDeviations"],
+        }.items()
+        if records
+    }
+    assert {
+        item.kind for item in replay.events(run_id, start=start, end=end, limit=5000).items
+    } >= expected_kinds
+
+
+def test_replay_frame_is_random_seek_stable_and_oracle_is_opt_in(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    window = replay.events(run_id, limit=100)
+    target = window.items[len(window.items) // 2].at
+
+    first = replay.frame(run_id, at=target, include_oracle=False)
+    replay.frame(run_id, at=window.trace_end, include_oracle=False)
+    second = replay.frame(run_id, at=target, include_oracle=False)
+
+    assert first == second
+    assert all(item.oracle_cause is None for item in first.sensor_states)
+    oracle = replay.frame(run_id, at=target, include_oracle=True)
+    assert any(item.oracle_cause is not None for item in oracle.sensor_states)
+
+
+def test_replay_interpolation_uses_the_midpoint_between_two_waypoints() -> None:
+    from smart_home_sim.application import replay as replay_module
+
+    start = datetime(2026, 8, 23, 8, tzinfo=UTC)
+    movement = MovementExecution.model_validate(
+        {
+            "movementId": "movement_1",
+            "actionExecutionId": "action_1",
+            "actorId": "resident_1",
+            "startedAt": start,
+            "endedAt": start + timedelta(seconds=10),
+            "originRegionId": "origin",
+            "destinationRegionId": "destination",
+            "distanceMeters": 10,
+            "durationMicroseconds": 10_000_000,
+            "waypoints": [
+                {
+                    "at": start,
+                    "regionId": "origin",
+                    "position": Point2D(x=2, y=4),
+                    "traversalMode": "walking",
+                },
+                {
+                    "at": start + timedelta(seconds=10),
+                    "regionId": "destination",
+                    "position": Point2D(x=8, y=10),
+                    "traversalMode": "walking",
+                },
+            ],
+        }
+    )
+
+    assert replay_module._point_at(movement, start + timedelta(seconds=5)) == Point2D(x=5, y=7)
+
+
+def test_replay_without_a_bundle_seeds_transition_previous_values(tmp_path: Path) -> None:
+    workspace, run_id = _completed_workspace(tmp_path / "workspace")
+    with workspace.transaction() as connection:
+        connection.execute(
+            "DELETE FROM artifacts WHERE run_id = ? AND role = 'simulation_bundle'", (run_id,)
+        )
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    posture = next(
+        item
+        for item in index.trace.state_transitions
+        if item.subject_type == "resident"
+        and item.fact == "posture"
+        and item.previous_value is not None
+    )
+    entity = next(
+        item
+        for item in index.trace.state_transitions
+        if item.subject_type == "entity" and item.previous_value is not None
+    )
+    instant = min(posture.at, entity.at) - timedelta(microseconds=1)
+
+    frame = replay.frame(run_id, at=instant)
+
+    resident = next(item for item in frame.residents if item.resident_id == posture.subject_id)
+    assert resident.posture == posture.previous_value
+    assert frame.entity_states[entity.subject_id][entity.fact] == entity.previous_value
+    assert replay.frame(run_id, at=index.trace_end).at == index.trace_end
+
+
+def test_replay_bundle_fallback_keeps_the_first_transition_previous_value() -> None:
+    from smart_home_sim.application import replay as replay_module
+
+    at = datetime(2026, 8, 23, 8, tzinfo=UTC)
+    trace = SimpleNamespace(
+        state_transitions=[
+            StateTransition(
+                transition_id="first",
+                at=at,
+                subject_type="resident",
+                subject_id="resident_1",
+                fact="execution_state",
+                previous_value="idle",
+                value="performing_activity",
+                operation="set",
+                causality=TraceCausality(cause_type="action_effect", cause_id="action_1"),
+            ),
+            StateTransition(
+                transition_id="second",
+                at=at + timedelta(seconds=1),
+                subject_type="resident",
+                subject_id="resident_1",
+                fact="execution_state",
+                previous_value="performing_activity",
+                value="moving",
+                operation="set",
+                causality=TraceCausality(cause_type="action_effect", cause_id="action_2"),
+            ),
+        ]
+    )
+
+    seeded = replay_module._initial_residents(trace, None)
+
+    assert seeded["resident_1"]["execution_state"] == "idle"
 
 
 def test_streaming_export_formats_manifest_and_integrity(
