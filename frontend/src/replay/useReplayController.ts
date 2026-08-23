@@ -257,13 +257,17 @@ export function useReplayController(runId: string): ReplayController {
           }
           if (!outsideMargin) refreshedWindowRef.current = undefined;
         }
-        if (next >= range.end) { setPlaying(false); return; }
+        if (next >= range.end) {
+          requestFrame(range.end, true);
+          setPlaying(false);
+          return;
+        }
       }
       previous = now; animationFrame = requestAnimationFrame(tick);
     };
     animationFrame = requestAnimationFrame(tick);
     return () => { if (animationFrame !== undefined) cancelAnimationFrame(animationFrame); };
-  }, [filters.speed, playing, positionInitialized, requestWindow, setClockPosition, status, verifiedForCurrentRun]);
+  }, [filters.speed, playing, positionInitialized, requestFrame, requestWindow, setClockPosition, status, verifiedForCurrentRun]);
 
   useEffect(() => {
     if (!verifiedForCurrentRun || !playing || status !== "ready" || !positionInitialized) return;
@@ -286,6 +290,7 @@ export function useReplayController(runId: string): ReplayController {
         || runGeneration.current !== saveGeneration
         || verified?.runId !== saveRunId
         || verified.generation !== saveGeneration
+        || version !== saveVersion.current
       ) return;
       const controller = new AbortController(); saveRequest.current = controller;
       const includeOracle = filters.visibilityMode === "oracle" ? "?include_oracle=true" : "";

@@ -456,6 +456,42 @@ describe("useReplayController", () => {
     expect(result.current.session?.positionAt).toBe(new Date(second).toISOString());
   });
 
+  it("rejects an already-due same-run save after a newer seek and filter update", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    const oldSave = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 400).at(-1)?.[0];
+    expect(oldSave).toBeTypeOf("function");
+    act(() => result.current.seek(Date.parse("2026-08-23T08:30:00.000Z")));
+    act(() => result.current.updateFilters({ detailMode: "analysis" }));
+    act(() => { if (typeof oldSave === "function") oldSave(); });
+    await settleController();
+    const saves = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input, init]) =>
+      String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
+    );
+    expect(saves).toHaveLength(0);
+  });
+
+  it("rejects an already-due Oracle save after visibility is revoked", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["resident"] }));
+    const oldSave = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 400).at(-1)?.[0];
+    expect(oldSave).toBeTypeOf("function");
+    act(() => result.current.updateFilters({ visibilityMode: "observable" }));
+    act(() => { if (typeof oldSave === "function") oldSave(); });
+    await settleController();
+    const saves = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input, init]) =>
+      String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
+    );
+    expect(saves).toHaveLength(0);
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input)).some((path) =>
+      path.includes("/replay/session?include_oracle=true"),
+    )).toBe(false);
+  });
+
   it("invalidates a stale session and sends identity filters only after Oracle is chosen", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
@@ -518,6 +554,42 @@ describe("useReplayController", () => {
     expect(result.current.positionMs).toBe(Date.parse(end));
     expect(result.current.playing).toBe(false);
     expect(now.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("requests the exact terminal frame once when RAF clamps playback to the trace end", async () => {
+    const callbacks: Array<(at: number) => void> = [];
+    const raf = vi.fn((callback: (at: number) => void) => { callbacks.push(callback); return callbacks.length; });
+    let time = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => time);
+    vi.stubGlobal("requestAnimationFrame", raf);
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/session") && init?.method !== "PUT") return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, positionAt: "2026-08-23T08:55:00.000Z",
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    const endFrame = `/replay/frame?at=${encodeURIComponent(end)}`;
+    const endFrames = () => (fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map(([input]) => String(input)).filter((path) => path.includes(endFrame));
+    expect(endFrames()).toHaveLength(0);
+    act(() => result.current.play());
+    act(() => callbacks[0]?.(0));
+    time = 60_000;
+    act(() => callbacks[1]?.(60_000));
+    await settleController();
+    // The boundary refresh has already been coalesced for this window, so a terminal
+    // frame cannot rely on another event-window request to make it to the server.
+    time = 10_000_000;
+    act(() => callbacks[2]?.(10_000_000));
+    await settleController();
+    expect(result.current.playing).toBe(false);
+    expect(endFrames()).toHaveLength(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    await settleController();
+    expect(endFrames()).toHaveLength(1);
   });
 
   it("blocks with an actionable error when verification cannot be requested", async () => {
