@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal, Self
 
 from pydantic import AwareDatetime, ConfigDict, Field, JsonValue, model_validator
 
@@ -754,6 +755,15 @@ class ApplicationReplayContract(ContractModel):
             frame=ObservableReplayFrame.from_frame(self.frame),
             session=ObservableReplaySessionState.from_session(self.session),
         )
+
+    def model_copy(
+        self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+    ) -> Self:
+        copied = super().model_copy(update=update, deep=deep)
+        if not update:
+            copied.check_playable_session_verification()
+            return copied
+        return type(self).model_validate(copied.model_dump(round_trip=True))
 
 
 def utc_now() -> datetime:

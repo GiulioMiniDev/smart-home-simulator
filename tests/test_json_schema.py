@@ -430,6 +430,57 @@ def test_playable_replay_session_cannot_bypass_verification_by_mutation() -> Non
         contract.frame.run_id = "run_2"
 
 
+@pytest.mark.parametrize(
+    "update",
+    [
+        {
+            "frame": ReplayFrame(
+                run_id="run_2",
+                at=_REPLAY_AT,
+                trace_start=_REPLAY_AT,
+                trace_end=_REPLAY_AT,
+                residents=[],
+                sensor_states=[],
+            )
+        },
+        {
+            "session": ReplaySessionState(
+                run_id="run_2", verified_digest=_REPLAY_DIGEST, playable=True
+            )
+        },
+        {
+            "verification": ReplayVerification(
+                run_id="run_1",
+                verified_at=_REPLAY_AT,
+                matches=False,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest="b" * 64,
+            )
+        },
+        {
+            "session": ReplaySessionState(run_id="run_1", verified_digest="b" * 64, playable=True)
+        },
+    ],
+)
+def test_playable_replay_model_copy_revalidates_invariant_updates(
+    update: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        _verified_replay_contract().model_copy(update=update)
+
+
+def test_playable_replay_model_copy_retains_normal_copy_semantics() -> None:
+    contract = _verified_replay_contract()
+
+    copied = contract.model_copy()
+    deep_copied = contract.model_copy(deep=True)
+
+    assert copied is not contract
+    assert copied.frame is contract.frame
+    assert deep_copied.frame is not contract.frame
+    assert copied.session.playable is True
+
+
 def load_schema() -> dict[str, object]:
     return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
