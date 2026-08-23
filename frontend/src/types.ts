@@ -468,3 +468,113 @@ export interface Configuration {
   supervised: boolean;
   volumes: VolumeUsage[];
 }
+
+export type ReplayStatus = "verifying" | "ready" | "blocked";
+export type ReplayDetailMode = "presentation" | "analysis";
+export type ReplayVisibilityMode = "observable" | "oracle";
+export type ReplayEventKind =
+  | "activity"
+  | "action"
+  | "movement"
+  | "observation"
+  | "state_transition"
+  | "resource"
+  | "runtime_event"
+  | "plan_deviation";
+
+export interface ReplayWaypoint {
+  at: string;
+  regionId: string;
+  traversalMode: string;
+  position: Point;
+}
+
+export interface ReplayEvent {
+  at: string;
+  end?: string | null;
+  kind: ReplayEventKind;
+  eventId: string;
+  label: string;
+  status?: string | null;
+  actorId?: string | null;
+  sensorId?: string | null;
+  waypoints: ReplayWaypoint[];
+  details: Record<string, unknown>;
+}
+
+export interface ReplayEventWindow {
+  items: ReplayEvent[];
+  total: number;
+  traceStart: string;
+  traceEnd: string;
+  windowStart: string;
+  windowEnd: string;
+}
+
+export interface ReplayResidentFrame {
+  residentId?: string;
+  regionId?: string | null;
+  position?: Point | null;
+  posture?: string | null;
+  executionState: string;
+  activityExecutionId?: string | null;
+  actionExecutionId?: string | null;
+  heldResourceIds: string[];
+  facts: Record<string, unknown>;
+}
+
+export interface ReplaySensorFrame {
+  observationId: string;
+  sensorId: string;
+  sensorType: string;
+  observedAt: string;
+  measurement: string;
+  value: unknown;
+  unit?: string | null;
+  quality: string;
+  changed: boolean;
+  oracleCause?: ObservationCause | null;
+}
+
+export interface ReplayFrame {
+  runId: string;
+  at: string;
+  traceStart: string;
+  traceEnd: string;
+  residents: ReplayResidentFrame[];
+  sensorStates: ReplaySensorFrame[];
+  entityStates: Record<string, Record<string, unknown>>;
+  environmentFacts: Record<string, unknown>;
+  resourceAvailableUnits: Record<string, number>;
+  activeEventIds?: string[];
+}
+
+export interface ReplayFilters {
+  eventKinds: ReplayEventKind[];
+  actorIds: string[];
+  sensorIds: string[];
+  statuses: string[];
+  detailMode: ReplayDetailMode;
+  visibilityMode: ReplayVisibilityMode;
+  speed: number;
+  selectedResidentId?: string | null;
+}
+
+export interface ReplaySessionState {
+  replayId?: string | null;
+  runId: string;
+  verifiedDigest?: string | null;
+  playable: boolean;
+  positionAt?: string | null;
+  filters: ReplayFilters;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ReplayVerification {
+  runId: string;
+  verifiedAt: string;
+  matches: boolean;
+  expectedSemanticDigest: string;
+  actualSemanticDigest?: string | null;
+}
