@@ -144,6 +144,29 @@ describe("useReplayController", () => {
     expect(result.current.windowNotice).toMatch(/incomplete/);
   });
 
+  it("keeps dense-window recovery catalogs available without retaining Oracle residents after downgrade", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/replay/events") && !path.includes("limit=1")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...payload(path) as object, total: 5_001,
+          items: [{ at: "2026-08-23T08:20:00.000Z", kind: "observation", eventId: "sensor", label: "Observation event", sensorId: "door", status: "pending", actorId: path.includes("include_oracle=true") ? "resident" : undefined, waypoints: [], details: {} }],
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1", { oracleAvailable: true }));
+    await settleController();
+    act(() => result.current.setWindowSpan(5 * 60 * 1000));
+    await act(async () => { for (let tick = 0; tick < 30; tick += 1) await Promise.resolve(); });
+    expect(result.current.filterOptions).toMatchObject({ sensorIds: ["door"], statuses: ["pending"], actorIds: [] });
+    act(() => result.current.updateFilters({ visibilityMode: "oracle" }));
+    await act(async () => { for (let tick = 0; tick < 30; tick += 1) await Promise.resolve(); });
+    expect(result.current.filterOptions.actorIds).toContain("resident");
+    act(() => result.current.updateFilters({ visibilityMode: "observable" }));
+    expect(result.current.filterOptions.actorIds).toEqual([]);
+  });
+
   it("recovers complete replay evidence when a narrower filter changes an incomplete window", async () => {
     let dense = true;
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {

@@ -298,6 +298,12 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         const windowStart = timestamp(window.windowStart); const windowEnd = timestamp(window.windowEnd);
         if (start !== undefined && end !== undefined) rangeRef.current = { start, end };
         if (windowStart !== undefined && windowEnd !== undefined) windowRangeRef.current = { start: windowStart, end: windowEnd };
+        // A truncated raw response is still authoritative enough to offer safe recovery choices.
+        setFilterOptions((current) => ({
+          sensorIds: [...new Set([...current.sensorIds, ...window.items.flatMap((item) => item.sensorId ? [item.sensorId] : []), ...filters.sensorIds])].sort(),
+          actorIds: filters.visibilityMode === "oracle" ? [...new Set([...current.actorIds, ...window.items.flatMap((item) => item.actorId ? [item.actorId] : []), ...filters.actorIds])].sort() : [],
+          statuses: [...new Set([...current.statuses, ...window.items.flatMap((item) => item.status ? [item.status] : []), ...filters.statuses])].sort(),
+        }));
         if (window.total > window.items.length) {
           const nextSpan = Math.max(MIN_WINDOW_SPAN_MS, Math.floor(effectiveSpanMs / 2));
           if (nextSpan < effectiveSpanMs && densityAttemptsRef.current < MAX_DENSITY_REQUERIES) {
