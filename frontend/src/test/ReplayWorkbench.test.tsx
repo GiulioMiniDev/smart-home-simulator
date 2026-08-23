@@ -32,7 +32,7 @@ const events: ReplayEventWindow = {
   total: 1, traceStart: frame.traceStart, traceEnd: frame.traceEnd, windowStart: frame.traceStart, windowEnd: frame.traceEnd,
   items: [{ at: frame.at, kind: "movement", eventId: "leave-home", label: "walk", status: "completed", actorId: "mario", waypoints: [
     { at: frame.at, regionId: "kitchen", traversalMode: "walk", position: { x: 2, y: 2 } },
-    { at: "2026-01-01T08:10:00Z", regionId: "market", traversalMode: "walk", position: { x: 2, y: 10 } },
+    { at: "2026-01-01T08:10:00Z", regionId: "market", traversalMode: "walk", position: { x: 2.125, y: 10.5 } },
   ], details: {} }],
 };
 
@@ -59,6 +59,7 @@ describe("ReplayStage", () => {
     view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T07:59:59Z" }, events, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
     expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
     expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Replay spatial state" })).getByText("No active trajectory.")).toBeInTheDocument();
     expect(view.container.querySelector("[data-region-id='kitchen']")).toHaveClass("is-replay-active");
     expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
 
@@ -68,6 +69,7 @@ describe("ReplayStage", () => {
     view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:01Z" }, events: { ...events, items: [{ ...events.items[0]!, end: "2026-01-01T08:10:00Z" }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
     expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
     expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Replay spatial state" })).getByText("No active trajectory.")).toBeInTheDocument();
     expect(view.container.querySelector("[data-region-id='kitchen']")).toHaveClass("is-replay-active");
     expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
   });
@@ -80,6 +82,7 @@ describe("ReplayStage", () => {
     view.rerender(<ReplayStage controller={{ frame, events: { ...events, items: [{ ...events.items[0]!, end: null, waypoints: [] }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
     expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
     expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Replay spatial state" })).getByText("No active trajectory.")).toBeInTheDocument();
   });
 
   it("provides equivalent, safe structured replay evidence including empty states", () => {
@@ -90,6 +93,9 @@ describe("ReplayStage", () => {
     expect(within(alternative).getByText("Resident 2: Identity unavailable; Position 2, 2 in kitchen; moving.")).toBeInTheDocument();
     expect(within(alternative).getByRole("heading", { name: "Active regions" }).nextElementSibling).toHaveTextContent("kitchen");
     expect(within(alternative).getByRole("heading", { name: "Changed sensors" }).nextElementSibling).toHaveTextContent("pir");
+    const trajectory = within(alternative).getByRole("heading", { name: "Trajectory" }).parentElement!;
+    expect(within(trajectory).getByRole("list", { name: "Active trajectory waypoints" })).toHaveTextContent("Step 1: kitchen; coordinates 2, 2; walk; 2026-01-01T08:00:00Z.");
+    expect(within(trajectory).getByRole("list", { name: "Active trajectory waypoints" })).toHaveTextContent("Step 2: market; coordinates 2.125, 10.5; walk; 2026-01-01T08:10:00Z.");
     const selectedEvent = within(alternative).getByRole("heading", { name: "Selected event" }).parentElement!;
     expect(within(selectedEvent).getByText("walk")).toBeInTheDocument();
     expect(within(selectedEvent).getByText("movement")).toBeInTheDocument();
@@ -101,6 +107,7 @@ describe("ReplayStage", () => {
     expect(within(screen.getByRole("region", { name: "Replay spatial state" })).getByText("No residents in the replay frame.")).toBeInTheDocument();
     expect(screen.getByText("No active regions.")).toBeInTheDocument();
     expect(screen.getByText("No changed sensors.")).toBeInTheDocument();
+    expect(screen.getByText("No active trajectory.")).toBeInTheDocument();
     expect(screen.getByText("No event selected.")).toBeInTheDocument();
   });
 });

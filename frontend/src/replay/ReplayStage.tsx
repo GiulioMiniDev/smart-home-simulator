@@ -97,6 +97,10 @@ function selectedEventState(event: ReplayEvent | undefined) {
   );
 }
 
+function waypointState(waypoint: ReplayEvent["waypoints"][number], index: number): string {
+  return `Step ${index + 1}: ${waypoint.regionId}; coordinates ${String(waypoint.position.x)}, ${String(waypoint.position.y)}; ${waypoint.traversalMode}; ${waypoint.at}.`;
+}
+
 /** Spatial projection of the exact replay frame, paired with an equivalent screen-reader list. */
 export function ReplayStage({ controller, models }: { controller: ReplayStageController; models: ReplayStageModels }) {
   const selected = controller.events?.items.find((event) => event.eventId === controller.selectedEventId);
@@ -129,6 +133,10 @@ export function ReplayStage({ controller, models }: { controller: ReplayStageCon
         <section>
           <h3>Changed sensors</h3>
           {overlay.activeSensorIds.length ? <ul>{overlay.activeSensorIds.map((sensorId) => <li key={sensorId}>{sensorId}</li>)}</ul> : <p>No changed sensors.</p>}
+        </section>
+        <section>
+          <h3>Trajectory</h3>
+          {movement ? <ol aria-label="Active trajectory waypoints">{movement.waypoints.map((waypoint, index) => <li key={`${waypoint.at}-${index}`}>{waypointState(waypoint, index)}</li>)}</ol> : <p>No active trajectory.</p>}
         </section>
         <section>
           <h3>Selected event</h3>
