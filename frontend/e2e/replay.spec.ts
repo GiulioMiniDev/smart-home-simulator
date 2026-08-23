@@ -70,14 +70,20 @@ test("replay survives reload and keyboard stepping", async ({ page }) => {
   await page.goto(`/simulations/${run.runId}`);
   await page.getByRole("tab", { name: "replay" }).click();
   await page.getByRole("button", { name: "Analysis" }).click();
+  const time = page.getByRole("slider", { name: "Replay time" });
+  const stepStartingPoint = String(Date.parse("2026-10-30T06:14:00.000Z"));
+  await time.fill(stepStartingPoint);
+  await expect(time).toHaveValue(stepStartingPoint);
+  await expect(page.locator("button.replay-cluster-mark").first()).toBeVisible();
   await selectEvent(page);
   await expect(selectedEvent(page)).toHaveCount(1);
-  const beforeStep = await page.getByRole("slider", { name: "Replay time" }).inputValue();
-  const time = page.getByRole("slider", { name: "Replay time" });
-  for (let step = 0; step < 12 && await time.inputValue() === beforeStep; step += 1) {
-    await page.getByRole("button", { name: "Next event" }).press("Enter");
-  }
+  const beforeStep = await time.inputValue();
+  const beforeSemanticEvent = await selectedEvent(page).getAttribute("aria-label");
+  const next = page.getByRole("button", { name: "Next event" });
+  await expect(next).toBeEnabled();
+  await next.press("Enter");
   await expect(time).not.toHaveValue(beforeStep);
+  await expect(selectedEvent(page)).not.toHaveAttribute("aria-label", beforeSemanticEvent ?? "");
   const saved = await time.inputValue();
   await page.waitForTimeout(750);
   await page.reload();

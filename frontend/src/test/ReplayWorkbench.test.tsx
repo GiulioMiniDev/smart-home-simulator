@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReplayStage } from "../replay/ReplayStage";
+import { ReplayInspector } from "../replay/ReplayInspector";
 import { ReplayTimeline } from "../replay/ReplayTimeline";
 import { ReplayWorkbench } from "../replay/ReplayWorkbench";
 import type { ReplayController } from "../replay/useReplayController";
@@ -556,6 +557,26 @@ describe("ReplayWorkbench", () => {
     expect(screen.getByRole("button", { name: "Next event" })).toBeDisabled();
     const requests = fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=5000"));
     expect(requests.at(-1)).toContain("limit=5000");
+  });
+});
+
+describe("ReplayInspector", () => {
+  afterEach(cleanup);
+
+  it("makes its labelled scrollable evidence region reachable by keyboard without another landmark", () => {
+    const controller = {
+      filters: { visibilityMode: "observable" },
+      evidenceIncomplete: false,
+      events,
+      frame,
+    } as ReplayController;
+    render(<ReplayInspector controller={controller} />);
+
+    const inspector = screen.getByRole("complementary", { name: "Inspector" });
+    expect(inspector).toHaveAttribute("tabindex", "0");
+    expect(inspector).toHaveAttribute("aria-labelledby", "replay-inspector-heading");
+    expect(within(inspector).getByRole("heading", { name: "Inspector" })).toHaveAttribute("id", "replay-inspector-heading");
+    expect(screen.getAllByRole("complementary")).toHaveLength(1);
   });
 });
 

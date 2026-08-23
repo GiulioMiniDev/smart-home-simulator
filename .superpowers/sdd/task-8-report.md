@@ -6,6 +6,19 @@ DONE_WITH_CONCERNS. Task 8 adds a disposable, real-artifact replay workspace, br
 coverage, replay performance evidence, and operator documentation. It does not change the protected
 night, drives, or expander implementation/tests.
 
+## Follow-up UI fixes
+
+- The scrollable replay inspector is now reachable with Tab and retains its visible `Inspector`
+  heading as its accessible name, without adding another landmark. Component coverage asserts the
+  focus target, heading association, and single complementary landmark; the real axe scan remains
+  clean on desktop and mobile Chromium.
+- Transport stepping now moves to the first source-order event at the next or previous *distinct*
+  timestamp. Simultaneous evidence remains individually reachable through timeline clusters rather
+  than trapping Previous/Next at one instant. Controller coverage exercises dense same-timestamp
+  events in both directions. The reload E2E begins at a known dense fixture instant and requires one
+  keyboard step to change both the slider time and selected semantic event before proving exact
+  session restoration.
+
 ## Acceptance evidence
 
 - `frontend/e2e/replay.spec.ts` was written first and failed as intended because
@@ -61,7 +74,7 @@ year-long simulation claim.
 ## Verification
 
 - `uv run ruff check src tests tools` — passed.
-- `npm test` — passed: 8 files, 217 tests; jsdom emits its pre-existing non-fatal navigation notice.
+- `npm test` — passed: 8 files, 219 tests; jsdom emits its pre-existing non-fatal navigation notice.
 - `npm run lint`, `npm run typecheck`, `npm run build` — passed (Vite reports the existing >500 kB
   chunk advisory only).
 - `npx playwright test e2e/replay.spec.ts` — passed: 4 tests across desktop and mobile Chromium.

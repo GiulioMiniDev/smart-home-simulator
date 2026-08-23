@@ -510,15 +510,17 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     if (!isReplayReady() || evidenceIncomplete) return;
     const ordered = [...(events?.items ?? [])].sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
     if (ordered.length === 0) return;
-    const selectedIndex = ordered.findIndex((event) => event.eventId === selectedEventIdRef.current);
-    const candidate: ReplayEvent | undefined = selectedIndex >= 0
-      ? ordered[selectedIndex + direction]
-      : direction === 1
-        ? ordered.find((event) => (timestamp(event.at) ?? Number.POSITIVE_INFINITY) > (positionRef.current ?? Number.NEGATIVE_INFINITY))
-        : ordered.filter((event) => (timestamp(event.at) ?? Number.NEGATIVE_INFINITY) < (positionRef.current ?? Number.POSITIVE_INFINITY)).at(-1);
+    const currentAt = positionRef.current;
+    if (currentAt === undefined) return;
+    const targetAt = direction === 1
+      ? ordered.find((event) => (timestamp(event.at) ?? Number.POSITIVE_INFINITY) > currentAt)
+      : [...ordered].reverse().find((event) => (timestamp(event.at) ?? Number.NEGATIVE_INFINITY) < currentAt);
+    const at = timestamp(targetAt?.at);
+    const candidate: ReplayEvent | undefined = at === undefined
+      ? undefined
+      : ordered.find((event) => timestamp(event.at) === at);
     if (!candidate) return;
     setSelection(candidate.eventId);
-    const at = timestamp(candidate.at);
     if (at !== undefined) seek(at);
   }, [events, evidenceIncomplete, isReplayReady, seek, setSelection]);
 

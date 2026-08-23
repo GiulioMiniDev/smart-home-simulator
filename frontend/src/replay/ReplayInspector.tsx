@@ -22,7 +22,7 @@ export function ReplayInspector({ controller }: { controller: ReplayController }
   const event = selected(controller);
   const oracle = controller.filters.visibilityMode === "oracle";
   const frame = controller.frame;
-  return <aside className="replay-inspector" aria-labelledby="replay-inspector-heading">
+  return <aside className="replay-inspector" aria-labelledby="replay-inspector-heading" tabIndex={0}>
     <div className="replay-inspector-heading"><p className="eyebrow">Evidence and provenance</p><h2 id="replay-inspector-heading">Inspector</h2></div>
     {controller.evidenceIncomplete ? <p className="replay-empty-inspector" role="status">Evidence window is incomplete; narrow the evidence filters before inspecting results.</p> : event ? <section className="replay-inspector-section"><h3>{event.label}</h3><dl>
       <div><dt>Kind</dt><dd>{event.kind}</dd></div><div><dt>Status</dt><dd>{event.status ?? "Not available"}</dd></div>

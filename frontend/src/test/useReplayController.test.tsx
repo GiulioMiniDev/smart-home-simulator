@@ -725,6 +725,32 @@ describe("useReplayController", () => {
     expect(result.current.selectedEventId).toBe("first");
   });
 
+  it("steps across distinct timestamps while leaving simultaneous events to their cluster", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/events")) return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object,
+        items: [
+          { at: "2026-08-23T08:10:00.000Z", kind: "observation", eventId: "same-second-first", label: "First observation", waypoints: [], details: {} },
+          { at: "2026-08-23T08:10:00.000Z", kind: "observation", eventId: "same-second-last", label: "Last observation", waypoints: [], details: {} },
+          { at: "2026-08-23T08:20:00.000Z", kind: "action", eventId: "next", label: "Next action", waypoints: [], details: {} },
+        ],
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+
+    act(() => result.current.selectEvent("same-second-last"));
+    act(() => result.current.step(1));
+    expect(result.current.selectedEventId).toBe("next");
+    expect(result.current.positionMs).toBe(Date.parse("2026-08-23T08:20:00.000Z"));
+
+    act(() => result.current.step(-1));
+    expect(result.current.selectedEventId).toBe("same-second-first");
+    expect(result.current.positionMs).toBe(Date.parse("2026-08-23T08:10:00.000Z"));
+  });
+
   it("uses request-animation-frame deltas and pauses at the trace end", async () => {
     const callbacks: Array<(at: number) => void> = [];
     const raf = vi.fn((callback: (at: number) => void) => { callbacks.push(callback); return callbacks.length; });
