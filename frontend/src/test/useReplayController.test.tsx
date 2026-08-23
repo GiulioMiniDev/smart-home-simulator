@@ -599,9 +599,71 @@ describe("useReplayController", () => {
     expect(saves).toHaveLength(0);
   });
 
+  it("cancels stale saves before committing an ordinary evidence-filter change", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    let resolveOld: ((response: Response) => void) | undefined;
+    const signals: AbortSignal[] = [];
+    const savedBodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/replay/session") && init?.method === "PUT") {
+        signals.push(init.signal as AbortSignal);
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        savedBodies.push(body);
+        const response = new Response(JSON.stringify({
+          runId: "run_1", verifiedDigest: digest, playable: true, positionAt: body.positionAt, filters: body.filters,
+        }), { status: 200 });
+        if (savedBodies.length === 1) return new Promise<Response>((resolve) => { resolveOld = resolve; });
+        return Promise.resolve(response);
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    await settleController();
+    const oldSave = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 400).at(-1)?.[0];
+    expect(oldSave).toBeTypeOf("function");
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    await settleController();
+    expect(signals).toHaveLength(1);
+
+    act(() => {
+      result.current.updateFilters({ eventKinds: ["movement"], sensorIds: ["pir"], statuses: ["completed"] });
+      if (typeof oldSave === "function") oldSave();
+    });
+    expect(signals).toHaveLength(1);
+    expect(signals[0]?.aborted).toBe(true);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    await settleController();
+    expect(savedBodies).toHaveLength(2);
+    expect(savedBodies[1]?.filters).toMatchObject({ eventKinds: ["movement"], sensorIds: ["pir"], statuses: ["completed"] });
+
+    resolveOld?.(new Response(JSON.stringify({
+      runId: "run_1", verifiedDigest: digest, playable: true, positionAt: start,
+      filters: { eventKinds: [], actorIds: [], sensorIds: [], statuses: [], detailMode: "presentation", visibilityMode: "observable", speed: 2 },
+    }), { status: 200 }));
+    await settleController();
+    expect(result.current.session?.filters).toMatchObject({ eventKinds: ["movement"], sensorIds: ["pir"], statuses: ["completed"] });
+  });
+
+  it("keeps a pending save for a no-op filter patch", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    await settleController();
+    expect(setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 400).at(-1)?.[0]).toBeTypeOf("function");
+    clearTimeoutSpy.mockClear();
+    act(() => result.current.updateFilters({ sensorIds: [] }));
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+  });
+
   it("rejects an already-due Oracle save after visibility is revoked", async () => {
     const setTimeoutSpy = vi.spyOn(window, "setTimeout");
-    const { result } = renderHook(() => useReplayController("run_1"));
+    const { result } = renderHook(() => useReplayController("run_1", { oracleAvailable: true }));
     await settleController();
     act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["resident"] }));
     const oldSave = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 400).at(-1)?.[0];

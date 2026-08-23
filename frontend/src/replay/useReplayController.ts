@@ -71,6 +71,18 @@ function matchesFilters(event: ReplayEvent, filters: ReplayFilters): boolean {
     && (!filters.statuses.length || Boolean(event.status && filters.statuses.includes(event.status)));
 }
 
+function sameFilters(left: ReplayFilters, right: ReplayFilters): boolean {
+  const same = (first: string[], second: string[]) => first.length === second.length && first.every((value, index) => value === second[index]);
+  return left.detailMode === right.detailMode
+    && left.visibilityMode === right.visibilityMode
+    && left.speed === right.speed
+    && left.selectedResidentId === right.selectedResidentId
+    && same(left.eventKinds, right.eventKinds)
+    && same(left.actorIds, right.actorIds)
+    && same(left.sensorIds, right.sensorIds)
+    && same(left.statuses, right.statuses);
+}
+
 export interface ReplayController {
   status: ReplayStatus;
   verification?: ReplayVerification;
@@ -170,6 +182,15 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     windowVersion.current += 1; frameVersion.current += 1;
     windowAbort.current?.abort(); catalogAbort.current?.abort(); frameAbort.current?.abort();
     lastFrameSchedule.current = undefined;
+  }, []);
+  const cancelPendingSave = useCallback(() => {
+    saveVersion.current += 1;
+    if (saveTimer.current !== undefined) {
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = undefined;
+    }
+    saveRequest.current?.abort();
+    saveRequest.current = undefined;
   }, []);
   const blockReplay = useCallback((reason: unknown) => {
     invalidateEvidence();
@@ -497,6 +518,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     if (patch.visibilityMode === "oracle" && !oracleAvailableRef.current) return;
     const current = filtersRef.current;
     const next = normalizeFilters({ ...current, ...patch });
+    if (sameFilters(current, next)) return;
+    // An already-due timer can run before React commits this state change, so fence it here.
+    cancelPendingSave();
     const visibilityWillChange = current.visibilityMode !== next.visibilityMode;
     if (visibilityWillChange) {
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
@@ -515,8 +539,6 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       setEvidenceIncomplete(false); setWindowNotice(undefined);
     }
     if (visibilityWillChange) {
-      saveVersion.current += 1;
-      saveRequest.current?.abort();
       setEvents(undefined);
       setFrame(undefined);
       if (next.visibilityMode === "observable") setFilterOptions((options) => ({ ...options, actorIds: [] }));
@@ -530,7 +552,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     }
     filtersRef.current = next;
     setFilters(next);
-  }, [events, evidenceIncomplete, invalidateEvidence, isVerifiedRun, setSelection]);
+  }, [cancelPendingSave, events, evidenceIncomplete, invalidateEvidence, isVerifiedRun, setSelection]);
   const setWindowSpan = useCallback((nextSpan: number) => {
     if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isVerifiedRun()) return;
     invalidateEvidence(); densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
