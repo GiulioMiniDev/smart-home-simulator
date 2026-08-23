@@ -257,9 +257,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         setVerification(checked);
         if (!checked.matches) { cancelPendingSave(); setReplayStatus("blocked"); return; }
         verifiedRun.current = { runId, generation };
-        // Oracle session state is durable, deliberate user opt-in. Fetch the richer projection
-        // before normalizing it against this run's authoritative mapping availability.
-        const rawSession = await api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session?include_oracle=true`, { signal: controller.signal });
+        // Bootstrap from the privacy-safe projection. Oracle session data is requested only
+        // after the user deliberately opts into Oracle mode for this controller instance.
+        const rawSession = await api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session`, { signal: controller.signal });
         if (!current || generation !== runGeneration.current || !isVerifiedRun()) return;
         const restored = normalizeSession(rawSession);
         if (restored.filters.visibilityMode === "oracle" && !oracleAvailableRef.current) {

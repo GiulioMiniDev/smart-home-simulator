@@ -50,21 +50,22 @@ describe("useReplayController", () => {
     vi.restoreAllMocks();
   });
 
-  it("verifies automatically, restores a matching session and requests a bounded window", async () => {
+  it("verifies automatically, restores an Observable session and requests only Observable evidence", async () => {
     const { result } = renderHook(() => useReplayController("run_1"));
     await settleController();
     expect(result.current.status).toBe("ready");
     expect(result.current.positionMs).toBe(Date.parse("2026-08-23T08:15:00.000Z"));
     const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
     expect(paths).toContain("/api/runs/run_1/replay/verify");
-    expect(paths).toContain("/api/runs/run_1/replay/session?include_oracle=true");
+    expect(paths).toContain("/api/runs/run_1/replay/session");
+    expect(paths.some((path) => path.includes("include_oracle=true"))).toBe(false);
     expect(paths.find((path) => path.includes("/replay/events"))).toContain("limit=1");
     const events = paths.find((path) => path.includes("/replay/events") && path.includes("limit=5000"));
     expect(events).toContain("limit=5000");
     expect(events).not.toContain("include_oracle=true");
   });
 
-  it("restores a digest-verified Oracle session before requesting Oracle evidence", async () => {
+  it("does not expose a persisted Oracle session until Oracle is deliberately selected", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
       if (path.includes("/replay/session") && !path.includes("?include_oracle=true")) {
@@ -80,10 +81,15 @@ describe("useReplayController", () => {
     }));
     const { result } = renderHook(() => useReplayController("run_1", { oracleAvailable: true }));
     await settleController();
-    expect(result.current.filters).toMatchObject({ visibilityMode: "oracle", actorIds: ["resident"], selectedResidentId: "resident" });
-    const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
-    expect(paths).toContain("/api/runs/run_1/replay/session?include_oracle=true");
-    expect(paths.some((path) => path.includes("include_oracle=true") && path.includes("actor_id=resident"))).toBe(true);
+    expect(result.current.filters).toMatchObject({ visibilityMode: "observable", actorIds: [] });
+    const startupPaths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
+    expect(startupPaths).toContain("/api/runs/run_1/replay/session");
+    expect(startupPaths.some((path) => path.includes("include_oracle=true"))).toBe(false);
+
+    act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["resident"], selectedResidentId: "resident" }));
+    await settleController();
+    const pathsAfterOptIn = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
+    expect(pathsAfterOptIn.some((path) => path.includes("include_oracle=true") && path.includes("actor_id=resident"))).toBe(true);
   });
 
   it("uses the chosen temporal span for centered event-window requests", async () => {
@@ -226,7 +232,8 @@ describe("useReplayController", () => {
     }), { status: 200 }));
     await settleController();
     const runBPaths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/runs/run_b/"));
-    expect(runBPaths).toContain("/api/runs/run_b/replay/session?include_oracle=true");
+    expect(runBPaths).toContain("/api/runs/run_b/replay/session");
+    expect(runBPaths.some((path) => path.includes("include_oracle=true"))).toBe(false);
     expect(runBPaths.filter((path) => path.includes("/replay/events") || path.includes("/replay/frame")).some((path) => path.includes("include_oracle=true"))).toBe(false);
   });
 
@@ -683,7 +690,7 @@ describe("useReplayController", () => {
   it("invalidates a stale session and sends identity filters only after Oracle is chosen", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
-      if (path.includes("/session?include_oracle=true")) return Promise.resolve(new Response(JSON.stringify({
+      if (path.includes("/session")) return Promise.resolve(new Response(JSON.stringify({
         ...payload(path) as object, verifiedDigest: "b".repeat(64), positionAt: "2026-08-23T08:15:00.000Z",
         filters: { eventKinds: [], actorIds: ["resident"], sensorIds: [], statuses: [], detailMode: "analysis", visibilityMode: "oracle", speed: 8 },
       }), { status: 200 }));
