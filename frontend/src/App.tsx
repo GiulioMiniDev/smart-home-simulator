@@ -17,7 +17,6 @@ import {
   HardDrive,
   Home as HomeIcon,
   ListTree,
-  Pause,
   Play,
   Plus,
   Radar,
@@ -62,7 +61,6 @@ import {
   addObstacle,
   addRoom,
   addSensor,
-  dwellingRegionIds,
   movePlanObject,
   pirRange,
   removeSelection,
@@ -71,6 +69,7 @@ import {
 } from "./editor";
 import type { ResizeHandle } from "./editor";
 import { authoringPrompts } from "./prompts";
+import { ReplayWorkbench } from "./replay/ReplayWorkbench";
 import type {
   BehaviourSlice,
   Configuration,
@@ -90,7 +89,6 @@ import type {
   ResidentProfile,
   SensorModel,
   StorageReport,
-  TimelineEvent,
   VolumeUsage,
   WorkspaceIntegrity,
 } from "./types";
@@ -1075,8 +1073,6 @@ function RunPage() {
   const [tab, setTab] = useState<"summary" | "diary" | "profile" | "observations" | "replay" | "artifacts">("summary");
   const [oracle, setOracle] = useState(false);
   const [selectedDiary, setSelectedDiary] = useState<string>();
-  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent>();
-  const [playing, setPlaying] = useState(false);
   const [exportNotice, setExportNotice] = useState<string>();
   const [exportManifest, setExportManifest] = useState<ExportManifest>();
   // An environment job publishes a plan and a sensor field and executes nothing, so it completes
@@ -1087,41 +1083,24 @@ function RunPage() {
   // never ask for it.
   const profile = useResource<ResidentProfile>(evidenceAvailable && tab === "profile" ? `/runs/${runId}/profile` : undefined);
   const observations = useResource<{ items: Observation[]; total: number; mode: string }>(evidenceAvailable ? `/runs/${runId}/observations?limit=500&include_oracle=${oracle}` : undefined);
-  const timeline = useResource<TimelineEvent[]>(evidenceAvailable ? `/runs/${runId}/timeline?limit=5000&include_oracle=${oracle}` : undefined);
   const visibleObservations: Observation[] | undefined = oracle
     ? observations.data?.items
     : observations.data?.items?.map((record) => ({ ...record, oracleCause: undefined }));
-  const visibleTimeline: TimelineEvent[] | undefined = oracle
-    ? timeline.data
-    : timeline.data?.map((event) => ({ ...event, id: undefined, actorId: undefined }));
   const changeVisibility = (nextOracle: boolean) => {
-    if (!nextOracle) {
-      setPlaying(false);
-      setSelectedEvent(undefined);
-    }
     setOracle(nextOracle);
   };
   useEffect(() => {
     if (!evidenceAvailable && !["summary", "artifacts"].includes(tab)) setTab("summary");
   }, [evidenceAvailable, tab]);
-  useEffect(() => {
-    if (!playing || !visibleTimeline?.length) return;
-    const movements = visibleTimeline.filter((event) => event.kind === "movement");
-    let index = 0;
-    const timer = window.setInterval(() => { setSelectedEvent(movements[index]); index += 1; if (index >= movements.length) setPlaying(false); }, 650);
-    return () => window.clearInterval(timer);
-  }, [playing, visibleTimeline]);
   if (detail.loading) return <div className="page"><Skeleton lines={8} /></div>;
   if (detail.error || !detail.data) return <div className="page"><ErrorPanel message={detail.error?.message ?? "Run not found"} onRetry={() => void detail.reload()} /></div>;
   const job = detail.data.job;
   const issueEvents = detail.data.events.filter((event) => event.eventType === "issue");
-  const homeModelArtifact = detail.data.artifacts.home_model;
   const cancel = async () => { await api(`/jobs/${runId}/cancel`, { method: "POST" }); await detail.reload(); };
   const removeRun = async () => {
     try { await api<MaintenanceSummary>(`/jobs/${runId}`, { method: "DELETE" }); navigate("/simulations"); }
     catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); }
   };
-  const verify = async () => { try { const result = await api<{ matches: boolean; actualSemanticDigest: string }>(`/runs/${runId}/replay/verify`, { method: "POST" }); setExportNotice(result.matches ? `Replay verified: ${result.actualSemanticDigest}` : "Replay digest did not match"); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
   const createExport = async () => { try { const result = await api<ExportManifest>(`/runs/${runId}/exports`, { method: "POST", body: JSON.stringify({ runId, formats: ["jsonl", "csv", "xes"], roles: ["observable", "oracle", "activities", "actions", "movements", "state_transitions", "resources", "runtime_events", "plan_deviations", "final_state", "habit_ground_truth", "resident_profile", "summary"] }) }); setExportManifest(result); setExportNotice(`Export ${result.exportId} published with ${result.files.length} verified files.`); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
   return <div className="page run-page">
     <Breadcrumbs items={[{ label: "Simulations", to: "/simulations" }, { label: runId }]} />
@@ -1132,7 +1111,7 @@ function RunPage() {
     {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : job.kind === "environment" ? "This job built the home and its sensor field and executed nothing. Review the plan on the home, then start a run to produce evidence from exactly these models." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => setTab("profile")}><UserRound size={16} /> Read the resident profile</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button primary" onClick={() => void download(`/exports/${exportManifest.exportId}/zip`, `${exportManifest.exportId}.zip`)}><Download size={15} /> Download ZIP</button><StatusBadge status="valid" /></div></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
     {tab === "diary" && <section className="diary-layout"><div className="diary-list"><div className="section-heading"><div><p className="eyebrow">Authoritative execution trace</p><h2>Ground-truth diary</h2></div><span>{diary.data?.total ?? 0} activities</span></div>{diary.loading ? <Skeleton lines={8} /> : diary.error ? <ErrorPanel message={diary.error.message} /> : diary.data?.items?.map((entry) => <button key={entry.activityExecutionId} className={`diary-entry ${selectedDiary === entry.activityExecutionId ? "is-selected" : ""}`} onClick={() => setSelectedDiary(entry.activityExecutionId)}><time>{formatTime(entry.actualStart)}</time><span><strong>{entry.intent.replaceAll("_", " ")}</strong><small>{entry.actorId} · {duration(entry.actualStart, entry.actualEnd)} · {entry.actions.length} actions</small></span><StatusBadge status={entry.status} /></button>)}</div><DiaryInspector entry={diary.data?.items?.find((item) => item.activityExecutionId === selectedDiary) ?? diary.data?.items?.[0]} /></section>}
     {tab === "observations" && <section><div className="observable-toolbar"><div><p className="eyebrow">Sensor projection</p><h2>{oracle ? "Oracle-linked observations" : "Observable device log"}</h2></div><div className="mode-switch" role="group" aria-label="Data visibility"><button aria-pressed={!oracle} onClick={() => changeVisibility(false)}>Observable</button><button aria-pressed={oracle} onClick={() => changeVisibility(true)}>Oracle links</button></div></div><p className="mode-explanation">{oracle ? "Identity and activity appear only through the separate oracle mapping." : "This view contains only fields a physical device could expose."}</p>{observations.loading ? <Skeleton lines={8} /> : observations.error ? <ErrorPanel message={observations.error.message} /> : <div className="observation-table"><div className="observation-head"><span>Time</span><span>Sensor</span><span>Measurement</span><span>Value</span><span>Quality</span>{oracle && <span>Ground-truth cause</span>}</div>{visibleObservations?.map((record) => <div className="observation-row" key={record.observationId}><time>{formatTime(record.observedAt)}</time><span><code>{record.sensorId}</code><small>{record.sensorType}</small></span><span>{record.measurement}</span><strong>{String(record.value)}{record.unit ? ` ${record.unit}` : ""}</strong><StatusBadge status={record.quality} />{oracle && <span className="cause-cell">{record.oracleCause ? <><b>{record.oracleCause.origin.replaceAll("_", " ")}</b><small>{record.oracleCause.residentIds.join(", ") || "No resident identity"} · {record.oracleCause.causeType}</small></> : "No oracle link"}</span>}</div>)}</div>}</section>}
-    {tab === "replay" && <section className="replay-workbench"><div className="replay-toolbar"><button className="button secondary" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={15} /> : <Play size={15} />}{playing ? "Pause" : "Play movements"}</button><button className="button secondary" onClick={() => void verify()}><ShieldCheck size={15} /> Verify semantic digest</button><span>{selectedEvent ? `${formatTime(selectedEvent.at)} · ${selectedEvent.label}` : "Select an event on the timeline"}</span></div><div className="replay-stage">{homeModelArtifact ? <ReplayPlan runId={runId} activeMovement={selectedEvent} /> : <EmptyState title="Home artifact unavailable"><p>The plan cannot be reconstructed without the persisted home model.</p></EmptyState>}<aside className="timeline-panel"><div className="section-heading"><div><p className="eyebrow">Synchronized trace</p><h2>Timeline</h2></div><Activity size={19} /></div>{timeline.loading ? <Skeleton lines={7} /> : timeline.error ? <ErrorPanel message={timeline.error.message} /> : visibleTimeline?.slice(0, 800).map((event, index) => <button key={event.id ?? `${event.at}-${index}`} className={`timeline-event kind-${event.kind} ${selectedEvent === event ? "is-selected" : ""}`} onClick={() => setSelectedEvent(event)}><time>{formatTime(event.at)}</time><i /><span><strong>{event.label.replaceAll("_", " ")}</strong><small>{event.kind} · {event.actorId ?? "identity unavailable"}</small></span></button>)}</aside></div></section>}
+    {tab === "replay" && <ReplayWorkbench runId={runId} />}
     {tab === "profile" && <section>{profile.loading ? <Skeleton lines={8} /> : profile.error ? <ErrorPanel message={profile.error.message} /> : profile.data ? <ProfileView runId={runId} profile={profile.data} /> : null}</section>}
     {tab === "artifacts" && <div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Artifact</span><span>Size</span><span>SHA-256</span></div>{Object.entries(detail.data.artifacts).map(([role, artifact]) => <div className="artifact-row" key={artifact.artifactId}><span>{role.replaceAll("_", " ")}</span><code>{artifact.artifactId}</code><span>{new Intl.NumberFormat(undefined, { style: "unit", unit: "megabyte", maximumFractionDigits: 2 }).format(artifact.sizeBytes / 1_000_000)}</span><code title={artifact.sha256}>{artifact.sha256.slice(0, 16)}…</code></div>)}</div>}
   </div>;
@@ -1220,23 +1199,6 @@ function FailureDiagnostics({ job, events }: { job: JobRecord; events: JobEvent[
 function DiaryInspector({ entry }: { entry?: DiaryEntry }) {
   if (!entry) return <aside className="diary-inspector"><div className="quiet-state"><ListTree size={22} /><strong>Select an activity</strong><p>Its executed actions and source identifiers will appear here.</p></div></aside>;
   return <aside className="diary-inspector"><div className="inspector-heading"><div><p className="eyebrow">Execution evidence</p><h2>{entry.intent.replaceAll("_", " ")}</h2></div><StatusBadge status={entry.status} /></div><dl className="definition-list compact"><div><dt>Resident</dt><dd>{entry.actorId}</dd></div><div><dt>Planned</dt><dd>{formatTime(entry.plannedStart)}–{formatTime(entry.plannedEnd)}</dd></div><div><dt>Actual</dt><dd>{formatTime(entry.actualStart)}–{formatTime(entry.actualEnd)}</dd></div><div><dt>Source activity</dt><dd><code>{entry.sourceActivityId}</code></dd></div><div><dt>Process model</dt><dd><code>{entry.processModelId}</code></dd></div><div><dt>Execution</dt><dd><code>{entry.activityExecutionId}</code></dd></div></dl><div className="action-sequence"><h3>Executed actions</h3>{entry.actions.map((action, index) => <div key={action.actionExecutionId}><span>{String(index + 1).padStart(2, "0")}</span><i /><div><strong>{action.actionType.replaceAll("_", " ")}</strong><small>{formatTime(action.startedAt)} · node {action.nodeId}</small><code>{action.actionExecutionId}</code></div></div>)}</div><div className="digest-block"><ShieldCheck size={16} /><span><strong>Trace provenance</strong><code>{entry.traceSemanticDigest}</code></span></div></aside>;
-}
-
-function ReplayPlan({ runId, activeMovement }: { runId: string; activeMovement?: TimelineEvent }) {
-  const models = useResource<{ homeModel?: HomeModel; sensorModel?: SensorModel }>(`/runs/${runId}/models`);
-  const home = models.data?.homeModel;
-  // Replay follows the resident. While they are out, the errand is the thing being replayed, so
-  // the places they travel to come into view for exactly as long as the trajectory needs them.
-  const leavesHome = !!home && !!activeMovement?.waypoints?.some(
-    (item) => !dwellingRegionIds(home).has(item.regionId),
-  );
-  const replayOverlay = activeMovement?.waypoints ? {
-    residents: [],
-    activeRegionIds: [...new Set(activeMovement.waypoints.map((item) => item.regionId))],
-    activeSensorIds: [],
-    trajectory: activeMovement.waypoints.map((item) => item.position),
-  } : undefined;
-  return <div className="replay-plan">{home ? <PlanCanvas home={home} sensors={models.data?.sensorModel} replayOverlay={replayOverlay} showExternalPlaces={leavesHome && (replayOverlay?.trajectory.length ?? 0) > 1} /> : models.error ? <ErrorPanel message={models.error.message} /> : <Skeleton lines={6} />}</div>;
 }
 
 function ExportsPage() {

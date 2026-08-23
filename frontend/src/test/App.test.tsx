@@ -81,7 +81,10 @@ function installApi() {
     if (url.startsWith("/runs/run_1/profile/page")) return Promise.resolve(new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } }));
     if (url.startsWith("/runs/run_1/profile")) return response(profile);
     if (url === "/runs/run_1/models") return response({ homeModel, sensorModel });
-    if (url === "/runs/run_1/replay/verify") return response({ matches: true, actualSemanticDigest: "b".repeat(64) });
+    if (url === "/runs/run_1/replay/verify") return response({ runId: "run_1", matches: true, expectedSemanticDigest: "b".repeat(64), actualSemanticDigest: "b".repeat(64), verifiedAt: now });
+    if (url.startsWith("/runs/run_1/replay/session")) return response({ runId: "run_1", verifiedDigest: "b".repeat(64), playable: true, positionAt: now, filters: { eventKinds: [], actorIds: [], sensorIds: [], statuses: [], detailMode: "presentation", visibilityMode: "observable", speed: 1 } });
+    if (url.startsWith("/runs/run_1/replay/events")) return response({ items: [{ at: now, end: now, kind: "movement", eventId: "move", label: "walk", status: "completed", waypoints: [{ at: now, regionId: "room", traversalMode: "walk", position: { x: 1, y: 1 } }], details: {} }], total: 1, traceStart: now, traceEnd: now, windowStart: now, windowEnd: now });
+    if (url.startsWith("/runs/run_1/replay/frame")) return response({ runId: "run_1", at: now, traceStart: now, traceEnd: now, residents: [], sensorStates: [], entityStates: {}, environmentFacts: {}, resourceAvailableUnits: {} });
     if (url === "/runs/run_1/exports") return response({ exportId: "export_1", runId: "run_1", sourceBundleSha256: "a".repeat(64), sourceTraceSemanticDigest: "b".repeat(64), seed: 7, createdAt: now, observableOracleSeparated: true, files: [{ role: "observable", format: "jsonl", relativePath: "export_1/observable.jsonl", mediaType: "application/x-ndjson", recordCount: 1, sizeBytes: 10, sha256: "c".repeat(64) }] }, { status: 201 });
     if (url.includes("/authoring")) return response({ valid: true, issues: [], scenarioArtifact: { artifactId: "scenario" } });
     if (url.includes("/runs") && init?.method === "POST") return response(job, { status: 202 });
@@ -350,7 +353,7 @@ describe("complete application routes", () => {
     expect(screen.queryByText(/Unpublished edits/)).not.toBeInTheDocument();
   });
 
-  it("opens diary, oracle observations, replay and complete export manifest", async () => {
+  it("opens diary, oracle observations, digest-verified replay and complete export manifest", async () => {
     mount("/simulations/run_1");
     await screen.findByText("Persistent state");
     fireEvent.click(screen.getByRole("button", { name: "Export complete dataset" }));
@@ -358,31 +361,12 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByRole("tab", { name: "diary" }));
     expect((await screen.findAllByText("prepare meal")).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("tab", { name: "observations" }));
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) =>
-      String(input).includes("/runs/run_1/timeline?limit=5000&include_oracle=false"),
-    )).toBe(true));
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(await screen.findByText("movement · identity unavailable")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "observations" }));
-    fireEvent.click(screen.getByRole("button", { name: "Oracle links" }));
-    expect(await screen.findByText("simulated cause")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    fireEvent.click(await screen.findByRole("button", { name: /walk/ }));
-    await waitFor(() =>
-      expect(
-        vi
-          .mocked(fetch)
-          .mock.calls.some(([input]) =>
-            String(input).includes("/runs/run_1/timeline?limit=5000&include_oracle=true"),
-          ),
-      ).toBe(true),
-    );
-    expect(screen.getByText("movement · mario")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Verify semantic digest/ }));
-    await waitFor(() => expect(screen.getByText(/Replay verified/)).toBeInTheDocument());
+    expect(await screen.findByText("Replay verified")).toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/runs/run_1/replay/verify"))).toBe(true);
   });
 
-  it("revokes legacy Oracle evidence while an Observable reload supersedes it", async () => {
+  it("revokes observational Oracle evidence while an Observable reload supersedes it", async () => {
     let resolveOracleObservation: ((response: Response) => void) | undefined;
     let oracleStarted = false;
     let oracleSignal: AbortSignal | undefined;
@@ -400,19 +384,11 @@ describe("complete application routes", () => {
     expect(await screen.findByText("observable wins")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Oracle links" }));
     await waitFor(() => expect(oracleStarted).toBe(true));
-    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    fireEvent.click(await screen.findByRole("button", { name: /walk/ }));
-    expect(screen.queryByText("Select an event on the timeline")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "observations" }));
     fireEvent.click(screen.getByRole("button", { name: "Observable" }));
     expect(oracleSignal?.aborted).toBe(true);
     expect(screen.queryByText("simulated cause")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(screen.getByText("Select an event on the timeline")).toBeInTheDocument();
     resolveOracleObservation?.(await response({ total: 1, mode: "oracle", items: [{ observationId: "oracle", sensorId: "pir", sensorType: "pir", observedAt: now, measurement: "motion", value: "oracle", quality: "nominal", oracleCause: { origin: "simulated_cause", causeType: "movement", causeIds: ["move"], residentIds: ["mario"], activityExecutionIds: [], actionExecutionIds: [] } }] }));
-    await screen.findByText("movement · identity unavailable");
     expect(screen.queryByText("simulated cause")).not.toBeInTheDocument();
-    expect(screen.queryByText("movement · mario")).not.toBeInTheDocument();
   });
 
   it("profiles the resident, switches class of day and person, and downloads the page", async () => {
@@ -934,17 +910,15 @@ describe("complete application routes", () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/jobs/run_1/cancel"), expect.anything()));
   });
 
-  it("covers empty evidence, replay playback and digest mismatch", async () => {
+  it("covers empty evidence and an automatic replay digest mismatch", async () => {
     overrides["/runs/run_1/diary?limit=500"] = { total: 0, items: [] };
     overrides["/runs/run_1/replay/verify"] = { matches: false, actualSemanticDigest: "d".repeat(64) };
     mount("/simulations/run_1"); await screen.findByText("Persistent state");
     fireEvent.click(screen.getByRole("tab", { name: "diary" }));
     expect(await screen.findByText("Select an activity")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    fireEvent.click(screen.getByRole("button", { name: /Play movements/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Verify semantic digest/ }));
     expect(await screen.findByText("Replay digest did not match")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.getByRole("button", { name: "Next event" })).toBeDisabled();
   });
 
   it("covers draft, multi-resident, no-model and invalid publication paths", async () => {
@@ -988,8 +962,9 @@ describe("complete application routes", () => {
     expect(await screen.findByText("21 celsius")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Oracle links" }));
     expect(await screen.findByText("No oracle link")).toBeInTheDocument();
+    overrides["/runs/run_1/models"] = {};
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(screen.getByText("Home artifact unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("Home model unavailable")).toBeInTheDocument();
     cleanup(); overrides["/jobs/run_1"] = new Response(JSON.stringify({ error: { message: "Run missing" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/simulations/run_1"); expect(await screen.findByText("Run missing")).toBeInTheDocument();
   });

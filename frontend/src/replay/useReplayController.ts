@@ -376,7 +376,7 @@ export function useReplayController(runId: string): ReplayController {
       : "verifying";
   return {
     status: visibleStatus,
-    verification: verifiedForCurrentRun ? verification : undefined,
+    verification: verifiedForCurrentRun || checkedRun.current?.generation === runGeneration.current ? verification : undefined,
     session: verifiedForCurrentRun ? session : undefined,
     positionMs: verifiedForCurrentRun ? positionMs ?? 0 : 0,
     playing: verifiedForCurrentRun && playing,

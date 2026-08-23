@@ -1,6 +1,7 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReplayStage } from "../replay/ReplayStage";
+import { ReplayWorkbench } from "../replay/ReplayWorkbench";
 import type { HomeModel, ReplayEventWindow, ReplayFrame, SensorModel } from "../types";
 
 const home: HomeModel = {
@@ -109,5 +110,48 @@ describe("ReplayStage", () => {
     expect(screen.getByText("No changed sensors.")).toBeInTheDocument();
     expect(screen.getByText("No active trajectory.")).toBeInTheDocument();
     expect(screen.getByText("No event selected.")).toBeInTheDocument();
+  });
+});
+
+const digest = "a".repeat(64);
+const replayStart = "2026-01-01T08:00:00.000Z";
+const replayEnd = "2026-01-01T09:00:00.000Z";
+const simultaneousEvents = [
+  { at: "2026-01-01T08:15:00.000Z", kind: "observation", eventId: "sensor-1", label: "motion detected", sensorId: "pir", waypoints: [], details: { measurement: "motion" } },
+  { at: "2026-01-01T08:15:00.000Z", kind: "observation", eventId: "sensor-2", label: "door opened", sensorId: "contact", waypoints: [], details: { measurement: "contact" } },
+];
+
+function replayResponse(path: string): unknown {
+  if (path.includes("/verify")) return { runId: "run_1", matches: true, expectedSemanticDigest: digest, actualSemanticDigest: digest, verifiedAt: replayStart };
+  if (path.includes("/session")) return { runId: "run_1", verifiedDigest: digest, playable: true, positionAt: replayStart, filters: { eventKinds: [], actorIds: [], sensorIds: [], statuses: [], detailMode: "presentation", visibilityMode: "observable", speed: 1 } };
+  if (path.includes("/models")) return { homeModel: home, sensorModel: sensors };
+  if (path.includes("/events")) return { items: simultaneousEvents, total: simultaneousEvents.length, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+  if (path.includes("/frame")) return { ...frame, runId: "run_1", at: replayStart, traceStart: replayStart, traceEnd: replayEnd };
+  return {};
+}
+
+describe("ReplayWorkbench", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => Promise.resolve(new Response(JSON.stringify(replayResponse(String(input))), { status: 200, headers: { "Content-Type": "application/json" } }))));
+  });
+  afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+
+  it("keeps the same instant when analysis mode and oracle evidence are opened", async () => {
+    render(<ReplayWorkbench runId="run_1" />);
+    await screen.findByText("Replay verified");
+    const before = screen.getByRole("slider", { name: "Replay time" }).getAttribute("value");
+    fireEvent.click(screen.getByRole("button", { name: "Analysis" }));
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
+    fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
+    expect(await screen.findByText("Simulated cause")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
+  });
+
+  it("steps events, filters tracks and exposes simultaneous events individually", async () => {
+    render(<ReplayWorkbench runId="run_1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sensors" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next event" }));
+    expect(screen.getAllByRole("button", { name: /08:15/ })).toHaveLength(2);
   });
 });
