@@ -42,6 +42,8 @@ night, drives, or expander implementation/tests.
   evidence, Oracle cause, typed axe scan, keyboard stepping, reload/session restoration, and both
   Chromium projects. Each journey first resets a verified, observable default replay session through
   `page.request`, so the three tests are execution-order independent.
+- Playwright pins `workers: 1` while retaining `fullyParallel: false`: both browser projects use the
+  same durable run/session fixture, so serial execution prevents cross-project writes from racing.
 - A real-browser race was found by the new test and corrected: verification/session and event-window
   requests no longer share an abort controller. Plan SVG groups now expose valid ARIA group roles, so
   the full axe scan is clean without hiding the canvas's keyboard controls.
@@ -95,8 +97,8 @@ synthetic replay-load evidence, not a production year-long simulation claim.
 - `npm test` — passed: 8 files, 220 tests; jsdom emits its pre-existing non-fatal navigation notice.
 - `npm run lint`, `npm run typecheck`, `npm run build` — passed (Vite reports the existing >500 kB
   chunk advisory only).
-- `npx playwright test e2e/replay.spec.ts` — passed: 6 tests across desktop and mobile Chromium,
-  run sequentially as desktop 3/3 then mobile 3/3 after per-test API session resets.
+- `npx playwright test e2e/replay.spec.ts` — passed: 6 tests across desktop and mobile Chromium in
+  one invocation using one worker (desktop 3/3, then mobile 3/3) after per-test API session resets.
 - `make benchmark-replay` — passed with the results above.
 - `git diff --check` — passed.
 - `uv run pytest -q` — completed at 95.41% coverage with exactly two accepted baseline failures:
