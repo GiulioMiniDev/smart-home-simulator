@@ -24,12 +24,15 @@ from smart_home_sim.domain.application import (
     JobRecord,
     JobStatus,
     MaintenanceSummary,
+    ReplayFilters,
+    ReplaySessionState,
     ResidentSummary,
     WorkspaceIntegrity,
     WorkspaceManifest,
     WorkspaceSummary,
     utc_now,
 )
+from smart_home_sim.domain.execution import ExecutionTrace
 
 DATABASE_VERSION = 1
 
@@ -1103,13 +1106,15 @@ class WorkspaceService:
         *,
         verified_digest: str | None = None,
         position_at: datetime | None = None,
-        filters: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+        filters: ReplayFilters | None = None,
+    ) -> ReplaySessionState:
         self.ensure_writable()
-        if not self.run_artifacts(run_id):
-            raise WorkspaceError(f"unknown run '{run_id}'")
+        # Reading the current session also establishes that its persisted verification applies to
+        # the immutable execution trace still registered for this run.
         previous = self.replay_session(run_id)
-        effective_filters = previous.get("filters", {}) if filters is None else filters
+        effective_filters = previous.filters if filters is None else filters
+        effective_position = previous.position_at if position_at is None else position_at
+        effective_digest = previous.verified_digest if verified_digest is None else verified_digest
         replay_id = f"replay_{hashlib.sha256(run_id.encode('utf-8')).hexdigest()[:16]}"
         now = _iso()
         with self.transaction() as connection:
@@ -1122,44 +1127,59 @@ class WorkspaceService:
                     created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(replay_id) DO UPDATE SET
-                    verified_digest=COALESCE(excluded.verified_digest, verified_digest),
-                    position_at=COALESCE(excluded.position_at, position_at),
+                    verified_digest=excluded.verified_digest,
+                    position_at=excluded.position_at,
                     filters_json=excluded.filters_json,
                     updated_at=excluded.updated_at""",
                 (
                     replay_id,
                     run_id,
-                    verified_digest,
-                    position_at.isoformat() if position_at else None,
-                    json.dumps(effective_filters, sort_keys=True),
+                    effective_digest,
+                    effective_position.isoformat() if effective_position else None,
+                    json.dumps(
+                        effective_filters.model_dump(mode="json", by_alias=True), sort_keys=True
+                    ),
                     existing["created_at"] if existing else now,
                     now,
                 ),
             )
         return self.replay_session(run_id)
 
-    def replay_session(self, run_id: str) -> dict[str, Any]:
+    def _replay_trace_digest(self, run_id: str) -> str:
+        artifact = self.run_artifacts(run_id).get("execution_trace")
+        if artifact is None:
+            raise WorkspaceError(f"unknown run '{run_id}'")
+        try:
+            return ExecutionTrace.model_validate_json(
+                self.read_artifact(artifact.artifact_id)
+            ).semantic_digest
+        except ValueError as error:
+            raise WorkspaceError(f"run '{run_id}' has an invalid execution trace") from error
+
+    def replay_session(self, run_id: str) -> ReplaySessionState:
+        current_digest = self._replay_trace_digest(run_id)
         with self.connection() as connection:
             row = connection.execute(
                 "SELECT * FROM replay_sessions WHERE run_id=? ORDER BY updated_at DESC LIMIT 1",
                 (run_id,),
             ).fetchone()
         if row is None:
-            return {
-                "runId": run_id,
-                "verifiedDigest": None,
-                "positionAt": None,
-                "filters": {},
-            }
-        return {
-            "replayId": row["replay_id"],
-            "runId": row["run_id"],
-            "verifiedDigest": row["verified_digest"],
-            "positionAt": row["position_at"],
-            "filters": json.loads(row["filters_json"]),
-            "createdAt": row["created_at"],
-            "updatedAt": row["updated_at"],
-        }
+            return ReplaySessionState(run_id=run_id)
+        try:
+            stored_filters = ReplayFilters.model_validate(json.loads(row["filters_json"]))
+        except (TypeError, ValueError):
+            stored_filters = ReplayFilters()
+        digest_matches = row["verified_digest"] == current_digest
+        return ReplaySessionState(
+            replay_id=row["replay_id"],
+            run_id=row["run_id"],
+            verified_digest=row["verified_digest"],
+            playable=digest_matches,
+            position_at=_datetime(row["position_at"]) if digest_matches else None,
+            filters=stored_filters if digest_matches else ReplayFilters(),
+            created_at=_datetime(row["created_at"]),
+            updated_at=_datetime(row["updated_at"]),
+        )
 
     def get_setting(self, key: str, default: Any = None) -> Any:
         with self.connection() as connection:

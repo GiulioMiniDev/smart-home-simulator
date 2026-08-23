@@ -202,6 +202,48 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         ).json()
         assert oracle["mode"] == "oracle"
         assert client.get(f"/api/runs/{job.job_id}/timeline?limit=5", headers=headers).json()
+        events = client.get(
+            f"/api/runs/{job.job_id}/replay/events",
+            params={"limit": 25, "kinds": "movement,observation", "include_oracle": "false"},
+            headers=headers,
+        )
+        assert events.status_code == 200
+        assert len(events.json()["items"]) <= 25
+        assert {item["kind"] for item in events.json()["items"]} <= {"movement", "observation"}
+        assert all("actorId" not in item for item in events.json()["items"])
+
+        target = events.json()["items"][0]["at"]
+        frame = client.get(
+            f"/api/runs/{job.job_id}/replay/frame",
+            params={"at": target, "include_oracle": "false"},
+            headers=headers,
+        )
+        assert frame.status_code == 200
+        assert all(item.get("oracleCause") is None for item in frame.json()["sensorStates"])
+        assert all("residentId" not in item for item in frame.json()["residents"])
+        assert "activeEventIds" not in frame.json()
+
+        assert (
+            client.get(
+                f"/api/runs/{job.job_id}/replay/events?limit=5001", headers=headers
+            ).status_code
+            == 422
+        )
+        assert (
+            client.get(
+                f"/api/runs/{job.job_id}/replay/events",
+                params={"start": "2026-10-31T00:00:00Z", "end": "2026-10-30T00:00:00Z"},
+                headers=headers,
+            ).status_code
+            == 422
+        )
+        assert (
+            client.get(
+                f"/api/runs/{job.job_id}/replay/events?kinds=unknown", headers=headers
+            ).status_code
+            == 422
+        )
+        assert client.get("/api/runs/missing/replay/events", headers=headers).status_code == 409
         profile = client.get(f"/api/runs/{job.job_id}/profile", headers=headers).json()
         assert profile["documentType"] == "resident_profile"
         assert profile["residents"][0]["narrative"]
@@ -223,9 +265,26 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         saved = client.put(
             f"/api/runs/{job.job_id}/replay/session",
             headers=headers,
-            json={"position_at": "2026-10-30T08:00:00Z", "filters": {"actorId": "mario"}},
+            json={
+                "positionAt": target,
+                "filters": {
+                    "eventKinds": ["movement"],
+                    "detailMode": "analysis",
+                    "visibilityMode": "observable",
+                    "speed": 8,
+                },
+            },
         ).json()
-        assert saved["filters"] == {"actorId": "mario"}
+        assert saved["filters"]["speed"] == 8
+        assert (
+            client.put(
+                f"/api/runs/{job.job_id}/replay/session",
+                headers=headers,
+                json={"filters": {"speed": 64}},
+            ).status_code
+            == 422
+        )
+        assert client.get("/api/runs/missing/replay/session", headers=headers).status_code == 409
 
         mismatch = client.post(
             f"/api/runs/{job.job_id}/exports",

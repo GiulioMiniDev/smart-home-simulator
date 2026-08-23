@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import shutil
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,7 +14,10 @@ from smart_home_sim.domain.application import (
     GraphicalReference,
     JobProgress,
     JobStatus,
+    ReplayFilters,
 )
+
+PROJECT_ROOT = Path(__file__).parents[1]
 
 
 def test_workspace_persists_relationships_jobs_and_manifest(tmp_path: Path) -> None:
@@ -280,16 +285,44 @@ def test_workspace_persists_settings_issues_replay_and_blocks_live_archive(
     run_path = workspace.runs_path / "run_1"
     run_path.mkdir()
     trace_path = run_path / "execution-trace.json"
-    trace_path.write_text("{}", encoding="utf-8")
+    shutil.copyfile(
+        PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30/execution-trace.json",
+        trace_path,
+    )
     workspace.register_artifact(trace_path, role="execution_trace", run_id="run_1")
+    digest = json.loads(trace_path.read_text(encoding="utf-8"))["semanticDigest"]
+    missing = workspace.replay_session("run_1")
+    assert missing.playable is False
+    assert missing.position_at is None
+    assert missing.filters == ReplayFilters()
+    unverified = workspace.save_replay_session(
+        "run_1",
+        position_at=datetime(2026, 7, 22, tzinfo=UTC),
+        filters=ReplayFilters(speed=4),
+    )
+    assert unverified.replay_id is not None
+    assert unverified.playable is False
+    assert unverified.position_at is None
+    assert unverified.filters == ReplayFilters()
     saved = workspace.save_replay_session(
+        "run_1",
+        verified_digest=digest,
+        position_at=datetime(2026, 7, 22, tzinfo=UTC),
+        filters=ReplayFilters(speed=8),
+    )
+    assert saved.verified_digest == digest
+    assert saved.playable is True
+    assert workspace.replay_session("run_1").filters.speed == 8
+    stale = workspace.save_replay_session(
         "run_1",
         verified_digest="a" * 64,
         position_at=datetime(2026, 7, 22, tzinfo=UTC),
-        filters={"actorId": "resident_1"},
+        filters=ReplayFilters(speed=4),
     )
-    assert saved["verifiedDigest"] == "a" * 64
-    assert workspace.replay_session("run_1")["filters"] == {"actorId": "resident_1"}
+    assert stale.replay_id is not None
+    assert stale.playable is False
+    assert stale.position_at is None
+    assert stale.filters == ReplayFilters()
 
     job = workspace.create_job("simulation", home_id=home.home_id)
     with pytest.raises(WorkspaceError, match="active jobs"):

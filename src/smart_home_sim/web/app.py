@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from datetime import date as _date
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast, get_args
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -37,7 +37,15 @@ from smart_home_sim.application.plan_approval import plan_approval
 from smart_home_sim.application.replay import ReplayService
 from smart_home_sim.application.service import ApplicationService
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
-from smart_home_sim.domain.application import ExportRequest, JobStatus
+from smart_home_sim.domain.application import (
+    ExportRequest,
+    JobStatus,
+    ObservableReplayEventWindow,
+    ObservableReplayFrame,
+    ObservableReplaySessionState,
+    ReplayEventKind,
+    ReplayFilters,
+)
 from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, render_profile_html
 
 
@@ -115,8 +123,8 @@ class SettingUpdate(ApiModel):
 
 
 class ReplaySessionUpdate(ApiModel):
-    position_at: Annotated[AwareDatetime, Field(strict=False)] | None = None
-    filters: dict[str, JsonValue] = Field(default_factory=dict)
+    position_at: Annotated[AwareDatetime | None, Field(strict=False, alias="positionAt")] = None
+    filters: ReplayFilters = Field(default_factory=ReplayFilters)
 
 
 class ExportCreate(ExportRequest):
@@ -812,9 +820,65 @@ def create_app(
             },
         )
 
-    @app.get("/api/runs/{run_id}/timeline", dependencies=[secured])
+    @app.get("/api/runs/{run_id}/timeline", dependencies=[secured], deprecated=True)
     def timeline(run_id: str, limit: int = 2000) -> list[dict[str, Any]]:
         return replay.timeline(run_id, limit=limit)
+
+    @app.get("/api/runs/{run_id}/replay/events", dependencies=[secured])
+    def replay_events(
+        run_id: str,
+        start: Annotated[AwareDatetime | None, Query(strict=False)] = None,
+        end: Annotated[AwareDatetime | None, Query(strict=False)] = None,
+        kinds: str = "",
+        actor_id: str | None = None,
+        sensor_id: str | None = None,
+        include_oracle: bool = False,
+        limit: int = Query(default=2_000, ge=1, le=5_000),
+    ) -> dict[str, Any]:
+        selected = {item for item in kinds.split(",") if item}
+        unknown = selected - set(get_args(ReplayEventKind))
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "INVALID_REPLAY_EVENT_KIND",
+                    "message": f"Unknown replay event kind(s): {', '.join(sorted(unknown))}",
+                },
+            )
+        if start is not None and end is not None and start > end:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "INVALID_REPLAY_WINDOW",
+                    "message": "Replay window start must not follow its end.",
+                },
+            )
+        window = replay.events(
+            run_id,
+            start=start,
+            end=end,
+            kinds=cast(set[ReplayEventKind], selected) or None,
+            actor_id=actor_id,
+            sensor_id=sensor_id,
+            include_oracle=include_oracle,
+            limit=limit,
+        )
+        if include_oracle:
+            return window.model_dump(mode="json", by_alias=True)
+        return ObservableReplayEventWindow.from_window(window).model_dump(
+            mode="json", by_alias=True
+        )
+
+    @app.get("/api/runs/{run_id}/replay/frame", dependencies=[secured])
+    def replay_frame(
+        run_id: str,
+        at: Annotated[AwareDatetime, Query(strict=False)],
+        include_oracle: bool = False,
+    ) -> dict[str, Any]:
+        frame = replay.frame(run_id, at=at, include_oracle=include_oracle)
+        if include_oracle:
+            return frame.model_dump(mode="json", by_alias=True)
+        return ObservableReplayFrame.from_frame(frame).model_dump(mode="json", by_alias=True)
 
     @app.get("/api/runs/{run_id}/models", dependencies=[secured])
     def run_models(run_id: str) -> dict[str, Any]:
@@ -832,14 +896,18 @@ def create_app(
 
     @app.get("/api/runs/{run_id}/replay/session", dependencies=[secured])
     def replay_session(run_id: str) -> dict[str, Any]:
-        return workspace.replay_session(run_id)
+        session = ObservableReplaySessionState.from_session(workspace.replay_session(run_id))
+        return session.model_dump(mode="json", by_alias=True)
 
     @app.put("/api/runs/{run_id}/replay/session", dependencies=[secured])
     def save_replay_session(run_id: str, request: ReplaySessionUpdate) -> dict[str, Any]:
-        return workspace.save_replay_session(
+        session = workspace.save_replay_session(
             run_id,
             position_at=request.position_at,
             filters=request.filters,
+        )
+        return ObservableReplaySessionState.from_session(session).model_dump(
+            mode="json", by_alias=True
         )
 
     @app.post("/api/runs/{run_id}/exports", status_code=201, dependencies=[secured])
