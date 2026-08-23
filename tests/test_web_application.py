@@ -184,6 +184,19 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         JobProgress(phase="completed", percent=100, message="Complete"),
         result_reference=job.job_id,
     )
+    trace_only_job = workspace.create_job("simulation", home_id=home.home_id, seed=8)
+    trace_only_directory = workspace.runs_path / trace_only_job.job_id
+    trace_only_directory.mkdir()
+    shutil.copyfile(
+        PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30/execution-trace.json",
+        trace_only_directory / "execution-trace.json",
+    )
+    workspace.register_artifact(
+        trace_only_directory / "execution-trace.json",
+        role="execution_trace",
+        run_id=trace_only_job.job_id,
+    )
+    missing_trace_job = workspace.create_job("simulation", home_id=home.home_id, seed=9)
 
     app = create_app(root)
     with TestClient(app) as client:
@@ -191,7 +204,10 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         headers = {"X-Workspace-Token": token}
         assert client.get("/").status_code == 200
         assert client.get("/simulations/client-route").status_code == 200
-        assert client.get("/api/jobs", headers=headers).json()[0]["status"] == "completed"
+        assert any(
+            item["jobId"] == job.job_id and item["status"] == "completed"
+            for item in client.get("/api/jobs", headers=headers).json()
+        )
         detail = client.get(f"/api/jobs/{job.job_id}", headers=headers).json()
         assert "execution_trace" in detail["artifacts"]
         assert client.get(f"/api/runs/{job.job_id}/diary", headers=headers).json()["total"]
@@ -226,6 +242,38 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert any(
             item["id"] in raw_timeline_ids and item["actorId"] for item in oracle_timeline.json()
         )
+        trace_only_timeline = client.get(
+            f"/api/runs/{trace_only_job.job_id}/timeline?limit=5000", headers=headers
+        )
+        assert trace_only_timeline.status_code == 200
+        assert {item["kind"] for item in trace_only_timeline.json()} <= {
+            "activity",
+            "action",
+            "movement",
+        }
+        assert all("actorId" not in item for item in trace_only_timeline.json())
+        assert raw_timeline_ids.isdisjoint({item["id"] for item in trace_only_timeline.json()})
+        trace_only_oracle_timeline = client.get(
+            f"/api/runs/{trace_only_job.job_id}/timeline?limit=5000&include_oracle=true",
+            headers=headers,
+        )
+        assert trace_only_oracle_timeline.status_code == 200
+        assert any(
+            item["id"] in raw_timeline_ids and item["actorId"]
+            for item in trace_only_oracle_timeline.json()
+        )
+        missing_trace_session = client.get(
+            f"/api/runs/{missing_trace_job.job_id}/replay/session", headers=headers
+        )
+        assert missing_trace_session.status_code == 409
+        assert "execution_trace" in missing_trace_session.json()["error"]["message"]
+        missing_trace_write = client.put(
+            f"/api/runs/{missing_trace_job.job_id}/replay/session",
+            headers=headers,
+            json={"filters": {"speed": 1}},
+        )
+        assert missing_trace_write.status_code == 409
+        assert "execution_trace" in missing_trace_write.json()["error"]["message"]
         events = client.get(
             f"/api/runs/{job.job_id}/replay/events",
             params={"limit": 25, "kinds": "movement,observation", "include_oracle": "false"},

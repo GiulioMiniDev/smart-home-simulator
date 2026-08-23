@@ -696,7 +696,7 @@ def test_xes_falls_back_for_undated_roles_and_rejects_disordered_sources(tmp_pat
 def test_replay_requires_complete_run_artifacts(tmp_path: Path) -> None:
     workspace = WorkspaceService.create(tmp_path / "workspace", "Incomplete")
     replay = ReplayService(workspace)
-    with pytest.raises(WorkspaceError, match="has no 'execution_trace'"):
+    with pytest.raises(WorkspaceError, match="unknown run 'missing'"):
         replay.diary("missing")
 
 

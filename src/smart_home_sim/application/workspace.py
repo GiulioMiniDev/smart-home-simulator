@@ -1146,9 +1146,15 @@ class WorkspaceService:
         return self.replay_session(run_id)
 
     def _replay_trace_digest(self, run_id: str) -> str:
-        artifact = self.run_artifacts(run_id).get("execution_trace")
+        artifacts = self.run_artifacts(run_id)
+        artifact = artifacts.get("execution_trace")
         if artifact is None:
-            raise WorkspaceError(f"unknown run '{run_id}'")
+            if not artifacts:
+                try:
+                    self.get_job(run_id)
+                except WorkspaceError as error:
+                    raise WorkspaceError(f"unknown run '{run_id}'") from error
+            raise WorkspaceError(f"run '{run_id}' has no 'execution_trace' artifact")
         try:
             return ExecutionTrace.model_validate_json(
                 self.read_artifact(artifact.artifact_id)

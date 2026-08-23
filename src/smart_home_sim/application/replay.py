@@ -287,9 +287,13 @@ def _replay_index(
     )
 
 
+def _opaque_replay_id(kind: ReplayEventKind, event_id: str) -> str:
+    digest = sha256(f"observable-replay-v1:{kind}:{event_id}".encode()).hexdigest()
+    return f"replay_{kind}_{digest}"
+
+
 def _opaque_event_id(item: ReplayEventView) -> str:
-    digest = sha256(f"observable-replay-v1:{item.kind}:{item.event_id}".encode()).hexdigest()
-    return f"replay_{item.kind}_{digest}"
+    return _opaque_replay_id(item.kind, item.event_id)
 
 
 def _without_oracle(item: ReplayEventView) -> ReplayEventView:
@@ -614,8 +618,14 @@ class ReplayService:
         self.workspace = workspace
 
     def _artifact(self, run_id: str, role: str) -> tuple[Path, str]:
-        artifact = self.workspace.run_artifacts(run_id).get(role)
+        artifacts = self.workspace.run_artifacts(run_id)
+        artifact = artifacts.get(role)
         if artifact is None:
+            if not artifacts:
+                try:
+                    self.workspace.get_job(run_id)
+                except WorkspaceError as error:
+                    raise WorkspaceError(f"unknown run '{run_id}'") from error
             raise WorkspaceError(f"run '{run_id}' has no '{role}' artifact")
         return self.workspace.artifact_path(artifact.artifact_id), artifact.sha256
 
@@ -870,6 +880,85 @@ class ReplayService:
             )
         return result, total
 
+    def _trace_timeline(
+        self,
+        run_id: str,
+        *,
+        start: datetime | None,
+        end: datetime | None,
+        include_oracle: bool,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        trace_path, trace_sha = self._artifact(run_id, "execution_trace")
+        trace = _trace(str(trace_path), trace_sha)
+        events: list[dict[str, Any]] = []
+
+        def accepted(at: datetime) -> bool:
+            return (start is None or at >= start) and (end is None or at <= end)
+
+        def add(
+            *,
+            at: datetime,
+            kind: ReplayEventKind,
+            event_id: str,
+            actor_id: str,
+            label: str,
+            status: str,
+            end_at: datetime,
+            waypoints: list[dict[str, Any]] | None = None,
+        ) -> None:
+            if not accepted(at):
+                return
+            item: dict[str, Any] = {
+                "at": at.isoformat(),
+                "kind": kind,
+                "id": event_id if include_oracle else _opaque_replay_id(kind, event_id),
+                "label": label,
+                "status": status,
+                "end": end_at.isoformat(),
+            }
+            if include_oracle:
+                item["actorId"] = actor_id
+            if waypoints is not None:
+                item["waypoints"] = waypoints
+            events.append(item)
+
+        for activity in trace.activity_executions:
+            add(
+                at=activity.actual_start,
+                kind="activity",
+                event_id=activity.activity_execution_id,
+                actor_id=activity.actor_id,
+                label=activity.intent,
+                status=activity.status,
+                end_at=activity.actual_end,
+            )
+        for action in trace.action_executions:
+            add(
+                at=action.started_at,
+                kind="action",
+                event_id=action.action_execution_id,
+                actor_id=action.actor_id,
+                label=action.action_type,
+                status=action.status,
+                end_at=action.ended_at,
+            )
+        for movement in trace.movements:
+            add(
+                at=movement.started_at,
+                kind="movement",
+                event_id=movement.movement_id,
+                actor_id=movement.actor_id,
+                label=f"{movement.origin_region_id} → {movement.destination_region_id}",
+                status="completed",
+                end_at=movement.ended_at,
+                waypoints=[
+                    item.model_dump(mode="json", by_alias=True) for item in movement.waypoints
+                ],
+            )
+        events.sort(key=lambda item: (item["at"], item["kind"], item["id"]))
+        return events[: max(1, min(limit, 5_000))]
+
     def timeline(
         self,
         run_id: str,
@@ -879,6 +968,14 @@ class ReplayService:
         include_oracle: bool = False,
         limit: int = 2000,
     ) -> list[dict[str, Any]]:
+        if "observable_sensor_log" not in self.workspace.run_artifacts(run_id):
+            return self._trace_timeline(
+                run_id,
+                start=start,
+                end=end,
+                include_oracle=include_oracle,
+                limit=limit,
+            )
         window = self.events(
             run_id,
             start=start,
