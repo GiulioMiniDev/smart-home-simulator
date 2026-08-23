@@ -14,6 +14,7 @@ from smart_home_sim.domain.application import (
     ExportManifest,
     JobRecord,
     ObservableApplicationReplayContract,
+    ObservableReplaySensorFrame,
     ObservationCause,
     ReplayEventView,
     ReplayEventWindow,
@@ -370,6 +371,8 @@ def test_observable_replay_payload_sanitizes_normalized_identity_key_variants() 
         "causalLink",
         "causalLinks",
         "source_causal_links",
+        "sourceCausalLinkCauseIds",
+        "causal_link_oracle_cause_ids",
     ],
 )
 def test_observable_replay_classifier_redacts_semantic_identity_and_cause_keys(
@@ -394,6 +397,7 @@ def test_observable_replay_classifier_redacts_semantic_identity_and_cause_keys(
         "heldResourceIds",
         "causalScore",
         "linkQuality",
+        "causalLinkQuality",
     ],
 )
 def test_observable_replay_classifier_preserves_benign_and_operational_keys(key: str) -> None:
@@ -480,6 +484,34 @@ def test_observable_replay_payload_sanitizes_id_lists_and_causal_links() -> None
         "causalScore": 0.8,
         "linkQuality": "measured",
     }
+
+
+def test_observable_sensor_frame_sanitizes_nested_measurement_value() -> None:
+    sensor = ReplaySensorFrame(
+        observation_id="observation_1",
+        sensor_id="sensor_1",
+        sensor_type="temperature",
+        observed_at=_REPLAY_AT,
+        measurement="temperature",
+        value={
+            "actorId": "resident_1",
+            "reading": {"celsius": 21.5, "causalLinkQuality": "measured"},
+            "nested": [
+                {"sourceCausalLinkCauseIds": ["movement_1"]},
+                {"causal_link_oracle_cause_ids": ["movement_2"]},
+                {"measurement": {"celsius": 22.0}},
+            ],
+        },
+        quality="measured",
+    )
+
+    observable = ObservableReplaySensorFrame.from_raw(sensor)
+
+    assert observable.value == {
+        "reading": {"celsius": 21.5, "causalLinkQuality": "measured"},
+        "nested": [{}, {}, {"measurement": {"celsius": 22.0}}],
+    }
+    assert ObservableReplaySensorFrame.from_sensor(sensor).value == observable.value
 
 
 def test_replay_event_window_rejects_more_than_5000_items() -> None:

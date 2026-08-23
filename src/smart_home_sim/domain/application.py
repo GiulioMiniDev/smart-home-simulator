@@ -509,6 +509,8 @@ _OBSERVABLE_REPLAY_IDENTITY_SUFFIXES = (
     "ids",
     "id",
 )
+_OBSERVABLE_REPLAY_CAUSAL_STEMS = ("causallinks", "causallink")
+_OBSERVABLE_REPLAY_CAUSAL_TARGETS = frozenset({"cause", "oraclecause"})
 
 
 def _observable_replay_key_tokens(key: str) -> tuple[str, ...]:
@@ -535,23 +537,31 @@ def _strip_observable_replay_identity_suffix(value: str) -> str | None:
     return None
 
 
+def _is_observable_replay_causal_stem(stem: str) -> bool:
+    if stem in _OBSERVABLE_REPLAY_CAUSAL_TARGETS | set(_OBSERVABLE_REPLAY_CAUSAL_STEMS):
+        return True
+    for causal_stem in _OBSERVABLE_REPLAY_CAUSAL_STEMS:
+        _, marker, target = stem.partition(causal_stem)
+        if marker and target in _OBSERVABLE_REPLAY_CAUSAL_TARGETS:
+            return True
+    return False
+
+
 def _is_observable_replay_redacted_key(key: str) -> bool:
     value = _strip_observable_replay_identity_prefixes(_normalized_observable_replay_key(key))
     stem = _strip_observable_replay_identity_suffix(value)
     if stem is not None:
         if stem in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS | {
             "execution",
-            "cause",
-            "oraclecause",
-            "causallink",
-            "causallinks",
         }:
+            return True
+        if _is_observable_replay_causal_stem(stem):
             return True
         return any(
             stem == f"{subject}execution"
             for subject in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS
         )
-    return value in {"cause", "oraclecause", "causallink", "causallinks"}
+    return _is_observable_replay_causal_stem(value)
 
 
 def _observable_json_value(value: JsonValue) -> JsonValue:
@@ -652,18 +662,22 @@ class ObservableReplaySensorFrame(ContractModel):
     changed: bool = False
 
     @classmethod
-    def from_sensor(cls, sensor: ReplaySensorFrame) -> ObservableReplaySensorFrame:
+    def from_raw(cls, sensor: ReplaySensorFrame) -> ObservableReplaySensorFrame:
         return cls(
             observation_id=sensor.observation_id,
             sensor_id=sensor.sensor_id,
             sensor_type=sensor.sensor_type,
             observed_at=sensor.observed_at,
             measurement=sensor.measurement,
-            value=sensor.value,
+            value=_observable_json_value(sensor.value),
             unit=sensor.unit,
             quality=sensor.quality,
             changed=sensor.changed,
         )
+
+    @classmethod
+    def from_sensor(cls, sensor: ReplaySensorFrame) -> ObservableReplaySensorFrame:
+        return cls.from_raw(sensor)
 
 
 class ObservableReplayFrame(ContractModel):
