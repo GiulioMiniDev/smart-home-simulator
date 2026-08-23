@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ReplayStage } from "../replay/ReplayStage";
 import type { HomeModel, ReplayEventWindow, ReplayFrame, SensorModel } from "../types";
@@ -40,13 +40,67 @@ describe("ReplayStage", () => {
   afterEach(cleanup);
 
   it("keeps every resident in the structured alternative and expands external places only for a visible leaving trajectory", () => {
-    const view = render(<ReplayStage controller={{ frame, events, selectedEventId: "leave-home", filters: { selectedResidentId: "mario" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    const view = render(<ReplayStage controller={{ frame, events, selectedEventId: "leave-home", filters: { selectedResidentId: "mario", visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
 
-    expect(screen.getByRole("list", { name: "Replay resident states" })).toHaveTextContent("Mario");
-    expect(screen.getByRole("list", { name: "Replay resident states" })).toHaveTextContent("Luisa: Position unknown");
+    const alternative = screen.getByRole("region", { name: "Replay spatial state" });
+    expect(within(alternative).getByText("Mario: Position 2, 2 in kitchen; moving.")).toBeInTheDocument();
+    expect(within(alternative).getByText("Luisa: Position unknown; idle.")).toBeInTheDocument();
     expect(view.container.querySelector('[aria-label="external market"]')).toBeInTheDocument();
 
-    view.rerender(<ReplayStage controller={{ frame, events, filters: { selectedResidentId: "mario" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    view.rerender(<ReplayStage controller={{ frame, events, filters: { selectedResidentId: "mario", visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
     expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+  });
+
+  it("shows a selected movement route only within its authoritative interval", () => {
+    const view = render(<ReplayStage controller={{ frame, events, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
+    expect(view.container.querySelector('[aria-label="external market"]')).toBeInTheDocument();
+
+    view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T07:59:59Z" }, events, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
+    expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+    expect(view.container.querySelector("[data-region-id='kitchen']")).toHaveClass("is-replay-active");
+    expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
+
+    view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:00Z" }, events: { ...events, items: [{ ...events.items[0]!, end: "2026-01-01T08:10:00Z" }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
+
+    view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:01Z" }, events: { ...events, items: [{ ...events.items[0]!, end: "2026-01-01T08:10:00Z" }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
+    expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+    expect(view.container.querySelector("[data-region-id='kitchen']")).toHaveClass("is-replay-active");
+    expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
+  });
+
+  it("uses the final waypoint as the end only when no event end is supplied and rejects unusable routes", () => {
+    const fallback = { ...events, items: [{ ...events.items[0]!, end: null }] };
+    const view = render(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:00Z" }, events: fallback, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
+
+    view.rerender(<ReplayStage controller={{ frame, events: { ...events, items: [{ ...events.items[0]!, end: null, waypoints: [] }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
+    expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
+  });
+
+  it("provides equivalent, safe structured replay evidence including empty states", () => {
+    const { rerender } = render(<ReplayStage controller={{ frame, events, selectedEventId: "leave-home", filters: { visibilityMode: "observable" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    const alternative = screen.getByRole("region", { name: "Replay spatial state" });
+    expect(within(alternative).getByRole("heading", { name: "Residents" })).toBeInTheDocument();
+    expect(within(alternative).getByText("Resident 1: Identity unavailable; Position unknown; idle.")).toBeInTheDocument();
+    expect(within(alternative).getByText("Resident 2: Identity unavailable; Position 2, 2 in kitchen; moving.")).toBeInTheDocument();
+    expect(within(alternative).getByRole("heading", { name: "Active regions" }).nextElementSibling).toHaveTextContent("kitchen");
+    expect(within(alternative).getByRole("heading", { name: "Changed sensors" }).nextElementSibling).toHaveTextContent("pir");
+    const selectedEvent = within(alternative).getByRole("heading", { name: "Selected event" }).parentElement!;
+    expect(within(selectedEvent).getByText("walk")).toBeInTheDocument();
+    expect(within(selectedEvent).getByText("movement")).toBeInTheDocument();
+    expect(within(selectedEvent).getByText("completed")).toBeInTheDocument();
+    expect(within(selectedEvent).getByText("2026-01-01T08:00:00Z")).toBeInTheDocument();
+    expect(within(alternative).queryByText("Mario")).not.toBeInTheDocument();
+
+    rerender(<ReplayStage controller={{ filters: { visibilityMode: "observable" } }} models={{ homeModel: home, sensorModel: sensors }} />);
+    expect(within(screen.getByRole("region", { name: "Replay spatial state" })).getByText("No residents in the replay frame.")).toBeInTheDocument();
+    expect(screen.getByText("No active regions.")).toBeInTheDocument();
+    expect(screen.getByText("No changed sensors.")).toBeInTheDocument();
+    expect(screen.getByText("No event selected.")).toBeInTheDocument();
   });
 });
