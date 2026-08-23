@@ -319,8 +319,8 @@ export interface TimelineEvent {
   at: string;
   end: string;
   kind: "activity" | "action" | "movement";
-  id: string;
-  actorId: string;
+  id?: string;
+  actorId?: string;
   label: string;
   status: string;
   waypoints?: Array<{ at: string; regionId: string; position: Point }>;

@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useReplayController } from "../replay/useReplayController";
@@ -57,7 +58,8 @@ describe("useReplayController", () => {
     const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
     expect(paths).toContain("/api/runs/run_1/replay/verify");
     expect(paths).toContain("/api/runs/run_1/replay/session");
-    const events = paths.find((path) => path.includes("/replay/events"));
+    expect(paths.find((path) => path.includes("/replay/events"))).toContain("limit=1");
+    const events = paths.find((path) => path.includes("/replay/events") && path.includes("limit=2000"));
     expect(events).toContain("limit=2000");
     expect(events).not.toContain("include_oracle=true");
   });
@@ -88,6 +90,13 @@ describe("useReplayController", () => {
   });
 
   it("normalizes an observable session into complete safe filters", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/session") && init?.method !== "PUT") return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, filters: {},
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
     const { result } = renderHook(() => useReplayController("run_1"));
     await settleController();
     expect(result.current.filters.actorIds).toEqual([]);
@@ -108,6 +117,122 @@ describe("useReplayController", () => {
     await settleController();
     expect(result.current.positionMs).toBe(Date.parse(start));
     expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([input]) => String(input).includes("1970-"))).toBe(false);
+  });
+
+  it.each([
+    ["past", "2026-08-22T08:00:00.000Z", Date.parse(start)],
+    ["future", "2026-08-24T08:00:00.000Z", Date.parse(end)],
+  ])("clamps a %s restored position only after loading the trace range", async (_label, positionAt, expected) => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/session") && init?.method !== "PUT") return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, positionAt,
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    expect(result.current.positionMs).toBe(expected);
+    const paths = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input));
+    expect(paths.find((path) => path.includes("/replay/events"))).toContain("limit=1");
+    expect(paths.filter((path) => path.includes("/replay/events") || path.includes("/replay/frame")).some((path) => path.includes(encodeURIComponent(positionAt)))).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    const saved = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input, init]) =>
+      String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT",
+    ).at(-1);
+    expect(String((saved?.[1] as RequestInit).body)).toContain(new Date(expected).toISOString());
+  });
+
+  it("coalesces the window-triggered frame behind one immediate seek frame", async () => {
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    const initial = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/replay/frame")).length;
+    act(() => result.current.seek(Date.parse("2026-08-23T08:30:00.000Z")));
+    await settleController();
+    const frames = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([input]) => String(input).includes("/replay/frame")).length;
+    expect(frames - initial).toBe(1);
+  });
+
+  it("clears Oracle evidence immediately and ignores a stale Oracle response", async () => {
+    let oracle = false;
+    let deferOracle = false;
+    const delayed: Array<(response: Response) => void> = [];
+    const oracleSignals: AbortSignal[] = [];
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/events") || path.includes("/frame")) {
+        if (oracle && deferOracle) {
+          oracleSignals.push(init?.signal as AbortSignal);
+          return new Promise<Response>((resolve) => delayed.push(resolve));
+        }
+        if (oracle && path.includes("/events")) return Promise.resolve(new Response(JSON.stringify({
+          ...payload(path) as object, items: [{ at: start, kind: "action", eventId: "oracle", actorId: "mario", label: "Oracle", waypoints: [], details: {} }],
+        }), { status: 200 }));
+        if (oracle && path.includes("/frame")) return Promise.resolve(new Response(JSON.stringify({
+          ...payload(path) as object, residents: [{ residentId: "mario", executionState: "active", heldResourceIds: [], facts: {} }],
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    oracle = true;
+    act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["mario"] }));
+    await settleController();
+    expect(result.current.events?.items[0]?.actorId).toBe("mario");
+    expect(result.current.frame?.residents[0]?.residentId).toBe("mario");
+    deferOracle = true;
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    await settleController();
+    oracle = false;
+    act(() => result.current.updateFilters({ visibilityMode: "observable" }));
+    expect(result.current.events).toBeUndefined();
+    expect(result.current.frame).toBeUndefined();
+    expect(oracleSignals.every((signal) => signal.aborted)).toBe(true);
+    delayed.forEach((resolve) => resolve(new Response(JSON.stringify({
+      ...payload("/events") as object, items: [{ at: start, kind: "action", eventId: "oracle", actorId: "mario", label: "Oracle", waypoints: [], details: {} }],
+    }), { status: 200 })));
+    await settleController();
+    expect(result.current.events?.items[0]?.actorId).not.toBe("mario");
+    expect(result.current.frame?.residents).toEqual([]);
+  });
+
+  it("cleans deferred StrictMode work without saving after unmount", async () => {
+    let resolveVerify: ((response: Response) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      if (String(input).includes("/verify")) return new Promise<Response>((resolve) => { resolveVerify = resolve; });
+      return Promise.resolve(new Response(JSON.stringify(payload(String(input))), { status: 200 }));
+    }));
+    const { unmount } = renderHook(() => useReplayController("run_1"), { wrapper: StrictMode });
+    unmount();
+    resolveVerify?.(new Response(JSON.stringify(payload("/verify")), { status: 200 }));
+    await settleController();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    const requests = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(([input, init]) => ({ path: String(input), init: init as RequestInit | undefined }));
+    expect(requests.some((request) => request.path.includes("/replay/session") && request.init?.method === "PUT")).toBe(false);
+    expect(requests.filter((request) => request.path.includes("/replay/session"))).toHaveLength(0);
+  });
+
+  it("aborts deferred StrictMode window, frame, and session-save work on unmount", async () => {
+    let defer = false;
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal("fetch", vi.fn((input: string | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (defer && (path.includes("/replay/events") || path.includes("/replay/frame") || (path.includes("/replay/session") && init?.method === "PUT"))) {
+        signals.push(init?.signal as AbortSignal);
+        return new Promise<Response>(() => undefined);
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result, unmount } = renderHook(() => useReplayController("run_1"), { wrapper: StrictMode });
+    await settleController();
+    defer = true;
+    act(() => result.current.seek(Date.parse("2026-08-23T08:20:00.000Z")));
+    await settleController();
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    unmount();
+    expect(signals.length).toBeGreaterThanOrEqual(3);
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
   });
 
   it("clears Oracle-only identity filters before an observable request or save", async () => {
@@ -302,18 +427,20 @@ describe("useReplayController", () => {
   it("uses request-animation-frame deltas and pauses at the trace end", async () => {
     const callbacks: Array<(at: number) => void> = [];
     const raf = vi.fn((callback: (at: number) => void) => { callbacks.push(callback); return callbacks.length; });
-    const now = vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(10_000_000);
+    let time = 0;
+    const now = vi.spyOn(performance, "now").mockImplementation(() => time);
     vi.stubGlobal("requestAnimationFrame", raf);
     const { result } = renderHook(() => useReplayController("run_1"));
     await settleController();
     act(() => result.current.play());
     const first = callbacks[0];
     act(() => first?.(0));
+    time = 10_000_000;
     const second = callbacks[1];
     act(() => second?.(10_000_000));
     expect(result.current.positionMs).toBe(Date.parse(end));
     expect(result.current.playing).toBe(false);
-    expect(now).toHaveBeenCalledTimes(2);
+    expect(now.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it("blocks with an actionable error when verification cannot be requested", async () => {
@@ -367,6 +494,35 @@ describe("useReplayController", () => {
       return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
     }));
     const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    expect(result.current.status).toBe("ready");
+    expect(result.current.error?.message).toContain("stopped responding");
+  });
+
+  it("reports invalid trace bounds before using a restored position", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/events") && path.includes("limit=1")) return Promise.resolve(new Response(JSON.stringify({
+        ...payload(path) as object, traceStart: "not-a-time",
+      }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    expect(result.current.positionMs).toBe(0);
+    expect(result.current.error?.message).toContain("timestamps are invalid");
+  });
+
+  it("keeps the transport ready while exposing a frame request failure", async () => {
+    let rejectFrame: ((reason: Error) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (path.includes("/frame")) return new Promise<Response>((_resolve, reject) => { rejectFrame = reject; });
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    rejectFrame?.(new Error("frame unavailable"));
     await settleController();
     expect(result.current.status).toBe("ready");
     expect(result.current.error?.message).toContain("stopped responding");

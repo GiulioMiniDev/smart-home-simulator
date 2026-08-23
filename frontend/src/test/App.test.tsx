@@ -73,7 +73,11 @@ function installApi() {
     if (url === "/jobs/run_1") return response({ job, events: [], artifacts: { home_model: { artifactId: "artifact_home", role: "home_model", sha256: "a".repeat(64), sizeBytes: 100 } } });
     if (url.startsWith("/runs/run_1/diary")) return response({ total: 1, items: [{ activityExecutionId: "activity_1", sourceActivityId: "source_1", actorId: "mario", intent: "prepare_meal", processModelId: "process", plannedStart: now, plannedEnd: now, actualStart: now, actualEnd: now, status: "completed", actions: [{ actionExecutionId: "action_1", nodeId: "node", actionType: "open_door", startedAt: now, endedAt: now, status: "completed", providerIds: ["door"] }], movementIds: ["move"], deviationIds: [], traceId: "trace", traceSemanticDigest: "b".repeat(64) }] });
     if (url.startsWith("/runs/run_1/observations")) return response({ total: 1, mode: url.includes("true") ? "oracle" : "observable", items: [{ observationId: "observation", sensorId: "pir", sensorType: "pir", observedAt: now, measurement: "motion", value: "ON", quality: "nominal", ...(url.includes("true") ? { oracleCause: { origin: "simulated_cause", causeType: "movement", causeIds: ["move"], residentIds: ["mario"], activityExecutionIds: ["activity_1"], actionExecutionIds: [] } } : {}) }] });
-    if (url.startsWith("/runs/run_1/timeline")) return response([{ at: now, end: now, kind: "movement", id: "move", actorId: "mario", label: "walk", status: "completed", waypoints: [{ at: now, regionId: "room", position: { x: 1, y: 1 } }] }]);
+    if (url.startsWith("/runs/run_1/timeline")) return response([{
+      at: now, end: now, kind: "movement", label: "walk", status: "completed",
+      waypoints: [{ at: now, regionId: "room", position: { x: 1, y: 1 } }],
+      ...(url.includes("include_oracle=true") ? { id: "move", actorId: "mario" } : {}),
+    }]);
     if (url.startsWith("/runs/run_1/profile/page")) return Promise.resolve(new Response("<html></html>", { status: 200, headers: { "Content-Type": "text/html" } }));
     if (url.startsWith("/runs/run_1/profile")) return response(profile);
     if (url === "/runs/run_1/models") return response({ homeModel, sensorModel });
@@ -353,6 +357,12 @@ describe("complete application routes", () => {
     expect(await screen.findByText(/files across observable/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "diary" }));
     expect((await screen.findAllByText("prepare meal")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("tab", { name: "observations" }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) =>
+      String(input).includes("/runs/run_1/timeline?limit=5000&include_oracle=false"),
+    )).toBe(true));
+    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
+    expect(await screen.findByText("movement · identity unavailable")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "observations" }));
     fireEvent.click(screen.getByRole("button", { name: "Oracle links" }));
     expect(await screen.findByText("simulated cause")).toBeInTheDocument();

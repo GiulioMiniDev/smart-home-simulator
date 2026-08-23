@@ -77,12 +77,14 @@ export function useReplayController(runId: string): ReplayController {
   const [windowRequest, setWindowRequest] = useState(0);
   const [frameRequest, setFrameRequest] = useState<{ at: number; version: number }>();
   const positionRef = useRef<number | undefined>(undefined);
+  const restoredPositionRef = useRef<number | undefined>(undefined);
   const rangeRef = useRef<{ start: number; end: number } | undefined>(undefined);
   const windowRangeRef = useRef<{ start: number; end: number } | undefined>(undefined);
   const windowLoadingRef = useRef(false);
   const refreshedWindowRef = useRef<string | undefined>(undefined);
   const windowVersion = useRef(0);
   const frameVersion = useRef(0);
+  const lastFrameSchedule = useRef<{ at: number; scheduledAt: number } | undefined>(undefined);
   const saveTimer = useRef<number | undefined>(undefined);
   const saveRequest = useRef<AbortController | undefined>(undefined);
   const saveVersion = useRef(0);
@@ -91,8 +93,14 @@ export function useReplayController(runId: string): ReplayController {
     positionRef.current = next;
     setPositionMs(next);
   }, []);
-  const requestFrame = useCallback((at = positionRef.current) => {
-    if (at !== undefined) setFrameRequest({ at, version: ++frameVersion.current });
+  const requestFrame = useCallback((at = positionRef.current, immediate = false) => {
+    if (at === undefined) return;
+    const now = performance.now();
+    const previous = lastFrameSchedule.current;
+    if (!immediate && previous && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
+    if (immediate && previous?.at === at && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
+    lastFrameSchedule.current = { at, scheduledAt: now };
+    setFrameRequest({ at, version: ++frameVersion.current });
   }, []);
   const requestWindow = useCallback((force = false) => {
     if (force || !windowLoadingRef.current) {
@@ -106,7 +114,7 @@ export function useReplayController(runId: string): ReplayController {
     let current = true;
     setStatus("verifying"); setVerification(undefined); setSession(undefined); setEvents(undefined); setFrame(undefined);
     setError(undefined); setPlaying(false); setSelectedEventId(undefined); setFilters(defaultFilters());
-    setClockPosition(undefined); setPositionInitialized(false);
+    setClockPosition(undefined); setPositionInitialized(false); restoredPositionRef.current = undefined; lastFrameSchedule.current = undefined;
     rangeRef.current = undefined; windowRangeRef.current = undefined; windowLoadingRef.current = false; refreshedWindowRef.current = undefined;
     void (async () => {
       try {
@@ -118,11 +126,11 @@ export function useReplayController(runId: string): ReplayController {
         if (!current) return;
         const restored = normalizeSession(rawSession);
         const trusted = restored.playable && restored.verifiedDigest === (checked.actualSemanticDigest ?? checked.expectedSemanticDigest);
-        const restoredPosition = trusted ? timestamp(restored.positionAt) : undefined;
+        restoredPositionRef.current = trusted ? timestamp(restored.positionAt) : undefined;
         setSession(restored);
         setFilters(trusted ? restored.filters : defaultFilters());
-        setClockPosition(restoredPosition);
-        setPositionInitialized(restoredPosition !== undefined);
+        setClockPosition(undefined);
+        setPositionInitialized(false);
         setStatus("ready");
       } catch (reason) {
         if (!current || isAbort(reason)) return;
@@ -132,7 +140,7 @@ export function useReplayController(runId: string): ReplayController {
     return () => { current = false; controller.abort(); };
   }, [runId, setClockPosition]);
 
-  // No saved instant is not midnight 1970: obtain only the range, then begin at its trace start.
+  // No saved instant is trusted before the range is known: clamp it after obtaining the trace.
   useEffect(() => {
     if (status !== "ready" || positionInitialized) return;
     const controller = new AbortController();
@@ -144,7 +152,8 @@ export function useReplayController(runId: string): ReplayController {
         const start = timestamp(window.traceStart); const end = timestamp(window.traceEnd);
         if (start === undefined || end === undefined) throw new ApiError("Replay trace timestamps are invalid", 0);
         rangeRef.current = { start, end }; windowRangeRef.current = { start, end };
-        setClockPosition(start); setPositionInitialized(true); windowLoadingRef.current = false;
+        const restored = restoredPositionRef.current ?? start;
+        setClockPosition(Math.min(end, Math.max(start, restored))); setPositionInitialized(true); windowLoadingRef.current = false;
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted || isAbort(reason) || version !== windowVersion.current) return;
@@ -261,7 +270,7 @@ export function useReplayController(runId: string): ReplayController {
     const range = rangeRef.current;
     const clamped = range ? Math.min(range.end, Math.max(range.start, nextPosition)) : nextPosition;
     setPlaying(false); setClockPosition(clamped);
-    if (positionInitialized) { refreshedWindowRef.current = undefined; requestWindow(true); requestFrame(clamped); }
+    if (positionInitialized) { refreshedWindowRef.current = undefined; requestWindow(true); requestFrame(clamped, true); }
   }, [positionInitialized, requestFrame, requestWindow, setClockPosition]);
 
   const pause = useCallback(() => setPlaying(false), []);
@@ -293,7 +302,24 @@ export function useReplayController(runId: string): ReplayController {
   }, [events, seek, selectedEventId]);
 
   const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
-    setFilters((current) => normalizeFilters({ ...current, ...patch }));
+    setFilters((current) => {
+      const next = normalizeFilters({ ...current, ...patch });
+      if (current.visibilityMode === "oracle" && next.visibilityMode === "observable") {
+        // Do this in the action, rather than waiting for effects, so Oracle data cannot be painted
+        // for even one Observable render. Version bumps also reject responses already in flight.
+        windowVersion.current += 1;
+        frameVersion.current += 1;
+        saveVersion.current += 1;
+        // The next Observable window must own a fresh frame, even if an Oracle
+        // request was scheduled at this same instant less than one cadence ago.
+        lastFrameSchedule.current = undefined;
+        saveRequest.current?.abort();
+        setEvents(undefined);
+        setFrame(undefined);
+        setSession((existing) => existing ? { ...existing, filters: next } : existing);
+      }
+      return next;
+    });
   }, []);
 
   return { status, verification, session, positionMs: positionMs ?? 0, playing, filters, selectedEventId, events, frame, error, play, pause, seek, step, selectEvent, updateFilters };
