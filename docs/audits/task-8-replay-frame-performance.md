@@ -1,6 +1,6 @@
 # Replay frame performance evidence
 
-**Date:** 2026-08-23  
+**Date:** 2026-08-23
 **Scope:** immutable annual replay frame reconstruction
 
 The replay index remains owned by a `ReplayService` instance and is built only from immutable,

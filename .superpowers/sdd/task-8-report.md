@@ -2,7 +2,7 @@
 
 ## Outcome
 
-DONE_WITH_CONCERNS. Task 8 adds a disposable, real-artifact replay workspace, browser acceptance
+DONE. Task 8 adds a disposable, real-artifact replay workspace, browser acceptance
 coverage, replay performance evidence, and operator documentation. It does not change the protected
 night, drives, or expander implementation/tests.
 
@@ -61,9 +61,9 @@ under 100 ms after index construction; timing failure is enabled only under CI.
 
 | Fixture | Span | Events | Observations | Runtime sentinels | Index ms | Median frame ms | Median window ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Weekly | 7 d | 31,452 | 28,612 | 2 | 1,709.871 | 3.064 | 4.863 |
-| Four-week month-scale | 28 d | 125,808 | 114,448 | 8 | 7,285.513 | 10.302 | 4.793 |
-| Yearly | 364 d | 1,635,504 | 1,487,824 | 104 | 53,915.446 | 162.710 | 4.905 |
+| Weekly | 7 d | 31,452 | 28,612 | 2 | 1,920.771 | 1.186 | 5.269 |
+| Four-week month-scale | 28 d | 125,808 | 114,448 | 8 | 7,951.228 | 1.198 | 5.316 |
+| Yearly | 364 d | 1,635,504 | 1,487,824 | 104 | 56,574.115 | 1.468 | 5.061 |
 
 The 7-day canonical week is two contiguous complete source periods with an affine monotonic
 timestamp normalization; four-week and yearly fixtures are respectively 8 and 104 source periods.
@@ -73,8 +73,8 @@ source has no runtime events, each source period gains a valid, fixture-only
 `benchmark_runtime_coverage_sentinel`; it is coverage data, not simulated output. The builder
 validates the Oracle mapping before deliberately omitting it from the annual timing workspace: this
 benchmark measures Observable replay performance, not optional Oracle disclosure. The annual
-construction used about 4.6 GiB memory and its 162.710 ms median does not meet the 100 ms CI target;
-it is synthetic replay-load evidence, not a production year-long simulation claim.
+construction peaked at about 2.53 GiB and its 1.468 ms median meets the 100 ms CI target; it is
+synthetic replay-load evidence, not a production year-long simulation claim.
 
 ## Verification
 
@@ -92,6 +92,5 @@ it is synthetic replay-load evidence, not a production year-long simulation clai
 ## Concerns
 
 The two Python failures are the accepted pre-replay baseline failures and were deliberately not
-changed. The annual median frame time is currently over the configured CI target. The benchmark's
-annual data is synthetic, bounded, and clearly documented as such; it is for replay-index/query
-behavior, not a published year-long simulation benchmark.
+changed. The benchmark's annual data is synthetic, bounded, and clearly documented as such; it is
+for replay-index/query behavior, not a published year-long simulation benchmark.

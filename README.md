@@ -259,9 +259,16 @@ make benchmark-replay
 L'obiettivo sulla macchina benchmark è una mediana dei frame inferiore a 100 ms dopo la
 costruzione dell'indice. I tempi sono sempre riportati; per evitare falsi negativi da rumore,
 il budget wall-clock interrompe l'esecuzione solo in CI. L'anno canonico rilevato contiene
-1.487.824 osservazioni e richiede diversi GiB di memoria (circa 4,6 GiB osservati): eseguirlo
-su macchine con poca RAM può richiedere più tempo o memoria disponibile. L'ultima misura annuale
-è 162,710 ms per frame, quindi non soddisfa ancora quel budget CI.
+1.635.504 eventi e 1.487.824 osservazioni. L'ultima cattura completa ha costruito il relativo
+indice in 56.574,115 ms e ha misurato 1,468 ms mediani per frame e 5,061 ms per finestra:
+il target CI inferiore a 100 ms è soddisfatto. Il picco osservato durante la costruzione è stato
+circa 2,53 GiB; macchine con poca RAM possono comunque richiedere più tempo o memoria disponibile.
+
+| Fixture | Durata | Eventi | Osservazioni | Indice ms | Frame mediano ms | Finestra mediana ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Settimanale | 7 d | 31.452 | 28.612 | 1.920,771 | 1,186 | 5,269 |
+| Quattro settimane | 28 d | 125.808 | 114.448 | 7.951,228 | 1,198 | 5,316 |
+| Annuale | 364 d | 1.635.504 | 1.487.824 | 56.574,115 | 1,468 | 5,061 |
 
 Per ottenere la prima simulazione dai due JSON pubblicati dall'ingestion, senza disegnare
 la casa o collocare manualmente i sensori:
