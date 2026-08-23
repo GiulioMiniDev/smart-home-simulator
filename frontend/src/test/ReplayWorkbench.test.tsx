@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReplayStage } from "../replay/ReplayStage";
 import { ReplayWorkbench } from "../replay/ReplayWorkbench";
@@ -157,13 +157,54 @@ describe("ReplayWorkbench", () => {
   it("steps events, filters tracks and exposes simultaneous events individually", async () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Sensors" }));
     fireEvent.click(screen.getByRole("button", { name: "Next event" }));
     const cluster = screen.getByRole("button", { name: "2 simultaneous events" });
     expect(cluster).toHaveAttribute("aria-expanded", "false");
     fireEvent.keyDown(cluster, { key: "Enter" });
     expect(cluster).toHaveAttribute("aria-expanded", "true");
     expect(screen.getAllByRole("button", { name: /08:15/ })).toHaveLength(2);
+  });
+
+  it("derives restored track checks from controller filters and composes additions", async () => {
+    response = (path) => path.includes("/session") ? {
+      runId: "run_1", verifiedDigest: digest, playable: true, positionAt: replayStart,
+      filters: { eventKinds: ["movement"], actorIds: [], sensorIds: [], statuses: [], detailMode: "analysis", visibilityMode: "observable", speed: 1 },
+    } : replayResponse(path);
+    const fetchMock = vi.mocked(fetch);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByRole("heading", { name: "Inspector" });
+    const movements = screen.getByRole("checkbox", { name: "Movements" });
+    const sensors = screen.getByRole("checkbox", { name: "Sensors" });
+    expect(movements).toBeChecked();
+    expect(sensors).not.toBeChecked();
+    const eventRequests = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=2000"));
+    const beforeAddition = eventRequests().length;
+    fireEvent.click(sensors);
+    expect(movements).toBeChecked();
+    expect(sensors).toBeChecked();
+    await waitFor(() => expect(eventRequests().length).toBeGreaterThan(beforeAddition));
+    expect(eventRequests().at(-1)).toContain("kinds=movement%2Cobservation");
+    fireEvent.click(sensors);
+    expect(movements).toBeChecked();
+    expect(sensors).not.toBeChecked();
+  });
+
+  it("treats an empty controller kind filter as all tracks and returns to that canonical form", async () => {
+    const fetchMock = vi.mocked(fetch);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    const sensors = screen.getByRole("checkbox", { name: "Sensors" });
+    expect(screen.getAllByRole("checkbox").every((checkbox) => (checkbox as HTMLInputElement).checked)).toBe(true);
+    const eventRequests = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((path) => path.includes("/replay/events?") && path.includes("limit=2000"));
+    const beforeExclusion = eventRequests().length;
+    fireEvent.click(sensors);
+    expect(sensors).not.toBeChecked();
+    await waitFor(() => expect(eventRequests().length).toBeGreaterThan(beforeExclusion));
+    const beforeRestore = eventRequests().length;
+    fireEvent.click(sensors);
+    expect(screen.getAllByRole("checkbox").every((checkbox) => (checkbox as HTMLInputElement).checked)).toBe(true);
+    await waitFor(() => expect(eventRequests().length).toBeGreaterThan(beforeRestore));
+    expect(eventRequests().at(-1)).not.toContain("kinds=");
   });
 
   it("steps previous and next events from the keyboard", async () => {
@@ -239,7 +280,7 @@ describe("ReplayWorkbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "2 simultaneous events" }));
     fireEvent.click(screen.getByRole("button", { name: "08:15 motion detected" }));
     expect(screen.getAllByText("motion detected")).not.toHaveLength(0);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Movements" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sensors" }));
     expect(screen.getByText("Select an event to inspect its source evidence.")).toBeInTheDocument();
   });
 

@@ -10,6 +10,7 @@ export const REPLAY_TRACKS: Array<{ label: string; kinds: ReplayEventKind[] }> =
   { label: "State", kinds: ["state_transition"] }, { label: "Resources", kinds: ["resource"] },
   { label: "Runtime", kinds: ["runtime_event"] }, { label: "Deviations", kinds: ["plan_deviation"] },
 ];
+const ALL_EVENT_KINDS = REPLAY_TRACKS.flatMap((track) => track.kinds);
 
 function clock(value: string): string {
   const parsed = new Date(value);
@@ -25,23 +26,24 @@ function grouped(events: ReplayEvent[]): Map<string, ReplayEvent[]> {
 }
 
 export function ReplayTimeline({ controller }: { controller: ReplayController }) {
-  const [selectedTracks, setSelectedTracks] = useState<ReplayEventKind[]>([]);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(() => new Set());
   const events = controller.events?.items ?? [];
   const windowStart = Date.parse(controller.events?.windowStart ?? "");
   const windowEnd = Date.parse(controller.events?.windowEnd ?? "");
-  const visible = selectedTracks.length ? events.filter((event) => selectedTracks.includes(event.kind)) : events;
+  // An empty persisted filter has one deliberate meaning: every evidence track is visible.
+  const selectedKinds = controller.filters.eventKinds.length ? controller.filters.eventKinds : ALL_EVENT_KINDS;
+  const visible = events.filter((event) => selectedKinds.includes(event.kind));
   const clusters = useMemo(() => Number.isFinite(windowStart) && Number.isFinite(windowEnd)
     ? clusterEvents(visible, windowStart, windowEnd, 1000) : [], [visible, windowEnd, windowStart]);
   const byTime = useMemo(() => grouped(visible), [visible]);
   const ready = controller.status === "ready";
   const updateTrack = (track: typeof REPLAY_TRACKS[number], checked: boolean) => {
-    const trackKinds = track.kinds;
-    const next = checked
-      ? [...new Set([...selectedTracks, ...trackKinds])]
-      : selectedTracks.filter((kind) => !trackKinds.includes(kind));
-    setSelectedTracks(next);
-    controller.updateFilters({ eventKinds: next });
+    const nextKinds = checked
+      ? ALL_EVENT_KINDS.filter((kind) => selectedKinds.includes(kind) || track.kinds.includes(kind))
+      : selectedKinds.filter((kind) => !track.kinds.includes(kind));
+    // Never let a final unchecked box accidentally serialize as [] (which means all tracks).
+    if (!nextKinds.length) return;
+    controller.updateFilters({ eventKinds: nextKinds.length === ALL_EVENT_KINDS.length ? [] : nextKinds });
   };
   const toggleCluster = (clusterId: string) => setExpandedClusters((current) => {
     const next = new Set(current);
@@ -51,7 +53,7 @@ export function ReplayTimeline({ controller }: { controller: ReplayController })
   return <section className="replay-timeline" aria-labelledby="replay-timeline-heading">
     <div className="replay-timeline-heading"><div><p className="eyebrow">Synchronized trace</p><h2 id="replay-timeline-heading">Event timeline</h2></div><span>{controller.events?.total ?? 0} events in window</span></div>
     <div className="replay-track-filters" role="group" aria-label="Timeline tracks">
-      {REPLAY_TRACKS.map((track) => <label key={track.label}><input type="checkbox" checked={track.kinds.every((kind) => selectedTracks.includes(kind))} onChange={(event) => updateTrack(track, event.target.checked)} /> {track.label}</label>)}
+      {REPLAY_TRACKS.map((track) => <label key={track.label}><input type="checkbox" checked={track.kinds.every((kind) => selectedKinds.includes(kind))} onChange={(event) => updateTrack(track, event.target.checked)} /> {track.label}</label>)}
     </div>
     <label className="replay-time-range"><span>Replay time <output>{controller.frame ? clock(controller.frame.at) : "Loading"}</output></span>
       <input aria-label="Replay time" type="range" min={Number.isFinite(windowStart) ? windowStart : 0} max={Number.isFinite(windowEnd) ? windowEnd : 1} value={controller.positionMs} disabled={!ready || !Number.isFinite(windowStart) || !Number.isFinite(windowEnd)} onChange={(event) => controller.seek(Number(event.target.value))} />

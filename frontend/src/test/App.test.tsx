@@ -366,6 +366,26 @@ describe("complete application routes", () => {
     expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/runs/run_1/replay/verify"))).toBe(true);
   });
 
+  it("wires replay Oracle availability from the run's oracle mapping artifact", async () => {
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
+    const unavailable = await screen.findByRole("button", { name: "Oracle" });
+    expect(unavailable).toBeDisabled();
+    expect(screen.getByText(/Oracle mapping unavailable/)).toBeInTheDocument();
+
+    cleanup();
+    overrides["/jobs/run_1"] = { job, events: [], artifacts: {
+      home_model: { artifactId: "artifact_home", role: "home_model", sha256: "a".repeat(64), sizeBytes: 100 },
+      oracle_mapping: { artifactId: "artifact_oracle", role: "oracle_mapping", sha256: "c".repeat(64), sizeBytes: 100 },
+    } };
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
+    expect(await screen.findByRole("button", { name: "Oracle" })).toBeEnabled();
+    expect(screen.queryByText(/Oracle mapping unavailable/)).not.toBeInTheDocument();
+  });
+
   it("revokes observational Oracle evidence while an Observable reload supersedes it", async () => {
     let resolveOracleObservation: ((response: Response) => void) | undefined;
     let oracleStarted = false;
