@@ -505,6 +505,7 @@ _OBSERVABLE_REPLAY_IDENTITY_SUFFIXES = (
     "identifier",
     "idlists",
     "idlist",
+    "idslist",
     "ids",
     "id",
 )
@@ -538,13 +539,19 @@ def _is_observable_replay_redacted_key(key: str) -> bool:
     value = _strip_observable_replay_identity_prefixes(_normalized_observable_replay_key(key))
     stem = _strip_observable_replay_identity_suffix(value)
     if stem is not None:
-        if stem in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS | {"execution", "cause", "oraclecause"}:
+        if stem in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS | {
+            "execution",
+            "cause",
+            "oraclecause",
+            "causallink",
+            "causallinks",
+        }:
             return True
         return any(
             stem == f"{subject}execution"
             for subject in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS
         )
-    return value in {"cause", "oraclecause"}
+    return value in {"cause", "oraclecause", "causallink", "causallinks"}
 
 
 def _observable_json_value(value: JsonValue) -> JsonValue:

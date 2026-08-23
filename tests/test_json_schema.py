@@ -364,6 +364,12 @@ def test_observable_replay_payload_sanitizes_normalized_identity_key_variants() 
         "executionIdentifier",
         "sourceCauseIds",
         "oracleCause",
+        "source_activity_execution_ids_list",
+        "target-resident-ids-list",
+        "parentActionExecutionIdsList",
+        "causalLink",
+        "causalLinks",
+        "source_causal_links",
     ],
 )
 def test_observable_replay_classifier_redacts_semantic_identity_and_cause_keys(
@@ -386,6 +392,8 @@ def test_observable_replay_classifier_redacts_semantic_identity_and_cause_keys(
         "replayId",
         "expectedSemanticDigest",
         "heldResourceIds",
+        "causalScore",
+        "linkQuality",
     ],
 )
 def test_observable_replay_classifier_preserves_benign_and_operational_keys(key: str) -> None:
@@ -432,6 +440,45 @@ def test_observable_replay_payload_sanitizes_composed_identity_keys_at_any_depth
     assert payload["frame"]["environmentFacts"] == {
         "nested": [{}],
         "runId": "run_1",
+    }
+
+
+def test_observable_replay_payload_sanitizes_id_lists_and_causal_links() -> None:
+    contract = _verified_replay_contract()
+    contract.event_window.items[0].details = {
+        "source_activity_execution_ids_list": ["activity_execution_1"],
+        "causalScore": 0.9,
+    }
+    contract.frame.residents[0].facts = {
+        "target-resident-ids-list": ["resident_1"],
+        "linkQuality": "high",
+    }
+    contract.frame.entity_states.update(
+        {
+            "entity_1": {
+                "parentActionExecutionIdsList": ["action_execution_1"],
+                "nested": [{"causalLink": {"causeIds": ["movement_1"]}}],
+            }
+        }
+    )
+    contract.frame.environment_facts.update(
+        {
+            "sourceCausalLinks": [{"causeIds": ["movement_1"]}],
+            "nested": [{"causal-links": [{"causeIds": ["movement_2"]}]}],
+            "causalScore": 0.8,
+            "linkQuality": "measured",
+        }
+    )
+
+    payload = contract.playback_payload().model_dump(by_alias=True)
+
+    assert payload["eventWindow"]["items"][0]["details"] == {"causalScore": 0.9}
+    assert payload["frame"]["residents"][0]["facts"] == {"linkQuality": "high"}
+    assert payload["frame"]["entityStates"] == {"entity_1": {"nested": [{}]}}
+    assert payload["frame"]["environmentFacts"] == {
+        "nested": [{}],
+        "causalScore": 0.8,
+        "linkQuality": "measured",
     }
 
 
