@@ -596,6 +596,28 @@ def test_playable_replay_session_requires_matching_verification(
         )
 
 
+def test_playable_replay_session_requires_expected_and_actual_digests_to_match() -> None:
+    contract = _verified_replay_contract(playable=False)
+
+    with pytest.raises(ValidationError, match="expected"):
+        ApplicationReplayContract(
+            verification=ReplayVerification(
+                run_id="run_1",
+                verified_at=_REPLAY_AT,
+                matches=True,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest="b" * 64,
+            ),
+            event_window=contract.event_window,
+            frame=contract.frame,
+            session=ReplaySessionState(
+                run_id="run_1",
+                verified_digest="b" * 64,
+                playable=True,
+            ),
+        )
+
+
 def test_playable_replay_session_requires_frame_run_to_match_verification() -> None:
     contract = _verified_replay_contract(playable=False)
     frame = ReplayFrame(
@@ -678,6 +700,20 @@ def test_playable_replay_session_cannot_bypass_verification_by_mutation() -> Non
         },
         {
             "session": ReplaySessionState(run_id="run_1", verified_digest="b" * 64, playable=True)
+        },
+        {
+            "verification": ReplayVerification(
+                run_id="run_1",
+                verified_at=_REPLAY_AT,
+                matches=True,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest="b" * 64,
+            ),
+            "session": ReplaySessionState(
+                run_id="run_1",
+                verified_digest="b" * 64,
+                playable=True,
+            ),
         },
     ],
 )

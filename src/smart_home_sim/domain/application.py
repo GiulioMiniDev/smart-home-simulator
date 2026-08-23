@@ -792,6 +792,13 @@ class ApplicationReplayContract(ContractModel):
             raise ValueError("playable replay session requires a matching verification")
         if self.session.verified_digest is None:
             raise ValueError("playable replay session requires a verified digest")
+        if (
+            self.verification.expected_semantic_digest
+            != self.verification.actual_semantic_digest
+        ):
+            raise ValueError(
+                "playable replay session requires matching expected and actual verification digests"
+            )
         if self.verification.actual_semantic_digest != self.session.verified_digest:
             raise ValueError("playable replay session digest must match the verification digest")
         return self
