@@ -279,6 +279,29 @@ describe("ReplayWorkbench", () => {
     expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
   });
 
+  it("preserves the server-order occurrence of simultaneous evidence when projections use different labels", async () => {
+    response = (path) => {
+      if (path.includes("/events")) {
+        const items = ["first", "second"].map((eventId, index) => ({
+          at: "2026-01-01T08:15:00.000Z", kind: "observation" as const, eventId: path.includes("include_oracle=true") ? `oracle-${eventId}` : eventId,
+          label: path.includes("include_oracle=true") ? `Mario ${index === 0 ? "opens" : "closes"} door` : "Observation event",
+          sensorId: "contact", status: "completed", waypoints: [], details: {},
+        }));
+        return { items, total: items.length, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+      }
+      return replayResponse(path);
+    };
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    fireEvent.click(screen.getByRole("button", { name: "2 simultaneous events" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "08:15 Observation event" })[1]!);
+    fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
+    expect(await screen.findByText("oracle-second")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Observable" }));
+    expect(await screen.findByText("second")).toBeInTheDocument();
+    expect(screen.queryByText("oracle-second")).not.toBeInTheDocument();
+  });
+
   it("clears an inspector selection as soon as its track filter hides it", async () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));

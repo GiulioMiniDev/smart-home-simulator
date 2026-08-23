@@ -46,15 +46,13 @@ function normalizeSession(session: ReplaySessionState): ReplaySessionState {
   return { ...session, filters: normalizeFilters(session.filters) };
 }
 
-type SelectionAnchor = Pick<ReplayEvent, "kind" | "at" | "end" | "sensorId"> & { label?: string; status?: string | null; occurrence: number };
+type SelectionAnchor = Pick<ReplayEvent, "kind" | "at" | "end" | "sensorId" | "status"> & { occurrence: number };
 
-function anchorFor(event: ReplayEvent, items: ReplayEvent[], observable: boolean): SelectionAnchor {
-  const alike = items.filter((candidate) => candidate.kind === event.kind && candidate.at === event.at && candidate.end === event.end && candidate.sensorId === event.sensorId);
+function anchorFor(event: ReplayEvent, items: ReplayEvent[]): SelectionAnchor {
+  const alike = items.filter((candidate) => candidate.kind === event.kind && candidate.at === event.at && candidate.end === event.end && candidate.sensorId === event.sensorId && candidate.status === event.status);
   return {
     kind: event.kind, at: event.at, end: event.end, sensorId: event.sensorId,
-    // An Oracle label can itself describe private activity, so it is not retained when downgrading.
-    label: observable ? event.label : undefined,
-    status: observable ? event.status : undefined,
+    status: event.status,
     occurrence: Math.max(0, alike.findIndex((candidate) => candidate.eventId === event.eventId)),
   };
 }
@@ -62,8 +60,7 @@ function anchorFor(event: ReplayEvent, items: ReplayEvent[], observable: boolean
 function remapAnchor(anchor: SelectionAnchor, items: ReplayEvent[]): ReplayEvent | undefined {
   const candidates = items.filter((candidate) => candidate.kind === anchor.kind
     && candidate.at === anchor.at && candidate.end === anchor.end && candidate.sensorId === anchor.sensorId
-    && (anchor.label === undefined || candidate.label === anchor.label)
-    && (anchor.status === undefined || candidate.status === anchor.status));
+    && candidate.status === anchor.status);
   return candidates[anchor.occurrence] ?? candidates[0];
 }
 
@@ -276,6 +273,23 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       query.set("include_oracle", "true");
       if (filters.actorIds.length) query.set("actor_id", filters.actorIds[0] ?? "");
     }
+    const catalogController = new AbortController();
+    const needsCatalog = filters.eventKinds.length > 0 || filters.sensorIds.length > 0 || filters.actorIds.length > 0 || filters.statuses.length > 0;
+    if (needsCatalog) {
+      const catalogQuery = new URLSearchParams({
+        start: new Date(center - effectiveSpanMs / 2).toISOString(), end: new Date(center + effectiveSpanMs / 2).toISOString(), limit: String(WINDOW_LIMIT),
+      });
+      if (filters.visibilityMode === "oracle") catalogQuery.set("include_oracle", "true");
+      void api<ReplayEventWindow>(`/runs/${encodeURIComponent(runId)}/replay/events?${catalogQuery.toString()}`, { signal: catalogController.signal })
+        .then((catalog) => {
+          if (catalogController.signal.aborted || !isVerifiedRun() || version !== windowVersion.current) return;
+          setFilterOptions((current) => ({
+            sensorIds: [...new Set([...current.sensorIds, ...catalog.items.flatMap((item) => item.sensorId ? [item.sensorId] : []), ...filters.sensorIds])].sort(),
+            actorIds: filters.visibilityMode === "oracle" ? [...new Set([...current.actorIds, ...catalog.items.flatMap((item) => item.actorId ? [item.actorId] : []), ...filters.actorIds])].sort() : current.actorIds,
+            statuses: [...new Set([...current.statuses, ...catalog.items.flatMap((item) => item.status ? [item.status] : []), ...filters.statuses])].sort(),
+          }));
+        }).catch(() => undefined);
+    }
     requestFrame(center);
     void api<ReplayEventWindow>(`/runs/${encodeURIComponent(runId)}/replay/events?${query.toString()}`, { signal: controller.signal })
       .then((window) => {
@@ -305,7 +319,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         }));
         const visibleItems = window.items.filter((item) => matchesFilters(item, filters));
         setEvents({ ...window, items: visibleItems }); setRunError(undefined); windowLoadingRef.current = false;
-        setEvidenceIncomplete(false);
+        densityAttemptsRef.current = 0; setEvidenceIncomplete(false);
         const anchor = selectionAnchorRef.current;
         if (anchor) {
           selectionAnchorRef.current = undefined;
@@ -318,7 +332,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         if (controller.signal.aborted || !isVerifiedRun() || isAbort(reason) || version !== windowVersion.current) return;
         blockReplay(reason);
       });
-    return () => controller.abort();
+    return () => { controller.abort(); catalogController.abort(); };
   }, [blockReplay, filters, isVerifiedRun, narrowedSpanMs, positionInitialized, requestFrame, runId, setRunError, setSelection, status, verifiedForCurrentRun, windowRequest, windowSpanMs]);
 
   useEffect(() => {
@@ -412,6 +426,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     if (!isVerifiedRun() || evidenceIncomplete) return;
     const range = rangeRef.current;
     const clamped = range ? Math.min(range.end, Math.max(range.start, nextPosition)) : nextPosition;
+    densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
     setPlaying(false); setClockPosition(clamped);
     if (positionInitialized) { refreshedWindowRef.current = undefined; requestWindow(true); requestFrame(clamped, true); }
   }, [evidenceIncomplete, isVerifiedRun, positionInitialized, requestFrame, requestWindow, setClockPosition]);
@@ -452,7 +467,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     const visibilityWillChange = patch.visibilityMode !== undefined && patch.visibilityMode !== filters.visibilityMode;
     if (visibilityWillChange) {
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
-      selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? [], filters.visibilityMode === "observable") : undefined;
+      selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? []) : undefined;
     }
     densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setEvidenceIncomplete(false); setWindowNotice(undefined);
     setFilters((current) => {
@@ -466,6 +481,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         saveRequest.current?.abort();
         setEvents(undefined);
         setFrame(undefined);
+        if (next.visibilityMode === "observable") setFilterOptions((options) => ({ ...options, actorIds: [] }));
         setSelection(undefined);
         setSession((existing) => existing ? { ...existing, filters: next } : existing);
       }
