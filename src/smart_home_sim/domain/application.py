@@ -369,6 +369,7 @@ class ObservationView(ContractModel):
 class ReplayVerification(ContractModel):
     model_config = ConfigDict(
         **ContractModel.model_config,
+        frozen=True,
         json_schema_extra={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "urn:smart-home-simulator:schema:application-replay:1.0.0",
@@ -418,7 +419,7 @@ class ReplayEventView(ContractModel):
 
 
 class ReplayEventWindow(ContractModel):
-    items: list[ReplayEventView]
+    items: list[ReplayEventView] = Field(max_length=5000)
     total: int = Field(ge=0)
     trace_start: AwareDatetime
     trace_end: AwareDatetime
@@ -476,18 +477,197 @@ class ReplayFilters(ContractModel):
 
 
 class ReplaySessionState(ContractModel):
+    model_config = ConfigDict(**ContractModel.model_config, frozen=True)
+
     replay_id: str | None = None
     run_id: str = Field(min_length=1)
     verified_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    playable: bool = False
     position_at: AwareDatetime | None = None
     filters: ReplayFilters = Field(default_factory=ReplayFilters)
     created_at: AwareDatetime | None = None
     updated_at: AwareDatetime | None = None
 
 
+class ObservableReplayEventView(ContractModel):
+    at: AwareDatetime
+    end: AwareDatetime | None = None
+    kind: ReplayEventKind
+    event_id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    status: str | None = None
+    sensor_id: str | None = None
+    waypoints: list[ReplayWaypoint] = Field(default_factory=list)
+    details: dict[str, JsonValue] = Field(default_factory=dict)
+
+    @classmethod
+    def from_event(cls, event: ReplayEventView) -> ObservableReplayEventView:
+        return cls(
+            at=event.at,
+            end=event.end,
+            kind=event.kind,
+            event_id=event.event_id,
+            label=event.label,
+            status=event.status,
+            sensor_id=event.sensor_id,
+            waypoints=event.waypoints,
+            details=event.details,
+        )
+
+
+class ObservableReplayEventWindow(ContractModel):
+    items: list[ObservableReplayEventView] = Field(max_length=5000)
+    total: int = Field(ge=0)
+    trace_start: AwareDatetime
+    trace_end: AwareDatetime
+    window_start: AwareDatetime
+    window_end: AwareDatetime
+
+    @classmethod
+    def from_window(cls, window: ReplayEventWindow) -> ObservableReplayEventWindow:
+        return cls(
+            items=[ObservableReplayEventView.from_event(item) for item in window.items],
+            total=window.total,
+            trace_start=window.trace_start,
+            trace_end=window.trace_end,
+            window_start=window.window_start,
+            window_end=window.window_end,
+        )
+
+
+class ObservableReplayResidentFrame(ContractModel):
+    region_id: str | None = None
+    position: Point2D | None = None
+    posture: str | None = None
+    execution_state: str = Field(min_length=1)
+    held_resource_ids: list[str] = Field(default_factory=list)
+    facts: dict[str, JsonValue] = Field(default_factory=dict)
+
+    @classmethod
+    def from_resident(cls, resident: ReplayResidentFrame) -> ObservableReplayResidentFrame:
+        return cls(
+            region_id=resident.region_id,
+            position=resident.position,
+            posture=resident.posture,
+            execution_state=resident.execution_state,
+            held_resource_ids=resident.held_resource_ids,
+            facts=resident.facts,
+        )
+
+
+class ObservableReplaySensorFrame(ContractModel):
+    observation_id: str = Field(min_length=1)
+    sensor_id: str = Field(min_length=1)
+    sensor_type: str = Field(min_length=1)
+    observed_at: AwareDatetime
+    measurement: str = Field(min_length=1)
+    value: JsonValue
+    unit: str | None = None
+    quality: str = Field(min_length=1)
+    changed: bool = False
+
+    @classmethod
+    def from_sensor(cls, sensor: ReplaySensorFrame) -> ObservableReplaySensorFrame:
+        return cls(
+            observation_id=sensor.observation_id,
+            sensor_id=sensor.sensor_id,
+            sensor_type=sensor.sensor_type,
+            observed_at=sensor.observed_at,
+            measurement=sensor.measurement,
+            value=sensor.value,
+            unit=sensor.unit,
+            quality=sensor.quality,
+            changed=sensor.changed,
+        )
+
+
+class ObservableReplayFrame(ContractModel):
+    run_id: str = Field(min_length=1)
+    at: AwareDatetime
+    trace_start: AwareDatetime
+    trace_end: AwareDatetime
+    residents: list[ObservableReplayResidentFrame]
+    sensor_states: list[ObservableReplaySensorFrame]
+    entity_states: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
+    environment_facts: dict[str, JsonValue] = Field(default_factory=dict)
+    resource_available_units: dict[str, int] = Field(default_factory=dict)
+    active_event_ids: list[str] = Field(default_factory=list)
+
+    @classmethod
+    def from_frame(cls, frame: ReplayFrame) -> ObservableReplayFrame:
+        return cls(
+            run_id=frame.run_id,
+            at=frame.at,
+            trace_start=frame.trace_start,
+            trace_end=frame.trace_end,
+            residents=[
+                ObservableReplayResidentFrame.from_resident(item) for item in frame.residents
+            ],
+            sensor_states=[
+                ObservableReplaySensorFrame.from_sensor(item) for item in frame.sensor_states
+            ],
+            entity_states=frame.entity_states,
+            environment_facts=frame.environment_facts,
+            resource_available_units=frame.resource_available_units,
+            active_event_ids=frame.active_event_ids,
+        )
+
+
+class ObservableReplayFilters(ContractModel):
+    event_kinds: list[ReplayEventKind] = Field(default_factory=list)
+    sensor_ids: list[str] = Field(default_factory=list)
+    statuses: list[str] = Field(default_factory=list)
+    detail_mode: ReplayDetailMode = "presentation"
+    visibility_mode: ReplayVisibilityMode = "observable"
+    speed: float = Field(default=1, ge=0.25, le=32)
+
+    @classmethod
+    def from_filters(cls, filters: ReplayFilters) -> ObservableReplayFilters:
+        return cls(
+            event_kinds=filters.event_kinds,
+            sensor_ids=filters.sensor_ids,
+            statuses=filters.statuses,
+            detail_mode=filters.detail_mode,
+            visibility_mode="observable",
+            speed=filters.speed,
+        )
+
+
+class ObservableReplaySessionState(ContractModel):
+    replay_id: str | None = None
+    run_id: str = Field(min_length=1)
+    verified_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    playable: bool = False
+    position_at: AwareDatetime | None = None
+    filters: ObservableReplayFilters = Field(default_factory=ObservableReplayFilters)
+    created_at: AwareDatetime | None = None
+    updated_at: AwareDatetime | None = None
+
+    @classmethod
+    def from_session(cls, session: ReplaySessionState) -> ObservableReplaySessionState:
+        return cls(
+            replay_id=session.replay_id,
+            run_id=session.run_id,
+            verified_digest=session.verified_digest,
+            playable=session.playable,
+            position_at=session.position_at,
+            filters=ObservableReplayFilters.from_filters(session.filters),
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+        )
+
+
+class ObservableApplicationReplayContract(ContractModel):
+    verification: ReplayVerification
+    event_window: ObservableReplayEventWindow
+    frame: ObservableReplayFrame
+    session: ObservableReplaySessionState
+
+
 class ApplicationReplayContract(ContractModel):
     model_config = ConfigDict(
         **ContractModel.model_config,
+        frozen=True,
         json_schema_extra={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "urn:smart-home-simulator:schema:application-replay:1.1.0",
@@ -499,6 +679,32 @@ class ApplicationReplayContract(ContractModel):
     event_window: ReplayEventWindow
     frame: ReplayFrame
     session: ReplaySessionState
+
+    @model_validator(mode="after")
+    def check_playable_session_verification(self) -> ApplicationReplayContract:
+        if not self.session.playable:
+            return self
+        if self.session.run_id != self.verification.run_id:
+            raise ValueError("playable replay session must match the verification run")
+        if not self.verification.matches:
+            raise ValueError("playable replay session requires a matching verification")
+        if self.session.verified_digest is None:
+            raise ValueError("playable replay session requires a verified digest")
+        if self.verification.actual_semantic_digest != self.session.verified_digest:
+            raise ValueError("playable replay session digest must match the verification digest")
+        return self
+
+    def playback_payload(
+        self, *, include_oracle: bool = False
+    ) -> ApplicationReplayContract | ObservableApplicationReplayContract:
+        if include_oracle:
+            return self
+        return ObservableApplicationReplayContract(
+            verification=self.verification,
+            event_window=ObservableReplayEventWindow.from_window(self.event_window),
+            frame=ObservableReplayFrame.from_frame(self.frame),
+            session=ObservableReplaySessionState.from_session(self.session),
+        )
 
 
 def utc_now() -> datetime:

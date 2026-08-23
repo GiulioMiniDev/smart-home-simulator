@@ -185,6 +185,7 @@
           "items": {
             "$ref": "#/$defs/ReplayEventView"
           },
+          "maxItems": 5000,
           "title": "Items",
           "type": "array"
         },
@@ -590,6 +591,11 @@
           ],
           "default": null,
           "title": "Verifieddigest"
+        },
+        "playable": {
+          "default": false,
+          "title": "Playable",
+          "type": "boolean"
         },
         "positionAt": {
           "anyOf": [

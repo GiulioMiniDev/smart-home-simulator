@@ -1,18 +1,26 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
+from pydantic import ValidationError
 
 from smart_home_sim.domain.application import (
     ApplicationReplayContract,
     ExportManifest,
     JobRecord,
+    ObservableApplicationReplayContract,
+    ObservationCause,
+    ReplayEventView,
     ReplayEventWindow,
     ReplayFilters,
     ReplayFrame,
+    ReplayResidentFrame,
+    ReplaySensorFrame,
     ReplaySessionState,
     ReplayVerification,
     WorkspaceManifest,
@@ -146,6 +154,214 @@ def test_application_replay_contract_covers_windows_frames_and_sessions() -> Non
         )
     )
     assert session.filters.speed == 4
+
+
+_REPLAY_AT = datetime(2026, 8, 23, 8, tzinfo=UTC)
+_REPLAY_DIGEST = "a" * 64
+
+
+def _verified_replay_contract(*, playable: bool = True) -> ApplicationReplayContract:
+    return ApplicationReplayContract(
+        verification=ReplayVerification(
+            run_id="run_1",
+            verified_at=_REPLAY_AT,
+            matches=True,
+            expected_semantic_digest=_REPLAY_DIGEST,
+            actual_semantic_digest=_REPLAY_DIGEST,
+        ),
+        event_window=ReplayEventWindow(
+            items=[
+                ReplayEventView(
+                    at=_REPLAY_AT,
+                    kind="movement",
+                    event_id="movement_1",
+                    label="Kitchen to bedroom",
+                    actor_id="resident_1",
+                )
+            ],
+            total=1,
+            trace_start=_REPLAY_AT,
+            trace_end=_REPLAY_AT,
+            window_start=_REPLAY_AT,
+            window_end=_REPLAY_AT,
+        ),
+        frame=ReplayFrame(
+            run_id="run_1",
+            at=_REPLAY_AT,
+            trace_start=_REPLAY_AT,
+            trace_end=_REPLAY_AT,
+            residents=[
+                ReplayResidentFrame(
+                    resident_id="resident_1",
+                    execution_state="executing",
+                    activity_execution_id="activity_1",
+                    action_execution_id="action_1",
+                )
+            ],
+            sensor_states=[
+                ReplaySensorFrame(
+                    observation_id="observation_1",
+                    sensor_id="sensor_1",
+                    sensor_type="pir",
+                    observed_at=_REPLAY_AT,
+                    measurement="motion",
+                    value=True,
+                    quality="measured",
+                    oracle_cause=ObservationCause(
+                        origin="simulation",
+                        cause_type="movement",
+                        cause_ids=["movement_1"],
+                        resident_ids=["resident_1"],
+                        activity_execution_ids=["activity_1"],
+                        action_execution_ids=["action_1"],
+                    ),
+                )
+            ],
+        ),
+        session=ReplaySessionState(
+            run_id="run_1",
+            verified_digest=_REPLAY_DIGEST,
+            playable=playable,
+        ),
+    )
+
+
+def test_observable_replay_payload_excludes_identity_and_oracle_fields() -> None:
+    payload = _verified_replay_contract().playback_payload()
+
+    assert isinstance(payload, ObservableApplicationReplayContract)
+    event = payload.event_window.items[0].model_dump(by_alias=True)
+    resident = payload.frame.residents[0].model_dump(by_alias=True)
+    sensor = payload.frame.sensor_states[0].model_dump(by_alias=True)
+    filters = payload.session.filters.model_dump(by_alias=True)
+    assert "actorId" not in event
+    assert {"residentId", "activityExecutionId", "actionExecutionId"}.isdisjoint(resident)
+    assert "oracleCause" not in sensor
+    assert {"actorIds", "selectedResidentId"}.isdisjoint(filters)
+    schema = ObservableApplicationReplayContract.model_json_schema(by_alias=True)
+    assert "actorId" not in schema["$defs"]["ObservableReplayEventView"]["properties"]
+    assert "residentId" not in schema["$defs"]["ObservableReplayResidentFrame"]["properties"]
+    assert "oracleCause" not in schema["$defs"]["ObservableReplaySensorFrame"]["properties"]
+
+
+def test_oracle_replay_payload_requires_explicit_opt_in() -> None:
+    payload = _verified_replay_contract().playback_payload(include_oracle=True)
+
+    assert isinstance(payload, ApplicationReplayContract)
+    assert payload.event_window.items[0].actor_id == "resident_1"
+    assert payload.frame.residents[0].resident_id == "resident_1"
+    assert payload.frame.sensor_states[0].oracle_cause is not None
+
+
+def test_replay_event_window_rejects_more_than_5000_items() -> None:
+    item = ReplayEventView(
+        at=_REPLAY_AT,
+        kind="movement",
+        event_id="movement_1",
+        label="Kitchen to bedroom",
+    )
+
+    with pytest.raises(ValidationError, match="at most 5000 items"):
+        ReplayEventWindow(
+            items=[item] * 5001,
+            total=5001,
+            trace_start=_REPLAY_AT,
+            trace_end=_REPLAY_AT,
+            window_start=_REPLAY_AT,
+            window_end=_REPLAY_AT,
+        )
+
+
+@pytest.mark.parametrize(
+    ("verification", "session"),
+    [
+        (
+            ReplayVerification(
+                run_id="run_2",
+                verified_at=_REPLAY_AT,
+                matches=True,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest=_REPLAY_DIGEST,
+            ),
+            ReplaySessionState(
+                run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True
+            ),
+        ),
+        (
+            ReplayVerification(
+                run_id="run_1",
+                verified_at=_REPLAY_AT,
+                matches=False,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest="b" * 64,
+            ),
+            ReplaySessionState(
+                run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True
+            ),
+        ),
+        (
+            ReplayVerification(
+                run_id="run_1",
+                verified_at=_REPLAY_AT,
+                matches=True,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest=_REPLAY_DIGEST,
+            ),
+            ReplaySessionState(run_id="run_1", playable=True),
+        ),
+        (
+            ReplayVerification(
+                run_id="run_1",
+                verified_at=_REPLAY_AT,
+                matches=True,
+                expected_semantic_digest=_REPLAY_DIGEST,
+                actual_semantic_digest=_REPLAY_DIGEST,
+            ),
+            ReplaySessionState(run_id="run_1", verified_digest="b" * 64, playable=True),
+        ),
+    ],
+)
+def test_playable_replay_session_requires_matching_verification(
+    verification: ReplayVerification, session: ReplaySessionState
+) -> None:
+    contract = _verified_replay_contract(playable=False)
+
+    with pytest.raises(ValidationError):
+        ApplicationReplayContract(
+            verification=verification,
+            event_window=contract.event_window,
+            frame=contract.frame,
+            session=session,
+        )
+
+
+def test_non_playable_replay_session_can_represent_unverified_state() -> None:
+    verified = _verified_replay_contract(playable=False)
+    contract = ApplicationReplayContract(
+        verification=ReplayVerification(
+            run_id="run_1",
+            verified_at=_REPLAY_AT,
+            matches=False,
+            expected_semantic_digest=_REPLAY_DIGEST,
+            actual_semantic_digest="b" * 64,
+        ),
+        event_window=verified.event_window,
+        frame=verified.frame,
+        session=ReplaySessionState(run_id="run_1", playable=False),
+    )
+
+    assert contract.session.playable is False
+
+
+def test_playable_replay_session_cannot_bypass_verification_by_mutation() -> None:
+    contract = _verified_replay_contract()
+
+    with pytest.raises(ValidationError):
+        contract.verification.matches = False
+    with pytest.raises(ValidationError):
+        contract.session.verified_digest = "b" * 64
+    with pytest.raises(ValidationError):
+        contract.session = ReplaySessionState(run_id="run_1", playable=False)
 
 
 def load_schema() -> dict[str, object]:
