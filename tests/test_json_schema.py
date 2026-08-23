@@ -24,6 +24,7 @@ from smart_home_sim.domain.application import (
     ReplaySessionState,
     ReplayVerification,
     WorkspaceManifest,
+    _is_observable_replay_redacted_key,
 )
 from smart_home_sim.domain.authoring import (
     AUTHORING_ISSUE_CODES,
@@ -349,6 +350,88 @@ def test_observable_replay_payload_sanitizes_normalized_identity_key_variants() 
     assert payload["frame"]["environmentFacts"] == {
         "held_resource_ids": ["cup_1"],
         "nested": [{}, {"sourceActionCount": 1}],
+    }
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "sourceActivityExecutionIds",
+        "source_action_execution_id",
+        "targetResidentIdList",
+        "parentActionIdentifier",
+        "currentActorIdentities",
+        "executionIdentifier",
+        "sourceCauseIds",
+        "oracleCause",
+    ],
+)
+def test_observable_replay_classifier_redacts_semantic_identity_and_cause_keys(
+    key: str,
+) -> None:
+    assert _is_observable_replay_redacted_key(key)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "interactionId",
+        "transactionId",
+        "actionable",
+        "activityLevel",
+        "actionCount",
+        "residentCount",
+        "sensorId",
+        "runId",
+        "replayId",
+        "expectedSemanticDigest",
+        "heldResourceIds",
+    ],
+)
+def test_observable_replay_classifier_preserves_benign_and_operational_keys(key: str) -> None:
+    assert not _is_observable_replay_redacted_key(key)
+
+
+def test_observable_replay_payload_sanitizes_composed_identity_keys_at_any_depth() -> None:
+    contract = _verified_replay_contract()
+    contract.event_window.items[0].details = {
+        "sourceActivityExecutionIds": ["activity_execution_1"],
+        "sensorId": "sensor_1",
+        "nested": [{"parentActionIdentifier": "action_1"}],
+    }
+    contract.frame.residents[0].facts = {
+        "targetResidentIdList": ["resident_1"],
+        "residentCount": 1,
+    }
+    contract.frame.entity_states.update(
+        {
+            "entity_1": {
+                "nested": [{"source_action_execution_id": "action_execution_1"}],
+                "interactionId": "interaction_1",
+            }
+        }
+    )
+    contract.frame.environment_facts.update(
+        {
+            "sourceCauseIds": ["movement_1"],
+            "nested": [{"currentActorIdentities": ["resident_1"]}],
+            "runId": "run_1",
+        }
+    )
+
+    payload = contract.playback_payload().model_dump(by_alias=True)
+
+    assert payload["eventWindow"]["items"][0]["details"] == {
+        "sensorId": "sensor_1",
+        "nested": [{}],
+    }
+    assert payload["frame"]["residents"][0]["facts"] == {"residentCount": 1}
+    assert payload["frame"]["entityStates"] == {
+        "entity_1": {"nested": [{}], "interactionId": "interaction_1"}
+    }
+    assert payload["frame"]["environmentFacts"] == {
+        "nested": [{}],
+        "runId": "run_1",
     }
 
 

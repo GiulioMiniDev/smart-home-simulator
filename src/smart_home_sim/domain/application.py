@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -492,50 +493,58 @@ class ReplaySessionState(ContractModel):
     updated_at: AwareDatetime | None = None
 
 
-_OBSERVABLE_REPLAY_REDACTED_KEYS = frozenset(
-    {
-        "actorid",
-        "actorids",
-        "actoridlist",
-        "sourceactorid",
-        "sourceactorids",
-        "residentid",
-        "residentids",
-        "residentidlist",
-        "sourceresidentid",
-        "sourceresidentids",
-        "activityid",
-        "activityids",
-        "activityidlist",
-        "sourceactivityid",
-        "sourceactivityids",
-        "sourceactivityidlist",
-        "actionid",
-        "actionids",
-        "actionidlist",
-        "sourceactionid",
-        "sourceactionids",
-        "sourceactionidlist",
-        "activityexecutionid",
-        "activityexecutionids",
-        "activityexecutionidlist",
-        "actionexecutionid",
-        "actionexecutionids",
-        "actionexecutionidlist",
-        "oraclecause",
-        "oraclecauses",
-        "causeid",
-        "causeids",
-    }
+_OBSERVABLE_REPLAY_KEY_TOKEN = re.compile(
+    r"[A-Z]+(?=[A-Z][a-z]|[^A-Za-z]|$)|[A-Z]?[a-z]+|[0-9]+"
+)
+_OBSERVABLE_REPLAY_IDENTITY_PREFIXES = ("source", "current", "target", "parent")
+_OBSERVABLE_REPLAY_IDENTITY_SUBJECTS = frozenset({"resident", "actor", "activity", "action"})
+_OBSERVABLE_REPLAY_IDENTITY_SUFFIXES = (
+    "identities",
+    "identifiers",
+    "identity",
+    "identifier",
+    "idlists",
+    "idlist",
+    "ids",
+    "id",
 )
 
 
+def _observable_replay_key_tokens(key: str) -> tuple[str, ...]:
+    return tuple(token.casefold() for token in _OBSERVABLE_REPLAY_KEY_TOKEN.findall(key))
+
+
 def _normalized_observable_replay_key(key: str) -> str:
-    return "".join(character for character in key.casefold() if character.isalnum())
+    return "".join(_observable_replay_key_tokens(key))
+
+
+def _strip_observable_replay_identity_prefixes(value: str) -> str:
+    while prefix := next(
+        (prefix for prefix in _OBSERVABLE_REPLAY_IDENTITY_PREFIXES if value.startswith(prefix)),
+        None,
+    ):
+        value = value.removeprefix(prefix)
+    return value
+
+
+def _strip_observable_replay_identity_suffix(value: str) -> str | None:
+    for suffix in _OBSERVABLE_REPLAY_IDENTITY_SUFFIXES:
+        if value.endswith(suffix):
+            return value.removesuffix(suffix)
+    return None
 
 
 def _is_observable_replay_redacted_key(key: str) -> bool:
-    return _normalized_observable_replay_key(key) in _OBSERVABLE_REPLAY_REDACTED_KEYS
+    value = _strip_observable_replay_identity_prefixes(_normalized_observable_replay_key(key))
+    stem = _strip_observable_replay_identity_suffix(value)
+    if stem is not None:
+        if stem in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS | {"execution", "cause", "oraclecause"}:
+            return True
+        return any(
+            stem == f"{subject}execution"
+            for subject in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS
+        )
+    return value in {"cause", "oraclecause"}
 
 
 def _observable_json_value(value: JsonValue) -> JsonValue:
