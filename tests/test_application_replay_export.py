@@ -133,6 +133,7 @@ def test_replay_indexes_every_trace_family_and_bounds_windows(
     assert {
         item.kind for item in replay.events(run_id, start=start, end=end, limit=5000).items
     } >= expected_kinds
+    assert "observation" in {item.kind for item in replay.events(run_id, limit=5000).items}
 
 
 def test_replay_frame_is_random_seek_stable_and_oracle_is_opt_in(
@@ -478,6 +479,75 @@ def test_replay_resident_special_transitions_fold_every_operation() -> None:
     assert resident.position is None
     assert resident.posture is None
     assert resident.execution_state == "unknown"
+
+
+def test_replay_spatial_fold_keeps_later_transitions_over_completed_movement() -> None:
+    from smart_home_sim.application import replay as replay_module
+
+    start = datetime(2026, 8, 23, 8, tzinfo=UTC)
+    movement = MovementExecution.model_validate(
+        {
+            "movementId": "movement_1",
+            "actionExecutionId": "action_1",
+            "actorId": "resident_1",
+            "startedAt": start,
+            "endedAt": start + timedelta(seconds=10),
+            "originRegionId": "origin",
+            "destinationRegionId": "movement_destination",
+            "distanceMeters": 10,
+            "durationMicroseconds": 10_000_000,
+            "waypoints": [
+                {
+                    "at": start,
+                    "regionId": "origin",
+                    "position": Point2D(x=0, y=0),
+                    "traversalMode": "walking",
+                },
+                {
+                    "at": start + timedelta(seconds=10),
+                    "regionId": "movement_destination",
+                    "position": Point2D(x=10, y=10),
+                    "traversalMode": "walking",
+                },
+            ],
+        }
+    )
+
+    def transition(fact: str, value: object, at: datetime, identifier: str) -> StateTransition:
+        return StateTransition(
+            transition_id=identifier,
+            at=at,
+            subject_type="resident",
+            subject_id="resident_1",
+            fact=fact,
+            previous_value=None,
+            value=value,
+            operation="set",
+            causality=TraceCausality(cause_type="action_effect", cause_id="action_1"),
+        )
+
+    trace = SimpleNamespace(
+        activity_executions=[],
+        action_executions=[],
+        movements=[movement],
+        resource_events=[],
+        state_transitions=[
+            transition("location", "same_time", movement.ended_at, "location_same_time"),
+            transition("position", {"x": 11, "y": 11}, movement.ended_at, "position_same_time"),
+            transition("location", "later", start + timedelta(seconds=20), "location_later"),
+            transition(
+                "position", {"x": 20, "y": 20}, start + timedelta(seconds=20), "position_later"
+            ),
+        ],
+    )
+
+    same_time = replay_module._resident_frames(trace, None, movement.ended_at)[0][0]
+    later = replay_module._resident_frames(trace, None, start + timedelta(seconds=21))[0][0]
+
+    assert same_time.region_id == "same_time"
+    assert same_time.position == Point2D(x=11, y=11)
+    assert later.region_id == "later"
+    assert later.position == Point2D(x=20, y=20)
 
 
 def test_streaming_export_formats_manifest_and_integrity(

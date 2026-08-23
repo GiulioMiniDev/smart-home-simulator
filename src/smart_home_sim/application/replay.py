@@ -403,17 +403,11 @@ def _resident_frames(
         key=lambda item: (item.at, item.transition_id),
     ):
         state = residents[transition.subject_id]
+        if transition.fact in {"location", "position"}:
+            continue
         if transition.fact not in {"position", "execution_state"}:
             _apply_transition(state["facts"], transition)
-        if transition.fact == "location":
-            value = _fold_transition_value(state["region_id"], transition)
-            state["region_id"] = value if isinstance(value, str) else None
-        elif transition.fact == "position":
-            current = state["position"]
-            raw_current = current.model_dump(mode="python") if current is not None else None
-            value = _fold_transition_value(raw_current, transition)
-            state["position"] = Point2D.model_validate(value) if isinstance(value, dict) else None
-        elif transition.fact == "posture":
+        if transition.fact == "posture":
             value = _fold_transition_value(state["posture"], transition)
             state["posture"] = value if isinstance(value, str) else None
         elif transition.fact == "execution_state":
@@ -428,20 +422,41 @@ def _resident_frames(
     active_ids = {
         item.activity_execution_id for item in active_activities
     } | {item.action_execution_id for item in active_actions}
+    spatial_updates: list[tuple[datetime, int, str, str, Any]] = [
+        (item.at, 1, item.transition_id, "transition", item)
+        for item in trace.state_transitions
+        if item.subject_type == "resident"
+        and item.fact in {"location", "position"}
+        and item.at <= at
+    ]
     for movement in sorted(trace.movements, key=lambda item: (item.ended_at, item.movement_id)):
         state = residents[movement.actor_id]
         if movement.started_at <= at < movement.ended_at:
-            point = _point_at(movement, at)
-            last_waypoint = _waypoint_at(movement, at)
-            state.update(
-                region_id=last_waypoint.region_id,
-                position=point,
-                execution_state="moving",
-            )
+            spatial_updates.append((at, 0, movement.movement_id, "movement", movement))
+            state["execution_state"] = "moving"
             active_ids.add(movement.movement_id)
         elif movement.ended_at <= at:
-            waypoint = movement.waypoints[-1]
-            state.update(region_id=waypoint.region_id, position=waypoint.position)
+            spatial_updates.append(
+                (movement.ended_at, 0, movement.movement_id, "movement", movement)
+            )
+    for timestamp, _, _, update_kind, item in sorted(spatial_updates, key=lambda item: item[:3]):
+        if update_kind == "movement":
+            movement = item
+            state = residents[movement.actor_id]
+            state["region_id"] = _waypoint_at(movement, timestamp).region_id
+            state["position"] = _point_at(movement, timestamp)
+            continue
+        transition = item
+        state = residents[transition.subject_id]
+        _apply_transition(state["facts"], transition)
+        if transition.fact == "location":
+            value = _fold_transition_value(state["region_id"], transition)
+            state["region_id"] = value if isinstance(value, str) else None
+        else:
+            current = state["position"]
+            raw_current = current.model_dump(mode="python") if current is not None else None
+            value = _fold_transition_value(raw_current, transition)
+            state["position"] = Point2D.model_validate(value) if isinstance(value, dict) else None
     held = {resident_id: set() for resident_id in residents}
     for event in sorted(
         (item for item in trace.resource_events if item.at <= at),
