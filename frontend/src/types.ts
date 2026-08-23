@@ -549,6 +549,22 @@ export interface ReplayFrame {
   activeEventIds?: string[];
 }
 
+/** Evidence-derived state for the spatial replay layer; it never supplies a guessed position. */
+export interface ReplayOverlay {
+  residents: Array<{
+    residentId: string;
+    label: string;
+    marker: string;
+    regionId?: string;
+    position?: Point;
+    executionState: string;
+  }>;
+  activeRegionIds: string[];
+  activeSensorIds: string[];
+  trajectory: Point[];
+  selectedResidentId?: string;
+}
+
 export interface ReplayFilters {
   eventKinds: ReplayEventKind[];
   actorIds: string[];

@@ -36,7 +36,7 @@ import {
 import type { ResizeHandle } from "./editor";
 import { furnitureSymbol } from "./furniture";
 import { FurnitureSymbols } from "./furniture-symbols";
-import type { HomeModel, JobStatus, Point, Polygon, SensorModel, TimelineEvent } from "./types";
+import type { HomeModel, JobStatus, Point, Polygon, ReplayOverlay, SensorModel } from "./types";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Activity },
@@ -449,7 +449,7 @@ export function PlanCanvas({
   sensors,
   selectedId,
   onSelect,
-  activeMovement,
+  replayOverlay,
   viewport,
   editing,
   showExternalPlaces = false,
@@ -459,7 +459,7 @@ export function PlanCanvas({
   sensors?: SensorModel;
   selectedId?: string;
   onSelect?: (id: string) => void;
-  activeMovement?: TimelineEvent;
+  replayOverlay?: ReplayOverlay;
   viewport?: { zoom: number; x: number; y: number };
   editing?: PlanEditing;
   showExternalPlaces?: boolean;
@@ -646,7 +646,8 @@ export function PlanCanvas({
               aria-label={`${region.kind} ${region.regionId}`}
               onClick={() => activate(region.regionId)}
               onKeyDown={(event) => keyboard(event, region.regionId)}
-              className={selectedId === region.regionId ? "is-selected" : ""}
+              data-region-id={region.regionId}
+              className={`${selectedId === region.regionId ? "is-selected " : ""}${replayOverlay?.activeRegionIds.includes(region.regionId) ? "is-replay-active" : ""}`.trim()}
               {...draggable(region.regionId)}
             >
               <polygon points={polygonPoints(region.boundary.vertices)} className={`region region-${region.kind}`} />
@@ -767,6 +768,7 @@ export function PlanCanvas({
           {sensorsShown.map((sensor) => {
             const coverage = sensor.sensorType === "pir" ? (sensor.coverage as Polygon | undefined) : undefined;
             const isSelected = selectedId === sensor.sensorId;
+            const isReplayActive = replayOverlay?.activeSensorIds.includes(sensor.sensorId) ?? false;
             return (
               <g key={sensor.sensorId}>
                 {/* Six overlapping translucent rectangles say nothing about any one of them. The
@@ -779,7 +781,7 @@ export function PlanCanvas({
                   tabIndex={0}
                   aria-label={`${sensor.sensorType} sensor ${sensor.sensorId}`}
                   transform={`translate(${sensor.position.x} ${sensor.position.y})`}
-                  className={`sensor-node sensor-${sensor.sensorType} ${isSelected ? "is-selected" : ""}`}
+                  className={`sensor-node sensor-${sensor.sensorType} ${isSelected ? "is-selected " : ""}${isReplayActive ? "is-replay-active" : ""}`.trim()}
                   onClick={() => activate(sensor.sensorId)}
                   onKeyDown={(event) => keyboard(event, sensor.sensorId)}
                   {...draggable(sensor.sensorId)}
@@ -818,10 +820,24 @@ export function PlanCanvas({
             );
           })}
         </g>}
-        {activeMovement?.waypoints && <g aria-label="Active trajectory" className="active-trajectory">
-          <polyline points={polygonPoints(activeMovement.waypoints.map((item) => item.position))} />
-          {activeMovement.waypoints.map((item, index) => <circle key={`${item.at}-${index}`} cx={item.position.x} cy={item.position.y} r=".12" />)}
+        {(replayOverlay?.trajectory.length ?? 0) > 1 && <g aria-label="Active trajectory" className="active-trajectory">
+          <polyline points={polygonPoints(replayOverlay!.trajectory)} />
+          {replayOverlay!.trajectory.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r=".12" />)}
         </g>}
+        <g aria-label="Replay residents" className="replay-residents">
+          {replayOverlay?.residents.filter((item) => item.position).map((item) => (
+            <g
+              key={item.residentId}
+              role="img"
+              aria-label={`${item.label} in ${item.regionId ?? "unknown region"}, ${item.executionState}`}
+              className={`replay-resident ${item.residentId === replayOverlay.selectedResidentId ? "is-selected" : ""}`}
+              transform={`translate(${item.position!.x} ${item.position!.y})`}
+            >
+              <circle r=".22" />
+              <text textAnchor="middle" y=".08">{item.marker}</text>
+            </g>
+          ))}
+        </g>
       </svg>
       <div className="plan-legend" aria-label="Plan legend">
         <span><i className="legend-room" /> Room</span>

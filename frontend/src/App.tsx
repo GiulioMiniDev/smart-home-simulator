@@ -1230,7 +1230,13 @@ function ReplayPlan({ runId, activeMovement }: { runId: string; activeMovement?:
   const leavesHome = !!home && !!activeMovement?.waypoints?.some(
     (item) => !dwellingRegionIds(home).has(item.regionId),
   );
-  return <div className="replay-plan">{home ? <PlanCanvas home={home} sensors={models.data?.sensorModel} activeMovement={activeMovement} showExternalPlaces={leavesHome} /> : models.error ? <ErrorPanel message={models.error.message} /> : <Skeleton lines={6} />}</div>;
+  const replayOverlay = activeMovement?.waypoints ? {
+    residents: [],
+    activeRegionIds: [...new Set(activeMovement.waypoints.map((item) => item.regionId))],
+    activeSensorIds: [],
+    trajectory: activeMovement.waypoints.map((item) => item.position),
+  } : undefined;
+  return <div className="replay-plan">{home ? <PlanCanvas home={home} sensors={models.data?.sensorModel} replayOverlay={replayOverlay} showExternalPlaces={leavesHome && (replayOverlay?.trajectory.length ?? 0) > 1} /> : models.error ? <ErrorPanel message={models.error.message} /> : <Skeleton lines={6} />}</div>;
 }
 
 function ExportsPage() {

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Breadcrumbs, EmptyState, ErrorPanel, Metric, PageHeader, PlanCanvas, ProgressBar, RunLink, Shell, Skeleton, StatusBadge } from "../components";
-import type { HomeModel, SensorModel } from "../types";
+import type { HomeModel, ReplayOverlay, SensorModel } from "../types";
 
 const home: HomeModel = {
   schemaVersion: "1.0.0", documentType: "home_model", homeId: "home", homeVersion: "1", coordinateSystem: {},
@@ -79,7 +79,7 @@ describe("application components", () => {
 
   it("supports pointer and keyboard plan selection plus replay trajectories", () => {
     const select = vi.fn();
-    const view = render(<PlanCanvas home={home} sensors={sensors} selectedId="kitchen" onSelect={select} viewport={{ zoom: 2, x: 1, y: -1 }} activeMovement={{ at: "2026-01-01T00:00:00Z", end: "2026-01-01T00:01:00Z", kind: "movement", id: "m", actorId: "r", label: "walk", status: "completed", waypoints: [{ at: "2026-01-01T00:00:00Z", regionId: "kitchen", position: { x: 1, y: 1 } }] }} />);
+    const view = render(<PlanCanvas home={home} sensors={sensors} selectedId="kitchen" onSelect={select} viewport={{ zoom: 2, x: 1, y: -1 }} replayOverlay={{ residents: [], activeRegionIds: [], activeSensorIds: [], trajectory: [{ x: 1, y: 1 }, { x: 2, y: 2 }] }} />);
     fireEvent.click(screen.getByLabelText("room kitchen"));
     fireEvent.keyDown(screen.getByLabelText("oven oven"), { key: "Enter" });
     fireEvent.keyDown(screen.getByLabelText("pir sensor pir"), { key: " " });
@@ -88,6 +88,27 @@ describe("application components", () => {
     expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
     view.rerender(<PlanCanvas home={{ ...home, connections: [{ connectionId: "broken", regionAId: "kitchen", regionBId: "missing", kind: "doorway", bidirectional: true, widthMeters: 1 }], entities: [...home.entities, { ...home.entities[0], entityId: "orphan", interactionPointId: "missing" }] }} />);
     expect(screen.queryByLabelText("oven orphan")).not.toBeInTheDocument();
+  });
+
+  it("shows replay residents, active regions and changed sensors without inventing unknown positions", () => {
+    const overlay: ReplayOverlay = {
+      residents: [
+        { residentId: "mario", label: "Mario", marker: "1", regionId: "kitchen", position: { x: 2, y: 2 }, executionState: "moving" },
+        { residentId: "luisa", label: "Luisa", marker: "2", executionState: "idle" },
+      ],
+      activeRegionIds: ["kitchen"],
+      activeSensorIds: ["pir"],
+      trajectory: [{ x: 1, y: 1 }, { x: 2, y: 2 }],
+      selectedResidentId: "mario",
+    };
+    const { container } = render(<PlanCanvas home={home} sensors={sensors} replayOverlay={overlay} />);
+
+    expect(screen.getByLabelText("Mario in kitchen, moving")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Luisa in/)).not.toBeInTheDocument();
+    expect(container.querySelector("[data-region-id='kitchen']")).toHaveClass("is-replay-active");
+    expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
+    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mario in kitchen, moving")).toHaveClass("is-selected");
   });
 
   it("moves and resizes plan objects by pointer, reporting gestures in metres", () => {

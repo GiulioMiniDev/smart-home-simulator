@@ -375,6 +375,14 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .handle-ne, .handle-sw { cursor: nesw-resize; }
 .active-trajectory polyline { fill: none; vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 3px; stroke-linecap: round; stroke-linejoin: round; }
 .active-trajectory circle { fill: var(--indigo); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 2px; }
+/* Replay evidence uses the plan's existing temporal indigo and physical teal tokens. Dashed
+   outlines and numbered resident markers preserve the distinction without relying on colour. */
+g.is-replay-active .region { stroke: var(--indigo); stroke-width: 2.4px; stroke-dasharray: 5 2; }
+.sensor-node.is-replay-active .sensor-glyph circle, .sensor-node.is-replay-active .sensor-glyph rect { fill: currentcolor; stroke: var(--surface-raised); stroke-width: 2.5px; }
+.sensor-node.is-replay-active .sensor-glyph path { stroke-width: 2.3px; }
+.replay-resident circle { fill: var(--surface-raised); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 2px; }
+.replay-resident text { fill: var(--indigo); font-size: .22px; font-weight: 700; pointer-events: none; }
+.replay-resident.is-selected circle { fill: var(--indigo-soft); stroke-width: 3.2px; stroke-dasharray: 2 1; }
 .plan-legend { position: absolute; inset: auto auto .7rem .7rem; display: flex; gap: .7rem; padding: .42rem .55rem; border: 1px solid var(--line); border-radius: 5px; background: color-mix(in oklch, var(--surface-raised) 92%, transparent); color: var(--text-soft); font-size: .65rem; }
 .plan-legend span { display: inline-flex; align-items: center; gap: .3rem; }
 .plan-legend i { width: 10px; height: 10px; border: 1px solid var(--line-strong); }
