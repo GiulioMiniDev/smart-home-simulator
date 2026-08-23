@@ -517,6 +517,8 @@ export interface ReplayResidentFrame {
   position?: Point | null;
   posture?: string | null;
   executionState: string;
+  activityActive?: boolean;
+  activityLabel?: string | null;
   activityExecutionId?: string | null;
   actionExecutionId?: string | null;
   heldResourceIds: string[];

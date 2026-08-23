@@ -126,7 +126,8 @@ describe("ReplayStage", () => {
     expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
 
     view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:00Z" }, events: { ...events, items: [{ ...events.items[0]!, end: "2026-01-01T08:10:00Z" }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
-    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
+    expect(view.container.querySelector('[aria-label="external market"]')).not.toBeInTheDocument();
 
     view.rerender(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:01Z" }, events: { ...events, items: [{ ...events.items[0]!, end: "2026-01-01T08:10:00Z" }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
     expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
@@ -136,10 +137,10 @@ describe("ReplayStage", () => {
     expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
   });
 
-  it("uses the final waypoint as the end only when no event end is supplied and rejects unusable routes", () => {
+  it("treats the final waypoint fallback as an exclusive end and rejects unusable routes", () => {
     const fallback = { ...events, items: [{ ...events.items[0]!, end: null }] };
     const view = render(<ReplayStage controller={{ frame: { ...frame, at: "2026-01-01T08:10:00Z" }, events: fallback, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
-    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
 
     view.rerender(<ReplayStage controller={{ frame, events: { ...events, items: [{ ...events.items[0]!, end: null, waypoints: [] }] }, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
     expect(screen.queryByLabelText("Active trajectory")).not.toBeInTheDocument();
@@ -230,46 +231,75 @@ describe("ReplayWorkbench", () => {
     expect(screen.queryByText("Resident 1")).not.toBeInTheDocument();
   });
 
-  it("summarizes simulated date and an authoritative active activity separately", async () => {
-    const activity = { at: replayStart, end: replayEnd, kind: "activity", eventId: "breakfast", label: "Breakfast", status: "active", waypoints: [], details: {} };
-    response = (path) => path.includes("/events")
-      ? { items: [activity, ...simultaneousEvents], total: 3, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd }
-      : replayResponse(path);
+  it("summarizes frame activity even when its long-running evidence is outside the bounded window", async () => {
+    response = (path) => {
+      if (path.includes("/events")) return { items: [], total: 0, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+      if (path.includes("/frame")) return { ...frame, runId: "run_1", at: replayStart, traceStart: replayStart, traceEnd: replayEnd, residents: [{ ...frame.residents[0]!, activityActive: true }] };
+      return replayResponse(path);
+    };
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     await screen.findByText("Replay verified");
 
     await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Simulated date 2026-01-01"));
     const summary = screen.getByLabelText("Current replay state");
     expect(summary).toHaveTextContent("Current time 08:00");
-    expect(summary).toHaveTextContent("Current activity Breakfast");
+    expect(summary).toHaveTextContent("Current activity Activity active");
   });
 
-  it("shows a selected activity only within its inclusive authoritative interval", async () => {
+  it("keeps Observable activity generic and shows the Oracle frame label", async () => {
+    response = (path) => {
+      if (path.includes("/events")) return { items: [], total: 0, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+      if (path.includes("/frame")) return path.includes("include_oracle=true")
+        ? { ...frame, runId: "run_1", residents: [{ ...frame.residents[0]!, activityActive: true, activityLabel: "Breakfast" }] }
+        : { ...frame, runId: "run_1", residents: [{ ...frame.residents[0]!, activityActive: true, activityLabel: "Private breakfast" }] };
+      return replayResponse(path);
+    };
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity active"));
+    expect(screen.queryByText("Private breakfast")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
+  });
+
+  it("reports multiple frame activities rather than choosing a resident without an explicit selection", async () => {
+    response = (path) => path.includes("/frame")
+      ? { ...frame, runId: "run_1", residents: [{ ...frame.residents[0]!, activityActive: true }, { ...frame.residents[1]!, activityActive: true }] }
+      : path.includes("/events")
+        ? { items: [], total: 0, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd }
+        : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Multiple activities active"));
+  });
+
+  it("uses the frame activity only within its half-open authoritative interval", async () => {
     const activity = { at: "2026-01-01T08:15:00.000Z", end: "2026-01-01T08:20:00.000Z", kind: "activity", eventId: "breakfast", label: "Breakfast", status: "active", waypoints: [], details: {} };
     response = (path) => {
-      if (path.includes("/events")) return { items: [activity], total: 1, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+      if (path.includes("/events")) return { items: [], total: 0, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
       if (path.includes("/frame")) {
         const at = new URL(path, "https://example.test").searchParams.get("at") ?? replayStart;
-        return { ...frame, runId: "run_1", at, traceStart: replayStart, traceEnd: replayEnd };
+        const active = Date.parse(at) >= Date.parse(activity.at) && Date.parse(at) < Date.parse(activity.end);
+        return { ...frame, runId: "run_1", at, traceStart: replayStart, traceEnd: replayEnd, residents: [{ ...frame.residents[0]!, activityActive: active }] };
       }
       return replayResponse(path);
     };
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     await screen.findByText("Replay verified");
     const slider = screen.getByRole("slider", { name: "Replay time" });
-    fireEvent.click(screen.getByRole("button", { name: "Next event" }));
-    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
 
     fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:14:59.000Z") } });
     await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity unavailable"));
 
     fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:15:00.000Z") } });
-    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity active"));
+
+    fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:19:59.000Z") } });
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity active"));
 
     fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:20:00.000Z") } });
-    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Breakfast"));
-
-    fireEvent.change(slider, { target: { value: Date.parse("2026-01-01T08:20:01.000Z") } });
     await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Current activity Activity unavailable"));
   });
 

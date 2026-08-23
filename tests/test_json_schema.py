@@ -14,6 +14,7 @@ from smart_home_sim.domain.application import (
     ExportManifest,
     JobRecord,
     ObservableApplicationReplayContract,
+    ObservableReplayResidentFrame,
     ObservableReplaySensorFrame,
     ObservationCause,
     ReplayEventView,
@@ -244,6 +245,20 @@ def test_observable_replay_payload_excludes_identity_and_oracle_fields() -> None
     assert "actorId" not in schema["$defs"]["ObservableReplayEventView"]["properties"]
     assert "residentId" not in schema["$defs"]["ObservableReplayResidentFrame"]["properties"]
     assert "oracleCause" not in schema["$defs"]["ObservableReplaySensorFrame"]["properties"]
+
+
+def test_observable_resident_frame_keeps_activity_state_without_raw_activity_label() -> None:
+    raw = ReplayResidentFrame(
+        resident_id="resident_1",
+        execution_state="performing_activity",
+        activity_active=True,
+        activity_label="Prepare breakfast",
+    )
+    observable = ObservableReplayResidentFrame.from_resident(raw).model_dump(by_alias=True)
+
+    assert raw.activity_label == "Prepare breakfast"
+    assert observable["activityActive"] is True
+    assert "activityLabel" not in observable
 
 
 def test_oracle_replay_payload_requires_explicit_opt_in() -> None:

@@ -435,6 +435,8 @@ class ReplayResidentFrame(ContractModel):
     position: Point2D | None = None
     posture: str | None = None
     execution_state: str = Field(min_length=1)
+    activity_active: bool = False
+    activity_label: str | None = None
     activity_execution_id: str | None = None
     action_execution_id: str | None = None
     held_resource_ids: list[str] = Field(default_factory=list)
@@ -640,6 +642,7 @@ class ObservableReplayResidentFrame(ContractModel):
     position: Point2D | None = None
     posture: str | None = None
     execution_state: str = Field(min_length=1)
+    activity_active: bool = False
     held_resource_ids: list[str] = Field(default_factory=list)
     facts: dict[str, JsonValue] = Field(default_factory=dict)
 
@@ -650,6 +653,7 @@ class ObservableReplayResidentFrame(ContractModel):
             position=resident.position,
             posture=resident.posture,
             execution_state=resident.execution_state,
+            activity_active=resident.activity_active,
             held_resource_ids=resident.held_resource_ids,
             facts=_observable_json_mapping(resident.facts),
         )

@@ -63,24 +63,19 @@ function sensorRegion(sensorModel: SensorModel | undefined, sensorId: string | n
   return sensor && typeof sensor.regionId === "string" ? sensor.regionId : undefined;
 }
 
-function activityIsCurrentAt(event: ReplayEvent | undefined, at: number): boolean {
-  if (event?.kind !== "activity" || !event.label || !Number.isFinite(at)) return false;
-  const startsAt = Date.parse(event.at);
-  if (!Number.isFinite(startsAt) || at < startsAt) return false;
-  if (event.end !== undefined && event.end !== null) {
-    const endsAt = Date.parse(event.end);
-    return Number.isFinite(endsAt) && at <= endsAt;
-  }
-  // An omitted end is current only when the event contract explicitly calls it active.
-  return event.status === "active";
+function activityLabel(resident: ReplayResidentFrame, visibilityMode: string | undefined): string {
+  return visibilityMode === "oracle" && resident.activityLabel ? resident.activityLabel : "Activity active";
 }
 
-function currentActivity(controller: ReturnType<typeof useReplayController>, selected: ReplayEvent | undefined): string {
-  const at = controller.frame ? Date.parse(controller.frame.at) : Number.NaN;
-  const activity = activityIsCurrentAt(selected, at)
-    ? selected
-    : controller.events?.items.find((event) => activityIsCurrentAt(event, at));
-  return activity?.label || "Activity unavailable";
+function currentActivity(controller: ReturnType<typeof useReplayController>): string {
+  const residents = controller.frame?.residents ?? [];
+  const selected = controller.filters.selectedResidentId
+    ? residents.find((resident) => resident.residentId === controller.filters.selectedResidentId)
+    : undefined;
+  if (selected) return selected.activityActive ? activityLabel(selected, controller.filters.visibilityMode) : "Activity unavailable";
+  const active = residents.filter((resident) => resident.activityActive);
+  if (active.length === 1) return activityLabel(active[0]!, controller.filters.visibilityMode);
+  return active.length > 1 ? "Multiple activities active" : "Activity unavailable";
 }
 
 function captionFor(controller: ReturnType<typeof useReplayController>, sensorModel: SensorModel | undefined) {
@@ -109,8 +104,7 @@ export function ReplayWorkbench({ runId, oracleAvailable = false }: { runId: str
   const models = useResource<ReplayModels>(`/runs/${encodeURIComponent(runId)}/models`);
   const analysis = controller.filters.detailMode === "analysis";
   const caption = captionFor(controller, models.data?.sensorModel);
-  const selectedEvent = controller.events?.items.find((item) => item.eventId === controller.selectedEventId);
-  const activity = currentActivity(controller, selectedEvent);
+  const activity = currentActivity(controller);
   const prepared =
     controller.status === "blocked" ||
     Boolean(controller.events) ||

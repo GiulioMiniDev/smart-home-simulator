@@ -32,7 +32,12 @@ from smart_home_sim.domain.application import (
     JobStatus,
 )
 from smart_home_sim.domain.environment import Point2D
-from smart_home_sim.domain.execution import MovementExecution, StateTransition, TraceCausality
+from smart_home_sim.domain.execution import (
+    ActivityExecution,
+    MovementExecution,
+    StateTransition,
+    TraceCausality,
+)
 
 PROJECT_ROOT = Path(__file__).parents[1]
 SOURCE = PROJECT_ROOT / "examples/materialization/mario_rossi_2026_10_30"
@@ -581,6 +586,39 @@ def test_replay_spatial_fold_keeps_later_transitions_over_completed_movement() -
     assert same_time.position == Point2D(x=11, y=11)
     assert later.region_id == "later"
     assert later.position == Point2D(x=20, y=20)
+
+
+def test_replay_resident_frame_exposes_activity_only_inside_its_half_open_interval() -> None:
+    from smart_home_sim.application import replay as replay_module
+
+    start = datetime(2026, 8, 23, 8, tzinfo=UTC)
+    activity = ActivityExecution(
+        activity_execution_id="activity_1",
+        source_activity_id="breakfast",
+        actor_id="resident_1",
+        intent="Prepare breakfast",
+        process_model_id="process_1",
+        planned_start=start,
+        planned_end=start + timedelta(minutes=30),
+        actual_start=start,
+        actual_end=start + timedelta(minutes=30),
+        status="completed",
+    )
+    trace = SimpleNamespace(
+        activity_executions=[activity],
+        action_executions=[],
+        movements=[],
+        resource_events=[],
+        state_transitions=[],
+    )
+
+    active = replay_module._resident_frames(trace, None, start)[0][0]
+    ended = replay_module._resident_frames(trace, None, activity.actual_end)[0][0]
+
+    assert active.activity_active is True
+    assert active.activity_label == "Prepare breakfast"
+    assert ended.activity_active is False
+    assert ended.activity_label is None
 
 
 def test_streaming_export_formats_manifest_and_integrity(

@@ -19,7 +19,7 @@ export function visibleMovement(frame: ReplayFrame | undefined, movement: Replay
     && Number.isFinite(waypoint.position.y),
   );
   if (!usableWaypoints || at === undefined || startsAt === undefined || endsAt === undefined || endsAt < startsAt) return undefined;
-  return startsAt <= at && at <= endsAt ? movement : undefined;
+  return startsAt <= at && at < endsAt ? movement : undefined;
 }
 
 function samePosition(left: Point | null | undefined, right: Point | undefined): boolean {

@@ -436,6 +436,23 @@
           "title": "Executionstate",
           "type": "string"
         },
+        "activityActive": {
+          "default": false,
+          "title": "Activityactive",
+          "type": "boolean"
+        },
+        "activityLabel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activitylabel"
+        },
         "activityExecutionId": {
           "anyOf": [
             {

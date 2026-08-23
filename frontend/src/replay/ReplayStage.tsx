@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PlanCanvas } from "../components";
 import { dwellingRegionIds } from "../editor";
-import type { HomeModel, ReplayEvent, ReplayEventWindow, ReplayFilters, ReplayFrame, ReplayOverlay, SensorModel } from "../types";
+import type { HomeModel, ReplayEvent, ReplayEventWindow, ReplayFilters, ReplayFrame, ReplayOverlay, ReplayVisibilityMode, SensorModel } from "../types";
 import { activeMovements, replayTimestamp, residentMovementAssociations, visibleMovement, waypointAtOrBefore } from "./replay-positioning";
 
 export interface ReplayStageController {

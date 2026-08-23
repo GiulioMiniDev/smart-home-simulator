@@ -323,7 +323,36 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert frame.status_code == 200
         assert all(item.get("oracleCause") is None for item in frame.json()["sensorStates"])
         assert all("residentId" not in item for item in frame.json()["residents"])
+        assert all("activityLabel" not in item for item in frame.json()["residents"])
+        assert all(isinstance(item["activityActive"], bool) for item in frame.json()["residents"])
         assert "activeEventIds" not in frame.json()
+
+        activity = trace["activityExecutions"][0]
+        active_oracle_frame = client.get(
+            f"/api/runs/{job.job_id}/replay/frame",
+            params={"at": activity["actualStart"], "include_oracle": "true"},
+            headers=headers,
+        )
+        assert active_oracle_frame.status_code == 200
+        active_resident = next(
+            item
+            for item in active_oracle_frame.json()["residents"]
+            if item["residentId"] == activity["actorId"]
+        )
+        assert active_resident["activityActive"] is True
+        assert active_resident["activityLabel"] == activity["intent"]
+        ended_oracle_frame = client.get(
+            f"/api/runs/{job.job_id}/replay/frame",
+            params={"at": activity["actualEnd"], "include_oracle": "true"},
+            headers=headers,
+        )
+        ended_resident = next(
+            item
+            for item in ended_oracle_frame.json()["residents"]
+            if item["residentId"] == activity["actorId"]
+        )
+        assert ended_resident["activityActive"] is False
+        assert ended_resident["activityLabel"] is None
 
         assert (
             client.get(

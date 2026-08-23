@@ -473,6 +473,7 @@ def _resident_frames(
         elif event.operation in {"released", "preempted"}:
             held[event.actor_id].discard(event.resource_id)
     activity_by_actor = {item.actor_id: item.activity_execution_id for item in active_activities}
+    activity_label_by_actor = {item.actor_id: item.intent for item in active_activities}
     action_by_actor = {item.actor_id: item.action_execution_id for item in active_actions}
     active_actors = set(activity_by_actor) | set(action_by_actor)
     for resident_id, state in residents.items():
@@ -488,6 +489,8 @@ def _resident_frames(
             position=state["position"],
             posture=state["posture"],
             execution_state=state["execution_state"],
+            activity_active=resident_id in activity_by_actor,
+            activity_label=activity_label_by_actor.get(resident_id),
             activity_execution_id=activity_by_actor.get(resident_id),
             action_execution_id=action_by_actor.get(resident_id),
             held_resource_ids=sorted(held.get(resident_id, set())),
