@@ -43,6 +43,55 @@ const events: ReplayEventWindow = {
 describe("ReplayStage", () => {
   afterEach(cleanup);
 
+  const reducedMotion = () => vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
+    matches: query === "(prefers-reduced-motion: reduce)", media: query,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+  })));
+
+  it("snaps a uniquely identified midpoint movement to its previous authoritative waypoint for reduced motion", () => {
+    reducedMotion();
+    const midpoint = { ...frame, at: "2026-01-01T08:05:00Z", residents: [{ ...frame.residents[0]!, position: { x: 2.0625, y: 6.25 } }] };
+    render(<ReplayStage controller={{ frame: midpoint, events, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} presentation />);
+
+    const marker = screen.getByLabelText("Mario in kitchen, moving");
+    expect(marker).toHaveAttribute("transform", "translate(2 2)");
+    expect(marker).toHaveAttribute("data-motion", "step");
+  });
+
+  it("uses the last duplicate waypoint at an exact reduced-motion timestamp", () => {
+    reducedMotion();
+    const duplicate = { ...events, items: [{ ...events.items[0]!, waypoints: [
+      { at: frame.at, regionId: "kitchen", traversalMode: "walk", position: { x: 1, y: 1 } },
+      { at: frame.at, regionId: "kitchen", traversalMode: "walk", position: { x: 3, y: 3 } },
+      { at: "2026-01-01T08:10:00Z", regionId: "market", traversalMode: "walk", position: { x: 4, y: 4 } },
+    ] }] };
+    const exact = { ...frame, residents: [{ ...frame.residents[0]!, position: { x: 3, y: 3 } }] };
+    render(<ReplayStage controller={{ frame: exact, events: duplicate, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} presentation />);
+
+    expect(screen.getByLabelText("Mario in kitchen, moving")).toHaveAttribute("transform", "translate(3 3)");
+  });
+
+  it("does not snap an Observable resident when multiple active movements match its midpoint", () => {
+    reducedMotion();
+    const midpoint = { ...frame, at: "2026-01-01T08:05:00Z", residents: [{ ...frame.residents[0]!, position: { x: 2.0625, y: 6.25 } }] };
+    const ambiguous = { ...events, items: [events.items[0]!, { ...events.items[0]!, eventId: "other-movement", actorId: "luisa" }] };
+    render(<ReplayStage controller={{ frame: midpoint, events: ambiguous, selectedEventId: "leave-home", filters: { visibilityMode: "observable" } }} models={{ homeModel: home, sensorModel: sensors }} presentation />);
+
+    const marker = screen.getByLabelText("Resident 1 in kitchen, moving");
+    expect(marker).toHaveAttribute("transform", "translate(2.0625 6.25)");
+    expect(marker).toHaveAttribute("data-motion", "none");
+  });
+
+  it("keeps the authoritative interpolated frame position when normal motion is enabled", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    const midpoint = { ...frame, at: "2026-01-01T08:05:00Z", residents: [{ ...frame.residents[0]!, position: { x: 2.0625, y: 6.25 } }] };
+    render(<ReplayStage controller={{ frame: midpoint, events, selectedEventId: "leave-home", filters: { visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} presentation />);
+
+    const marker = screen.getByLabelText("Mario in kitchen, moving");
+    expect(marker).toHaveAttribute("transform", "translate(2.0625 6.25)");
+    expect(marker).toHaveAttribute("data-motion", "interpolate");
+  });
+
   it("keeps every resident in the structured alternative and expands external places only for a visible leaving trajectory", () => {
     const view = render(<ReplayStage controller={{ frame, events, selectedEventId: "leave-home", filters: { selectedResidentId: "mario", visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} />);
 
@@ -146,6 +195,46 @@ describe("ReplayWorkbench", () => {
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+  it("does not pair an observation with an unrelated frame resident and labels unavailable activity", async () => {
+    response = (path) => path.includes("/models")
+      ? { homeModel: home, sensorModel: { ...sensors, sensors: [{ ...sensors.sensors[0]!, regionId: "kitchen" }] }, oracleMapping: { artifactId: "oracle-mapping" } }
+      : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+    fireEvent.click(screen.getByRole("button", { name: "Next event" }));
+
+    expect(screen.getByText("observation · 08:15")).toBeInTheDocument();
+    expect(screen.getByText("Resident unavailable · kitchen")).toBeInTheDocument();
+    expect(screen.getByText("Activity unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Resident 1 · kitchen · 08:00")).not.toBeInTheDocument();
+  });
+
+  it("keeps resident and region unavailable when the selected observation has no matching frame resident", async () => {
+    response = (path) => path.includes("/frame")
+      ? { ...frame, runId: "run_1", at: replayStart, traceStart: replayStart, traceEnd: replayEnd, residents: [] }
+      : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+    fireEvent.click(screen.getByRole("button", { name: "Next event" }));
+
+    expect(screen.getByText("Resident unavailable · Region unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Resident 1")).not.toBeInTheDocument();
+  });
+
+  it("summarizes simulated date and an authoritative active activity separately", async () => {
+    const activity = { at: replayStart, end: replayEnd, kind: "activity", eventId: "breakfast", label: "Breakfast", status: "active", waypoints: [], details: {} };
+    response = (path) => path.includes("/events")
+      ? { items: [activity, ...simultaneousEvents], total: 3, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd }
+      : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+
+    await waitFor(() => expect(screen.getByLabelText("Current replay state")).toHaveTextContent("Simulated date 2026-01-01"));
+    const summary = screen.getByLabelText("Current replay state");
+    expect(summary).toHaveTextContent("Current time 08:00");
+    expect(summary).toHaveTextContent("Current activity Breakfast");
+  });
+
   it("keeps the same instant when analysis mode and oracle evidence are opened", async () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     await screen.findByText("Replay verified");
@@ -163,7 +252,7 @@ describe("ReplayWorkbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next event" }));
 
     expect(screen.getByRole("heading", { name: "motion detected" })).toBeInTheDocument();
-    expect(screen.getByText("Resident 1 · kitchen · 08:00")).toBeInTheDocument();
+    expect(screen.getByText("Resident unavailable · Region unavailable")).toBeInTheDocument();
     expect(screen.getByText("Current evidence")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Event timeline" })).not.toBeInTheDocument();
     expect(view.container.querySelector(".replay-presentation-stage")).toBeInTheDocument();

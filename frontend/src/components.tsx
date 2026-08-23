@@ -833,7 +833,7 @@ export function PlanCanvas({
               aria-label={`${item.label} in ${item.regionId ?? "unknown region"}, ${item.executionState}`}
               className={`replay-resident ${item.residentId === replayOverlay.selectedResidentId ? "is-selected" : ""}`}
               transform={`translate(${item.position!.x} ${item.position!.y})`}
-              data-motion={replayOverlay.reducedMotion ? "step" : "interpolate"}
+              data-motion={item.motion ?? "none"}
               data-resident-index={index}
             >
               <circle r=".22" />

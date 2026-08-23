@@ -558,6 +558,7 @@ export interface ReplayOverlay {
     regionId?: string;
     position?: Point;
     executionState: string;
+    motion?: "step" | "interpolate" | "none";
   }>;
   activeRegionIds: string[];
   activeSensorIds: string[];

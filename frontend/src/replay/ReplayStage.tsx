@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PlanCanvas } from "../components";
 import { dwellingRegionIds } from "../editor";
-import type { HomeModel, ReplayEvent, ReplayEventWindow, ReplayFilters, ReplayFrame, ReplayOverlay, ReplayVisibilityMode, SensorModel } from "../types";
+import type { HomeModel, Point, ReplayEvent, ReplayEventWindow, ReplayFilters, ReplayFrame, ReplayOverlay, ReplayResidentFrame, ReplayVisibilityMode, SensorModel } from "../types";
 
 export interface ReplayStageController {
   frame?: ReplayFrame;
@@ -62,26 +62,83 @@ function visibleMovement(frame: ReplayFrame | undefined, movement: ReplayEvent |
   return startsAt <= at && at <= endsAt ? movement : undefined;
 }
 
+function samePosition(left: Point | null | undefined, right: Point | undefined): boolean {
+  return Boolean(left && right && Math.abs(left.x - right.x) <= .0001 && Math.abs(left.y - right.y) <= .0001);
+}
+
+/** The exact trace interpolation used only to associate Observable positions with a movement. */
+export function movementPositionAt(movement: ReplayEvent, at: number): Point | undefined {
+  const points = movement.waypoints.map((waypoint) => ({ waypoint, at: timestamp(waypoint.at) })).filter((item): item is { waypoint: ReplayEvent["waypoints"][number]; at: number } => item.at !== undefined);
+  const before = points.filter((item) => item.at <= at).at(-1);
+  const after = points.find((item) => item.at > at);
+  if (!before) return after?.waypoint.position;
+  if (!after || after.at === before.at) return before.waypoint.position;
+  const ratio = (at - before.at) / (after.at - before.at);
+  return {
+    x: before.waypoint.position.x + (after.waypoint.position.x - before.waypoint.position.x) * ratio,
+    y: before.waypoint.position.y + (after.waypoint.position.y - before.waypoint.position.y) * ratio,
+  };
+}
+
+/** Duplicate waypoint timestamps are right-continuous: the last supplied point is the trace state. */
+export function waypointAtOrBefore(movement: ReplayEvent, at: number): ReplayEvent["waypoints"][number] | undefined {
+  return movement.waypoints.filter((waypoint) => (timestamp(waypoint.at) ?? Number.POSITIVE_INFINITY) <= at).at(-1);
+}
+
+export function activeMovements(frame: ReplayFrame | undefined, events: ReplayEventWindow | undefined): ReplayEvent[] {
+  return (events?.items ?? []).flatMap((event) => {
+    const movement = event.kind === "movement" ? visibleMovement(frame, event) : undefined;
+    return movement ? [movement] : [];
+  });
+}
+
+export function residentMovementAssociations(
+  residents: ReplayResidentFrame[],
+  movements: ReplayEvent[],
+  at: number | undefined,
+  visibilityMode: ReplayVisibilityMode | undefined,
+): Array<ReplayEvent | undefined> {
+  if (at === undefined) return residents.map(() => undefined);
+  const candidates = residents.map((resident) => movements.filter((movement) => visibilityMode === "oracle"
+    ? Boolean(resident.residentId && movement.actorId === resident.residentId)
+    : samePosition(resident.position, movementPositionAt(movement, at))));
+  // Observable matching is valid only for a unique resident/movement pair. A tie means there is
+  // no evidence to associate either marker with a route, so both retain their frame positions.
+  return candidates.map((matches, residentIndex) => {
+    if (matches.length !== 1) return undefined;
+    const movement = matches[0]!;
+    const claimedBy = candidates.filter((otherMatches) => otherMatches.includes(movement));
+    return claimedBy.length === 1 && candidates[residentIndex]!.length === 1 ? movement : undefined;
+  });
+}
+
 function replayOverlay(
   frame: ReplayFrame | undefined,
   movement: ReplayEvent | undefined,
+  movements: ReplayEvent[],
   selectedResidentId: string | null | undefined,
   visibilityMode: ReplayVisibilityMode | undefined,
   reducedMotion: boolean,
 ): ReplayOverlay {
   const isOracle = visibilityMode === "oracle";
+  const at = timestamp(frame?.at);
+  const sourceResidents = frame?.residents ?? [];
+  const associations = residentMovementAssociations(sourceResidents, movements, at, visibilityMode);
   // Frame order is normally deterministic, but IDs make markers stay with people even if a
   // transport implementation changes its array ordering between adjacent instants.
-  const residents = [...(frame?.residents ?? [])]
-    .sort((left, right) => (left.residentId ?? "").localeCompare(right.residentId ?? ""))
-    .map((resident, index) => ({
-      residentId: resident.residentId ?? `unidentified-${index + 1}`,
+  const residents = sourceResidents.map((resident, sourceIndex) => ({ resident, sourceIndex, movement: associations[sourceIndex] }))
+    .sort((left, right) => (left.resident.residentId ?? "").localeCompare(right.resident.residentId ?? ""))
+    .map(({ resident, sourceIndex, movement: associatedMovement }, index) => {
+      const snappedWaypoint = reducedMotion && associatedMovement && at !== undefined ? waypointAtOrBefore(associatedMovement, at) : undefined;
+      return {
+      residentId: resident.residentId ?? `unidentified-${sourceIndex + 1}`,
       label: isOracle ? displayLabel(resident.residentId) : `Resident ${index + 1}`,
       marker: String(index + 1),
-      regionId: resident.regionId ?? undefined,
-      position: resident.position ?? undefined,
+      regionId: snappedWaypoint?.regionId ?? resident.regionId ?? undefined,
+      position: snappedWaypoint?.position ?? resident.position ?? undefined,
       executionState: resident.executionState,
-    }));
+      motion: snappedWaypoint ? "step" as const : associatedMovement && !reducedMotion ? "interpolate" as const : "none" as const,
+    }; });
   return {
     residents,
     activeRegionIds: [...new Set([
@@ -124,7 +181,8 @@ export function ReplayStage({ controller, models, presentation = false }: { cont
   const reducedMotion = useReducedMotion();
   const selected = controller.events?.items.find((event) => event.eventId === controller.selectedEventId);
   const movement = visibleMovement(controller.frame, selectedMovement(controller.events, controller.selectedEventId));
-  const overlay = replayOverlay(controller.frame, movement, controller.filters.selectedResidentId, controller.filters.visibilityMode, reducedMotion);
+  const movements = activeMovements(controller.frame, controller.events);
+  const overlay = replayOverlay(controller.frame, movement, movements, controller.filters.selectedResidentId, controller.filters.visibilityMode, reducedMotion);
   const hasVisibleExternalTrajectory = !!models.homeModel
     && overlay.trajectory.length > 1
     && movement?.waypoints.some((waypoint) => !dwellingRegionIds(models.homeModel!).has(waypoint.regionId));

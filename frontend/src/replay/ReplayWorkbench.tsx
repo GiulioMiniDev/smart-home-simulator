@@ -1,16 +1,15 @@
 import { useResource } from "../hooks";
-import type { HomeModel, SensorModel } from "../types";
+import type { HomeModel, ReplayEvent, ReplayResidentFrame, SensorModel } from "../types";
 import { ReplayInspector } from "./ReplayInspector";
-import { ReplayStage } from "./ReplayStage";
+import { activeMovements, residentMovementAssociations, ReplayStage, waypointAtOrBefore } from "./ReplayStage";
 import { ReplayTimeline } from "./ReplayTimeline";
 import { ReplayToolbar, ReplayTransport } from "./ReplayToolbar";
 import { useReplayController } from "./useReplayController";
 
 type ReplayModels = { homeModel?: HomeModel; sensorModel?: SensorModel };
 
-function displayResident(residentId: string | undefined, index: number, oracle: boolean): string {
-  if (!oracle) return `Resident ${index + 1}`;
-  return residentId?.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? "Resident identity unavailable";
+function displayResident(residentId: string): string {
+  return residentId.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function clock(value: string | undefined): string {
@@ -18,17 +17,79 @@ function clock(value: string | undefined): string {
   return !parsed || Number.isNaN(parsed.valueOf()) ? "Time unknown" : `${String(parsed.getUTCHours()).padStart(2, "0")}:${String(parsed.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-function captionFor(controller: ReturnType<typeof useReplayController>) {
-  const event = controller.events?.items.find((item) => item.eventId === controller.selectedEventId);
+function simulatedDate(value: string | undefined): string {
+  const parsed = value ? new Date(value) : undefined;
+  return !parsed || Number.isNaN(parsed.valueOf()) ? "Date unavailable" : parsed.toISOString().slice(0, 10);
+}
+
+function eventResident(
+  controller: ReturnType<typeof useReplayController>,
+  event: ReplayEvent | undefined,
+): { resident?: ReplayResidentFrame; index?: number; movement?: ReplayEvent } {
   const residents = controller.frame?.residents ?? [];
-  const selectedResidentIndex = residents.findIndex((resident) => resident.residentId === controller.filters.selectedResidentId);
-  const index = selectedResidentIndex >= 0 ? selectedResidentIndex : 0;
-  const resident = residents[index];
+  const at = controller.frame ? Date.parse(controller.frame.at) : Number.NaN;
+  const active = activeMovements(controller.frame, controller.events);
+  const associations = residentMovementAssociations(
+    residents,
+    active,
+    Number.isFinite(at) ? at : undefined,
+    controller.filters.visibilityMode,
+  );
+  const selectedResidentIndex = controller.filters.selectedResidentId
+    ? residents.findIndex((resident) => resident.residentId === controller.filters.selectedResidentId)
+    : -1;
+  if (selectedResidentIndex >= 0) return { resident: residents[selectedResidentIndex], index: selectedResidentIndex };
+
+  if (controller.filters.visibilityMode === "oracle" && event?.actorId) {
+    const index = residents.findIndex((resident) => resident.residentId === event.actorId);
+    if (index >= 0) return {
+      resident: residents[index],
+      index,
+      movement: event.kind === "movement" && associations[index]?.eventId === event.eventId ? associations[index] : undefined,
+    };
+  }
+
+  if (event?.kind === "movement") {
+    const index = associations.findIndex((movement) => movement?.eventId === event.eventId);
+    if (index >= 0) return { resident: residents[index], index, movement: associations[index] };
+  }
+  return {};
+}
+
+function sensorRegion(sensorModel: SensorModel | undefined, sensorId: string | null | undefined): string | undefined {
+  if (!sensorId) return undefined;
+  const sensor = sensorModel?.sensors.find((candidate) => candidate.sensorId === sensorId);
+  return sensor && typeof sensor.regionId === "string" ? sensor.regionId : undefined;
+}
+
+function currentActivity(controller: ReturnType<typeof useReplayController>, selected: ReplayEvent | undefined): string {
+  if (selected?.kind === "activity" && selected.label) return selected.label;
+  const at = controller.frame ? Date.parse(controller.frame.at) : Number.NaN;
+  if (!Number.isFinite(at)) return "Activity unavailable";
+  const activity = controller.events?.items.find((event) => event.kind === "activity" && Boolean(event.label)
+    && Date.parse(event.at) <= at
+    && event.end !== undefined && event.end !== null
+    && at <= Date.parse(event.end));
+  return activity?.label || "Activity unavailable";
+}
+
+function captionFor(controller: ReturnType<typeof useReplayController>, sensorModel: SensorModel | undefined) {
+  const event = controller.events?.items.find((item) => item.eventId === controller.selectedEventId);
+  const linked = eventResident(controller, event);
+  const eventAt = event?.at;
+  const waypointRegion = linked.movement && eventAt
+    ? waypointAtOrBefore(linked.movement, Date.parse(eventAt))?.regionId
+    : undefined;
   return {
     title: event?.label || "Evidence label unavailable",
-    resident: displayResident(resident?.residentId, index, controller.filters.visibilityMode === "oracle"),
-    region: resident?.regionId ?? "Region unknown",
-    time: clock(controller.frame?.at),
+    kind: event?.kind || "Event kind unavailable",
+    resident: linked.resident
+      ? controller.filters.visibilityMode === "oracle" && linked.resident.residentId
+        ? displayResident(linked.resident.residentId)
+        : `Resident ${(linked.index ?? 0) + 1}`
+      : "Resident unavailable",
+    region: waypointRegion ?? linked.resident?.regionId ?? sensorRegion(sensorModel, event?.sensorId) ?? "Region unavailable",
+    time: clock(eventAt),
   };
 }
 
@@ -37,7 +98,9 @@ export function ReplayWorkbench({ runId, oracleAvailable = false }: { runId: str
   const controller = useReplayController(runId, { oracleAvailable });
   const models = useResource<ReplayModels>(`/runs/${encodeURIComponent(runId)}/models`);
   const analysis = controller.filters.detailMode === "analysis";
-  const caption = captionFor(controller);
+  const caption = captionFor(controller, models.data?.sensorModel);
+  const selectedEvent = controller.events?.items.find((item) => item.eventId === controller.selectedEventId);
+  const activity = currentActivity(controller, selectedEvent);
   const prepared =
     controller.status === "blocked" ||
     Boolean(controller.events) ||
@@ -57,13 +120,17 @@ export function ReplayWorkbench({ runId, oracleAvailable = false }: { runId: str
       <ReplayTimeline controller={controller} sensorModel={models.data?.sensorModel} />
     </> : <div className="replay-presentation-stage">
       <div className="replay-presentation-summary" aria-label="Current replay state">
-        <span><strong>Time</strong> {caption.time}</span><span><strong>Resident</strong> {caption.resident}</span><span><strong>Evidence</strong> {caption.title}</span>
+        <span><strong>Simulated date</strong> {simulatedDate(controller.frame?.at)}</span>
+        <span><strong>Current time</strong> {clock(controller.frame?.at)}</span>
+        <span><strong>Resident</strong> {caption.resident}</span>
+        <span><strong>Current activity</strong> {activity}</span>
       </div>
       <ReplayStage controller={controller} models={models.data ?? {}} presentation />
       <section className="replay-caption" aria-live="polite" aria-atomic="true">
         <p className="eyebrow">Current evidence</p>
         <h2>{caption.title}</h2>
-        <p>{caption.resident} · {caption.region} · {caption.time}</p>
+        <p>{caption.kind} · {caption.time}</p>
+        <p>{caption.resident} · {caption.region}</p>
         <button type="button" className="button secondary" onClick={() => controller.updateFilters({ detailMode: "analysis" })}>Open evidence</button>
       </section>
       <ReplayTransport controller={controller} presentation />
