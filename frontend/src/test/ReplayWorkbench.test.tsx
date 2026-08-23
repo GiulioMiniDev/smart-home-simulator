@@ -124,20 +124,27 @@ const simultaneousEvents = [
 function replayResponse(path: string): unknown {
   if (path.includes("/verify")) return { runId: "run_1", matches: true, expectedSemanticDigest: digest, actualSemanticDigest: digest, verifiedAt: replayStart };
   if (path.includes("/session")) return { runId: "run_1", verifiedDigest: digest, playable: true, positionAt: replayStart, filters: { eventKinds: [], actorIds: [], sensorIds: [], statuses: [], detailMode: "presentation", visibilityMode: "observable", speed: 1 } };
-  if (path.includes("/models")) return { homeModel: home, sensorModel: sensors };
-  if (path.includes("/events")) return { items: simultaneousEvents, total: simultaneousEvents.length, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+  if (path.includes("/models")) return { homeModel: home, sensorModel: sensors, oracleMapping: { artifactId: "oracle-mapping" } };
+  if (path.includes("/events")) {
+    const items = path.includes("include_oracle=true")
+      ? simultaneousEvents.map((event) => ({ ...event, eventId: `oracle-${event.eventId}`, actorId: "mario" }))
+      : simultaneousEvents;
+    return { items, total: items.length, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd };
+  }
   if (path.includes("/frame")) return { ...frame, runId: "run_1", at: replayStart, traceStart: replayStart, traceEnd: replayEnd };
   return {};
 }
 
 describe("ReplayWorkbench", () => {
+  let response = replayResponse;
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn((input: string | URL) => Promise.resolve(new Response(JSON.stringify(replayResponse(String(input))), { status: 200, headers: { "Content-Type": "application/json" } }))));
+    response = replayResponse;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => Promise.resolve(new Response(JSON.stringify(response(String(input))), { status: 200, headers: { "Content-Type": "application/json" } }))));
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
   it("keeps the same instant when analysis mode and oracle evidence are opened", async () => {
-    render(<ReplayWorkbench runId="run_1" />);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     await screen.findByText("Replay verified");
     const before = screen.getByRole("slider", { name: "Replay time" }).getAttribute("value");
     fireEvent.click(screen.getByRole("button", { name: "Analysis" }));
@@ -148,10 +155,100 @@ describe("ReplayWorkbench", () => {
   });
 
   it("steps events, filters tracks and exposes simultaneous events individually", async () => {
-    render(<ReplayWorkbench runId="run_1" />);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Sensors" }));
     fireEvent.click(screen.getByRole("button", { name: "Next event" }));
+    const cluster = screen.getByRole("button", { name: "2 simultaneous events" });
+    expect(cluster).toHaveAttribute("aria-expanded", "false");
+    fireEvent.keyDown(cluster, { key: "Enter" });
+    expect(cluster).toHaveAttribute("aria-expanded", "true");
     expect(screen.getAllByRole("button", { name: /08:15/ })).toHaveLength(2);
+  });
+
+  it("steps previous and next events from the keyboard", async () => {
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+    const next = screen.getByRole("button", { name: "Next event" });
+    const previous = screen.getByRole("button", { name: "Previous event" });
+    fireEvent.keyDown(next, { key: "Enter" });
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", String(Date.parse(simultaneousEvents[0]!.at)));
+    fireEvent.keyDown(previous, { key: "Enter" });
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", String(Date.parse(simultaneousEvents[0]!.at)));
+  });
+
+  it("shows complete, labelled semantic digests when verification blocks replay", async () => {
+    const actual = "b".repeat(64);
+    response = (path) => path.includes("/verify")
+      ? { runId: "run_1", matches: false, expectedSemanticDigest: digest, actualSemanticDigest: actual, verifiedAt: replayStart }
+      : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    expect(await screen.findByText("Replay digest did not match")).toBeInTheDocument();
+    expect(screen.getByText("Expected semantic digest").nextElementSibling).toHaveTextContent(digest);
+    expect(screen.getByText("Actual semantic digest").nextElementSibling).toHaveTextContent(actual);
+    expect(screen.getByRole("button", { name: "Next event" })).toBeDisabled();
+  });
+
+  it("does not offer Oracle evidence without an authoritative mapping artifact", async () => {
+    response = (path) => path.includes("/models") ? { homeModel: home, sensorModel: sensors } : replayResponse(path);
+    const fetchMock = vi.mocked(fetch);
+    render(<ReplayWorkbench runId="run_1" />);
+    await screen.findByText("Replay verified");
+    const oracle = screen.getByRole("button", { name: "Oracle" });
+    expect(oracle).toBeDisabled();
+    expect(screen.getByText(/Oracle mapping unavailable/)).toBeInTheDocument();
+    fireEvent.click(oracle);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("include_oracle=true"))).toBe(false);
+  });
+
+  it("blocks transport when the authoritative replay window cannot be loaded", async () => {
+    response = (path) => path.includes("events?limit=1")
+      ? { error: "Replay range unavailable" }
+      : replayResponse(path);
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      const status = path.includes("events?limit=1") ? 500 : 200;
+      return Promise.resolve(new Response(JSON.stringify(response(path)), { status, headers: { "Content-Type": "application/json" } }));
+    }));
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    expect(await screen.findByText(/Replay window unavailable/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous event" })).toBeDisabled();
+    expect(screen.queryByText("Replay verified")).not.toBeInTheDocument();
+  });
+
+  it("keeps the selected semantic event across projections without painting Oracle evidence on downgrade", async () => {
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    const cluster = screen.getByRole("button", { name: "2 simultaneous events" });
+    fireEvent.click(cluster);
+    fireEvent.click(screen.getByRole("button", { name: "08:15 motion detected" }));
+    expect(screen.getByText("sensor-1")).toBeInTheDocument();
+    const before = screen.getByRole("slider", { name: "Replay time" }).getAttribute("value");
+    fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
+    expect(await screen.findByText("oracle-sensor-1")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
+    fireEvent.click(screen.getByRole("button", { name: "Observable" }));
+    expect(screen.queryByText("oracle-sensor-1")).not.toBeInTheDocument();
+    expect(await screen.findByText("sensor-1")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
+  });
+
+  it("clears an inspector selection as soon as its track filter hides it", async () => {
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    fireEvent.click(screen.getByRole("button", { name: "2 simultaneous events" }));
+    fireEvent.click(screen.getByRole("button", { name: "08:15 motion detected" }));
+    expect(screen.getAllByText("motion detected")).not.toHaveLength(0);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Movements" }));
+    expect(screen.getByText("Select an event to inspect its source evidence.")).toBeInTheDocument();
+  });
+
+  it("reports an empty evidence window without manufacturing an event to step to", async () => {
+    response = (path) => path.includes("/events")
+      ? { items: [], total: 0, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd }
+      : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+    expect(await screen.findByText("No sensors in this window.")).toBeInTheDocument();
   });
 });

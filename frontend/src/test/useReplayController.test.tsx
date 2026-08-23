@@ -248,7 +248,7 @@ describe("useReplayController", () => {
       }
       return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
     }));
-    const { result } = renderHook(() => useReplayController("run_1"));
+    const { result } = renderHook(() => useReplayController("run_1", { oracleAvailable: true }));
     await settleController();
     oracle = true;
     act(() => result.current.updateFilters({ visibilityMode: "oracle", actorIds: ["mario"] }));
@@ -501,7 +501,7 @@ describe("useReplayController", () => {
       }), { status: 200 }));
       return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
     }));
-    const { result } = renderHook(() => useReplayController("run_1"));
+    const { result } = renderHook(() => useReplayController("run_1", { oracleAvailable: true }));
     await settleController();
     expect(result.current.positionMs).toBe(Date.parse(start));
     expect(result.current.filters).toMatchObject({ speed: 1, detailMode: "presentation", visibilityMode: "observable" });
@@ -636,7 +636,7 @@ describe("useReplayController", () => {
     expect(result.current.positionMs).toBe(before);
   });
 
-  it("keeps transport ready while exposing an event-window request failure", async () => {
+  it("blocks transport when an event-window request fails", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
       if (path.includes("/events")) return Promise.reject(new Error("window unavailable"));
@@ -644,7 +644,7 @@ describe("useReplayController", () => {
     }));
     const { result } = renderHook(() => useReplayController("run_1"));
     await settleController();
-    expect(result.current.status).toBe("ready");
+    expect(result.current.status).toBe("blocked");
     expect(result.current.error?.message).toContain("stopped responding");
   });
 
@@ -662,7 +662,7 @@ describe("useReplayController", () => {
     expect(result.current.error?.message).toContain("timestamps are invalid");
   });
 
-  it("keeps the transport ready while exposing a frame request failure", async () => {
+  it("blocks transport when a frame request fails", async () => {
     let rejectFrame: ((reason: Error) => void) | undefined;
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
@@ -673,7 +673,7 @@ describe("useReplayController", () => {
     await settleController();
     rejectFrame?.(new Error("frame unavailable"));
     await settleController();
-    expect(result.current.status).toBe("ready");
+    expect(result.current.status).toBe("blocked");
     expect(result.current.error?.message).toContain("stopped responding");
   });
 });

@@ -43,6 +43,27 @@ function normalizeSession(session: ReplaySessionState): ReplaySessionState {
   return { ...session, filters: normalizeFilters(session.filters) };
 }
 
+type SelectionAnchor = Pick<ReplayEvent, "kind" | "at" | "end" | "sensorId"> & { label?: string; status?: string | null; occurrence: number };
+
+function anchorFor(event: ReplayEvent, items: ReplayEvent[], observable: boolean): SelectionAnchor {
+  const alike = items.filter((candidate) => candidate.kind === event.kind && candidate.at === event.at && candidate.end === event.end && candidate.sensorId === event.sensorId);
+  return {
+    kind: event.kind, at: event.at, end: event.end, sensorId: event.sensorId,
+    // An Oracle label can itself describe private activity, so it is not retained when downgrading.
+    label: observable ? event.label : undefined,
+    status: observable ? event.status : undefined,
+    occurrence: Math.max(0, alike.findIndex((candidate) => candidate.eventId === event.eventId)),
+  };
+}
+
+function remapAnchor(anchor: SelectionAnchor, items: ReplayEvent[]): ReplayEvent | undefined {
+  const candidates = items.filter((candidate) => candidate.kind === anchor.kind
+    && candidate.at === anchor.at && candidate.end === anchor.end && candidate.sensorId === anchor.sensorId
+    && (anchor.label === undefined || candidate.label === anchor.label)
+    && (anchor.status === undefined || candidate.status === anchor.status));
+  return candidates[anchor.occurrence] ?? candidates[0];
+}
+
 export interface ReplayController {
   status: ReplayStatus;
   verification?: ReplayVerification;
@@ -62,7 +83,7 @@ export interface ReplayController {
   updateFilters(patch: Partial<ReplayFilters>): void;
 }
 
-export function useReplayController(runId: string): ReplayController {
+export function useReplayController(runId: string, { oracleAvailable = false }: { oracleAvailable?: boolean } = {}): ReplayController {
   const [status, setStatus] = useState<ReplayStatus>("verifying");
   const [verification, setVerification] = useState<ReplayVerification>();
   const [session, setSession] = useState<ReplaySessionState>();
@@ -93,6 +114,10 @@ export function useReplayController(runId: string): ReplayController {
   const verifiedRun = useRef<{ runId: string; generation: number } | undefined>(undefined);
   const checkedRun = useRef<{ runId: string; generation: number } | undefined>(undefined);
   const errorGeneration = useRef<number | undefined>(undefined);
+  const selectedEventIdRef = useRef<string | undefined>(undefined);
+  const selectionAnchorRef = useRef<SelectionAnchor | undefined>(undefined);
+  const oracleAvailableRef = useRef(oracleAvailable);
+  oracleAvailableRef.current = oracleAvailable;
 
   // This render-time ref reset makes a prop switch safe before effects get a chance to run.
   if (activeRunId.current !== runId) {
@@ -110,6 +135,24 @@ export function useReplayController(runId: string): ReplayController {
     errorGeneration.current = next ? runGeneration.current : undefined;
     setError(next);
   }, []);
+  const setSelection = useCallback((eventId?: string) => {
+    selectedEventIdRef.current = eventId;
+    setSelectedEventId(eventId);
+  }, []);
+  const blockReplay = useCallback((reason: unknown) => {
+    windowVersion.current += 1;
+    frameVersion.current += 1;
+    saveVersion.current += 1;
+    lastFrameSchedule.current = undefined;
+    saveRequest.current?.abort();
+    windowLoadingRef.current = false;
+    setPlaying(false);
+    setEvents(undefined);
+    setFrame(undefined);
+    setSelection(undefined);
+    setRunError(apiError(reason));
+    setStatus("blocked");
+  }, [setRunError, setSelection]);
 
   const setClockPosition = useCallback((next: number | undefined) => {
     positionRef.current = next;
@@ -137,7 +180,7 @@ export function useReplayController(runId: string): ReplayController {
     const generation = runGeneration.current;
     let current = true;
     setStatus("verifying"); setVerification(undefined); setSession(undefined); setEvents(undefined); setFrame(undefined);
-    setRunError(undefined); setPlaying(false); setSelectedEventId(undefined); setFilters(defaultFilters());
+    setRunError(undefined); setPlaying(false); setSelection(undefined); selectionAnchorRef.current = undefined; setFilters(defaultFilters());
     setClockPosition(undefined); setPositionInitialized(false); restoredPositionRef.current = undefined; lastFrameSchedule.current = undefined;
     rangeRef.current = undefined; windowRangeRef.current = undefined; windowLoadingRef.current = false; refreshedWindowRef.current = undefined;
     verifiedRun.current = undefined;
@@ -153,24 +196,26 @@ export function useReplayController(runId: string): ReplayController {
         const rawSession = await api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session`, { signal: controller.signal });
         if (!current || generation !== runGeneration.current || !isVerifiedRun()) return;
         const restored = normalizeSession(rawSession);
+        if (restored.filters.visibilityMode === "oracle" && !oracleAvailableRef.current) {
+          restored.filters = { ...restored.filters, visibilityMode: "observable", actorIds: [], selectedResidentId: undefined };
+        }
         const trusted = restored.playable && restored.verifiedDigest === (checked.actualSemanticDigest ?? checked.expectedSemanticDigest);
         restoredPositionRef.current = trusted ? timestamp(restored.positionAt) : undefined;
         setSession(restored);
         setFilters(trusted ? restored.filters : defaultFilters());
         setClockPosition(undefined);
         setPositionInitialized(false);
-        setStatus("ready");
       } catch (reason) {
         if (!current || generation !== runGeneration.current || isAbort(reason)) return;
-        setRunError(apiError(reason)); setStatus("blocked");
+        blockReplay(reason);
       }
     })();
     return () => { current = false; controller.abort(); };
-  }, [isVerifiedRun, runId, setClockPosition, setRunError]);
+  }, [blockReplay, isVerifiedRun, runId, setClockPosition, setRunError, setSelection]);
 
   // No saved instant is trusted before the range is known: clamp it after obtaining the trace.
   useEffect(() => {
-    if (!verifiedForCurrentRun || status !== "ready" || positionInitialized) return;
+    if (!verifiedForCurrentRun || positionInitialized) return;
     const controller = new AbortController();
     const version = ++windowVersion.current;
     windowLoadingRef.current = true;
@@ -181,14 +226,14 @@ export function useReplayController(runId: string): ReplayController {
         if (start === undefined || end === undefined) throw new ApiError("Replay trace timestamps are invalid", 0);
         rangeRef.current = { start, end }; windowRangeRef.current = { start, end };
         const restored = restoredPositionRef.current ?? start;
-        setClockPosition(Math.min(end, Math.max(start, restored))); setPositionInitialized(true); windowLoadingRef.current = false;
+        setClockPosition(Math.min(end, Math.max(start, restored))); setPositionInitialized(true); windowLoadingRef.current = false; setStatus("ready");
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted || !isVerifiedRun() || isAbort(reason) || version !== windowVersion.current) return;
-        windowLoadingRef.current = false; setRunError(apiError(reason));
+        blockReplay(reason);
       });
     return () => controller.abort();
-  }, [isVerifiedRun, positionInitialized, runId, setClockPosition, setRunError, status, verifiedForCurrentRun]);
+  }, [blockReplay, isVerifiedRun, positionInitialized, runId, setClockPosition, verifiedForCurrentRun]);
 
   // Windows change for navigation and filters, never for every animation tick.
   useEffect(() => {
@@ -216,13 +261,20 @@ export function useReplayController(runId: string): ReplayController {
         if (windowStart !== undefined && windowEnd !== undefined) windowRangeRef.current = { start: windowStart, end: windowEnd };
         const visibleItems = window.items.filter((item) => filters.statuses.length === 0 || (item.status !== null && item.status !== undefined && filters.statuses.includes(item.status)));
         setEvents({ ...window, items: visibleItems }); setRunError(undefined); windowLoadingRef.current = false;
+        const anchor = selectionAnchorRef.current;
+        if (anchor) {
+          selectionAnchorRef.current = undefined;
+          setSelection(remapAnchor(anchor, visibleItems)?.eventId);
+        } else if (selectedEventIdRef.current && !visibleItems.some((item) => item.eventId === selectedEventIdRef.current)) {
+          setSelection(undefined);
+        }
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted || !isVerifiedRun() || isAbort(reason) || version !== windowVersion.current) return;
-        windowLoadingRef.current = false; setRunError(apiError(reason));
+        blockReplay(reason);
       });
     return () => controller.abort();
-  }, [filters, isVerifiedRun, positionInitialized, requestFrame, runId, setRunError, status, verifiedForCurrentRun, windowRequest]);
+  }, [blockReplay, filters, isVerifiedRun, positionInitialized, requestFrame, runId, setRunError, setSelection, status, verifiedForCurrentRun, windowRequest]);
 
   useEffect(() => {
     if (!verifiedForCurrentRun || !frameRequest || !positionInitialized) return;
@@ -233,10 +285,10 @@ export function useReplayController(runId: string): ReplayController {
         if (!controller.signal.aborted && isVerifiedRun() && frameRequest.version === frameVersion.current) setFrame(nextFrame);
       })
       .catch((reason: unknown) => {
-        if (!controller.signal.aborted && isVerifiedRun() && !isAbort(reason) && frameRequest.version === frameVersion.current) setRunError(apiError(reason));
+        if (!controller.signal.aborted && isVerifiedRun() && !isAbort(reason) && frameRequest.version === frameVersion.current) blockReplay(reason);
       });
     return () => controller.abort();
-  }, [filters.visibilityMode, frameRequest, isVerifiedRun, positionInitialized, runId, setRunError, verifiedForCurrentRun]);
+  }, [blockReplay, filters.visibilityMode, frameRequest, isVerifiedRun, positionInitialized, runId, verifiedForCurrentRun]);
 
   useEffect(() => {
     if (!verifiedForCurrentRun || !playing || status !== "ready" || !positionInitialized) return;
@@ -325,49 +377,59 @@ export function useReplayController(runId: string): ReplayController {
 
   const selectEvent = useCallback((eventId?: string) => {
     if (!isVerifiedRun()) return;
-    setSelectedEventId(eventId);
+    setSelection(eventId);
     const at = timestamp(events?.items.find((event) => event.eventId === eventId)?.at);
     if (at !== undefined) seek(at);
-  }, [events, isVerifiedRun, seek]);
+  }, [events, isVerifiedRun, seek, setSelection]);
 
   const step = useCallback((direction: -1 | 1) => {
     if (!isVerifiedRun()) return;
     const ordered = [...(events?.items ?? [])].sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
     if (ordered.length === 0) return;
-    const selectedIndex = ordered.findIndex((event) => event.eventId === selectedEventId);
+    const selectedIndex = ordered.findIndex((event) => event.eventId === selectedEventIdRef.current);
     const candidate: ReplayEvent | undefined = selectedIndex >= 0
       ? ordered[selectedIndex + direction]
       : direction === 1
         ? ordered.find((event) => (timestamp(event.at) ?? Number.POSITIVE_INFINITY) > (positionRef.current ?? Number.NEGATIVE_INFINITY))
         : ordered.filter((event) => (timestamp(event.at) ?? Number.NEGATIVE_INFINITY) < (positionRef.current ?? Number.POSITIVE_INFINITY)).at(-1);
     if (!candidate) return;
-    setSelectedEventId(candidate.eventId);
+    setSelection(candidate.eventId);
     const at = timestamp(candidate.at);
     if (at !== undefined) seek(at);
-  }, [events, isVerifiedRun, seek, selectedEventId]);
+  }, [events, isVerifiedRun, seek, setSelection]);
 
   const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
     if (!isVerifiedRun()) return;
+    if (patch.visibilityMode === "oracle" && !oracleAvailableRef.current) return;
+    const visibilityWillChange = patch.visibilityMode !== undefined && patch.visibilityMode !== filters.visibilityMode;
+    if (visibilityWillChange) {
+      const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
+      selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? [], filters.visibilityMode === "observable") : undefined;
+    }
     setFilters((current) => {
       const next = normalizeFilters({ ...current, ...patch });
-      if (current.visibilityMode === "oracle" && next.visibilityMode === "observable") {
-        // Do this in the action, rather than waiting for effects, so Oracle data cannot be painted
-        // for even one Observable render. Version bumps also reject responses already in flight.
+      if (current.visibilityMode !== next.visibilityMode) {
+        // Projection data is cleared synchronously, before a lower-privacy render can occur.
         windowVersion.current += 1;
         frameVersion.current += 1;
         saveVersion.current += 1;
-        // The next Observable window must own a fresh frame, even if an Oracle
-        // request was scheduled at this same instant less than one cadence ago.
         lastFrameSchedule.current = undefined;
         saveRequest.current?.abort();
         setEvents(undefined);
         setFrame(undefined);
-        setSelectedEventId(undefined);
+        setSelection(undefined);
         setSession((existing) => existing ? { ...existing, filters: next } : existing);
+      }
+      if (patch.eventKinds && patch.eventKinds.length) {
+        const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
+        if (selected && !patch.eventKinds.includes(selected.kind)) {
+          selectionAnchorRef.current = undefined;
+          setSelection(undefined);
+        }
       }
       return next;
     });
-  }, [isVerifiedRun]);
+  }, [events, filters.visibilityMode, isVerifiedRun, setSelection]);
 
   const visibleStatus = verifiedForCurrentRun
     ? status

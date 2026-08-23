@@ -26,6 +26,7 @@ function grouped(events: ReplayEvent[]): Map<string, ReplayEvent[]> {
 
 export function ReplayTimeline({ controller }: { controller: ReplayController }) {
   const [selectedTracks, setSelectedTracks] = useState<ReplayEventKind[]>([]);
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(() => new Set());
   const events = controller.events?.items ?? [];
   const windowStart = Date.parse(controller.events?.windowStart ?? "");
   const windowEnd = Date.parse(controller.events?.windowEnd ?? "");
@@ -42,6 +43,11 @@ export function ReplayTimeline({ controller }: { controller: ReplayController })
     setSelectedTracks(next);
     controller.updateFilters({ eventKinds: next });
   };
+  const toggleCluster = (clusterId: string) => setExpandedClusters((current) => {
+    const next = new Set(current);
+    if (next.has(clusterId)) next.delete(clusterId); else next.add(clusterId);
+    return next;
+  });
   return <section className="replay-timeline" aria-labelledby="replay-timeline-heading">
     <div className="replay-timeline-heading"><div><p className="eyebrow">Synchronized trace</p><h2 id="replay-timeline-heading">Event timeline</h2></div><span>{controller.events?.total ?? 0} events in window</span></div>
     <div className="replay-track-filters" role="group" aria-label="Timeline tracks">
@@ -55,12 +61,16 @@ export function ReplayTimeline({ controller }: { controller: ReplayController })
       {REPLAY_TRACKS.map((track) => {
         const items = visible.filter((event) => track.kinds.includes(event.kind));
         return <div className="replay-track" key={track.label}><h3>{track.label}</h3><div className="replay-track-events" aria-label={`${track.label} events`}>
-          {clusters.filter((cluster) => byTime.has(events.find((event) => event.eventId === cluster.eventIds[0])?.at ?? "")).map((cluster) => {
+          {clusters.filter((cluster) => byTime.has(events.find((event) => event.eventId === cluster.eventIds[0])?.at ?? "")).map((cluster, clusterIndex) => {
             const clustered = cluster.eventIds.map((id) => items.find((event) => event.eventId === id)).filter((event): event is ReplayEvent => Boolean(event));
             if (!clustered.length) return null;
+            const clusterId = `${track.label.toLowerCase()}-cluster-${clusterIndex}`;
+            const expanded = expandedClusters.has(clusterId);
             return <div className="replay-event-cluster" style={{ left: `${Math.max(0, Math.min(100, cluster.x / 10))}%` }} key={cluster.eventIds.join("-")}>
-              <button type="button" className="replay-cluster-mark" aria-label={`${clustered.length} simultaneous events`} disabled={!ready} onClick={() => controller.selectEvent(clustered[0]?.eventId)}>{clustered.length}</button>
-              <div className="replay-cluster-items">{clustered.map((event) => <button type="button" key={event.eventId} className={controller.selectedEventId === event.eventId ? "is-selected" : ""} aria-label={`${clock(event.at)} ${event.label}`} onClick={() => controller.selectEvent(event.eventId)}><time>{clock(event.at)}</time><span>{event.label}</span></button>)}</div>
+              {clustered.length === 1
+                ? <button type="button" className={`replay-cluster-mark ${controller.selectedEventId === clustered[0]?.eventId ? "is-selected" : ""}`} aria-label={`${clock(clustered[0]!.at)} ${clustered[0]!.label}`} disabled={!ready} onClick={() => controller.selectEvent(clustered[0]?.eventId)}>1</button>
+                : <button type="button" className="replay-cluster-mark" aria-label={`${clustered.length} simultaneous events`} aria-expanded={expanded} aria-controls={clusterId} disabled={!ready} onClick={() => toggleCluster(clusterId)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleCluster(clusterId); } }}>{clustered.length}</button>}
+              {clustered.length > 1 && <div id={clusterId} className="replay-cluster-items" hidden={!expanded}>{clustered.map((event) => <button type="button" key={event.eventId} className={controller.selectedEventId === event.eventId ? "is-selected" : ""} aria-label={`${clock(event.at)} ${event.label}`} onClick={() => controller.selectEvent(event.eventId)}><time>{clock(event.at)}</time><span>{event.label}</span></button>)}</div>}
             </div>;
           })}
           {!items.length && <p>No {track.label.toLowerCase()} in this window.</p>}
