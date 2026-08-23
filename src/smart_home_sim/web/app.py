@@ -950,11 +950,14 @@ def create_app(
                     "message": "Oracle replay filters require include_oracle=true.",
                 },
             )
-        session = workspace.save_replay_session(
-            run_id,
-            position_at=request.position_at,
-            filters=request.filters,
-        )
+        if "position_at" in request.model_fields_set:
+            session = workspace.save_replay_session(
+                run_id,
+                position_at=request.position_at,
+                filters=request.filters,
+            )
+        else:
+            session = workspace.save_replay_session(run_id, filters=request.filters)
         if include_oracle:
             return session.model_dump(mode="json", by_alias=True)
         observable = ObservableReplaySessionState.from_session(session)

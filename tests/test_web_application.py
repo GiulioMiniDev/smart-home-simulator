@@ -476,6 +476,13 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         assert legacy_position.status_code == 200
         assert legacy_position.json()["positionAt"] == target
         assert legacy_position.json()["filters"]["speed"] == 4
+        cleared_position = client.put(
+            f"/api/runs/{job.job_id}/replay/session",
+            headers=headers,
+            json={"positionAt": None, "filters": {"detailMode": "presentation"}},
+        )
+        assert cleared_position.status_code == 200
+        assert cleared_position.json()["positionAt"] is None
         assert (
             client.put(
                 f"/api/runs/{job.job_id}/replay/session",

@@ -35,6 +35,7 @@ from smart_home_sim.domain.application import (
 from smart_home_sim.domain.execution import ExecutionTrace
 
 DATABASE_VERSION = 1
+_UNSET = object()
 
 
 class WorkspaceError(RuntimeError):
@@ -1105,7 +1106,7 @@ class WorkspaceService:
         run_id: str,
         *,
         verified_digest: str | None = None,
-        position_at: datetime | None = None,
+        position_at: datetime | None | object = _UNSET,
         filters: ReplayFilters | None = None,
     ) -> ReplaySessionState:
         self.ensure_writable()
@@ -1113,7 +1114,7 @@ class WorkspaceService:
         # the immutable execution trace still registered for this run.
         previous = self.replay_session(run_id)
         effective_filters = previous.filters if filters is None else filters
-        effective_position = previous.position_at if position_at is None else position_at
+        effective_position = previous.position_at if position_at is _UNSET else position_at
         effective_digest = previous.verified_digest if verified_digest is None else verified_digest
         replay_id = f"replay_{hashlib.sha256(run_id.encode('utf-8')).hexdigest()[:16]}"
         now = _iso()

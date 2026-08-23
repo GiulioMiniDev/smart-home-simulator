@@ -4,9 +4,51 @@ import { expect, test } from "@playwright/test";
 import axe from "axe-core";
 
 type ReplayRun = { runId: string };
+type ObservableReplaySession = {
+  runId: string;
+  playable: boolean;
+  positionAt: string | null;
+  filters: {
+    eventKinds: string[];
+    sensorIds: string[];
+    statuses: string[];
+    detailMode: string;
+    visibilityMode: string;
+    speed: number;
+  };
+};
 
 async function replayRun(): Promise<ReplayRun> {
   return JSON.parse(await readFile("../reports/e2e-replay-run.json", "utf8")) as ReplayRun;
+}
+
+async function resetReplaySession(page: import("@playwright/test").Page, run: ReplayRun): Promise<void> {
+  const tokenResponse = await page.request.get("/api/session");
+  expect(tokenResponse.status()).toBe(200);
+  const { token } = await tokenResponse.json() as { token: string };
+  const headers = { "X-Workspace-Token": token };
+  const verification = await page.request.post(`/api/runs/${encodeURIComponent(run.runId)}/replay/verify`, { headers });
+  expect(verification.status()).toBe(200);
+  expect((await verification.json()) as { matches: boolean }).toMatchObject({ matches: true });
+
+  const response = await page.request.put(`/api/runs/${encodeURIComponent(run.runId)}/replay/session`, {
+    headers,
+    data: {
+      positionAt: null,
+      filters: {
+        eventKinds: [], actorIds: [], sensorIds: [], statuses: [],
+        detailMode: "presentation", visibilityMode: "observable", speed: 1, selectedResidentId: null,
+      },
+    },
+  });
+  expect(response.status()).toBe(200);
+  const session = await response.json() as ObservableReplaySession;
+  expect(session).toMatchObject({
+    runId: run.runId, playable: true, positionAt: null,
+    filters: { eventKinds: [], sensorIds: [], statuses: [], detailMode: "presentation", visibilityMode: "observable", speed: 1 },
+  });
+  expect(session.filters).not.toHaveProperty("actorIds");
+  expect(session.filters).not.toHaveProperty("selectedResidentId");
 }
 
 function selectedEvent(page: import("@playwright/test").Page) {
@@ -45,9 +87,11 @@ async function expectNoPageHorizontalOverflow(page: import("@playwright/test").P
 
 test("replays one verified run in presentation and analysis modes", async ({ page }) => {
   const run = await replayRun();
+  await resetReplaySession(page, run);
   await page.goto(`/simulations/${run.runId}`);
   await page.getByRole("tab", { name: "replay" }).click();
   await expect(page.getByText("Replay verified")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Presentation" })).toHaveAttribute("aria-pressed", "true");
   const time = page.getByRole("slider", { name: "Replay time" });
   const initial = await time.inputValue();
   await page.getByRole("button", { name: "Play" }).click();
@@ -80,9 +124,11 @@ test("replays one verified run in presentation and analysis modes", async ({ pag
 
 test("replay survives reload and keyboard stepping", async ({ page }) => {
   const run = await replayRun();
+  await resetReplaySession(page, run);
   await page.goto(`/simulations/${run.runId}`);
   await page.getByRole("tab", { name: "replay" }).click();
   await page.getByRole("button", { name: "Analysis" }).click();
+  await expect(page.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
   const time = page.getByRole("slider", { name: "Replay time" });
   const stepStartingPoint = String(Date.parse("2026-10-30T06:14:00.000Z"));
   await time.fill(stepStartingPoint);
@@ -107,6 +153,7 @@ test("replay survives reload and keyboard stepping", async ({ page }) => {
 
 test("keeps replay accessible and within the viewport in dark theme", async ({ page }) => {
   const run = await replayRun();
+  await resetReplaySession(page, run);
   await page.goto(`/simulations/${run.runId}`);
   const darkTheme = page.getByRole("button", { name: "Use dark theme" });
   const toggledToDark = await darkTheme.isVisible();
@@ -115,6 +162,7 @@ test("keeps replay accessible and within the viewport in dark theme", async ({ p
 
   await page.getByRole("tab", { name: "replay" }).click();
   await expect(page.getByText("Replay verified")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Presentation" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open evidence" })).toBeVisible();
   await expect(page.getByRole("group", { name: /Plan of / })).toBeVisible();

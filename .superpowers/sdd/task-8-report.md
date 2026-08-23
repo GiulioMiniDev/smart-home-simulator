@@ -21,6 +21,11 @@ night, drives, or expander implementation/tests.
 - `keeps replay accessible and within the viewport in dark theme` explicitly reaches dark mode with
   the accessible theme control, verifies the dark app shell and both replay surfaces, runs typed axe,
   and asserts `documentElement` and `body` cannot overflow the page at desktop and Pixel 5 widths.
+- Every real replay journey now verifies and resets its own durable session through the authenticated
+  session API before navigation. The snapshot explicitly clears `positionAt`, selects Presentation
+  and Observable evidence, and removes all evidence filters; the endpoint now distinguishes that
+  explicit null from an omitted position. This makes keyboard/reload persistence an assertion within
+  its own journey instead of state inherited from another test.
 
 ## Acceptance evidence
 
@@ -35,7 +40,8 @@ night, drives, or expander implementation/tests.
   readiness also proves that the freshly generated run ID is served by that backend.
 - The real E2E covers digest verification, timestamp-changing playback, Presentation → Analysis,
   evidence, Oracle cause, typed axe scan, keyboard stepping, reload/session restoration, and both
-  Chromium projects.
+  Chromium projects. Each journey first resets a verified, observable default replay session through
+  `page.request`, so the three tests are execution-order independent.
 - A real-browser race was found by the new test and corrected: verification/session and event-window
   requests no longer share an abort controller. Plan SVG groups now expose valid ARIA group roles, so
   the full axe scan is clean without hiding the canvas's keyboard controls.
@@ -89,7 +95,8 @@ synthetic replay-load evidence, not a production year-long simulation claim.
 - `npm test` — passed: 8 files, 220 tests; jsdom emits its pre-existing non-fatal navigation notice.
 - `npm run lint`, `npm run typecheck`, `npm run build` — passed (Vite reports the existing >500 kB
   chunk advisory only).
-- `npx playwright test e2e/replay.spec.ts` — passed: 6 tests across desktop and mobile Chromium.
+- `npx playwright test e2e/replay.spec.ts` — passed: 6 tests across desktop and mobile Chromium,
+  run sequentially as desktop 3/3 then mobile 3/3 after per-test API session resets.
 - `make benchmark-replay` — passed with the results above.
 - `git diff --check` — passed.
 - `uv run pytest -q` — completed at 95.41% coverage with exactly two accepted baseline failures:
