@@ -4,11 +4,12 @@ from bisect import bisect_left, bisect_right
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta, tzinfo
 from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import JsonValue
 
@@ -36,6 +37,7 @@ from smart_home_sim.domain.execution import (
     MovementExecution,
     StateTransition,
 )
+from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.profile import ResidentProfile
 from smart_home_sim.domain.sensors import ObservableSensorLog, OracleMapping
 from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, profile_from_trace
@@ -219,9 +221,27 @@ def _last_timeline_item(
     return items[position - 1] if position else None
 
 
+def _daily_summary_available_at(
+    summary_date: date, trace_end: datetime, *, timezone: tzinfo | None = None
+) -> datetime:
+    """Publish a daily aggregate only once its local day has ended.
+
+    ``DailyExecutionSummary.date`` is a local calendar date, rather than an event instant.  Its
+    replay timestamp is therefore the following local midnight in the bundle's timezone (or the
+    trace's aware offset only when its bundle is unavailable). A trace may end before that
+    boundary, so its final summary becomes available at ``trace_end``;
+    this keeps the event query honest without inventing time after the authoritative trace.
+    """
+    local_midnight = datetime.combine(
+        summary_date + timedelta(days=1), time.min, tzinfo=timezone or trace_end.tzinfo
+    )
+    return min(local_midnight, trace_end)
+
+
 def _events(
     trace: ExecutionTrace,
     observations: ObservableSensorLog,
+    timezone: tzinfo | None = None,
 ) -> tuple[ReplayEventView, ...]:
     events: list[ReplayEventView] = []
     activity_starts = {
@@ -322,6 +342,26 @@ def _events(
                 },
             )
         )
+    for item in trace.daily_summaries:
+        events.append(
+            ReplayEventView(
+                at=_daily_summary_available_at(
+                    item.date,
+                    trace.ended_at,
+                    timezone=timezone,
+                ),
+                kind="daily_summary",
+                event_id=f"daily_summary:{item.date.isoformat()}",
+                label=f"Daily summary {item.date.isoformat()}",
+                status="completed",
+                details={
+                    "completedActivityCount": item.completed_activity_count,
+                    "deviatedActivityCount": item.deviated_activity_count,
+                    "failedActivityCount": item.failed_activity_count,
+                    "droppedActivityCount": item.dropped_activity_count,
+                },
+            )
+        )
     for item in observations.records:
         details: dict[str, JsonValue] = {
             "measurement": item.measurement,
@@ -351,11 +391,13 @@ def _replay_index(
     oracle_digest: str | None,
     bundle_path: str | None,
     bundle_digest: str | None,
+    scenario_path: str | None,
+    scenario_digest: str | None,
 ) -> _ReplayIndex:
     # An index is owned by one ReplayService instance.  Do not reuse it across reopened
     # workspaces: artifact paths can be regenerated in place and a module-level index would
     # retain an unrelated workspace's parsed run for the process lifetime.
-    del trace_digest, observations_digest, oracle_digest, bundle_digest
+    del trace_digest, observations_digest, oracle_digest, bundle_digest, scenario_digest
     trace = ExecutionTrace.model_validate_json(Path(trace_path).read_text(encoding="utf-8"))
     observations = ObservableSensorLog.model_validate_json(
         Path(observations_path).read_text(encoding="utf-8")
@@ -370,7 +412,18 @@ def _replay_index(
         if bundle_path
         else None
     )
-    events = _events(trace, observations)
+    scenario = (
+        Scenario.model_validate_json(Path(scenario_path).read_text(encoding="utf-8"))
+        if scenario_path
+        else None
+    )
+    events = _events(
+        trace,
+        observations,
+        ZoneInfo(bundle.scenario.time_zone)
+        if bundle is not None
+        else ZoneInfo(scenario.time_zone) if scenario is not None else None,
+    )
     sensor_records: dict[str, list[Any]] = {}
     for record in observations.records:
         sensor_records.setdefault(record.sensor_id, []).append(record)
@@ -1122,6 +1175,7 @@ class ReplayService:
         artifacts = self.workspace.run_artifacts(run_id)
         oracle_artifact = artifacts.get("oracle_mapping")
         bundle_artifact = artifacts.get("simulation_bundle")
+        scenario_artifact = artifacts.get("scenario")
         oracle_path = (
             str(self.workspace.artifact_path(oracle_artifact.artifact_id))
             if oracle_artifact is not None
@@ -1130,6 +1184,11 @@ class ReplayService:
         bundle_path = (
             str(self.workspace.artifact_path(bundle_artifact.artifact_id))
             if bundle_artifact is not None
+            else None
+        )
+        scenario_path = (
+            str(self.workspace.artifact_path(scenario_artifact.artifact_id))
+            if scenario_artifact is not None
             else None
         )
         index = _replay_index(
@@ -1141,6 +1200,8 @@ class ReplayService:
             oracle_artifact.sha256 if oracle_artifact is not None else None,
             bundle_path,
             bundle_artifact.sha256 if bundle_artifact is not None else None,
+            scenario_path,
+            scenario_artifact.sha256 if scenario_artifact is not None else None,
         )
         self._indices[run_id] = index
         return index

@@ -10,6 +10,7 @@ from smart_home_sim.application import replay as replay_module
 from smart_home_sim.application.replay import ReplayService, _sensor_state_at
 from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.sensors import ObservableSensorLog, OracleMapping
+from tools import benchmark_replay
 from tools.benchmark_replay import WEEKLY_SOURCE, _benchmark_fixture, _completed_workspace
 
 
@@ -67,6 +68,19 @@ def test_benchmark_fixture_has_coherent_duration_runtime_coverage_and_causality(
     }
     assert all(item.evaluated_at >= trace.started_at for item in trace.runtime_events)
     assert all(item.evaluated_at <= trace.ended_at for item in trace.runtime_events)
+    workspace, run_id = _completed_workspace(
+        target / "workspace", periods=periods, duration_days=duration_days, observable_only=True
+    )
+    daily_window = ReplayService(workspace).events(
+        run_id,
+        start=trace.started_at,
+        end=trace.ended_at,
+        kinds={"daily_summary"},
+        limit=1,
+    )
+    assert daily_window.total == len(trace.daily_summaries) > 0
+    assert len(daily_window.items) == 1
+    assert daily_window.items[0].kind == "daily_summary"
     grouped: dict[str, list[object]] = {}
     for record in observations.records:
         grouped.setdefault(record.sensor_id, []).append(record)
@@ -102,6 +116,22 @@ def test_replay_frame_seek_applies_a_bounded_number_of_prior_deltas(
     replay.frame(run_id, at=index.trace_end - timedelta(microseconds=1))
 
     assert calls < 100
+
+
+def test_benchmark_reports_nonzero_daily_summary_count_and_bounded_summary_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(benchmark_replay, "FRAME_COUNT", 1)
+    monkeypatch.setattr(benchmark_replay, "WINDOW_COUNT", 1)
+    workspace, run_id = _completed_workspace(
+        tmp_path / "workspace", periods=2, duration_days=7, observable_only=True
+    )
+
+    result = benchmark_replay._measure("weekly", workspace, run_id)
+
+    assert result["dailySummaries"] > 0
+    assert result["dailySummaryWindowTotal"] == result["dailySummaries"]
+    assert 0 < result["dailySummaryWindowItems"] <= benchmark_replay.WINDOW_LIMIT
 
 
 def _camel(field: str) -> str:

@@ -323,6 +323,17 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
             limit=WINDOW_LIMIT,
         ), "repeated bounded windows must be equal"
 
+    daily_summaries = replay.events(
+        run_id,
+        start=index.trace_start,
+        end=index.trace_end,
+        kinds={"daily_summary"},
+        limit=WINDOW_LIMIT,
+    )
+    assert daily_summaries.total == len(index.trace.daily_summaries) > 0
+    assert len(daily_summaries.items) <= WINDOW_LIMIT
+    assert all(item.kind == "daily_summary" for item in daily_summaries.items)
+
     median_frame = statistics.median(frame_seconds)
     trace = index.trace
     return {
@@ -339,6 +350,9 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
         "resources": len(trace.resource_events),
         "runtimeEvents": len(trace.runtime_events),
         "planDeviations": len(trace.plan_deviations),
+        "dailySummaries": len(trace.daily_summaries),
+        "dailySummaryWindowTotal": daily_summaries.total,
+        "dailySummaryWindowItems": len(daily_summaries.items),
         "observations": len(index.observations.records),
         "events": len(index.events),
         "indexMs": _milliseconds(index_seconds),

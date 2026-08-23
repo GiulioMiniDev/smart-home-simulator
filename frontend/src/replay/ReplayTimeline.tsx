@@ -9,6 +9,7 @@ export const REPLAY_TRACKS: Array<{ label: string; kinds: ReplayEventKind[] }> =
   { label: "Movements", kinds: ["movement"] }, { label: "Sensors", kinds: ["observation"] },
   { label: "State", kinds: ["state_transition"] }, { label: "Resources", kinds: ["resource"] },
   { label: "Runtime", kinds: ["runtime_event"] }, { label: "Deviations", kinds: ["plan_deviation"] },
+  { label: "Summaries", kinds: ["daily_summary"] },
 ];
 const ALL_EVENT_KINDS = REPLAY_TRACKS.flatMap((track) => track.kinds);
 

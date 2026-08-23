@@ -288,6 +288,18 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
             item["label"] == f"{item['kind'].replace('_', ' ').title()} event"
             for item in events.json()["items"]
         )
+        daily_summaries = client.get(
+            f"/api/runs/{job.job_id}/replay/events",
+            params={"kinds": "daily_summary", "include_oracle": "false", "limit": 25},
+            headers=headers,
+        )
+        assert daily_summaries.status_code == 200
+        assert daily_summaries.json()["total"] == len(trace["dailySummaries"])
+        assert all(item["kind"] == "daily_summary" for item in daily_summaries.json()["items"])
+        assert all(
+            item["label"] == "Daily Summary event" for item in daily_summaries.json()["items"]
+        )
+        assert all("actorId" not in item for item in daily_summaries.json()["items"])
         observable_actor_filter = client.get(
             f"/api/runs/{job.job_id}/replay/events",
             params={"actor_id": trace["movements"][0]["actorId"]},

@@ -103,7 +103,8 @@
             "state_transition",
             "resource",
             "runtime_event",
-            "plan_deviation"
+            "plan_deviation",
+            "daily_summary"
           ],
           "title": "Kind",
           "type": "string"
@@ -239,7 +240,8 @@
               "state_transition",
               "resource",
               "runtime_event",
-              "plan_deviation"
+              "plan_deviation",
+              "daily_summary"
             ],
             "type": "string"
           },

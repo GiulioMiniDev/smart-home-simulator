@@ -4,7 +4,7 @@ import json
 import random
 import shutil
 import zipfile
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -23,7 +23,7 @@ from smart_home_sim.application.export import (
     _xes,
     _xes_attribute,
 )
-from smart_home_sim.application.replay import ReplayService
+from smart_home_sim.application.replay import ReplayService, _daily_summary_available_at
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import (
     ExportFormat,
@@ -133,6 +133,15 @@ def test_replay_indexes_every_trace_family_and_bounds_windows(
             "resource": trace["resourceEvents"],
             "runtime_event": trace["runtimeEvents"],
             "plan_deviation": trace["planDeviations"],
+            "daily_summary": [
+                summary
+                for summary in trace["dailySummaries"]
+                if start
+                <= _daily_summary_available_at(
+                    date.fromisoformat(summary["date"]), datetime.fromisoformat(trace["endedAt"])
+                )
+                <= end
+            ],
         }.items()
         if records
     }
@@ -140,6 +149,104 @@ def test_replay_indexes_every_trace_family_and_bounds_windows(
         item.kind for item in replay.events(run_id, start=start, end=end, limit=5000).items
     } >= expected_kinds
     assert "observation" in {item.kind for item in replay.events(run_id, limit=5000).items}
+
+
+def test_replay_projects_daily_summaries_at_local_day_end_with_authoritative_counts(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    from zoneinfo import ZoneInfo
+
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    summary_timezone = (
+        ZoneInfo(index.bundle.scenario.time_zone) if index.bundle is not None else None
+    )
+
+    oracle = replay.events(run_id, kinds={"daily_summary"}, include_oracle=True, limit=5_000)
+    observable = replay.events(run_id, kinds={"daily_summary"}, limit=5_000)
+
+    assert oracle.total == observable.total == len(index.trace.daily_summaries)
+    assert [item.event_id for item in oracle.items] == [
+        f"daily_summary:{summary.date.isoformat()}" for summary in index.trace.daily_summaries
+    ]
+    assert [item.at for item in oracle.items] == [
+        _daily_summary_available_at(
+            summary.date,
+            index.trace.ended_at,
+            timezone=summary_timezone,
+        )
+        for summary in index.trace.daily_summaries
+    ]
+    assert [(item.at, item.event_id) for item in oracle.items] == sorted(
+        (item.at, item.event_id) for item in oracle.items
+    )
+    assert all(item.status == "completed" for item in oracle.items)
+    assert all(item.label.startswith("Daily summary ") for item in oracle.items)
+    assert all(
+        item.details
+        == {
+            "completedActivityCount": summary.completed_activity_count,
+            "deviatedActivityCount": summary.deviated_activity_count,
+            "failedActivityCount": summary.failed_activity_count,
+            "droppedActivityCount": summary.dropped_activity_count,
+        }
+        for item, summary in zip(oracle.items, index.trace.daily_summaries, strict=True)
+    )
+    assert [item.details for item in observable.items] == [item.details for item in oracle.items]
+    assert all(item.label == "Daily Summary event" for item in observable.items)
+    assert all(item.actor_id is None for item in observable.items)
+
+
+def test_daily_summary_availability_uses_next_local_midnight_and_trace_end_clamp() -> None:
+    from zoneinfo import ZoneInfo
+
+    rome = ZoneInfo("Europe/Rome")
+    trace_end = datetime(2026, 3, 30, 12, tzinfo=UTC)
+
+    assert _daily_summary_available_at(
+        date(2026, 3, 29), trace_end, timezone=rome
+    ) == datetime(
+        2026, 3, 30, 0, tzinfo=rome
+    )
+    assert _daily_summary_available_at(date(2026, 3, 30), trace_end, timezone=rome) == trace_end
+
+
+def test_horizon_daily_summaries_keep_the_scenario_timezone_across_dst(tmp_path: Path) -> None:
+    """Merged horizons have a scenario artifact, not one simulation bundle to supply its zone."""
+    workspace = WorkspaceService.create(tmp_path / "horizon-workspace", "Replay")
+    home = workspace.create_home("Mario")
+    job = workspace.create_job("simulation", home_id=home.home_id, seed=123)
+    destination = workspace.runs_path / job.job_id
+    shutil.copytree(SOURCE, destination)
+    trace_path = destination / "execution-trace.json"
+    trace = json.loads(trace_path.read_text(encoding="utf-8"))
+    trace["startedAt"] = "2026-10-24T00:00:00+02:00"
+    trace["endedAt"] = "2026-10-27T12:00:00+01:00"
+    trace["dailySummaries"] = [
+        {
+            "date": "2026-10-24",
+            "completedActivityCount": 1,
+            "deviatedActivityCount": 0,
+            "failedActivityCount": 0,
+            "droppedActivityCount": 0,
+        }
+    ]
+    trace_path.write_text(json.dumps(trace), encoding="utf-8")
+    (destination / "simulation-bundle.json").unlink()
+    workspace.import_run_directory(job.job_id, destination)
+    workspace.update_job(
+        job.job_id,
+        JobStatus.completed,
+        JobProgress(phase="completed", percent=100, message="Done"),
+        result_reference=job.job_id,
+    )
+
+    summary = ReplayService(workspace).events(
+        job.job_id, kinds={"daily_summary"}, include_oracle=True
+    ).items
+
+    assert [item.at.isoformat() for item in summary] == ["2026-10-25T00:00:00+02:00"]
 
 
 def test_replay_actor_filter_requires_oracle_opt_in(

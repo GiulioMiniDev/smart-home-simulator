@@ -219,6 +219,10 @@ La scheda **Replay** verifica automaticamente il digest semantico del trace cont
 pubblicato prima di abilitare il trasporto. Presentazione e Analisi sono due viste dello stesso
 orologio: cambiare modalità conserva istante, selezione, residente, velocità e filtri. Il
 movimento usa i timestamp di trace e waypoint autorevoli, mai un intervallo fisso per evento.
+Le sintesi giornaliere sono eventi separati: diventano disponibili alla mezzanotte locale successiva
+al giorno riepilogato nel fuso dello scenario (oppure nell'offset aware del trace per run legacy
+senza scenario), oppure al termine del trace se questo arriva prima; non esiste un evento
+sintetico di `final_state`.
 
 I controlli disponibili sono play/pausa, evento precedente/successivo, seek con scrubber,
 zoom della timeline, velocità da `0.25x` a `32x` e filtri per residente, sensore, tipo e stato.
@@ -246,7 +250,9 @@ giorni) e 52 settimane per l'anno (364 giorni). Un'affine deterministica normali
 monotoni senza campionare o tagliare record; ID, riferimenti causali e digest vengono rigenerati.
 Ogni fixture conserva tutte le famiglie della trace e tutte le osservazioni; la famiglia runtime,
 assente nella sorgente, riceve esclusivamente una coverage sentinel valida e dichiarata, non un
-evento prodotto dalla simulazione. Il controllo esegue 100 seek e 100 finestre limitate per caso
+evento prodotto dalla simulazione. Le sintesi giornaliere sono contate separatamente e una finestra
+limitata filtrata su `daily_summary` ne prova la disponibilità senza dilatare la risposta. Il
+controllo esegue 100 seek e 100 finestre limitate per caso
 e verifica risposte limitate e frame ripetuti identici. Prima dell'omissione intenzionale
 dell'Oracle dalla fixture annuale di timing, il builder genera e valida anche il mapping: il
 benchmark annuale misura esplicitamente la performance Observable, non il costo facoltativo della
@@ -259,16 +265,17 @@ make benchmark-replay
 L'obiettivo sulla macchina benchmark è una mediana dei frame inferiore a 100 ms dopo la
 costruzione dell'indice. I tempi sono sempre riportati; per evitare falsi negativi da rumore,
 il budget wall-clock interrompe l'esecuzione solo in CI. L'anno canonico rilevato contiene
-1.635.504 eventi e 1.487.824 osservazioni. L'ultima cattura completa ha costruito il relativo
-indice in 56.574,115 ms e ha misurato 1,468 ms mediani per frame e 5,061 ms per finestra:
+1.635.816 eventi, incluse 312 sintesi giornaliere, e 1.487.824 osservazioni. L'ultima cattura
+completa ha costruito il relativo indice in 54.578,166 ms e ha misurato 1,392 ms mediani per frame
+e 4,945 ms per finestra:
 il target CI inferiore a 100 ms è soddisfatto. Il picco osservato durante la costruzione è stato
 circa 2,53 GiB; macchine con poca RAM possono comunque richiedere più tempo o memoria disponibile.
 
 | Fixture | Durata | Eventi | Osservazioni | Indice ms | Frame mediano ms | Finestra mediana ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Settimanale | 7 d | 31.452 | 28.612 | 1.920,771 | 1,186 | 5,269 |
-| Quattro settimane | 28 d | 125.808 | 114.448 | 7.951,228 | 1,198 | 5,316 |
-| Annuale | 364 d | 1.635.504 | 1.487.824 | 56.574,115 | 1,468 | 5,061 |
+| Settimanale | 7 d | 31.458 | 28.612 | 2.388,310 | 1,293 | 6,616 |
+| Quattro settimane | 28 d | 125.832 | 114.448 | 10.885,630 | 1,664 | 7,138 |
+| Annuale | 364 d | 1.635.816 | 1.487.824 | 54.578,166 | 1,392 | 4,945 |
 
 Per ottenere la prima simulazione dai due JSON pubblicati dall'ingestion, senza disegnare
 la casa o collocare manualmente i sensori:

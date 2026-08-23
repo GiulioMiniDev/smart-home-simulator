@@ -3,7 +3,7 @@ import { Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReplayStage } from "../replay/ReplayStage";
 import { ReplayInspector } from "../replay/ReplayInspector";
-import { ReplayTimeline } from "../replay/ReplayTimeline";
+import { REPLAY_TRACKS, ReplayTimeline } from "../replay/ReplayTimeline";
 import { ReplayWorkbench } from "../replay/ReplayWorkbench";
 import type { ReplayController } from "../replay/useReplayController";
 import type { HomeModel, ReplayEventWindow, ReplayFrame, SensorModel } from "../types";
@@ -359,6 +359,27 @@ describe("ReplayWorkbench", () => {
     expect(screen.getAllByRole("button", { name: /08:15/ })).toHaveLength(2);
   });
 
+  it("renders daily summaries on their own fixed, filterable timeline track", async () => {
+    const dailySummary = {
+      at: "2026-01-01T09:00:00.000Z", kind: "daily_summary", eventId: "daily_summary:2026-01-01",
+      label: "Daily Summary event", status: "completed", waypoints: [],
+      details: { completedActivityCount: 4, deviatedActivityCount: 1, failedActivityCount: 0, droppedActivityCount: 0 },
+    };
+    response = (path) => path.includes("/events")
+      ? { items: [...simultaneousEvents, dailySummary], total: 3, traceStart: replayStart, traceEnd: replayEnd, windowStart: replayStart, windowEnd: replayEnd }
+      : replayResponse(path);
+    render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
+
+    const summaries = screen.getByRole("checkbox", { name: "Summaries" });
+    expect(summaries).toBeChecked();
+    expect(screen.getByLabelText("Summaries events")).toHaveTextContent("1");
+    fireEvent.click(screen.getByRole("button", { name: "09:00 Daily Summary event" }));
+    expect(screen.getByText("completedActivityCount")).toBeInTheDocument();
+    fireEvent.click(summaries);
+    expect(summaries).not.toBeChecked();
+  });
+
   it("derives restored track checks from controller filters and composes additions", async () => {
     response = (path) => path.includes("/session") ? {
       runId: "run_1", verifiedDigest: digest, playable: true, positionAt: replayStart,
@@ -611,7 +632,7 @@ describe("ReplayTimeline lane measurements", () => {
 
   it("does not re-render indefinitely when lane refs attach", () => {
     expect(() => render(<ReplayTimeline controller={controller} />)).not.toThrow();
-    expect(observers).toHaveLength(8);
+    expect(observers).toHaveLength(REPLAY_TRACKS.length);
   });
 
   it("recomputes a lane after a resize but ignores the same finite width", () => {

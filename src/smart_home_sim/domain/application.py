@@ -395,6 +395,7 @@ ReplayEventKind = Literal[
     "resource",
     "runtime_event",
     "plan_deviation",
+    "daily_summary",
 ]
 ReplayDetailMode = Literal["presentation", "analysis"]
 ReplayVisibilityMode = Literal["observable", "oracle"]

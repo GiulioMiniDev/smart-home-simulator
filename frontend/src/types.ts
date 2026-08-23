@@ -480,7 +480,8 @@ export type ReplayEventKind =
   | "state_transition"
   | "resource"
   | "runtime_event"
-  | "plan_deviation";
+  | "plan_deviation"
+  | "daily_summary";
 
 export interface ReplayWaypoint {
   at: string;
