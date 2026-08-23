@@ -420,4 +420,22 @@ describe("ReplayTimeline lane measurements", () => {
     unmount();
     expect(initialObservers.every((observer) => observer.disconnect.mock.calls.length > 0)).toBe(true);
   });
+
+  it("disables evidence filters and zoom only for a fatally blocked replay", () => {
+    const view = render(<ReplayTimeline controller={{ ...controller, status: "blocked" }} />);
+    expect(within(view.container).getByRole("checkbox", { name: "Movements" })).toBeDisabled();
+    expect(within(view.container).getByLabelText("Sensor")).toBeDisabled();
+    expect(within(view.container).getByLabelText("Event status")).toBeDisabled();
+    expect(within(view.container).getByLabelText("Temporal zoom")).toBeDisabled();
+    expect(within(view.container).getByRole("button", { name: "Clear filters" })).toBeDisabled();
+  });
+
+  it("keeps evidence filters and zoom available while dense evidence recovers", () => {
+    const view = render(<ReplayTimeline controller={{ ...controller, evidenceIncomplete: true, evidenceLoading: true }} />);
+    expect(within(view.container).getByRole("checkbox", { name: "Movements" })).toBeEnabled();
+    expect(within(view.container).getByLabelText("Sensor")).toBeEnabled();
+    expect(within(view.container).getByLabelText("Event status")).toBeEnabled();
+    expect(within(view.container).getByLabelText("Temporal zoom")).toBeEnabled();
+    expect(within(view.container).getByRole("button", { name: "Clear filters" })).toBeEnabled();
+  });
 });

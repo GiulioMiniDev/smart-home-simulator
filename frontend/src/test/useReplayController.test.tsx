@@ -836,6 +836,41 @@ describe("useReplayController", () => {
     expect(result.current.error?.message).toContain("stopped responding");
   });
 
+  it("fences controls and pending session saves after a deferred event-window failure", async () => {
+    let deferWindow = false;
+    let rejectWindow: ((reason: Error) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      if (deferWindow && path.includes("/events") && !path.includes("limit=1")) {
+        return new Promise<Response>((_resolve, reject) => { rejectWindow = reject; });
+      }
+      return Promise.resolve(new Response(JSON.stringify(payload(path)), { status: 200 }));
+    }));
+    const { result } = renderHook(() => useReplayController("run_1"));
+    await settleController();
+    deferWindow = true;
+    act(() => result.current.setWindowSpan(5 * 60 * 1000));
+    await settleController();
+    rejectWindow?.(new Error("window unavailable"));
+    await settleController();
+    expect(result.current.status).toBe("blocked");
+    const filtersBefore = result.current.filters;
+    const spanBefore = result.current.windowSpanMs;
+    const positionBefore = result.current.positionMs;
+    act(() => {
+      result.current.updateFilters({ statuses: ["completed"] });
+      result.current.setWindowSpan(15 * 60 * 1000);
+      result.current.seek(Date.parse("2026-08-23T08:30:00.000Z"));
+      result.current.selectEvent("move");
+      result.current.play();
+    });
+    expect(result.current.filters).toEqual(filtersBefore);
+    expect(result.current.windowSpanMs).toBe(spanBefore);
+    expect(result.current.positionMs).toBe(positionBefore);
+    await act(async () => { vi.advanceTimersByTime(400); await Promise.resolve(); });
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([input, init]) => String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT")).toBe(false);
+  });
+
   it("reports invalid trace bounds before using a restored position", async () => {
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
       const path = String(input);
@@ -863,5 +898,7 @@ describe("useReplayController", () => {
     await settleController();
     expect(result.current.status).toBe("blocked");
     expect(result.current.error?.message).toContain("stopped responding");
+    await act(async () => { vi.advanceTimersByTime(400); await Promise.resolve(); });
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([input, init]) => String(input).includes("/replay/session") && (init as RequestInit | undefined)?.method === "PUT")).toBe(false);
   });
 });

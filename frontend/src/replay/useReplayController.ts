@@ -145,6 +145,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const saveTimer = useRef<number | undefined>(undefined);
   const saveRequest = useRef<AbortController | undefined>(undefined);
   const saveVersion = useRef(0);
+  const statusRef = useRef<ReplayStatus>(status);
   const activeRunId = useRef(runId);
   const runGeneration = useRef(0);
   const verifiedRun = useRef<{ runId: string; generation: number } | undefined>(undefined);
@@ -157,6 +158,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const filtersRef = useRef(filters);
   oracleAvailableRef.current = oracleAvailable;
   filtersRef.current = filters;
+  statusRef.current = status;
 
   // This render-time ref reset makes a prop switch safe before effects get a chance to run.
   if (activeRunId.current !== runId) {
@@ -169,6 +171,11 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     const verified = verifiedRun.current;
     return verified?.runId === runId && verified.generation === runGeneration.current;
   }, [runId]);
+  const setReplayStatus = useCallback((next: ReplayStatus) => {
+    statusRef.current = next;
+    setStatus(next);
+  }, []);
+  const isReplayReady = useCallback(() => statusRef.current === "ready" && isVerifiedRun(), [isVerifiedRun]);
   const verifiedForCurrentRun = isVerifiedRun();
   const setRunError = useCallback((next: ApiError | undefined) => {
     errorGeneration.current = next ? runGeneration.current : undefined;
@@ -194,8 +201,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   }, []);
   const blockReplay = useCallback((reason: unknown) => {
     invalidateEvidence();
-    saveVersion.current += 1;
-    saveRequest.current?.abort();
+    cancelPendingSave();
     windowLoadingRef.current = false;
     setPlaying(false);
     setEvidenceLoading(false);
@@ -203,36 +209,37 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     setFrame(undefined);
     setSelection(undefined);
     setRunError(apiError(reason));
-    setStatus("blocked");
-  }, [invalidateEvidence, setRunError, setSelection]);
+    setReplayStatus("blocked");
+  }, [cancelPendingSave, invalidateEvidence, setReplayStatus, setRunError, setSelection]);
 
   const setClockPosition = useCallback((next: number | undefined) => {
     positionRef.current = next;
     setPositionMs(next);
   }, []);
   const requestFrame = useCallback((at = positionRef.current, immediate = false) => {
-    if (!isVerifiedRun() || at === undefined) return;
+    if (!isReplayReady() || at === undefined) return;
     const now = performance.now();
     const previous = lastFrameSchedule.current;
     if (!immediate && previous && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
     if (immediate && previous?.at === at && now - previous.scheduledAt < FRAME_CADENCE_MS) return;
     lastFrameSchedule.current = { at, scheduledAt: now };
     setFrameRequest({ at, version: ++frameVersion.current });
-  }, [isVerifiedRun]);
+  }, [isReplayReady]);
   const requestWindow = useCallback((force = false) => {
-    if (!isVerifiedRun()) return;
+    if (!isReplayReady()) return;
     if (force || !windowLoadingRef.current) {
       windowLoadingRef.current = true;
       setWindowRequest((current) => current + 1);
     }
-  }, [isVerifiedRun]);
+  }, [isReplayReady]);
 
   useEffect(() => {
     const controller = new AbortController();
     windowAbort.current?.abort(); windowAbort.current = controller;
     const generation = runGeneration.current;
     let current = true;
-    setStatus("verifying"); setVerification(undefined); setSession(undefined); setEvents(undefined); setFrame(undefined);
+    cancelPendingSave();
+    setReplayStatus("verifying"); setVerification(undefined); setSession(undefined); setEvents(undefined); setFrame(undefined);
     const resetFilters = defaultFilters();
     filtersRef.current = resetFilters;
     setRunError(undefined); setPlaying(false); setSelection(undefined); selectionAnchorRef.current = undefined; setFilters(resetFilters);
@@ -247,7 +254,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         if (!current || generation !== runGeneration.current || activeRunId.current !== runId) return;
         checkedRun.current = { runId, generation };
         setVerification(checked);
-        if (!checked.matches) { setStatus("blocked"); return; }
+        if (!checked.matches) { cancelPendingSave(); setReplayStatus("blocked"); return; }
         verifiedRun.current = { runId, generation };
         // Oracle session state is durable, deliberate user opt-in. Fetch the richer projection
         // before normalizing it against this run's authoritative mapping availability.
@@ -271,7 +278,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       }
     })();
     return () => { current = false; controller.abort(); };
-  }, [blockReplay, isVerifiedRun, runId, setClockPosition, setRunError, setSelection]);
+  }, [blockReplay, cancelPendingSave, isVerifiedRun, runId, setClockPosition, setReplayStatus, setRunError, setSelection]);
 
   // No saved instant is trusted before the range is known: clamp it after obtaining the trace.
   useEffect(() => {
@@ -287,14 +294,14 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         if (start === undefined || end === undefined) throw new ApiError("Replay trace timestamps are invalid", 0);
         rangeRef.current = { start, end }; windowRangeRef.current = { start, end };
         const restored = restoredPositionRef.current ?? start;
-        setClockPosition(Math.min(end, Math.max(start, restored))); setPositionInitialized(true); windowLoadingRef.current = false; setStatus("ready");
+        setClockPosition(Math.min(end, Math.max(start, restored))); setPositionInitialized(true); windowLoadingRef.current = false; setReplayStatus("ready");
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted || !isVerifiedRun() || isAbort(reason) || version !== windowVersion.current) return;
         blockReplay(reason);
       });
     return () => controller.abort();
-  }, [blockReplay, isVerifiedRun, positionInitialized, runId, setClockPosition, verifiedForCurrentRun]);
+  }, [blockReplay, isVerifiedRun, positionInitialized, runId, setClockPosition, setReplayStatus, verifiedForCurrentRun]);
 
   // Windows change for navigation and filters, never for every animation tick.
   useEffect(() => {
@@ -442,7 +449,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   }, [playing, positionInitialized, requestFrame, status, verifiedForCurrentRun]);
 
   useEffect(() => {
-    if (!verifiedForCurrentRun || status !== "ready" || !positionInitialized || positionMs === undefined) return;
+    if (!verifiedForCurrentRun || statusRef.current !== "ready" || !positionInitialized || positionMs === undefined) return;
     if (saveTimer.current !== undefined) window.clearTimeout(saveTimer.current);
     saveRequest.current?.abort();
     const version = ++saveVersion.current;
@@ -456,6 +463,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         || runGeneration.current !== saveGeneration
         || verified?.runId !== saveRunId
         || verified.generation !== saveGeneration
+        || statusRef.current !== "ready"
         || version !== saveVersion.current
       ) return;
       const controller = new AbortController(); saveRequest.current = controller;
@@ -463,42 +471,42 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       void api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session${includeOracle}`, {
         method: "PUT", body: JSON.stringify({ positionAt: new Date(positionMs).toISOString(), filters }), signal: controller.signal,
       }).then((next) => {
-        if (!controller.signal.aborted && isVerifiedRun() && version === saveVersion.current) setSession(normalizeSession(next));
+        if (!controller.signal.aborted && isReplayReady() && version === saveVersion.current) setSession(normalizeSession(next));
       }).catch((reason: unknown) => {
-        if (!controller.signal.aborted && isVerifiedRun() && version === saveVersion.current) setRunError(apiError(reason));
+        if (!controller.signal.aborted && isReplayReady() && version === saveVersion.current) setRunError(apiError(reason));
       });
     }, SESSION_DEBOUNCE_MS);
     saveTimer.current = timer;
     return () => { window.clearTimeout(timer); if (saveTimer.current === timer) saveTimer.current = undefined; saveRequest.current?.abort(); };
-  }, [filters, isVerifiedRun, positionInitialized, positionMs, runId, setRunError, status, verifiedForCurrentRun]);
+  }, [filters, isReplayReady, positionInitialized, positionMs, runId, setRunError, status, verifiedForCurrentRun]);
 
   useEffect(() => () => { if (saveTimer.current !== undefined) window.clearTimeout(saveTimer.current); saveRequest.current?.abort(); }, []);
 
   const seek = useCallback((nextPosition: number) => {
-    if (!isVerifiedRun() || evidenceIncomplete) return;
+    if (!isReplayReady() || evidenceIncomplete) return;
     const range = rangeRef.current;
     const clamped = range ? Math.min(range.end, Math.max(range.start, nextPosition)) : nextPosition;
     densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setWindowNotice(undefined);
     setPlaying(false); setClockPosition(clamped);
     if (positionInitialized) { refreshedWindowRef.current = undefined; requestWindow(true); requestFrame(clamped, true); }
-  }, [evidenceIncomplete, isVerifiedRun, positionInitialized, requestFrame, requestWindow, setClockPosition]);
+  }, [evidenceIncomplete, isReplayReady, positionInitialized, requestFrame, requestWindow, setClockPosition]);
 
   const pause = useCallback(() => setPlaying(false), []);
   const play = useCallback(() => {
     const range = rangeRef.current;
-    if (!isVerifiedRun() || evidenceIncomplete || status !== "ready" || !positionInitialized || positionRef.current === undefined || (range && positionRef.current >= range.end)) return;
+    if (!isReplayReady() || evidenceIncomplete || !positionInitialized || positionRef.current === undefined || (range && positionRef.current >= range.end)) return;
     setPlaying(true);
-  }, [evidenceIncomplete, isVerifiedRun, positionInitialized, status]);
+  }, [evidenceIncomplete, isReplayReady, positionInitialized]);
 
   const selectEvent = useCallback((eventId?: string) => {
-    if (!isVerifiedRun() || evidenceIncomplete) return;
+    if (!isReplayReady() || evidenceIncomplete) return;
     setSelection(eventId);
     const at = timestamp(events?.items.find((event) => event.eventId === eventId)?.at);
     if (at !== undefined) seek(at);
-  }, [events, evidenceIncomplete, isVerifiedRun, seek, setSelection]);
+  }, [events, evidenceIncomplete, isReplayReady, seek, setSelection]);
 
   const step = useCallback((direction: -1 | 1) => {
-    if (!isVerifiedRun() || evidenceIncomplete) return;
+    if (!isReplayReady() || evidenceIncomplete) return;
     const ordered = [...(events?.items ?? [])].sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
     if (ordered.length === 0) return;
     const selectedIndex = ordered.findIndex((event) => event.eventId === selectedEventIdRef.current);
@@ -511,10 +519,10 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     setSelection(candidate.eventId);
     const at = timestamp(candidate.at);
     if (at !== undefined) seek(at);
-  }, [events, evidenceIncomplete, isVerifiedRun, seek, setSelection]);
+  }, [events, evidenceIncomplete, isReplayReady, seek, setSelection]);
 
   const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
-    if (!isVerifiedRun()) return;
+    if (!isReplayReady()) return;
     if (patch.visibilityMode === "oracle" && !oracleAvailableRef.current) return;
     const current = filtersRef.current;
     const next = normalizeFilters({ ...current, ...patch });
@@ -552,9 +560,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     }
     filtersRef.current = next;
     setFilters(next);
-  }, [cancelPendingSave, events, evidenceIncomplete, invalidateEvidence, isVerifiedRun, setSelection]);
+  }, [cancelPendingSave, events, evidenceIncomplete, invalidateEvidence, isReplayReady, setSelection]);
   const setWindowSpan = useCallback((nextSpan: number) => {
-    if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isVerifiedRun()) return;
+    if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isReplayReady()) return;
     invalidateEvidence(); densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
     if (evidenceIncomplete) {
       setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
@@ -564,7 +572,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       setEvidenceIncomplete(false); setWindowNotice(undefined);
     }
     setWindowSpanMs(nextSpan); requestWindow(true);
-  }, [evidenceIncomplete, invalidateEvidence, isVerifiedRun, requestWindow, setSelection]);
+  }, [evidenceIncomplete, invalidateEvidence, isReplayReady, requestWindow, setSelection]);
 
   const visibleStatus = verifiedForCurrentRun
     ? status
