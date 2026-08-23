@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import shutil
 import zipfile
 from datetime import UTC, datetime, timedelta
@@ -190,6 +191,44 @@ def test_replay_frame_is_random_seek_stable_and_oracle_is_opt_in(
     assert all(item.oracle_cause is None for item in first.sensor_states)
     oracle = replay.frame(run_id, at=target, include_oracle=True)
     assert any(item.oracle_cause is not None for item in oracle.sensor_states)
+
+
+def test_indexed_frame_reconstruction_matches_the_trace_fold_for_random_seeks(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    """The temporal index is an acceleration structure, never another simulation model."""
+    from smart_home_sim.application import replay as replay_module
+
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    instants = [index.trace_start, index.trace_end]
+    rng = random.Random("replay-index-equivalence-v1")
+    instants.extend(
+        index.event_times[rng.randrange(len(index.event_times))] for _ in range(48)
+    )
+    rng.shuffle(instants)
+
+    for instant in instants:
+        expected_residents, expected_ids = replay_module._resident_frames(
+            index.trace, index.bundle, instant
+        )
+        expected_world = replay_module._world_state_at(index.trace, index.bundle, instant)
+        expected_resources = replay_module._resource_state_at(index.trace, index.bundle, instant)
+        actual_residents, actual_ids = replay_module._resident_frames(
+            index.trace, index.bundle, instant, index.frame_sources
+        )
+        actual_world = replay_module._world_state_at(
+            index.trace, index.bundle, instant, index.frame_sources
+        )
+        actual_resources = replay_module._resource_state_at(
+            index.trace, index.bundle, instant, index.frame_sources
+        )
+
+        assert actual_residents == expected_residents
+        assert actual_ids == expected_ids
+        assert actual_world == expected_world
+        assert actual_resources == expected_resources
 
 
 def test_replay_interpolation_uses_the_midpoint_between_two_waypoints() -> None:

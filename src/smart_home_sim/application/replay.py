@@ -97,6 +97,18 @@ class _FrameSources:
     transition_times: tuple[datetime, ...]
     resource_events: tuple[Any, ...]
     resource_times: tuple[datetime, ...]
+    transition_timelines: tuple[
+        tuple[tuple[str, str, str], tuple[datetime, ...], tuple[StateTransition, ...]], ...
+    ]
+    completed_movement_timelines: tuple[
+        tuple[str, tuple[datetime, ...], tuple[MovementExecution, ...]], ...
+    ]
+    active_movement_times: tuple[datetime, ...]
+    active_movement_snapshots: tuple[tuple[MovementExecution, ...], ...]
+    resource_timelines: tuple[tuple[tuple[str, str], tuple[datetime, ...], tuple[Any, ...]], ...]
+    resource_availability_timelines: tuple[
+        tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...
+    ]
 
 
 @dataclass(frozen=True)
@@ -198,6 +210,13 @@ def _active_items_at(
 ) -> tuple[Any, ...]:
     position = bisect_right(times, at)
     return snapshots[position - 1] if position else ()
+
+
+def _last_timeline_item(
+    times: tuple[datetime, ...], items: tuple[Any, ...], at: datetime
+) -> Any | None:
+    position = bisect_right(times, at)
+    return items[position - 1] if position else None
 
 
 def _events(
@@ -461,6 +480,8 @@ def _resident_frames(
     at: datetime,
     sources: _FrameSources | None = None,
 ) -> tuple[list[ReplayResidentFrame], list[str]]:
+    if sources is not None:
+        return _indexed_resident_frames(at, sources)
     residents = deepcopy(sources.residents) if sources else _initial_residents(trace, bundle)
     resident_ids = (
         set(sources.resident_ids)
@@ -610,12 +631,184 @@ def _resident_frames(
     return frames, sorted(active_ids)
 
 
+def _indexed_resident_frames(
+    at: datetime, sources: _FrameSources
+) -> tuple[list[ReplayResidentFrame], list[str]]:
+    """Reconstruct residents from their latest field deltas instead of a trace-prefix fold."""
+    residents = deepcopy(sources.residents)
+    for resident_id in sources.resident_ids:
+        residents.setdefault(
+            resident_id,
+            {
+                "region_id": None,
+                "position": None,
+                "posture": None,
+                "execution_state": "idle",
+                "facts": {},
+            },
+        )
+
+    latest_transitions: dict[tuple[str, str, str], StateTransition] = {}
+    for key, times, transitions in sources.transition_timelines:
+        transition = _last_timeline_item(times, transitions, at)
+        if transition is not None:
+            latest_transitions[key] = transition
+
+    active_activities = _active_items_at(
+        sources.active_activity_times, sources.active_activity_snapshots, at
+    )
+    active_actions = _active_items_at(
+        sources.active_action_times, sources.active_action_snapshots, at
+    )
+    active_ids = {item.activity_execution_id for item in active_activities} | {
+        item.action_execution_id for item in active_actions
+    }
+
+    completed_movements = {
+        resident_id: _last_timeline_item(times, movements, at)
+        for resident_id, times, movements in sources.completed_movement_timelines
+    }
+    active_movements: dict[str, MovementExecution] = {}
+    for movement in _active_items_at(
+        sources.active_movement_times, sources.active_movement_snapshots, at
+    ):
+        current = active_movements.get(movement.actor_id)
+        if current is None or movement.movement_id > current.movement_id:
+            active_movements[movement.actor_id] = movement
+    for movement in active_movements.values():
+        active_ids.add(movement.movement_id)
+
+    held: dict[str, set[str]] = {resident_id: set() for resident_id in residents}
+    for (actor_id, resource_id), times, events in sources.resource_timelines:
+        event = _last_timeline_item(times, events, at)
+        if event is None:
+            continue
+        held.setdefault(actor_id, set())
+        if event.operation == "acquired":
+            held[actor_id].add(resource_id)
+
+    activity_by_actor = {item.actor_id: item.activity_execution_id for item in active_activities}
+    activity_label_by_actor = {item.actor_id: item.intent for item in active_activities}
+    action_by_actor = {item.actor_id: item.action_execution_id for item in active_actions}
+    active_actors = set(activity_by_actor) | set(action_by_actor)
+
+    for resident_id, state in residents.items():
+        for fact in ("posture", "execution_state"):
+            transition = latest_transitions.get(("resident", resident_id, fact))
+            if transition is not None:
+                value = _fold_transition_value(state[fact], transition)
+                state[fact] = value if isinstance(value, str) and value else (
+                    "unknown" if fact == "execution_state" else None
+                )
+        for key, transition in latest_transitions.items():
+            if key[:2] != ("resident", resident_id) or key[2] == "execution_state":
+                continue
+            _apply_transition(state["facts"], transition)
+
+        movement = active_movements.get(resident_id)
+        transition_region = latest_transitions.get(("resident", resident_id, "location"))
+        transition_position = latest_transitions.get(("resident", resident_id, "position"))
+        completed = completed_movements.get(resident_id)
+        for field, transition in (
+            ("region_id", transition_region),
+            ("position", transition_position),
+        ):
+            if movement is not None:
+                # A transition at this exact instant follows the synthetic active-movement update.
+                if transition is not None and transition.at == at:
+                    candidate = _fold_transition_value(
+                        state[field].model_dump(mode="python")
+                        if field == "position" and state[field] is not None
+                        else state[field],
+                        transition,
+                    )
+                    state[field] = (
+                        Point2D.model_validate(candidate)
+                        if field == "position" and isinstance(candidate, dict)
+                        else (
+                            candidate
+                            if field == "region_id" and isinstance(candidate, str)
+                            else None
+                        )
+                    )
+                else:
+                    state[field] = (
+                        _point_at(movement, at)
+                        if field == "position"
+                        else _waypoint_at(movement, at).region_id
+                    )
+                continue
+            latest_key = (
+                (completed.ended_at, 0, completed.movement_id) if completed is not None else None
+            )
+            transition_key = (
+                (transition.at, 1, transition.transition_id) if transition is not None else None
+            )
+            if latest_key is not None and (transition_key is None or latest_key > transition_key):
+                state[field] = (
+                    _point_at(completed, completed.ended_at)
+                    if field == "position"
+                    else _waypoint_at(completed, completed.ended_at).region_id
+                )
+            elif transition is not None:
+                candidate = _fold_transition_value(
+                    state[field].model_dump(mode="python")
+                    if field == "position" and state[field] is not None
+                    else state[field],
+                    transition,
+                )
+                state[field] = (
+                    Point2D.model_validate(candidate)
+                    if field == "position" and isinstance(candidate, dict)
+                    else candidate if field == "region_id" and isinstance(candidate, str) else None
+                )
+        if movement is not None:
+            state["execution_state"] = "moving"
+        elif resident_id not in active_actors and state["execution_state"] in {
+            "moving",
+            "performing_activity",
+        }:
+            state["execution_state"] = "idle"
+
+    frames = [
+        ReplayResidentFrame(
+            resident_id=resident_id,
+            region_id=state["region_id"],
+            position=state["position"],
+            posture=state["posture"],
+            execution_state=state["execution_state"],
+            activity_active=resident_id in activity_by_actor,
+            activity_label=activity_label_by_actor.get(resident_id),
+            activity_execution_id=activity_by_actor.get(resident_id),
+            action_execution_id=action_by_actor.get(resident_id),
+            held_resource_ids=sorted(held.get(resident_id, set())),
+            facts=deepcopy(state["facts"]),
+        )
+        for resident_id, state in sorted(residents.items())
+    ]
+    return frames, sorted(active_ids)
+
+
 def _world_state_at(
     trace: ExecutionTrace,
     bundle: SimulationBundle | None,
     at: datetime,
     sources: _FrameSources | None = None,
 ) -> tuple[dict[str, dict[str, JsonValue]], dict[str, JsonValue]]:
+    if sources is not None:
+        entity_states = deepcopy(sources.entity_states)
+        environment_facts = deepcopy(sources.environment_facts)
+        for (subject_type, subject_id, fact), times, transitions in sources.transition_timelines:
+            transition = _last_timeline_item(times, transitions, at)
+            if transition is None:
+                continue
+            if subject_type == "entity":
+                if fact.startswith(f"{subject_id}."):
+                    continue
+                _apply_transition(entity_states.setdefault(subject_id, {}), transition)
+            elif subject_type == "environment":
+                _apply_transition(environment_facts, transition)
+        return entity_states, environment_facts
     entity_states = (
         deepcopy(sources.entity_states)
         if sources
@@ -666,6 +859,13 @@ def _resource_state_at(
     at: datetime,
     sources: _FrameSources | None = None,
 ) -> dict[str, int]:
+    if sources is not None:
+        resources = deepcopy(sources.resources)
+        for resource_id, times, events in sources.resource_availability_timelines:
+            event = _last_timeline_item(times, events, at)
+            if event is not None:
+                resources[resource_id] = event.available_units_after
+        return resources
     resources = (
         deepcopy(sources.resources)
         if sources
@@ -802,6 +1002,46 @@ def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _F
         }
         environment_facts = dict(bundle.scenario.initial_state.environment_facts)
         capacities = {item.resource_id: item.capacity for item in bundle.scenario.resources}
+    transition_groups: dict[tuple[str, str, str], list[StateTransition]] = {}
+    for transition in transitions:
+        transition_groups.setdefault(
+            (transition.subject_type, transition.subject_id, transition.fact), []
+        ).append(transition)
+    transition_timelines = tuple(
+        (
+            key,
+            tuple(item.at for item in items),
+            tuple(items),
+        )
+        for key, items in sorted(transition_groups.items())
+    )
+    completed_movement_groups: dict[str, list[MovementExecution]] = {}
+    for movement in sorted(trace.movements, key=lambda item: (item.ended_at, item.movement_id)):
+        completed_movement_groups.setdefault(movement.actor_id, []).append(movement)
+    completed_movement_timelines = tuple(
+        (resident_id, tuple(item.ended_at for item in items), tuple(items))
+        for resident_id, items in sorted(completed_movement_groups.items())
+    )
+    active_movement_times, active_movement_snapshots = _active_interval_snapshots(
+        movements,
+        start="started_at",
+        end="ended_at",
+        identifier="movement_id",
+    )
+    resource_groups: dict[tuple[str, str], list[Any]] = {}
+    resource_availability_groups: dict[str, list[Any]] = {}
+    for event in resources:
+        if event.operation in {"acquired", "released", "preempted"}:
+            resource_groups.setdefault((event.actor_id, event.resource_id), []).append(event)
+        resource_availability_groups.setdefault(event.resource_id, []).append(event)
+    resource_timelines = tuple(
+        (key, tuple(item.at for item in items), tuple(items))
+        for key, items in sorted(resource_groups.items())
+    )
+    resource_availability_timelines = tuple(
+        (resource_id, tuple(item.at for item in items), tuple(items))
+        for resource_id, items in sorted(resource_availability_groups.items())
+    )
     return _FrameSources(
         residents=residents,
         resident_ids=tuple(sorted(resident_ids)),
@@ -822,6 +1062,12 @@ def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _F
         transition_times=tuple(item.at for item in transitions),
         resource_events=resources,
         resource_times=tuple(item.at for item in resources),
+        transition_timelines=transition_timelines,
+        completed_movement_timelines=completed_movement_timelines,
+        active_movement_times=active_movement_times,
+        active_movement_snapshots=active_movement_snapshots,
+        resource_timelines=resource_timelines,
+        resource_availability_timelines=resource_availability_timelines,
     )
 
 

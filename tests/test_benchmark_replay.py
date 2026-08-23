@@ -6,10 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from smart_home_sim.application.replay import _sensor_state_at
+from smart_home_sim.application import replay as replay_module
+from smart_home_sim.application.replay import ReplayService, _sensor_state_at
 from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.sensors import ObservableSensorLog, OracleMapping
-from tools.benchmark_replay import WEEKLY_SOURCE, _benchmark_fixture
+from tools.benchmark_replay import WEEKLY_SOURCE, _benchmark_fixture, _completed_workspace
 
 
 @pytest.mark.parametrize(
@@ -77,6 +78,30 @@ def test_benchmark_fixture_has_coherent_duration_runtime_coverage_and_causality(
     assert _sensor_state_at(observations, oracle, instant, True) == _sensor_state_at(
         observations, oracle, instant, True, timelines
     )
+
+
+def test_replay_frame_seek_applies_a_bounded_number_of_prior_deltas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A late seek must use the index, never replay every earlier state transition."""
+    workspace, run_id = _completed_workspace(
+        tmp_path / "workspace", periods=8, duration_days=28, observable_only=True
+    )
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    calls = 0
+    original = replay_module._apply_transition
+
+    def counted(target: dict[str, object], transition: object) -> None:
+        nonlocal calls
+        calls += 1
+        original(target, transition)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(replay_module, "_apply_transition", counted)
+
+    replay.frame(run_id, at=index.trace_end - timedelta(microseconds=1))
+
+    assert calls < 100
 
 
 def _camel(field: str) -> str:
