@@ -39,6 +39,28 @@ describe("resource and persistent-state hooks", () => {
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   });
 
+  it("aborts and hides an obsolete URL response while the newer resource wins", async () => {
+    const pending: Array<{ signal: AbortSignal; resolve: (response: Response) => void }> = [];
+    vi.stubGlobal("fetch", vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((resolve) => {
+      pending.push({ signal: init?.signal as AbortSignal, resolve });
+    })));
+    const { result, rerender, unmount } = renderHook(
+      ({ path }: { path: string }) => useResource<{ value: string }>(path),
+      { initialProps: { path: "/oracle" } },
+    );
+    await waitFor(() => expect(pending).toHaveLength(1));
+    rerender({ path: "/observable" });
+    await waitFor(() => expect(pending).toHaveLength(2));
+    expect(pending[0]?.signal.aborted).toBe(true);
+    expect(result.current.data).toBeUndefined();
+    await act(async () => { pending[0]?.resolve(new Response(JSON.stringify({ value: "oracle" }))); });
+    expect(result.current.data).toBeUndefined();
+    await act(async () => { pending[1]?.resolve(new Response(JSON.stringify({ value: "observable" }))); });
+    await waitFor(() => expect(result.current.data?.value).toBe("observable"));
+    unmount();
+    expect(pending[1]?.signal.aborted).toBe(true);
+  });
+
   it("reads and writes stored values", () => {
     localStorage.setItem("setting", JSON.stringify("dark"));
     const { result } = renderHook(() => useStoredState("setting", "light"));

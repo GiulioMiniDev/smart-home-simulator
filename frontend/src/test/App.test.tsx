@@ -382,6 +382,39 @@ describe("complete application routes", () => {
     await waitFor(() => expect(screen.getByText(/Replay verified/)).toBeInTheDocument());
   });
 
+  it("revokes legacy Oracle evidence while an Observable reload supersedes it", async () => {
+    let resolveOracleObservation: ((response: Response) => void) | undefined;
+    let oracleStarted = false;
+    let oracleSignal: AbortSignal | undefined;
+    overrides["/runs/run_1/observations?limit=500&include_oracle=false"] = {
+      total: 1, mode: "observable", items: [{ observationId: "observable", sensorId: "pir", sensorType: "pir", observedAt: now, measurement: "motion", value: "observable wins", quality: "nominal" }],
+    };
+    overrides["/runs/run_1/observations?limit=500&include_oracle=true"] = (options?: RequestInit) => {
+      oracleStarted = true;
+      oracleSignal = options?.signal as AbortSignal | undefined;
+      return new Promise<Response>((resolve) => { resolveOracleObservation = resolve; });
+    };
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    fireEvent.click(screen.getByRole("tab", { name: "observations" }));
+    expect(await screen.findByText("observable wins")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Oracle links" }));
+    await waitFor(() => expect(oracleStarted).toBe(true));
+    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
+    fireEvent.click(await screen.findByRole("button", { name: /walk/ }));
+    expect(screen.queryByText("Select an event on the timeline")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "observations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Observable" }));
+    expect(oracleSignal?.aborted).toBe(true);
+    expect(screen.queryByText("simulated cause")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
+    expect(screen.getByText("Select an event on the timeline")).toBeInTheDocument();
+    resolveOracleObservation?.(await response({ total: 1, mode: "oracle", items: [{ observationId: "oracle", sensorId: "pir", sensorType: "pir", observedAt: now, measurement: "motion", value: "oracle", quality: "nominal", oracleCause: { origin: "simulated_cause", causeType: "movement", causeIds: ["move"], residentIds: ["mario"], activityExecutionIds: [], actionExecutionIds: [] } }] }));
+    await screen.findByText("movement · identity unavailable");
+    expect(screen.queryByText("simulated cause")).not.toBeInTheDocument();
+    expect(screen.queryByText("movement · mario")).not.toBeInTheDocument();
+  });
+
   it("profiles the resident, switches class of day and person, and downloads the page", async () => {
     mount("/simulations/run_1");
     await screen.findByText("Persistent state");

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "./api";
 
 export interface ResourceState<T> {
@@ -9,31 +9,48 @@ export interface ResourceState<T> {
 }
 
 export function useResource<T>(path?: string): ResourceState<T> {
-  const [data, setData] = useState<T>();
-  const [error, setError] = useState<ApiError>();
-  const [loading, setLoading] = useState(Boolean(path));
+  const [state, setState] = useState<{ path?: string; data?: T; error?: ApiError; loading: boolean }>({
+    path,
+    loading: Boolean(path),
+  });
+  const generation = useRef(0);
+  const request = useRef<AbortController | undefined>(undefined);
   const reload = useCallback(async () => {
+    const currentGeneration = ++generation.current;
+    request.current?.abort();
     if (!path) {
-      setData(undefined);
-      setError(undefined);
-      setLoading(false);
+      request.current = undefined;
+      setState({ path: undefined, loading: false });
       return;
     }
-    setLoading(true);
-    setError(undefined);
+    const controller = new AbortController();
+    request.current = controller;
+    setState({ path, loading: true });
     try {
-      setData(await api<T>(path));
+      const data = await api<T>(path, { signal: controller.signal });
+      if (!controller.signal.aborted && currentGeneration === generation.current) {
+        setState({ path, data, loading: false });
+      }
     } catch (reason) {
-      setError(reason instanceof ApiError ? reason : new ApiError(String(reason), 0));
-    } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && currentGeneration === generation.current) {
+        setState({ path, error: reason instanceof ApiError ? reason : new ApiError(String(reason), 0), loading: false });
+      }
     }
   }, [path]);
   useEffect(() => {
-    setData(undefined);
     void reload();
+    return () => {
+      generation.current += 1;
+      request.current?.abort();
+    };
   }, [reload]);
-  return { data, error, loading, reload };
+  const current = state.path === path;
+  return {
+    data: current ? state.data : undefined,
+    error: current ? state.error : undefined,
+    loading: Boolean(path) && (!current || state.loading),
+    reload,
+  };
 }
 
 export function useStoredState<T>(key: string, initial: T): [T, (value: T) => void] {
