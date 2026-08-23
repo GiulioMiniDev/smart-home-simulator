@@ -139,6 +139,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const windowVersion = useRef(0);
   const frameVersion = useRef(0);
   const verificationAbort = useRef<AbortController | undefined>(undefined);
+  const oracleSessionAbort = useRef<AbortController | undefined>(undefined);
   const windowAbort = useRef<AbortController | undefined>(undefined);
   const catalogAbort = useRef<AbortController | undefined>(undefined);
   const frameAbort = useRef<AbortController | undefined>(undefined);
@@ -146,6 +147,10 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const saveTimer = useRef<number | undefined>(undefined);
   const saveRequest = useRef<AbortController | undefined>(undefined);
   const saveVersion = useRef(0);
+  const persistenceEnabledRef = useRef(false);
+  const oracleSessionAttemptedRef = useRef(false);
+  const oracleSessionPendingRef = useRef(false);
+  const verifiedDigestRef = useRef<string | undefined>(undefined);
   const statusRef = useRef<ReplayStatus>(status);
   const activeRunId = useRef(runId);
   const runGeneration = useRef(0);
@@ -237,6 +242,9 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   useEffect(() => {
     const controller = new AbortController();
     verificationAbort.current?.abort(); verificationAbort.current = controller;
+    oracleSessionAbort.current?.abort(); oracleSessionAbort.current = undefined;
+    oracleSessionAttemptedRef.current = false; oracleSessionPendingRef.current = false;
+    persistenceEnabledRef.current = false; verifiedDigestRef.current = undefined;
     const generation = runGeneration.current;
     let current = true;
     cancelPendingSave();
@@ -257,6 +265,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         setVerification(checked);
         if (!checked.matches) { cancelPendingSave(); setReplayStatus("blocked"); return; }
         verifiedRun.current = { runId, generation };
+        verifiedDigestRef.current = checked.actualSemanticDigest ?? checked.expectedSemanticDigest;
         // Bootstrap from the privacy-safe projection. Oracle session data is requested only
         // after the user deliberately opts into Oracle mode for this controller instance.
         const rawSession = await api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session`, { signal: controller.signal });
@@ -278,7 +287,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
         blockReplay(reason);
       }
     })();
-    return () => { current = false; controller.abort(); };
+    return () => { current = false; controller.abort(); oracleSessionAbort.current?.abort(); };
   }, [blockReplay, cancelPendingSave, isVerifiedRun, runId, setClockPosition, setReplayStatus, setRunError, setSelection]);
 
   // No saved instant is trusted before the range is known: clamp it after obtaining the trace.
@@ -450,7 +459,8 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   }, [playing, positionInitialized, requestFrame, status, verifiedForCurrentRun]);
 
   useEffect(() => {
-    if (!verifiedForCurrentRun || statusRef.current !== "ready" || !positionInitialized || positionMs === undefined) return;
+    if (!verifiedForCurrentRun || statusRef.current !== "ready" || !positionInitialized || positionMs === undefined
+      || !persistenceEnabledRef.current || oracleSessionPendingRef.current) return;
     if (saveTimer.current !== undefined) window.clearTimeout(saveTimer.current);
     saveRequest.current?.abort();
     const version = ++saveVersion.current;
@@ -485,6 +495,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
 
   const seek = useCallback((nextPosition: number) => {
     if (!isReplayReady() || evidenceIncomplete) return;
+    persistenceEnabledRef.current = true;
     const range = rangeRef.current;
     const clamped = range ? Math.min(range.end, Math.max(range.start, nextPosition)) : nextPosition;
     densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined); setWindowNotice(undefined);
@@ -496,6 +507,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
   const play = useCallback(() => {
     const range = rangeRef.current;
     if (!isReplayReady() || evidenceIncomplete || !positionInitialized || positionRef.current === undefined || (range && positionRef.current >= range.end)) return;
+    persistenceEnabledRef.current = true;
     setPlaying(true);
   }, [evidenceIncomplete, isReplayReady, positionInitialized]);
 
@@ -524,12 +536,12 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     if (at !== undefined) seek(at);
   }, [events, evidenceIncomplete, isReplayReady, seek, setSelection]);
 
-  const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
+  const applyFilters = useCallback((requested: ReplayFilters) => {
     if (!isReplayReady()) return;
-    if (patch.visibilityMode === "oracle" && !oracleAvailableRef.current) return;
     const current = filtersRef.current;
-    const next = normalizeFilters({ ...current, ...patch });
+    const next = normalizeFilters(requested);
     if (sameFilters(current, next)) return;
+    persistenceEnabledRef.current = true;
     // An already-due timer can run before React commits this state change, so fence it here.
     cancelPendingSave();
     const visibilityWillChange = current.visibilityMode !== next.visibilityMode;
@@ -537,14 +549,17 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       const selected = events?.items.find((event) => event.eventId === selectedEventIdRef.current);
       selectionAnchorRef.current = selected ? anchorFor(selected, events?.items ?? []) : undefined;
     }
-    const replacesEvidence = patch.eventKinds !== undefined || patch.actorIds !== undefined || patch.sensorIds !== undefined || patch.statuses !== undefined;
+    const evidenceFiltersChanged = current.eventKinds.join("\0") !== next.eventKinds.join("\0")
+      || current.actorIds.join("\0") !== next.actorIds.join("\0")
+      || current.sensorIds.join("\0") !== next.sensorIds.join("\0")
+      || current.statuses.join("\0") !== next.statuses.join("\0");
     // Cancel obsolete evidence before React can commit a projection at another privacy level.
-    if (replacesEvidence || visibilityWillChange) invalidateEvidence();
+    if (evidenceFiltersChanged || visibilityWillChange) invalidateEvidence();
     densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
     if (evidenceIncomplete) {
       setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined);
       setWindowNotice("Narrowing dense evidence to retrieve a complete window.");
-    } else if (replacesEvidence) {
+    } else if (evidenceFiltersChanged) {
       setPlaying(false); setEvents(undefined); setFrame(undefined); setSelection(undefined); setEvidenceLoading(true); setWindowNotice(undefined);
     } else {
       setEvidenceIncomplete(false); setWindowNotice(undefined);
@@ -564,6 +579,70 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
     filtersRef.current = next;
     setFilters(next);
   }, [cancelPendingSave, events, evidenceIncomplete, invalidateEvidence, isReplayReady, setSelection]);
+  const updateFilters = useCallback((patch: Partial<ReplayFilters>) => {
+    if (!isReplayReady()) return;
+    if (patch.visibilityMode === "oracle" && !oracleAvailableRef.current) return;
+    const current = filtersRef.current;
+    const next = normalizeFilters({ ...current, ...patch });
+
+    if (oracleSessionPendingRef.current && patch.visibilityMode === "observable") {
+      oracleSessionAbort.current?.abort(); oracleSessionAbort.current = undefined;
+      oracleSessionPendingRef.current = false; oracleSessionAttemptedRef.current = false;
+    }
+    if (sameFilters(current, next)) return;
+    const firstOracleOptIn = current.visibilityMode === "observable"
+      && next.visibilityMode === "oracle"
+      && !oracleSessionAttemptedRef.current;
+    if (!firstOracleOptIn) {
+      if (oracleSessionPendingRef.current && next.visibilityMode === "oracle") return;
+      applyFilters(next);
+      return;
+    }
+
+    // The first Oracle transition is two-phase: keep Observable evidence mounted while the
+    // durable Oracle projection is fetched, then commit exactly one privacy-level change.
+    oracleSessionAttemptedRef.current = true;
+    oracleSessionPendingRef.current = true;
+    cancelPendingSave();
+    const controller = new AbortController();
+    oracleSessionAbort.current?.abort(); oracleSessionAbort.current = controller;
+    const requestRunId = runId;
+    const requestGeneration = runGeneration.current;
+    const expectedDigest = verifiedDigestRef.current;
+    const isCurrentRequest = () => !controller.signal.aborted
+      && activeRunId.current === requestRunId
+      && runGeneration.current === requestGeneration
+      && isVerifiedRun();
+    const explicitOracle = () => normalizeFilters({ ...filtersRef.current, ...patch, visibilityMode: "oracle" });
+    void api<ReplaySessionState>(`/runs/${encodeURIComponent(runId)}/replay/session?include_oracle=true`, { signal: controller.signal })
+      .then((rawSession) => {
+        if (!isCurrentRequest()) return;
+        oracleSessionAbort.current = undefined; oracleSessionPendingRef.current = false;
+        const restored = normalizeSession(rawSession);
+        const trusted = Boolean(expectedDigest)
+          && restored.runId === requestRunId
+          && restored.playable
+          && restored.verifiedDigest === expectedDigest
+          && restored.filters.visibilityMode === "oracle";
+        const restoredFilters = trusted ? restored.filters : explicitOracle();
+        if (trusted) {
+          const currentPosition = positionRef.current;
+          setSession({
+            ...restored,
+            positionAt: currentPosition === undefined ? restored.positionAt : new Date(currentPosition).toISOString(),
+            filters: restoredFilters,
+          });
+        }
+        applyFilters(restoredFilters);
+      })
+      .catch((reason: unknown) => {
+        if (isAbort(reason) || !isCurrentRequest()) return;
+        oracleSessionAbort.current = undefined; oracleSessionPendingRef.current = false;
+        // Oracle evidence itself remains usable when only session restoration is unavailable.
+        // Continue with the user's explicit patch and never borrow identities from the failure.
+        applyFilters(explicitOracle());
+      });
+  }, [applyFilters, cancelPendingSave, isReplayReady, isVerifiedRun, runId]);
   const setWindowSpan = useCallback((nextSpan: number) => {
     if (!Number.isFinite(nextSpan) || nextSpan < MIN_WINDOW_SPAN_MS || !isReplayReady()) return;
     invalidateEvidence(); densityAttemptsRef.current = 0; setNarrowedSpanMs(undefined);
