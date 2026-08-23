@@ -154,6 +154,21 @@ def test_replay_actor_filter_requires_oracle_opt_in(
     assert all(item.actor_id == actor_id for item in oracle.items)
 
 
+def test_replay_status_filter_counts_before_bounding(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    all_events = replay.events(run_id, limit=5000)
+    status = next(item.status for item in all_events.items if item.status is not None)
+
+    filtered = replay.events(run_id, statuses={status}, limit=5000)
+    assert filtered.total == len(filtered.items)
+    assert filtered.items
+    assert all(item.status == status for item in filtered.items)
+    assert replay.events(run_id, statuses={"not-a-status"}, limit=5000).total == 0
+
+
 def test_replay_frame_is_random_seek_stable_and_oracle_is_opt_in(
     completed_workspace: tuple[WorkspaceService, str],
 ) -> None:

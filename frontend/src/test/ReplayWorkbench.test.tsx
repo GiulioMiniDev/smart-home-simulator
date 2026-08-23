@@ -158,7 +158,7 @@ describe("ReplayWorkbench", () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
     fireEvent.click(screen.getByRole("button", { name: "Next event" }));
-    const cluster = screen.getByRole("button", { name: "2 simultaneous events" });
+    const cluster = screen.getByRole("button", { name: "2 clustered events" });
     expect(cluster).toHaveAttribute("aria-expanded", "false");
     fireEvent.keyDown(cluster, { key: "Enter" });
     expect(cluster).toHaveAttribute("aria-expanded", "true");
@@ -265,7 +265,7 @@ describe("ReplayWorkbench", () => {
   it("keeps the selected semantic event across projections without painting Oracle evidence on downgrade", async () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
-    const cluster = screen.getByRole("button", { name: "2 simultaneous events" });
+    const cluster = screen.getByRole("button", { name: "2 clustered events" });
     fireEvent.click(cluster);
     fireEvent.click(screen.getByRole("button", { name: "08:15 motion detected" }));
     expect(screen.getByText("sensor-1")).toBeInTheDocument();
@@ -293,7 +293,7 @@ describe("ReplayWorkbench", () => {
     };
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
-    fireEvent.click(screen.getByRole("button", { name: "2 simultaneous events" }));
+    fireEvent.click(screen.getByRole("button", { name: "2 clustered events" }));
     fireEvent.click(screen.getAllByRole("button", { name: "08:15 Observation event" })[1]!);
     fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
     expect(await screen.findByText("oracle-second")).toBeInTheDocument();
@@ -305,7 +305,7 @@ describe("ReplayWorkbench", () => {
   it("clears an inspector selection as soon as its track filter hides it", async () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
     fireEvent.click(await screen.findByRole("button", { name: "Analysis" }));
-    fireEvent.click(screen.getByRole("button", { name: "2 simultaneous events" }));
+    fireEvent.click(screen.getByRole("button", { name: "2 clustered events" }));
     fireEvent.click(screen.getByRole("button", { name: "08:15 motion detected" }));
     expect(screen.getAllByText("motion detected")).not.toHaveLength(0);
     fireEvent.click(screen.getByRole("checkbox", { name: "Sensors" }));

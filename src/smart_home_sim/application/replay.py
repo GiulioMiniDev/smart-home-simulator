@@ -663,6 +663,7 @@ class ReplayService:
         start: datetime | None = None,
         end: datetime | None = None,
         kinds: set[ReplayEventKind] | None = None,
+        statuses: set[str] | None = None,
         actor_id: str | None = None,
         sensor_id: str | None = None,
         include_oracle: bool = False,
@@ -679,6 +680,7 @@ class ReplayService:
             item
             for item in index.events[left:right]
             if (kinds is None or item.kind in kinds)
+            and (statuses is None or item.status in statuses)
             and (actor_id is None or item.actor_id == actor_id)
             and (sensor_id is None or item.sensor_id == sensor_id)
         ]

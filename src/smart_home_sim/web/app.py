@@ -855,6 +855,7 @@ def create_app(
         start: Annotated[AwareDatetime | None, Query(strict=False)] = None,
         end: Annotated[AwareDatetime | None, Query(strict=False)] = None,
         kinds: str = "",
+        statuses: str = "",
         actor_id: str | None = None,
         sensor_id: str | None = None,
         include_oracle: bool = False,
@@ -869,6 +870,7 @@ def create_app(
                 },
             )
         selected = {item for item in kinds.split(",") if item}
+        selected_statuses = {item.strip() for item in statuses.split(",") if item.strip()}
         unknown = selected - set(get_args(ReplayEventKind))
         if unknown:
             raise HTTPException(
@@ -891,6 +893,7 @@ def create_app(
             start=start,
             end=end,
             kinds=cast(set[ReplayEventKind], selected) or None,
+            statuses=selected_statuses or None,
             actor_id=actor_id,
             sensor_id=sensor_id,
             include_oracle=include_oracle,

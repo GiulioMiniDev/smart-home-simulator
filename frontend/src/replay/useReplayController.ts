@@ -268,6 +268,7 @@ export function useReplayController(runId: string, { oracleAvailable = false }: 
       start: new Date(center - effectiveSpanMs / 2).toISOString(), end: new Date(center + effectiveSpanMs / 2).toISOString(), limit: String(WINDOW_LIMIT),
     });
     if (filters.eventKinds.length) query.set("kinds", filters.eventKinds.join(","));
+    if (filters.statuses.length) query.set("statuses", filters.statuses.join(","));
     if (filters.sensorIds.length) query.set("sensor_id", filters.sensorIds[0] ?? "");
     if (filters.visibilityMode === "oracle") {
       query.set("include_oracle", "true");
