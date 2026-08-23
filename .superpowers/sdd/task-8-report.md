@@ -18,6 +18,9 @@ night, drives, or expander implementation/tests.
   events in both directions. The reload E2E begins at a known dense fixture instant and requires one
   keyboard step to change both the slider time and selected semantic event before proving exact
   session restoration.
+- `keeps replay accessible and within the viewport in dark theme` explicitly reaches dark mode with
+  the accessible theme control, verifies the dark app shell and both replay surfaces, runs typed axe,
+  and asserts `documentElement` and `body` cannot overflow the page at desktop and Pixel 5 widths.
 
 ## Acceptance evidence
 
@@ -49,8 +52,10 @@ night, drives, or expander implementation/tests.
   plus the new benchmark's 100 repeated frame and window assertions.
 - Observable/Oracle separation, mismatch blocking, and digest-invalidated sessions:
   existing replay backend/controller suites, exercised again by `npm test`.
-- Keyboard/reduced-motion/dark/narrow behavior: ReplayWorkbench/controller/component suites and the
-  mobile Playwright project. Monthly/yearly coverage comes from `benchmark-replay`.
+- Keyboard/reduced-motion behavior: ReplayWorkbench/controller/component suites and the mobile
+  Playwright project. Dark and narrow behavior is covered by the real `keeps replay accessible and
+  within the viewport in dark theme` test on desktop and Pixel 5, including zero axe violations and
+  page-level horizontal-overflow assertions. Monthly/yearly coverage comes from `benchmark-replay`.
 
 ## Benchmark
 
@@ -84,7 +89,7 @@ synthetic replay-load evidence, not a production year-long simulation claim.
 - `npm test` — passed: 8 files, 220 tests; jsdom emits its pre-existing non-fatal navigation notice.
 - `npm run lint`, `npm run typecheck`, `npm run build` — passed (Vite reports the existing >500 kB
   chunk advisory only).
-- `npx playwright test e2e/replay.spec.ts` — passed: 4 tests across desktop and mobile Chromium.
+- `npx playwright test e2e/replay.spec.ts` — passed: 6 tests across desktop and mobile Chromium.
 - `make benchmark-replay` — passed with the results above.
 - `git diff --check` — passed.
 - `uv run pytest -q` — completed at 95.41% coverage with exactly two accepted baseline failures:

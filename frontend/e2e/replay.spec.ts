@@ -21,6 +21,28 @@ async function selectEvent(page: import("@playwright/test").Page): Promise<void>
   }
 }
 
+async function expectNoAxeViolations(page: import("@playwright/test").Page): Promise<void> {
+  await page.addScriptTag({ content: axe.source });
+  const violations = await page.evaluate(async () => {
+    const result = await (
+      window as typeof window & {
+        axe: { run: (root: Document) => Promise<{ violations: unknown[] }> };
+      }
+    ).axe.run(document);
+    return result.violations;
+  });
+  expect(violations).toEqual([]);
+}
+
+async function expectNoPageHorizontalOverflow(page: import("@playwright/test").Page): Promise<void> {
+  const sizes = await page.evaluate(() => ({
+    documentElement: { scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth },
+    body: { scrollWidth: document.body.scrollWidth, clientWidth: document.body.clientWidth },
+  }));
+  expect(sizes.documentElement.scrollWidth, `documentElement widths: ${JSON.stringify(sizes.documentElement)}`).toBeLessThanOrEqual(sizes.documentElement.clientWidth);
+  expect(sizes.body.scrollWidth, `body widths: ${JSON.stringify(sizes.body)}`).toBeLessThanOrEqual(sizes.body.clientWidth);
+}
+
 test("replays one verified run in presentation and analysis modes", async ({ page }) => {
   const run = await replayRun();
   await page.goto(`/simulations/${run.runId}`);
@@ -53,16 +75,7 @@ test("replays one verified run in presentation and analysis modes", async ({ pag
   await expect(time).toHaveValue(selectedTime);
   await expect(selectedEvent(page)).toHaveAttribute("aria-label", selectedSemanticLabel ?? "");
 
-  await page.addScriptTag({ content: axe.source });
-  const violations = await page.evaluate(async () => {
-    const result = await (
-      window as typeof window & {
-        axe: { run: (root: Document) => Promise<{ violations: unknown[] }> };
-      }
-    ).axe.run(document);
-    return result.violations;
-  });
-  expect(violations).toEqual([]);
+  await expectNoAxeViolations(page);
 });
 
 test("replay survives reload and keyboard stepping", async ({ page }) => {
@@ -90,4 +103,28 @@ test("replay survives reload and keyboard stepping", async ({ page }) => {
   await page.getByRole("tab", { name: "replay" }).click();
   await expect(page.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("slider", { name: "Replay time" })).toHaveValue(saved);
+});
+
+test("keeps replay accessible and within the viewport in dark theme", async ({ page }) => {
+  const run = await replayRun();
+  await page.goto(`/simulations/${run.runId}`);
+  const darkTheme = page.getByRole("button", { name: "Use dark theme" });
+  const toggledToDark = await darkTheme.isVisible();
+  if (toggledToDark) await darkTheme.click();
+  await expect(page.locator(".app-shell")).toHaveAttribute("data-theme", "dark");
+
+  await page.getByRole("tab", { name: "replay" }).click();
+  await expect(page.getByText("Replay verified")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open evidence" })).toBeVisible();
+  await expect(page.getByRole("group", { name: /Plan of / })).toBeVisible();
+
+  await page.getByRole("button", { name: "Open evidence" }).click();
+  await expect(page.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "Event timeline" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Replay time" })).toBeVisible();
+  await expectNoAxeViolations(page);
+  await expectNoPageHorizontalOverflow(page);
+  if (toggledToDark) await page.getByRole("button", { name: "Use light theme" }).click();
 });
