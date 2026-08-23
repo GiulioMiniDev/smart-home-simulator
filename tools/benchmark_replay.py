@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import random
-import shutil
 import statistics
 import tempfile
 import time
@@ -22,11 +21,12 @@ from smart_home_sim.simulation import trace_semantic_digest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEEKLY_SOURCE = PROJECT_ROOT / "examples" / "materialization" / "mario_rossi_2026_10_30"
-MONTHLY_SOURCE = PROJECT_ROOT / "generated" / "lucia_rossi_august_2026" / "simulation-1.1.0"
 FRAME_COUNT = 100
 WINDOW_COUNT = 100
 WINDOW_LIMIT = 37
-YEARLY_PERIODS = 52
+WEEKLY_PERIODS = 2
+MONTHLY_PERIODS = 8
+YEARLY_PERIODS = 104
 
 _TRACE_FAMILIES = (
     "activityExecutions",
@@ -91,6 +91,46 @@ def _shift_and_remap(
     return value
 
 
+def _normalize_time_span(
+    value: Any, *, start: datetime, raw_span: timedelta, target_span: timedelta, key: str = ""
+) -> Any:
+    """Affine-normalize a contiguous synthetic span without gaps or record removal."""
+    if isinstance(value, list):
+        return [
+            _normalize_time_span(
+                item, start=start, raw_span=raw_span, target_span=target_span, key=key
+            )
+            for item in value
+        ]
+    if isinstance(value, dict):
+        return {
+            item_key: _normalize_time_span(
+                item,
+                start=start,
+                raw_span=raw_span,
+                target_span=target_span,
+                key=item_key,
+            )
+            for item_key, item in value.items()
+        }
+    if not isinstance(value, str):
+        return value
+    scale = target_span / raw_span
+    if "T" in value:
+        try:
+            at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+        return (start + (at - start) * scale).isoformat()
+    if key == "date":
+        try:
+            at = datetime.combine(date.fromisoformat(value), datetime.min.time(), start.tzinfo)
+        except ValueError:
+            return value
+        return (start + (at - start) * scale).date().isoformat()
+    return value
+
+
 def _period_identifiers(trace: dict[str, Any], period: int) -> dict[str, str]:
     suffix = f"__benchmark_period_{period:02d}"
     identifiers: dict[str, str] = {}
@@ -101,6 +141,24 @@ def _period_identifiers(trace: dict[str, Any], period: int) -> dict[str, str]:
                 if isinstance(value, str):
                     identifiers[value] = f"{value}{suffix}"
     return identifiers
+
+
+def _with_runtime_coverage_sentinel(trace: dict[str, Any]) -> dict[str, Any]:
+    """Add the documented fixture-only runtime family sentinel to an otherwise complete source."""
+    result = json.loads(json.dumps(trace))
+    result["runtimeEvents"].append(
+        {
+            "eventExecutionId": "runtime_coverage_sentinel",
+            "eventId": "benchmark_runtime_coverage_sentinel",
+            "sampled": False,
+            "occurred": False,
+            "evaluatedAt": result["startedAt"],
+            "triggerActivityId": None,
+            "sampledAmounts": [],
+            "outcome": "not_sampled",
+        }
+    )
+    return result
 
 
 def _finalize_observable_log(payload: dict[str, Any]) -> None:
@@ -122,16 +180,20 @@ def _finalize_oracle_mapping(payload: dict[str, Any]) -> None:
     payload["mappingId"] = f"oracle_{_canonical_sha256(semantic_links)[:16]}"
 
 
-def _expanded_fixture(source: Path, target: Path, *, periods: int = YEARLY_PERIODS) -> None:
-    """Expand every checked-in week record without sampling or losing causal references."""
+def _benchmark_fixture(source: Path, target: Path, *, periods: int, duration_days: int) -> None:
+    """Build a contiguous, full-density fixture with an exact canonical duration."""
     if periods < 1:
         raise ValueError("expanded replay fixture needs at least one period")
+    if duration_days < 1:
+        raise ValueError("benchmark fixture duration must be at least one day")
     target.mkdir(parents=True)
-    trace = json.loads((source / "execution-trace.json").read_text(encoding="utf-8"))
+    trace = _with_runtime_coverage_sentinel(
+        json.loads((source / "execution-trace.json").read_text(encoding="utf-8"))
+    )
     observations = json.loads((source / "observable-sensor-log.json").read_text(encoding="utf-8"))
     oracle = json.loads((source / "oracle-mapping.json").read_text(encoding="utf-8"))
     source_digest = _canonical_sha256(trace["semanticDigest"])
-    trace_id = f"trace_benchmark_expanded_{periods}_{source_digest[:12]}"
+    trace_id = f"trace_benchmark_{duration_days}d_{periods}p_{source_digest[:12]}"
     source_links = {item["observationId"]: item for item in oracle["links"]}
     trace_year = {key: value for key, value in trace.items() if key not in _TRACE_FAMILIES}
     trace_year.update({family: [] for family in _TRACE_FAMILIES})
@@ -139,8 +201,11 @@ def _expanded_fixture(source: Path, target: Path, *, periods: int = YEARLY_PERIO
     observation_year["records"] = []
     oracle_year = {key: value for key, value in oracle.items() if key != "links"}
     oracle_year["links"] = []
+    source_start = datetime.fromisoformat(trace["startedAt"].replace("Z", "+00:00"))
+    source_end = datetime.fromisoformat(trace["endedAt"].replace("Z", "+00:00"))
+    source_span = source_end - source_start
     for period in range(periods):
-        delta = timedelta(days=7 * period)
+        delta = source_span * period
         identifiers = _period_identifiers(trace, period)
         identifiers[trace["traceId"]] = trace_id
         for family in _TRACE_FAMILIES:
@@ -156,16 +221,22 @@ def _expanded_fixture(source: Path, target: Path, *, periods: int = YEARLY_PERIO
             link = _shift_and_remap(source_links[observation_id], delta, identifiers)
             link["observationId"] = remapped_id
             oracle_year["links"].append(link)
-    final_delta = timedelta(days=7 * (periods - 1))
+    raw_span = source_span * periods
+    target_span = timedelta(days=duration_days)
     trace_year["traceId"] = trace_id
-    trace_year["sourceBundleId"] = f"benchmark-expanded-week-{periods}"
+    trace_year["sourceBundleId"] = f"benchmark-fixture-{duration_days}d-{periods}p"
     trace_year["sourceBundleSha256"] = _canonical_sha256(
         {"source": trace["sourceBundleSha256"], "periods": periods}
     )
-    trace_year["endedAt"] = _shift_and_remap(trace["endedAt"], final_delta, {})
-    trace_year["finalState"] = _shift_and_remap(trace["finalState"], final_delta, {})
+    trace_year = _normalize_time_span(
+        trace_year, start=source_start, raw_span=raw_span, target_span=target_span
+    )
+    trace_year["endedAt"] = (source_start + target_span).isoformat()
     trace_year["semanticDigest"] = trace_semantic_digest(trace_year)
-    observation_year["endedAt"] = _shift_and_remap(observations["endedAt"], final_delta, {})
+    observation_year = _normalize_time_span(
+        observation_year, start=source_start, raw_span=raw_span, target_span=target_span
+    )
+    observation_year["endedAt"] = (source_start + target_span).isoformat()
     observation_year["records"].sort(
         key=lambda item: (item["observedAt"], item["sensorId"], item["observationId"])
     )
@@ -184,9 +255,10 @@ def _expanded_fixture(source: Path, target: Path, *, periods: int = YEARLY_PERIO
 
 def _completed_workspace(
     root: Path,
-    source: Path | None,
     *,
-    yearly: bool = False,
+    periods: int,
+    duration_days: int,
+    observable_only: bool = False,
 ) -> tuple[WorkspaceService, str]:
     workspace = WorkspaceService.create(root, "Replay benchmark")
     home = workspace.create_home("Benchmark home")
@@ -197,14 +269,11 @@ def _completed_workspace(
         JobProgress(phase="execution", percent=50, message="Executing"),
     )
     destination = workspace.runs_path / job.job_id
-    if yearly:
-        _expanded_fixture(WEEKLY_SOURCE, destination)
-        # Frame/window timings are Observable-only. Keeping 744k typed Oracle links resident
+    _benchmark_fixture(WEEKLY_SOURCE, destination, periods=periods, duration_days=duration_days)
+    if observable_only:
+        # Frame/window timings are Observable-only. Keeping typed Oracle links resident
         # would measure optional disclosure metadata rather than replay reconstruction.
         (destination / "oracle-mapping.json").unlink()
-    else:
-        assert source is not None
-        shutil.copytree(source, destination)
     workspace.import_run_directory(job.job_id, destination)
     workspace.update_job(
         job.job_id,
@@ -259,9 +328,8 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
     return {
         "fixture": label,
         "construction": (
-            "complete checked-in artifact"
-            if label != "yearly"
-            else "52 complete timestamp-shifted weekly periods with remapped IDs and causality"
+            "contiguous full-density source periods with affine-normalized timestamps, "
+            "remapped IDs, causality, and a fixture-only runtime coverage sentinel"
         ),
         "durationDays": round((index.trace_end - index.trace_start).total_seconds() / 86_400, 3),
         "activities": len(trace.activity_executions),
@@ -283,14 +351,19 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
 
 def main() -> None:
     fixtures = [
-        ("weekly", WEEKLY_SOURCE, False),
-        ("monthly", MONTHLY_SOURCE, False),
-        ("yearly", None, True),
+        ("weekly", WEEKLY_PERIODS, 7, False),
+        ("four-week-month-scale", MONTHLY_PERIODS, 28, False),
+        ("yearly", YEARLY_PERIODS, 364, True),
     ]
     with tempfile.TemporaryDirectory(prefix="smart-home-replay-benchmark-") as temporary:
         results = []
-        for label, source, yearly in fixtures:
-            workspace, run_id = _completed_workspace(Path(temporary) / label, source, yearly=yearly)
+        for label, periods, duration_days, observable_only in fixtures:
+            workspace, run_id = _completed_workspace(
+                Path(temporary) / label,
+                periods=periods,
+                duration_days=duration_days,
+                observable_only=observable_only,
+            )
             results.append(_measure(label, workspace, run_id))
     result = {
         "acceptance": {

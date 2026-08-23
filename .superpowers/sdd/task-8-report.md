@@ -39,8 +39,10 @@ night, drives, or expander implementation/tests.
 
 ## Design checkpoint evidence
 
-- Same timestamp/selection across modes and reload: `ReplayWorkbench.test.tsx`,
-  `useReplayController.test.tsx`, and both replay E2E projects.
+- The exact timestamp and semantic selection survive mode and visibility-projection changes:
+  `ReplayWorkbench.test.tsx`, `useReplayController.test.tsx`, and both replay E2E projects.
+  Reload restores the exact timestamp, mode, and filters after debouncing; it does not claim to
+  restore event selection.
 - Trace/waypoint-derived playback and no invented positions: replay backend and controller tests;
   the real E2E advances the slider from a verified trace rather than a fixed event interval.
 - Bounded all-family evidence and deterministic frames: `tests/test_application_replay_export.py`
@@ -57,19 +59,22 @@ random frame seeks and 100 30-minute bounded event windows per fixture. Repeated
 equal and every visible window is at most 37 events. The stated acceptance is median frame latency
 under 100 ms after index construction; timing failure is enabled only under CI.
 
-| Fixture | Events | Observations | Index ms | Median frame ms | Median window ms |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Weekly | 15,725 | 14,306 | 955.775 | 2.513 | 5.118 |
-| Monthly | 62,626 | 54,701 | 3,898.841 | 6.562 | 4.963 |
-| Yearly | 817,700 | 743,912 | 26,000.832 | 87.962 | 4.789 |
+| Fixture | Span | Events | Observations | Runtime sentinels | Index ms | Median frame ms | Median window ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Weekly | 7 d | 31,452 | 28,612 | 2 | 1,709.871 | 3.064 | 4.863 |
+| Four-week month-scale | 28 d | 125,808 | 114,448 | 8 | 7,285.513 | 10.302 | 4.793 |
+| Yearly | 364 d | 1,635,504 | 1,487,824 | 104 | 53,915.446 | 162.710 | 4.905 |
 
-Weekly and monthly are complete checked-in artifacts. The 360.284-day annual fixture contains 52
-complete timestamp-shifted weekly periods: all trace families, observations, IDs, cross-references,
-semantic digests, and Observable-log metadata are regenerated. The builder validates the Oracle
-mapping before deliberately omitting it from the annual timing workspace: this benchmark measures
-Observable replay performance, not optional Oracle disclosure. The annual construction needs several
-GiB of memory (about 2.3 GiB observed); it is synthetic replay-load evidence, not a production
-year-long simulation claim.
+The 7-day canonical week is two contiguous complete source periods with an affine monotonic
+timestamp normalization; four-week and yearly fixtures are respectively 8 and 104 source periods.
+No records are sampled, cropped, or separated by multi-day gaps. All trace families, observations,
+IDs, cross-references, semantic digests, and Observable-log metadata are regenerated. Because the
+source has no runtime events, each source period gains a valid, fixture-only
+`benchmark_runtime_coverage_sentinel`; it is coverage data, not simulated output. The builder
+validates the Oracle mapping before deliberately omitting it from the annual timing workspace: this
+benchmark measures Observable replay performance, not optional Oracle disclosure. The annual
+construction used about 4.6 GiB memory and its 162.710 ms median does not meet the 100 ms CI target;
+it is synthetic replay-load evidence, not a production year-long simulation claim.
 
 ## Verification
 
@@ -87,5 +92,6 @@ year-long simulation claim.
 ## Concerns
 
 The two Python failures are the accepted pre-replay baseline failures and were deliberately not
-changed. The benchmark's annual data is synthetic, bounded, and clearly documented as such; it is
-for replay-index/query behavior, not a published year-long simulation benchmark.
+changed. The annual median frame time is currently over the configured CI target. The benchmark's
+annual data is synthetic, bounded, and clearly documented as such; it is for replay-index/query
+behavior, not a published year-long simulation benchmark.

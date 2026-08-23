@@ -240,13 +240,17 @@ non riapplicato a evidenza diversa. Per riprodurre l'accettazione browser con ba
 setup Playwright crea in modo deterministico `reports/e2e-workspace` dagli artefatti Mario e
 scrive esclusivamente `reports/e2e-replay-run.json`; la fixture viene ricreata a ogni esecuzione.
 
-Il controllo prestazionale dedicato usa le fixture settimanali e mensili complete e un anno
-sintetico di 52 periodi settimanali completi, con ID, riferimenti causali e digest rigenerati.
-Conserva tutte le famiglie della trace e tutte le osservazioni, costruisce l'indice, esegue 100
-seek e 100 finestre limitate per ciascun caso, e verifica risposte limitate e frame ripetuti
-identici. Prima dell'omissione intenzionale dell'Oracle dalla fixture annuale di timing, il builder
-genera e valida anche il mapping: il benchmark annuale misura esplicitamente la performance
-Observable, non il costo facoltativo della disclosure Oracle.
+Il controllo prestazionale dedicato costruisce una settimana canonica di 7 giorni da due periodi
+completi della fixture sorgente, concatena senza gap quattro settimane per la scala mensile (28
+giorni) e 52 settimane per l'anno (364 giorni). Un'affine deterministica normalizza i timestamp
+monotoni senza campionare o tagliare record; ID, riferimenti causali e digest vengono rigenerati.
+Ogni fixture conserva tutte le famiglie della trace e tutte le osservazioni; la famiglia runtime,
+assente nella sorgente, riceve esclusivamente una coverage sentinel valida e dichiarata, non un
+evento prodotto dalla simulazione. Il controllo esegue 100 seek e 100 finestre limitate per caso
+e verifica risposte limitate e frame ripetuti identici. Prima dell'omissione intenzionale
+dell'Oracle dalla fixture annuale di timing, il builder genera e valida anche il mapping: il
+benchmark annuale misura esplicitamente la performance Observable, non il costo facoltativo della
+disclosure Oracle.
 
 ```bash
 make benchmark-replay
@@ -254,9 +258,10 @@ make benchmark-replay
 
 L'obiettivo sulla macchina benchmark è una mediana dei frame inferiore a 100 ms dopo la
 costruzione dell'indice. I tempi sono sempre riportati; per evitare falsi negativi da rumore,
-il budget wall-clock interrompe l'esecuzione solo in CI. L'anno completo rilevato contiene
-743.912 osservazioni e richiede diversi GiB di memoria (circa 2,3 GiB osservati): eseguirlo
-su macchine con poca RAM può richiedere più tempo o memoria disponibile.
+il budget wall-clock interrompe l'esecuzione solo in CI. L'anno canonico rilevato contiene
+1.487.824 osservazioni e richiede diversi GiB di memoria (circa 4,6 GiB osservati): eseguirlo
+su macchine con poca RAM può richiedere più tempo o memoria disponibile. L'ultima misura annuale
+è 162,710 ms per frame, quindi non soddisfa ancora quel budget CI.
 
 Per ottenere la prima simulazione dai due JSON pubblicati dall'ingestion, senza disegnare
 la casa o collocare manualmente i sensori:
