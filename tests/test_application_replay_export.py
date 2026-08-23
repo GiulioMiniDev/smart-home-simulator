@@ -215,7 +215,8 @@ def test_replay_without_a_bundle_seeds_transition_previous_values(tmp_path: Path
     resident = next(item for item in frame.residents if item.resident_id == posture.subject_id)
     assert resident.posture == posture.previous_value
     assert frame.entity_states[entity.subject_id][entity.fact] == entity.previous_value
-    assert replay.frame(run_id, at=index.trace_end).at == index.trace_end
+    with pytest.raises(WorkspaceError, match="final state"):
+        replay.frame(run_id, at=index.trace_end)
 
 
 def test_replay_bundle_fallback_keeps_the_first_transition_previous_value() -> None:
@@ -252,6 +253,231 @@ def test_replay_bundle_fallback_keeps_the_first_transition_previous_value() -> N
     seeded = replay_module._initial_residents(trace, None)
 
     assert seeded["resident_1"]["execution_state"] == "idle"
+
+
+def test_observable_replay_events_hide_execution_identifiers_but_oracle_events_keep_them(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    raw_ids = {
+        "activity": {item.activity_execution_id for item in index.trace.activity_executions},
+        "action": {item.action_execution_id for item in index.trace.action_executions},
+        "plan_deviation": {item.deviation_id for item in index.trace.plan_deviations},
+    }
+    assert all("oracleCause" not in item.details for item in index.events)
+    for kind, identifiers in raw_ids.items():
+        observable = json.dumps(
+            replay.events(run_id, kinds={kind}).model_dump(mode="json", by_alias=True)
+        )
+        oracle = json.dumps(
+            replay.events(run_id, kinds={kind}, include_oracle=True).model_dump(
+                mode="json", by_alias=True
+            )
+        )
+
+        assert not any(identifier in observable for identifier in identifiers)
+        assert all(identifier in oracle for identifier in identifiers)
+    assert any(
+        "oracleCause" in item.details
+        for item in replay.events(run_id, kinds={"observation"}, include_oracle=True).items
+    )
+
+
+def test_replay_observable_and_oracle_results_are_isolated_from_the_cache(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    first = replay.events(run_id, include_oracle=True, limit=5000)
+    movement = next(item for item in first.items if item.kind == "movement")
+    action = next(item for item in first.items if item.kind == "action")
+    movement.waypoints[0].position.x = -999
+    action.details["nodeId"] = "mutated"
+
+    second = replay.events(run_id, include_oracle=True, limit=5000)
+    cached_movement = next(item for item in second.items if item.event_id == movement.event_id)
+    cached_action = next(item for item in second.items if item.event_id == action.event_id)
+
+    assert cached_movement.waypoints[0].position.x != -999
+    assert cached_action.details["nodeId"] != "mutated"
+
+    frame = replay.frame(run_id, at=replay._index(run_id).trace.movements[0].started_at)
+    frame.residents[0].facts["cacheMutation"] = True
+    fresh_frame = replay.frame(run_id, at=replay._index(run_id).trace.movements[0].started_at)
+    assert "cacheMutation" not in fresh_frame.residents[0].facts
+
+
+def test_replay_uses_right_continuous_duplicate_waypoints() -> None:
+    from smart_home_sim.application import replay as replay_module
+
+    start = datetime(2026, 8, 23, 8, tzinfo=UTC)
+    movement = MovementExecution.model_validate(
+        {
+            "movementId": "movement_duplicates",
+            "actionExecutionId": "action_1",
+            "actorId": "resident_1",
+            "startedAt": start,
+            "endedAt": start + timedelta(seconds=10),
+            "originRegionId": "origin",
+            "destinationRegionId": "destination",
+            "distanceMeters": 10,
+            "durationMicroseconds": 10_000_000,
+            "waypoints": [
+                {
+                    "at": start,
+                    "regionId": "origin",
+                    "position": Point2D(x=0, y=0),
+                    "traversalMode": "walking",
+                },
+                {
+                    "at": start + timedelta(seconds=5),
+                    "regionId": "first",
+                    "position": Point2D(x=2, y=2),
+                    "traversalMode": "walking",
+                },
+                {
+                    "at": start + timedelta(seconds=5),
+                    "regionId": "second",
+                    "position": Point2D(x=4, y=4),
+                    "traversalMode": "walking",
+                },
+                {
+                    "at": start + timedelta(seconds=10),
+                    "regionId": "destination",
+                    "position": Point2D(x=10, y=10),
+                    "traversalMode": "walking",
+                },
+            ],
+        }
+    )
+
+    instant = start + timedelta(seconds=5)
+    assert replay_module._point_at(movement, instant) == Point2D(x=4, y=4)
+    assert replay_module._waypoint_at(movement, instant).region_id == "second"
+
+
+def test_replay_frame_folds_resources_completed_intervals_and_sensor_change_boundaries(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    movement = index.trace.movements[0]
+    action = next(
+        item
+        for item in index.trace.action_executions
+        if item.action_execution_id == movement.action_execution_id
+    )
+    activity = next(
+        item
+        for item in index.trace.activity_executions
+        if item.activity_execution_id == action.activity_execution_id
+    )
+    movement_completed = replay.frame(run_id, at=movement.ended_at)
+    resident = next(
+        item for item in movement_completed.residents if item.resident_id == movement.actor_id
+    )
+    completed = replay.frame(run_id, at=max(action.ended_at, activity.actual_end))
+    resource_event = index.trace.resource_events[0]
+    resource_frame = replay.frame(run_id, at=resource_event.at)
+    expected_resource = sorted(
+        (
+            item
+            for item in index.trace.resource_events
+            if item.resource_id == resource_event.resource_id and item.at <= resource_event.at
+        ),
+        key=lambda item: (item.at, item.resource_event_id),
+    )[-1]
+    observation = index.observations.records[0]
+    exact_boundary = replay.frame(run_id, at=observation.observed_at + timedelta(milliseconds=500))
+    at_observation = replay.frame(run_id, at=observation.observed_at)
+
+    assert resident.position == movement.waypoints[-1].position
+    assert movement.movement_id not in movement_completed.active_event_ids
+    assert action.action_execution_id not in completed.active_event_ids
+    assert activity.activity_execution_id not in completed.active_event_ids
+    assert (
+        resource_frame.resource_available_units[resource_event.resource_id]
+        == expected_resource.available_units_after
+    )
+    exact_sensor = next(
+        item for item in exact_boundary.sensor_states if item.sensor_id == observation.sensor_id
+    )
+    changed_sensor = next(
+        item for item in at_observation.sensor_states if item.sensor_id == observation.sensor_id
+    )
+    assert not exact_sensor.changed
+    assert changed_sensor.changed
+
+
+def test_replay_clamps_event_limits_and_verifies_final_states(
+    completed_workspace: tuple[WorkspaceService, str], tmp_path: Path
+) -> None:
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    assert len(replay.events(run_id, limit=0).items) == 1
+    assert len(replay.events(run_id, limit=10_000).items) == 5_000
+    trace_end = replay._index(run_id).trace_end
+    assert replay.frame(run_id, at=trace_end).at == trace_end
+
+    no_bundle, no_bundle_run = _completed_workspace(tmp_path / "no-bundle")
+    with no_bundle.transaction() as connection:
+        connection.execute(
+            "DELETE FROM artifacts WHERE run_id = ? AND role = 'simulation_bundle'",
+            (no_bundle_run,),
+        )
+    horizon = ReplayService(no_bundle)
+    with pytest.raises(WorkspaceError, match="final state"):
+        horizon.frame(no_bundle_run, at=horizon._index(no_bundle_run).trace_end)
+
+
+def test_replay_resident_special_transitions_fold_every_operation() -> None:
+    from smart_home_sim.application import replay as replay_module
+
+    at = datetime(2026, 8, 23, 8, tzinfo=UTC)
+
+    def transition(fact: str, operation: str, value: object, offset: int) -> StateTransition:
+        return StateTransition(
+            transition_id=f"{fact}_{offset}",
+            at=at + timedelta(seconds=offset),
+            subject_type="resident",
+            subject_id="resident_1",
+            fact=fact,
+            previous_value=None,
+            value=value,
+            operation=operation,
+            causality=TraceCausality(cause_type="action_effect", cause_id="action_1"),
+        )
+
+    trace = SimpleNamespace(
+        activity_executions=[],
+        action_executions=[],
+        movements=[],
+        resource_events=[],
+        state_transitions=[
+            transition("location", "set", "kitchen", 0),
+            transition("location", "increment", "hall", 1),
+            transition("location", "remove", None, 2),
+            transition("position", "set", {"x": 1, "y": 1}, 0),
+            transition("position", "append", {"x": 2, "y": 2}, 1),
+            transition("position", "remove", None, 2),
+            transition("posture", "set", "sitting", 0),
+            transition("posture", "decrement", "standing", 1),
+            transition("posture", "invalidate", None, 2),
+            transition("execution_state", "set", "moving", 0),
+            transition("execution_state", "append", "performing_activity", 1),
+            transition("execution_state", "invalidate", None, 2),
+        ],
+    )
+
+    resident = replay_module._resident_frames(trace, None, at + timedelta(seconds=2))[0][0]
+
+    assert resident.region_id is None
+    assert resident.position is None
+    assert resident.posture is None
+    assert resident.execution_state == "unknown"
 
 
 def test_streaming_export_formats_manifest_and_integrity(

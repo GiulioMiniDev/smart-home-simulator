@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
+from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -98,12 +101,10 @@ def _cause(link: Any) -> ObservationCause:
 
 def _point_at(movement: MovementExecution, at: datetime) -> Point2D:
     waypoints = movement.waypoints
-    if at <= waypoints[0].at:
-        return waypoints[0].position
-    if at >= waypoints[-1].at:
-        return waypoints[-1].position
     times = [item.at for item in waypoints]
     right = bisect_right(times, at)
+    if right == 0 or right == len(waypoints):
+        return _waypoint_at(movement, at).position
     left_item, right_item = waypoints[right - 1], waypoints[right]
     span = (right_item.at - left_item.at).total_seconds()
     ratio = 0.0 if span == 0 else (at - left_item.at).total_seconds() / span
@@ -111,6 +112,11 @@ def _point_at(movement: MovementExecution, at: datetime) -> Point2D:
         x=left_item.position.x + (right_item.position.x - left_item.position.x) * ratio,
         y=left_item.position.y + (right_item.position.y - left_item.position.y) * ratio,
     )
+
+
+def _waypoint_at(movement: MovementExecution, at: datetime) -> Any:
+    right = bisect_right([item.at for item in movement.waypoints], at)
+    return movement.waypoints[max(right - 1, 0)]
 
 
 def _apply_transition(target: dict[str, JsonValue], transition: StateTransition) -> None:
@@ -122,16 +128,22 @@ def _apply_transition(target: dict[str, JsonValue], transition: StateTransition)
         target[transition.fact] = None
 
 
+def _fold_transition_value(
+    current: JsonValue | None, transition: StateTransition
+) -> JsonValue | None:
+    target: dict[str, JsonValue] = {transition.fact: current}
+    _apply_transition(target, transition)
+    return target.get(transition.fact)
+
+
 def _events(
     trace: ExecutionTrace,
     observations: ObservableSensorLog,
-    oracle: OracleMapping | None,
 ) -> tuple[ReplayEventView, ...]:
     events: list[ReplayEventView] = []
     activity_starts = {
         item.activity_execution_id: item.actual_start for item in trace.activity_executions
     }
-    causes = {item.observation_id: item for item in oracle.links} if oracle else {}
     for item in trace.activity_executions:
         events.append(
             ReplayEventView(
@@ -234,9 +246,6 @@ def _events(
             "unit": item.unit,
             "quality": item.quality,
         }
-        link = causes.get(item.observation_id)
-        if link is not None:
-            details["oracleCause"] = _cause(link).model_dump(mode="json", by_alias=True)
         events.append(
             ReplayEventView(
                 at=item.observed_at,
@@ -265,7 +274,7 @@ def _replay_index(
     observations = _observations(observations_path, observations_digest)
     oracle = _oracle(oracle_path, oracle_digest or "") if oracle_path else None
     bundle = _bundle(bundle_path, bundle_digest or "") if bundle_path else None
-    events = _events(trace, observations, oracle)
+    events = _events(trace, observations)
     return _ReplayIndex(
         trace_start=trace.started_at,
         trace_end=trace.ended_at,
@@ -278,9 +287,29 @@ def _replay_index(
     )
 
 
+def _opaque_event_id(item: ReplayEventView) -> str:
+    digest = sha256(f"observable-replay-v1:{item.kind}:{item.event_id}".encode()).hexdigest()
+    return f"replay_{item.kind}_{digest}"
+
+
 def _without_oracle(item: ReplayEventView) -> ReplayEventView:
-    observable = ObservableReplayEventView.from_event(item)
-    return ReplayEventView.model_validate(observable.model_dump(mode="python", by_alias=True))
+    observable = ObservableReplayEventView.from_event(deepcopy(item))
+    projected = ReplayEventView.model_validate(observable.model_dump(mode="python", by_alias=True))
+    if item.kind in {"activity", "action", "plan_deviation"}:
+        projected.event_id = _opaque_event_id(item)
+    return projected.model_copy(deep=True)
+
+
+def _with_oracle(
+    item: ReplayEventView, oracle_links: Mapping[str, Any] | None
+) -> ReplayEventView:
+    result = item.model_copy(deep=True)
+    if result.kind != "observation" or oracle_links is None:
+        return result
+    link = oracle_links.get(result.event_id)
+    if link is not None:
+        result.details["oracleCause"] = _cause(link).model_dump(mode="json", by_alias=True)
+    return result
 
 
 def _initial_residents(
@@ -374,17 +403,22 @@ def _resident_frames(
         key=lambda item: (item.at, item.transition_id),
     ):
         state = residents[transition.subject_id]
+        if transition.fact not in {"position", "execution_state"}:
+            _apply_transition(state["facts"], transition)
         if transition.fact == "location":
-            state["region_id"] = transition.value
-            _apply_transition(state["facts"], transition)
-        elif transition.fact == "position" and isinstance(transition.value, dict):
-            state["position"] = Point2D.model_validate(transition.value)
+            value = _fold_transition_value(state["region_id"], transition)
+            state["region_id"] = value if isinstance(value, str) else None
+        elif transition.fact == "position":
+            current = state["position"]
+            raw_current = current.model_dump(mode="python") if current is not None else None
+            value = _fold_transition_value(raw_current, transition)
+            state["position"] = Point2D.model_validate(value) if isinstance(value, dict) else None
         elif transition.fact == "posture":
-            state["posture"] = transition.value
+            value = _fold_transition_value(state["posture"], transition)
+            state["posture"] = value if isinstance(value, str) else None
         elif transition.fact == "execution_state":
-            state["execution_state"] = transition.value
-        else:
-            _apply_transition(state["facts"], transition)
+            value = _fold_transition_value(state["execution_state"], transition)
+            state["execution_state"] = value if isinstance(value, str) and value else "unknown"
     active_activities = [
         item for item in trace.activity_executions if item.actual_start <= at < item.actual_end
     ]
@@ -398,8 +432,7 @@ def _resident_frames(
         state = residents[movement.actor_id]
         if movement.started_at <= at < movement.ended_at:
             point = _point_at(movement, at)
-            waypoint_times = [item.at for item in movement.waypoints]
-            last_waypoint = movement.waypoints[bisect_right(waypoint_times, at) - 1]
+            last_waypoint = _waypoint_at(movement, at)
             state.update(
                 region_id=last_waypoint.region_id,
                 position=point,
@@ -439,7 +472,7 @@ def _resident_frames(
             activity_execution_id=activity_by_actor.get(resident_id),
             action_execution_id=action_by_actor.get(resident_id),
             held_resource_ids=sorted(held.get(resident_id, set())),
-            facts=state["facts"],
+            facts=deepcopy(state["facts"]),
         )
         for resident_id, state in sorted(residents.items())
     ]
@@ -526,7 +559,7 @@ def _sensor_state_at(
             sensor_type=item.sensor_type,
             observed_at=item.observed_at,
             measurement=item.measurement,
-            value=item.value,
+            value=deepcopy(item.value),
             unit=item.unit,
             quality=item.quality,
             changed=changed_after < item.observed_at <= at,
@@ -622,11 +655,19 @@ class ReplayService:
             and (actor_id is None or item.actor_id == actor_id)
             and (sensor_id is None or item.sensor_id == sensor_id)
         ]
-        if not include_oracle:
-            selected = [_without_oracle(item) for item in selected]
         bounded = max(1, min(limit, 5_000))
+        visible = selected[:bounded]
+        if include_oracle:
+            oracle_links = (
+                {item.observation_id: item for item in index.oracle.links}
+                if index.oracle is not None
+                else None
+            )
+            visible = [_with_oracle(item, oracle_links) for item in visible]
+        else:
+            visible = [_without_oracle(item) for item in visible]
         return ReplayEventWindow(
-            items=selected[:bounded],
+            items=deepcopy(visible),
             total=len(selected),
             trace_start=index.trace_start,
             trace_end=index.trace_end,
@@ -659,13 +700,9 @@ class ReplayService:
             resource_available_units=resources,
             active_event_ids=active_ids,
         )
-        if (
-            index.bundle is not None
-            and instant == index.trace_end
-            and not _matches_final_state(frame, index.trace)
-        ):
+        if instant == index.trace_end and not _matches_final_state(frame, index.trace):
             raise WorkspaceError("reconstructed replay frame does not match the trace final state")
-        return frame
+        return frame.model_copy(deep=True)
 
     def verify(self, run_id: str) -> ReplayVerification:
         trace_path, _ = self._artifact(run_id, "execution_trace")
