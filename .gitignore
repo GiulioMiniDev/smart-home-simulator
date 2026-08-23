@@ -8,6 +8,7 @@ reports/
 dist/
 .tmp/
 .worktrees/
+.superpowers/
 pytest-cache-files-*/
 .coverage
 htmlcov/
