@@ -782,6 +782,7 @@ export function PlanCanvas({
                   aria-label={`${sensor.sensorType} sensor ${sensor.sensorId}`}
                   transform={`translate(${sensor.position.x} ${sensor.position.y})`}
                   className={`sensor-node sensor-${sensor.sensorType} ${isSelected ? "is-selected " : ""}${isReplayActive ? "is-replay-active" : ""}`.trim()}
+                  data-pulse={isReplayActive && !replayOverlay?.reducedMotion ? "on" : "off"}
                   onClick={() => activate(sensor.sensorId)}
                   onKeyDown={(event) => keyboard(event, sensor.sensorId)}
                   {...draggable(sensor.sensorId)}
@@ -825,18 +826,21 @@ export function PlanCanvas({
           {replayOverlay!.trajectory.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r=".12" />)}
         </g>}
         <g aria-label="Replay residents" className="replay-residents">
-          {replayOverlay?.residents.filter((item) => item.position).map((item) => (
+          {replayOverlay?.residents.map((item, index) => item.position ? (
             <g
               key={item.residentId}
               role="img"
               aria-label={`${item.label} in ${item.regionId ?? "unknown region"}, ${item.executionState}`}
               className={`replay-resident ${item.residentId === replayOverlay.selectedResidentId ? "is-selected" : ""}`}
               transform={`translate(${item.position!.x} ${item.position!.y})`}
+              data-motion={replayOverlay.reducedMotion ? "step" : "interpolate"}
+              data-resident-index={index}
             >
               <circle r=".22" />
               <text textAnchor="middle" y=".08">{item.marker}</text>
+              <text className="replay-resident-label" x=".3" y="-.26">{item.label}</text>
             </g>
-          ))}
+          ) : null)}
         </g>
       </svg>
       <div className="plan-legend" aria-label="Plan legend">

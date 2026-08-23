@@ -383,6 +383,11 @@ g.is-replay-active .region { stroke: var(--indigo); stroke-width: 2.4px; stroke-
 .replay-resident circle { fill: var(--surface-raised); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 2px; }
 .replay-resident text { fill: var(--indigo); font-size: .22px; font-weight: 700; pointer-events: none; }
 .replay-resident.is-selected circle { fill: var(--indigo-soft); stroke-width: 3.2px; stroke-dasharray: 2 1; }
+.replay-resident { transition: transform .2s cubic-bezier(.2, .8, .2, 1), opacity .2s cubic-bezier(.2, .8, .2, 1); }
+.replay-resident-label { paint-order: stroke; stroke: var(--surface-raised); stroke-width: .08px; stroke-linejoin: round; }
+.sensor-node[data-pulse="on"] .sensor-glyph { animation: replay-sensor-pulse .2s cubic-bezier(.2, .8, .2, 1); transform-origin: center; transform-box: fill-box; }
+@keyframes replay-sensor-pulse { 50% { opacity: .58; transform: scale(1.16); } }
+@media (prefers-reduced-motion: reduce) { .replay-resident { transition-duration: 0s; } .sensor-node[data-pulse="on"] .sensor-glyph { animation: none; } }
 .plan-legend { position: absolute; inset: auto auto .7rem .7rem; display: flex; gap: .7rem; padding: .42rem .55rem; border: 1px solid var(--line); border-radius: 5px; background: color-mix(in oklch, var(--surface-raised) 92%, transparent); color: var(--text-soft); font-size: .65rem; }
 .plan-legend span { display: inline-flex; align-items: center; gap: .3rem; }
 .plan-legend i { width: 10px; height: 10px; border: 1px solid var(--line-strong); }

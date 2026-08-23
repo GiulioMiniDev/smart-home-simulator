@@ -563,6 +563,7 @@ export interface ReplayOverlay {
   activeSensorIds: string[];
   trajectory: Point[];
   selectedResidentId?: string;
+  reducedMotion?: boolean;
 }
 
 export interface ReplayFilters {

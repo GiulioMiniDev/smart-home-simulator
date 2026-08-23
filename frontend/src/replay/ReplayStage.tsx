@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PlanCanvas } from "../components";
 import { dwellingRegionIds } from "../editor";
 import type { HomeModel, ReplayEvent, ReplayEventWindow, ReplayFilters, ReplayFrame, ReplayOverlay, ReplayVisibilityMode, SensorModel } from "../types";
@@ -30,6 +31,21 @@ function timestamp(value: string | null | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function useReducedMotion(): boolean {
+  const query = "(prefers-reduced-motion: reduce)";
+  const read = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches;
+  const [reducedMotion, setReducedMotion] = useState(read);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(query);
+    const update = () => setReducedMotion(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return reducedMotion;
+}
+
 function visibleMovement(frame: ReplayFrame | undefined, movement: ReplayEvent | undefined): ReplayEvent | undefined {
   if (!frame || !movement || movement.waypoints.length < 2) return undefined;
   const at = timestamp(frame.at);
@@ -51,6 +67,7 @@ function replayOverlay(
   movement: ReplayEvent | undefined,
   selectedResidentId: string | null | undefined,
   visibilityMode: ReplayVisibilityMode | undefined,
+  reducedMotion: boolean,
 ): ReplayOverlay {
   const isOracle = visibilityMode === "oracle";
   // Frame order is normally deterministic, but IDs make markers stay with people even if a
@@ -74,6 +91,7 @@ function replayOverlay(
     activeSensorIds: [...new Set((frame?.sensorStates ?? []).filter((sensor) => sensor.changed).map((sensor) => sensor.sensorId))],
     trajectory: movement?.waypoints.map((waypoint) => waypoint.position) ?? [],
     selectedResidentId: isOracle ? selectedResidentId ?? undefined : undefined,
+    reducedMotion,
   };
 }
 
@@ -102,16 +120,17 @@ function waypointState(waypoint: ReplayEvent["waypoints"][number], index: number
 }
 
 /** Spatial projection of the exact replay frame, paired with an equivalent screen-reader list. */
-export function ReplayStage({ controller, models }: { controller: ReplayStageController; models: ReplayStageModels }) {
+export function ReplayStage({ controller, models, presentation = false }: { controller: ReplayStageController; models: ReplayStageModels; presentation?: boolean }) {
+  const reducedMotion = useReducedMotion();
   const selected = controller.events?.items.find((event) => event.eventId === controller.selectedEventId);
   const movement = visibleMovement(controller.frame, selectedMovement(controller.events, controller.selectedEventId));
-  const overlay = replayOverlay(controller.frame, movement, controller.filters.selectedResidentId, controller.filters.visibilityMode);
+  const overlay = replayOverlay(controller.frame, movement, controller.filters.selectedResidentId, controller.filters.visibilityMode, reducedMotion);
   const hasVisibleExternalTrajectory = !!models.homeModel
     && overlay.trajectory.length > 1
     && movement?.waypoints.some((waypoint) => !dwellingRegionIds(models.homeModel!).has(waypoint.regionId));
 
   return (
-    <section className="replay-stage">
+    <section className="replay-stage" data-presentation={presentation ? "true" : undefined}>
       {models.homeModel ? (
         <PlanCanvas
           home={models.homeModel}

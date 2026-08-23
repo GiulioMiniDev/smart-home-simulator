@@ -18,8 +18,20 @@
 .replay-digest-details code { min-width: 0; overflow-wrap: anywhere; font: .68rem "Cascadia Code", monospace; }
 .replay-toolbar .replay-copy-digest { min-height: 25px; padding: .18rem .35rem; border: 1px solid var(--line); border-radius: 3px; color: var(--text); font-size: .7rem; }
 .replay-analysis-stage { display: grid; min-height: 430px; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .7fr); }
-[data-mode="presentation"] .replay-analysis-stage { grid-template-columns: minmax(0, 1fr); }
-[data-mode="presentation"] .replay-stage { border-right: 0; }
+.replay-presentation-stage { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(430px, 1fr) auto auto; }
+.replay-presentation-summary { display: flex; flex-wrap: wrap; gap: .35rem 1.1rem; padding: .55rem .85rem; border-bottom: 1px solid var(--line); background: var(--surface-raised); color: var(--text-soft); font-size: .75rem; }
+.replay-presentation-summary strong { margin-right: .25rem; color: var(--text); font-weight: 650; }
+[data-mode="presentation"] .replay-stage { min-height: 0; padding: .7rem; border-right: 0; }
+[data-mode="presentation"] .replay-stage > .plan-canvas { min-height: 470px; }
+.replay-caption { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .85rem; padding: .6rem .85rem; border-top: 1px solid var(--line); background: var(--surface-raised); }
+.replay-caption .eyebrow { margin: 0; }
+.replay-caption h2 { margin: 0; font-size: .92rem; }
+.replay-caption > p:not(.eyebrow) { margin: 0; color: var(--text-soft); font-size: .78rem; }
+.replay-caption button { min-height: 30px; margin-left: auto; }
+.replay-presentation-transport, .replay-toolbar-transport { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
+.replay-presentation-transport { padding: .6rem .85rem; border-top: 1px solid var(--line); background: var(--surface); }
+.replay-presentation-time { display: grid; flex: 1 1 220px; gap: .2rem; min-width: 0; color: var(--text-soft); font-size: .72rem; }
+.replay-presentation-time input { width: 100%; accent-color: var(--indigo); }
 .replay-stage { min-width: 0; padding: .85rem; border-right: 1px solid var(--line); }
 .replay-stage > .plan-canvas { min-height: 410px; }
 .replay-inspector { min-width: 0; max-height: 560px; overflow: auto; }
@@ -39,7 +51,6 @@
 .replay-resident-states li { display: grid; gap: .1rem; padding-top: .45rem; border-top: 1px solid var(--line); font-size: .75rem; }
 .replay-resident-states span { color: var(--text-soft); }
 .replay-timeline { border-top: 1px solid var(--line); }
-[data-mode="presentation"] .replay-track-filters, [data-mode="presentation"] .replay-analysis-filters, [data-mode="presentation"] .replay-track-list { display: none; }
 .replay-timeline-heading > span { color: var(--text-soft); font-size: .75rem; }
 .replay-track-filters { display: flex; flex-wrap: wrap; gap: .3rem .75rem; padding: .55rem .85rem; border-bottom: 1px solid var(--line); color: var(--text-soft); font-size: .73rem; }
 .replay-track-filters label { display: inline-flex; align-items: center; gap: .2rem; }
@@ -68,4 +79,5 @@
 .replay-cluster-items time { color: var(--indigo); font-family: "Cascadia Code", monospace; }
 .replay-cluster-items span { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 980px) { .replay-analysis-stage { grid-template-columns: 1fr; } .replay-stage { border-right: 0; border-bottom: 1px solid var(--line); } .replay-inspector { max-height: none; } .replay-timeline { overflow-x: auto; } .replay-verification, .replay-oracle-unavailable { width: 100%; margin-left: 0; } .replay-digest-details > div { grid-template-columns: 1fr; gap: .15rem; } }
-@media (prefers-reduced-motion: reduce) { .replay-workbench *, .replay-workbench *::before { transition: none !important; } }
+@media (max-width: 540px) { .replay-presentation-summary { display: grid; grid-template-columns: 1fr; } [data-mode="presentation"] .replay-stage > .plan-canvas { min-height: 320px; } .replay-caption button { margin-left: 0; } }
+@media (prefers-reduced-motion: reduce) { .replay-workbench *, .replay-workbench *::before { transition-duration: 0s !important; animation: none !important; } }

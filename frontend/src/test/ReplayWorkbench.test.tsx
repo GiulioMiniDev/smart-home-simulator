@@ -144,7 +144,7 @@ describe("ReplayWorkbench", () => {
     response = replayResponse;
     vi.stubGlobal("fetch", vi.fn((input: string | URL) => Promise.resolve(new Response(JSON.stringify(response(String(input))), { status: 200, headers: { "Content-Type": "application/json" } }))));
   });
-  afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+  afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
   it("keeps the same instant when analysis mode and oracle evidence are opened", async () => {
     render(<ReplayWorkbench runId="run_1" oracleAvailable />);
@@ -155,6 +155,39 @@ describe("ReplayWorkbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Oracle" }));
     expect(await screen.findByText("Simulated cause")).toBeInTheDocument();
     expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
+  });
+
+  it("presents authoritative evidence first and opens analysis at the identical instant", async () => {
+    const view = render(<ReplayWorkbench runId="run_1" oracleAvailable />);
+    await screen.findByText("Replay verified");
+    fireEvent.click(screen.getByRole("button", { name: "Next event" }));
+
+    expect(screen.getByRole("heading", { name: "motion detected" })).toBeInTheDocument();
+    expect(screen.getByText("Resident 1 · kitchen · 08:00")).toBeInTheDocument();
+    expect(screen.getByText("Current evidence")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Event timeline" })).not.toBeInTheDocument();
+    expect(view.container.querySelector(".replay-presentation-stage")).toBeInTheDocument();
+    const before = screen.getByRole("slider", { name: "Replay time" }).getAttribute("value");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+
+    expect(screen.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("slider", { name: "Replay time" })).toHaveAttribute("value", before);
+    expect(screen.getByRole("heading", { name: "Event timeline" })).toBeInTheDocument();
+  });
+
+  it("steps presentation markers and suppresses sensor pulses for reduced motion", () => {
+    const matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)", media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    }));
+    vi.stubGlobal("matchMedia", matchMedia);
+
+    const view = render(<ReplayStage controller={{ frame, events, selectedEventId: "leave-home", filters: { selectedResidentId: "mario", visibilityMode: "oracle" } }} models={{ homeModel: home, sensorModel: sensors }} presentation />);
+
+    expect(screen.getByLabelText("Mario in kitchen, moving")).toHaveAttribute("data-motion", "step");
+    expect(screen.getByLabelText("pir sensor pir")).toHaveAttribute("data-pulse", "off");
+    expect(view.container.querySelector("[data-resident-index='1']")?.textContent).toContain("Mario");
   });
 
   it("steps events, filters tracks and exposes simultaneous events individually", async () => {

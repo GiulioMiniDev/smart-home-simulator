@@ -109,6 +109,7 @@ describe("application components", () => {
     expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
     expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
     expect(screen.getByLabelText("Mario in kitchen, moving")).toHaveClass("is-selected");
+    expect(container.querySelector("[data-resident-index='0']")?.textContent).toContain("1");
   });
 
   it("moves and resizes plan objects by pointer, reporting gestures in metres", () => {
