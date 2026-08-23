@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import AwareDatetime, ConfigDict, Field, JsonValue, model_validator
 
 from smart_home_sim.domain.base import ContractModel
+from smart_home_sim.domain.environment import Point2D
 
 APPLICATION_SCHEMA_VERSION = "1.0.0"
 
@@ -380,6 +381,124 @@ class ReplayVerification(ContractModel):
     matches: bool
     expected_semantic_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     actual_semantic_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+
+ReplayEventKind = Literal[
+    "activity",
+    "action",
+    "movement",
+    "observation",
+    "state_transition",
+    "resource",
+    "runtime_event",
+    "plan_deviation",
+]
+ReplayDetailMode = Literal["presentation", "analysis"]
+ReplayVisibilityMode = Literal["observable", "oracle"]
+
+
+class ReplayWaypoint(ContractModel):
+    at: AwareDatetime
+    region_id: str = Field(min_length=1)
+    position: Point2D
+    traversal_mode: str = Field(min_length=1)
+
+
+class ReplayEventView(ContractModel):
+    at: AwareDatetime
+    end: AwareDatetime | None = None
+    kind: ReplayEventKind
+    event_id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    status: str | None = None
+    actor_id: str | None = None
+    sensor_id: str | None = None
+    waypoints: list[ReplayWaypoint] = Field(default_factory=list)
+    details: dict[str, JsonValue] = Field(default_factory=dict)
+
+
+class ReplayEventWindow(ContractModel):
+    items: list[ReplayEventView]
+    total: int = Field(ge=0)
+    trace_start: AwareDatetime
+    trace_end: AwareDatetime
+    window_start: AwareDatetime
+    window_end: AwareDatetime
+
+
+class ReplayResidentFrame(ContractModel):
+    resident_id: str = Field(min_length=1)
+    region_id: str | None = None
+    position: Point2D | None = None
+    posture: str | None = None
+    execution_state: str = Field(min_length=1)
+    activity_execution_id: str | None = None
+    action_execution_id: str | None = None
+    held_resource_ids: list[str] = Field(default_factory=list)
+    facts: dict[str, JsonValue] = Field(default_factory=dict)
+
+
+class ReplaySensorFrame(ContractModel):
+    observation_id: str = Field(min_length=1)
+    sensor_id: str = Field(min_length=1)
+    sensor_type: str = Field(min_length=1)
+    observed_at: AwareDatetime
+    measurement: str = Field(min_length=1)
+    value: JsonValue
+    unit: str | None = None
+    quality: str = Field(min_length=1)
+    changed: bool = False
+    oracle_cause: ObservationCause | None = None
+
+
+class ReplayFrame(ContractModel):
+    run_id: str = Field(min_length=1)
+    at: AwareDatetime
+    trace_start: AwareDatetime
+    trace_end: AwareDatetime
+    residents: list[ReplayResidentFrame]
+    sensor_states: list[ReplaySensorFrame]
+    entity_states: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
+    environment_facts: dict[str, JsonValue] = Field(default_factory=dict)
+    resource_available_units: dict[str, int] = Field(default_factory=dict)
+    active_event_ids: list[str] = Field(default_factory=list)
+
+
+class ReplayFilters(ContractModel):
+    event_kinds: list[ReplayEventKind] = Field(default_factory=list)
+    actor_ids: list[str] = Field(default_factory=list)
+    sensor_ids: list[str] = Field(default_factory=list)
+    statuses: list[str] = Field(default_factory=list)
+    detail_mode: ReplayDetailMode = "presentation"
+    visibility_mode: ReplayVisibilityMode = "observable"
+    speed: float = Field(default=1, ge=0.25, le=32)
+    selected_resident_id: str | None = None
+
+
+class ReplaySessionState(ContractModel):
+    replay_id: str | None = None
+    run_id: str = Field(min_length=1)
+    verified_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    position_at: AwareDatetime | None = None
+    filters: ReplayFilters = Field(default_factory=ReplayFilters)
+    created_at: AwareDatetime | None = None
+    updated_at: AwareDatetime | None = None
+
+
+class ApplicationReplayContract(ContractModel):
+    model_config = ConfigDict(
+        **ContractModel.model_config,
+        json_schema_extra={
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "urn:smart-home-simulator:schema:application-replay:1.1.0",
+            "title": "Smart Home Application Replay 1.1.0",
+        },
+    )
+
+    verification: ReplayVerification
+    event_window: ReplayEventWindow
+    frame: ReplayFrame
+    session: ReplaySessionState
 
 
 def utc_now() -> datetime:

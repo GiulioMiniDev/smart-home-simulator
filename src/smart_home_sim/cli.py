@@ -15,9 +15,9 @@ from smart_home_sim.authoring import ingest_authoring_file, prepare_authoring_re
 from smart_home_sim.behavior import validate_behavior_files
 from smart_home_sim.compiler import compile_file
 from smart_home_sim.domain.application import (
+    ApplicationReplayContract,
     ExportManifest,
     JobRecord,
-    ReplayVerification,
     WorkspaceManifest,
 )
 from smart_home_sim.domain.authoring import (
@@ -1206,7 +1206,7 @@ def schema(
         SchemaContract.application_workspace_manifest: WorkspaceManifest,
         SchemaContract.application_job: JobRecord,
         SchemaContract.application_export_manifest: ExportManifest,
-        SchemaContract.application_replay: ReplayVerification,
+        SchemaContract.application_replay: ApplicationReplayContract,
     }
     model = models[contract]
     content = json.dumps(model.model_json_schema(by_alias=True), indent=2)

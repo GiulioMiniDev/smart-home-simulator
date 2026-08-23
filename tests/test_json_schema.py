@@ -7,8 +7,13 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from smart_home_sim.domain.application import (
+    ApplicationReplayContract,
     ExportManifest,
     JobRecord,
+    ReplayEventWindow,
+    ReplayFilters,
+    ReplayFrame,
+    ReplaySessionState,
     ReplayVerification,
     WorkspaceManifest,
 )
@@ -106,6 +111,7 @@ APPLICATION_SCHEMAS = {
     "application-job-1.0.0.schema.json": JobRecord,
     "application-export-manifest-1.1.0.schema.json": ExportManifest,
     "application-replay-1.0.0.schema.json": ReplayVerification,
+    "application-replay-1.1.0.schema.json": ApplicationReplayContract,
     "resident-profile-1.0.0.schema.json": ResidentProfile,
 }
 # Exports written before the resident profile existed declare 1.0.0 and are still readable, so the
@@ -113,6 +119,33 @@ APPLICATION_SCHEMAS = {
 HISTORICAL_EXPORT_MANIFEST_SCHEMA = (
     PROJECT_ROOT / "schemas/application-export-manifest-1.0.0.schema.json"
 )
+
+
+def test_application_replay_contract_covers_windows_frames_and_sessions() -> None:
+    schema = ReplayFrame.model_json_schema(by_alias=True)
+    assert {"runId", "at", "traceStart", "traceEnd", "residents", "sensorStates"} <= set(
+        schema["required"]
+    )
+    assert ReplayEventWindow.model_fields["items"].annotation is not None
+    filters = ReplayFilters.model_validate(
+        {
+            "eventKinds": ["movement", "observation"],
+            "detailMode": "analysis",
+            "visibilityMode": "observable",
+            "speed": 4,
+        }
+    )
+    session = ReplaySessionState.model_validate_json(
+        json.dumps(
+            {
+                "runId": "run_1",
+                "verifiedDigest": "a" * 64,
+                "positionAt": "2026-08-23T08:00:00+00:00",
+                "filters": filters.model_dump(by_alias=True),
+            }
+        )
+    )
+    assert session.filters.speed == 4
 
 
 def load_schema() -> dict[str, object]:

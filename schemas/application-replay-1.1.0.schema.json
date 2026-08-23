@@ -1,0 +1,747 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "ObservationCause": {
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "minLength": 1,
+          "title": "Origin",
+          "type": "string"
+        },
+        "causeType": {
+          "minLength": 1,
+          "title": "Causetype",
+          "type": "string"
+        },
+        "causeIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Causeids",
+          "type": "array"
+        },
+        "residentIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Residentids",
+          "type": "array"
+        },
+        "activityExecutionIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Activityexecutionids",
+          "type": "array"
+        },
+        "actionExecutionIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actionexecutionids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "origin",
+        "causeType",
+        "causeIds",
+        "residentIds",
+        "activityExecutionIds",
+        "actionExecutionIds"
+      ],
+      "title": "ObservationCause",
+      "type": "object"
+    },
+    "Point2D": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point2D",
+      "type": "object"
+    },
+    "ReplayEventView": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "kind": {
+          "enum": [
+            "activity",
+            "action",
+            "movement",
+            "observation",
+            "state_transition",
+            "resource",
+            "runtime_event",
+            "plan_deviation"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "eventId": {
+          "minLength": 1,
+          "title": "Eventid",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "actorId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actorid"
+        },
+        "sensorId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sensorid"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/ReplayWaypoint"
+          },
+          "title": "Waypoints",
+          "type": "array"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "at",
+        "kind",
+        "eventId",
+        "label"
+      ],
+      "title": "ReplayEventView",
+      "type": "object"
+    },
+    "ReplayEventWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ReplayEventView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "traceStart": {
+          "format": "date-time",
+          "title": "Tracestart",
+          "type": "string"
+        },
+        "traceEnd": {
+          "format": "date-time",
+          "title": "Traceend",
+          "type": "string"
+        },
+        "windowStart": {
+          "format": "date-time",
+          "title": "Windowstart",
+          "type": "string"
+        },
+        "windowEnd": {
+          "format": "date-time",
+          "title": "Windowend",
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "traceStart",
+        "traceEnd",
+        "windowStart",
+        "windowEnd"
+      ],
+      "title": "ReplayEventWindow",
+      "type": "object"
+    },
+    "ReplayFilters": {
+      "additionalProperties": false,
+      "properties": {
+        "eventKinds": {
+          "items": {
+            "enum": [
+              "activity",
+              "action",
+              "movement",
+              "observation",
+              "state_transition",
+              "resource",
+              "runtime_event",
+              "plan_deviation"
+            ],
+            "type": "string"
+          },
+          "title": "Eventkinds",
+          "type": "array"
+        },
+        "actorIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actorids",
+          "type": "array"
+        },
+        "sensorIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sensorids",
+          "type": "array"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Statuses",
+          "type": "array"
+        },
+        "detailMode": {
+          "default": "presentation",
+          "enum": [
+            "presentation",
+            "analysis"
+          ],
+          "title": "Detailmode",
+          "type": "string"
+        },
+        "visibilityMode": {
+          "default": "observable",
+          "enum": [
+            "observable",
+            "oracle"
+          ],
+          "title": "Visibilitymode",
+          "type": "string"
+        },
+        "speed": {
+          "default": 1,
+          "maximum": 32,
+          "minimum": 0.25,
+          "title": "Speed",
+          "type": "number"
+        },
+        "selectedResidentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selectedresidentid"
+        }
+      },
+      "title": "ReplayFilters",
+      "type": "object"
+    },
+    "ReplayFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "runId": {
+          "minLength": 1,
+          "title": "Runid",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "traceStart": {
+          "format": "date-time",
+          "title": "Tracestart",
+          "type": "string"
+        },
+        "traceEnd": {
+          "format": "date-time",
+          "title": "Traceend",
+          "type": "string"
+        },
+        "residents": {
+          "items": {
+            "$ref": "#/$defs/ReplayResidentFrame"
+          },
+          "title": "Residents",
+          "type": "array"
+        },
+        "sensorStates": {
+          "items": {
+            "$ref": "#/$defs/ReplaySensorFrame"
+          },
+          "title": "Sensorstates",
+          "type": "array"
+        },
+        "entityStates": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "title": "Entitystates",
+          "type": "object"
+        },
+        "environmentFacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Environmentfacts",
+          "type": "object"
+        },
+        "resourceAvailableUnits": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Resourceavailableunits",
+          "type": "object"
+        },
+        "activeEventIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Activeeventids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "runId",
+        "at",
+        "traceStart",
+        "traceEnd",
+        "residents",
+        "sensorStates"
+      ],
+      "title": "ReplayFrame",
+      "type": "object"
+    },
+    "ReplayResidentFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
+          "type": "string"
+        },
+        "regionId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Regionid"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Point2D"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "posture": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Posture"
+        },
+        "executionState": {
+          "minLength": 1,
+          "title": "Executionstate",
+          "type": "string"
+        },
+        "activityExecutionId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activityexecutionid"
+        },
+        "actionExecutionId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actionexecutionid"
+        },
+        "heldResourceIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Heldresourceids",
+          "type": "array"
+        },
+        "facts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Facts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "residentId",
+        "executionState"
+      ],
+      "title": "ReplayResidentFrame",
+      "type": "object"
+    },
+    "ReplaySensorFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "observationId": {
+          "minLength": 1,
+          "title": "Observationid",
+          "type": "string"
+        },
+        "sensorId": {
+          "minLength": 1,
+          "title": "Sensorid",
+          "type": "string"
+        },
+        "sensorType": {
+          "minLength": 1,
+          "title": "Sensortype",
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "title": "Observedat",
+          "type": "string"
+        },
+        "measurement": {
+          "minLength": 1,
+          "title": "Measurement",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "quality": {
+          "minLength": 1,
+          "title": "Quality",
+          "type": "string"
+        },
+        "changed": {
+          "default": false,
+          "title": "Changed",
+          "type": "boolean"
+        },
+        "oracleCause": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObservationCause"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "observationId",
+        "sensorId",
+        "sensorType",
+        "observedAt",
+        "measurement",
+        "value",
+        "quality"
+      ],
+      "title": "ReplaySensorFrame",
+      "type": "object"
+    },
+    "ReplaySessionState": {
+      "additionalProperties": false,
+      "properties": {
+        "replayId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replayid"
+        },
+        "runId": {
+          "minLength": 1,
+          "title": "Runid",
+          "type": "string"
+        },
+        "verifiedDigest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verifieddigest"
+        },
+        "positionAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Positionat"
+        },
+        "filters": {
+          "$ref": "#/$defs/ReplayFilters"
+        },
+        "createdAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Createdat"
+        },
+        "updatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updatedat"
+        }
+      },
+      "required": [
+        "runId"
+      ],
+      "title": "ReplaySessionState",
+      "type": "object"
+    },
+    "ReplayVerification": {
+      "$id": "urn:smart-home-simulator:schema:application-replay:1.0.0",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "runId": {
+          "minLength": 1,
+          "title": "Runid",
+          "type": "string"
+        },
+        "verifiedAt": {
+          "format": "date-time",
+          "title": "Verifiedat",
+          "type": "string"
+        },
+        "matches": {
+          "title": "Matches",
+          "type": "boolean"
+        },
+        "expectedSemanticDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Expectedsemanticdigest",
+          "type": "string"
+        },
+        "actualSemanticDigest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actualsemanticdigest"
+        }
+      },
+      "required": [
+        "runId",
+        "verifiedAt",
+        "matches",
+        "expectedSemanticDigest"
+      ],
+      "title": "Smart Home Application Replay Verification 1.0.0",
+      "type": "object"
+    },
+    "ReplayWaypoint": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "regionId": {
+          "minLength": 1,
+          "title": "Regionid",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "traversalMode": {
+          "minLength": 1,
+          "title": "Traversalmode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "regionId",
+        "position",
+        "traversalMode"
+      ],
+      "title": "ReplayWaypoint",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:application-replay:1.1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "verification": {
+      "$ref": "#/$defs/ReplayVerification"
+    },
+    "eventWindow": {
+      "$ref": "#/$defs/ReplayEventWindow"
+    },
+    "frame": {
+      "$ref": "#/$defs/ReplayFrame"
+    },
+    "session": {
+      "$ref": "#/$defs/ReplaySessionState"
+    }
+  },
+  "required": [
+    "verification",
+    "eventWindow",
+    "frame",
+    "session"
+  ],
+  "title": "Smart Home Application Replay 1.1.0",
+  "type": "object"
+}
