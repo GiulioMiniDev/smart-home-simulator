@@ -122,6 +122,37 @@ test("replays one verified run in presentation and analysis modes", async ({ pag
   await expectNoAxeViolations(page);
 });
 
+test("keeps the replay presentation plan passive and its transport visible", async ({ page }) => {
+  const run = await replayRun();
+  await resetReplaySession(page, run);
+  await page.goto(`/simulations/${run.runId}`);
+  await page.getByRole("tab", { name: "replay" }).click();
+  await expect(page.getByText("Replay verified")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Presentation" })).toHaveAttribute("aria-pressed", "true");
+
+  const canvas = page.locator(".replay-presentation-stage svg.plan-canvas");
+  const transport = page.getByRole("region", { name: "Replay transport" });
+  await expect(canvas).toBeVisible();
+  await expect(transport).toBeVisible();
+  expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe("auto");
+  await expect(canvas).toHaveCSS("cursor", "default");
+  expect(await transport.evaluate((element) => ({
+    position: getComputedStyle(element).position,
+    bottom: getComputedStyle(element).bottom,
+  }))).toEqual({ position: "sticky", bottom: "0px" });
+
+  await canvas.hover();
+  await page.mouse.down();
+  try {
+    await expect(canvas).toHaveCSS("cursor", "default");
+  } finally {
+    await page.mouse.up();
+  }
+
+  await page.setViewportSize({ width: 540, height: 900 });
+  await expect.poll(() => canvas.evaluate((element) => getComputedStyle(element).minHeight)).toBe("320px");
+});
+
 test("replay survives reload and keyboard stepping", async ({ page }) => {
   const run = await replayRun();
   await resetReplaySession(page, run);

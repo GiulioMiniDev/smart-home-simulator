@@ -80,5 +80,5 @@
 .replay-cluster-items time { color: var(--indigo); font-family: "Cascadia Code", monospace; }
 .replay-cluster-items span { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 980px) { .replay-analysis-stage { grid-template-columns: 1fr; } .replay-stage { border-right: 0; border-bottom: 1px solid var(--line); } .replay-inspector { max-height: none; } .replay-timeline { overflow-x: auto; } .replay-verification, .replay-oracle-unavailable { width: 100%; margin-left: 0; } .replay-digest-details > div { grid-template-columns: 1fr; gap: .15rem; } }
-@media (max-width: 540px) { .replay-presentation-summary { display: grid; grid-template-columns: 1fr; } [data-mode="presentation"] .replay-stage > .plan-canvas { min-height: 320px; } .replay-caption button { margin-left: 0; } }
+@media (max-width: 540px) { .replay-presentation-summary { display: grid; grid-template-columns: 1fr; } [data-mode="presentation"] .replay-stage > .plan-canvas-wrap > .plan-canvas { min-height: 320px; } .replay-caption button { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .replay-workbench *, .replay-workbench *::before { transition-duration: 0s !important; animation: none !important; } }

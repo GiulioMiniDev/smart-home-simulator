@@ -364,6 +364,7 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
    is one metre here and a handle sized in metres is unusable at any zoom but one. */
 .plan-canvas { cursor: grab; touch-action: none; }
 .plan-canvas:active { cursor: grabbing; }
+.plan-canvas[data-interaction-mode="passive"], .plan-canvas[data-interaction-mode="passive"]:active { cursor: default; touch-action: auto; }
 .plan-canvas.is-editable g[role="button"] { cursor: move; }
 .plan-canvas.is-editable g[role="button"]:active { cursor: grabbing; }
 .selection-outline { fill: none; vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; stroke-dasharray: 4 3; pointer-events: none; }
