@@ -454,6 +454,7 @@ export function PlanCanvas({
   editing,
   showExternalPlaces = false,
   onViewport,
+  interactionMode = "interactive",
 }: {
   home: HomeModel;
   sensors?: SensorModel;
@@ -464,6 +465,7 @@ export function PlanCanvas({
   editing?: PlanEditing;
   showExternalPlaces?: boolean;
   onViewport?: (next: { zoom: number; x: number; y: number }) => void;
+  interactionMode?: "interactive" | "passive";
 }) {
   // A planimetry is a drawing of the house. The supermarket and the bar are regions the simulator
   // needs, not architecture, and at 12 metres away they decide the viewport and leave the flat
@@ -611,11 +613,29 @@ export function PlanCanvas({
       y: world.y - fy * nextHeight - minY - (maxY - minY - nextHeight) / 2,
     });
   };
+  useEffect(() => {
+    if (interactionMode !== "interactive") return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    // React registers wheel listeners as passive in this runtime, so retain the browser-level
+    // cancellation that keeps interactive canvas zoom from scrolling the containing page.
+    const preventPageScroll = (event: WheelEvent) => event.preventDefault();
+    svg.addEventListener("wheel", preventPageScroll, { passive: false });
+    return () => svg.removeEventListener("wheel", preventPageScroll);
+  }, [interactionMode]);
   const draggable = (id: string) =>
     editing ? { onPointerDown: (event: ReactPointerEvent) => beginDrag(event, id) } : {};
   // Carrying the id alongside the box removes the need to re-check it when wiring the handles.
   const selectedBox = editing && selectedId ? selectionBox(home, sensors, selectedId) : undefined;
   const selection = selectedBox ? { id: selectedId as string, box: selectedBox } : undefined;
+  const planInteractions = interactionMode === "interactive" ? {
+    onPointerDown: beginPan,
+    onPointerMove: (event: ReactPointerEvent) => { continueDrag(event); continuePan(event); },
+    onPointerUp: endDrag,
+    onPointerCancel: endDrag,
+    onPointerLeave: endDrag,
+    onWheel: wheelZoom,
+  } : {};
   return (
     <div className="plan-canvas-wrap">
       <svg
@@ -624,12 +644,8 @@ export function PlanCanvas({
         viewBox={`${viewX} ${viewY} ${width} ${height}`}
         role="group"
         aria-label={`Plan of ${home.homeId}, ${regionsShown.length} regions and ${sensorsShown.length} sensors`}
-        onPointerDown={beginPan}
-        onPointerMove={(event) => { continueDrag(event); continuePan(event); }}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onPointerLeave={endDrag}
-        onWheel={wheelZoom}
+        data-interaction-mode={interactionMode}
+        {...planInteractions}
       >
         <defs>
           <pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M 1 0 L 0 0 0 1" /></pattern>

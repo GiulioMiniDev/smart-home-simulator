@@ -325,6 +325,10 @@ describe("ReplayWorkbench", () => {
     expect(screen.getByText("Current evidence")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Event timeline" })).not.toBeInTheDocument();
     expect(view.container.querySelector(".replay-presentation-stage")).toBeInTheDocument();
+    expect(view.container.querySelector(".replay-presentation-stage svg.plan-canvas"))
+      .toHaveAttribute("data-interaction-mode", "passive");
+    expect(screen.getByRole("region", { name: "Replay transport" }))
+      .toHaveClass("replay-presentation-transport");
     const before = screen.getByRole("slider", { name: "Replay time" }).getAttribute("value");
 
     fireEvent.click(screen.getByRole("button", { name: "Open evidence" }));

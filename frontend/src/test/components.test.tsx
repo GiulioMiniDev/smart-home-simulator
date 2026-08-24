@@ -90,6 +90,29 @@ describe("application components", () => {
     expect(screen.queryByLabelText("oven orphan")).not.toBeInTheDocument();
   });
 
+  it("keeps passive plans fitted while the wheel remains available to page scrolling", () => {
+    const passive = render(<PlanCanvas home={home} sensors={sensors} interactionMode="passive" />);
+    const passivePlan = passive.container.querySelector("svg.plan-canvas") as SVGSVGElement;
+    const initialViewBox = passivePlan.getAttribute("viewBox");
+    const passiveWheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 120 });
+
+    fireEvent(passivePlan, passiveWheel);
+
+    expect(passiveWheel.defaultPrevented).toBe(false);
+    expect(passivePlan).toHaveAttribute("data-interaction-mode", "passive");
+    expect(passivePlan).toHaveAttribute("viewBox", initialViewBox);
+
+    passive.unmount();
+    const interactive = render(<PlanCanvas home={home} sensors={sensors} />);
+    const interactivePlan = interactive.container.querySelector("svg.plan-canvas") as SVGSVGElement;
+    const interactiveWheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 120 });
+
+    fireEvent(interactivePlan, interactiveWheel);
+
+    expect(interactiveWheel.defaultPrevented).toBe(true);
+    expect(interactivePlan).toHaveAttribute("data-interaction-mode", "interactive");
+  });
+
   it("shows replay residents, active regions and changed sensors without inventing unknown positions", () => {
     const overlay: ReplayOverlay = {
       residents: [

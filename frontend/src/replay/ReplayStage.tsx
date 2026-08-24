@@ -128,6 +128,7 @@ export function ReplayStage({ controller, models, presentation = false }: { cont
           sensors={models.sensorModel}
           replayOverlay={overlay}
           showExternalPlaces={hasVisibleExternalTrajectory}
+          interactionMode="passive"
         />
       ) : <p role="status">Home model unavailable</p>}
       <section className="sr-only" aria-labelledby="replay-spatial-state-heading">

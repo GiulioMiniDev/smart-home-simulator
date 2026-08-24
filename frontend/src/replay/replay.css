@@ -18,18 +18,19 @@
 .replay-digest-details code { min-width: 0; overflow-wrap: anywhere; font: .68rem "Cascadia Code", monospace; }
 .replay-toolbar .replay-copy-digest { min-height: 25px; padding: .18rem .35rem; border: 1px solid var(--line); border-radius: 3px; color: var(--text); font-size: .7rem; }
 .replay-analysis-stage { display: grid; min-height: 430px; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .7fr); }
-.replay-presentation-stage { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(430px, 1fr) auto auto; }
+.replay-presentation-stage { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(360px, 1fr) auto auto; }
 .replay-presentation-summary { display: flex; flex-wrap: wrap; gap: .35rem 1.1rem; padding: .55rem .85rem; border-bottom: 1px solid var(--line); background: var(--surface-raised); color: var(--text-soft); font-size: .75rem; }
 .replay-presentation-summary strong { margin-right: .25rem; color: var(--text); font-weight: 650; }
-[data-mode="presentation"] .replay-stage { min-height: 0; padding: .7rem; border-right: 0; }
-[data-mode="presentation"] .replay-stage > .plan-canvas { min-height: 470px; }
+[data-mode="presentation"] .replay-stage { display: grid; min-height: 0; place-items: center; padding: .7rem; border-right: 0; }
+[data-mode="presentation"] .replay-stage > .plan-canvas-wrap { width: 100%; }
+[data-mode="presentation"] .replay-stage > .plan-canvas-wrap > .plan-canvas { min-height: clamp(360px, 56vh, 560px); cursor: default; }
 .replay-caption { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .85rem; padding: .6rem .85rem; border-top: 1px solid var(--line); background: var(--surface-raised); }
 .replay-caption .eyebrow { margin: 0; }
 .replay-caption h2 { margin: 0; font-size: .92rem; }
 .replay-caption > p:not(.eyebrow) { margin: 0; color: var(--text-soft); font-size: .78rem; }
 .replay-caption button { min-height: 30px; margin-left: auto; }
 .replay-presentation-transport, .replay-toolbar-transport { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
-.replay-presentation-transport { padding: .6rem .85rem; border-top: 1px solid var(--line); background: var(--surface); }
+.replay-presentation-transport { position: sticky; z-index: 4; bottom: 0; padding: .6rem .85rem; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -.4rem 1rem color-mix(in srgb, var(--text) 8%, transparent); }
 .replay-presentation-time { display: grid; flex: 1 1 220px; gap: .2rem; min-width: 0; color: var(--text-soft); font-size: .72rem; }
 .replay-presentation-time input { width: 100%; accent-color: var(--indigo); }
 .replay-stage { min-width: 0; padding: .85rem; border-right: 1px solid var(--line); }
