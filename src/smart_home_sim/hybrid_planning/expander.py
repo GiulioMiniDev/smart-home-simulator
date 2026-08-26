@@ -676,7 +676,7 @@ def _event_activity(
     )
 
 
-def _resolve_overlaps(activities: list[Activity]) -> list[Activity]:
+def _resolve_overlaps(activities: list[Activity], lights_out: datetime | None) -> list[Activity]:
     """Push preferred starts forward so a day's plan does not ask to be in two places at once.
 
     Widening windows gave the compiler room, but it also let neighbouring bands overlap: dinner
@@ -691,14 +691,20 @@ def _resolve_overlaps(activities: list[Activity]) -> list[Activity]:
     legitimate work for the compiler, which can shorten either side, but *starting* after it is not
     something the compiler can repair into sense — the resident would be going to bed and then
     turning the television on.
+
+    ``lights_out`` comes from `_lights_out`, the same reading `_wobble` is given, rather than being
+    worked out here a second time. Doing it here meant taking the earliest `sleep` on the list, and
+    since a night that runs past midnight belongs to the day it ends on, the earliest sleep on such
+    a day is the night the resident is *waking from* — 01:22, not 23:50. Every waking hour is after
+    that, so the bound below rejected every push and the pass did nothing at all on those days.
+    They are not rare, and they became less rare when the bedtime distribution was widened to match
+    the real log: 156 of 365 nights cross midnight for a 23:45 chronotype. `_lights_out` already
+    documents the trap and steps around it by the hour the block starts at.
     """
-    night = min(
-        (
-            item.start_window.preferred - timedelta(minutes=EVENING_CLEARANCE_MINUTES)
-            for item in activities
-            if item.intent == "sleep" and item.start_window is not None
-        ),
-        default=None,
+    night = (
+        lights_out - timedelta(minutes=EVENING_CLEARANCE_MINUTES)
+        if lights_out is not None
+        else None
     )
     ordered = sorted(
         activities,
@@ -1228,7 +1234,7 @@ def expand_outline(
                 outline, date.fromisoformat(calendar_day.date), tz, len(activities)
             )
         )
-        activities = _resolve_overlaps(activities)
+        activities = _resolve_overlaps(activities, _lights_out(plan))
         if calendar_day is calendar.days[-1]:
             # The horizon stops at midnight after the last day, so whatever is still running then
             # is truncated rather than made infeasible. This is what the flag is for; the evening

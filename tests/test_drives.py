@@ -4,6 +4,7 @@ import statistics
 from datetime import date, timedelta
 
 from smart_home_sim.hybrid_planning.drives import (
+    _LATEST_LIGHTS_OUT_MINUTES,
     DriveState,
     RhythmProfile,
     advance,
@@ -267,8 +268,13 @@ def test_a_late_night_is_flagged_for_the_following_day() -> None:
 
     crossing = [item for item in rhythms.values() if item.sleep_starts_next_day]
     assert crossing, "a 23:45 chronotype has to reach past midnight sometimes"
+    # Read from the constant rather than restated. This used to assert `< 03:00`, which was the
+    # bound's value at the time and stopped being true the moment it moved to 04:00 on Aruba's
+    # percentiles — a test failing for a change it was never about. What it is about is that a
+    # crossing night stays inside whatever plausibility bound the drive model declares.
+    latest = _LATEST_LIGHTS_OUT_MINUTES - 24 * 60
     for item in crossing:
-        assert _minutes(item.sleep_hhmm) < _minutes("03:00")
+        assert 0 <= _minutes(item.sleep_hhmm) <= latest
     for item in rhythms.values():
         if not item.sleep_starts_next_day:
             assert _minutes(item.sleep_hhmm) >= _minutes("12:00")
