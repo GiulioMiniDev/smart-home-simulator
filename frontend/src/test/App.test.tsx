@@ -362,28 +362,10 @@ describe("complete application routes", () => {
     expect((await screen.findAllByText("prepare meal")).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("tab", { name: "observations" }));
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(await screen.findByText("Replay verified")).toBeInTheDocument();
-    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/runs/run_1/replay/verify"))).toBe(true);
-  });
-
-  it("wires replay Oracle availability from the run's oracle mapping artifact", async () => {
-    mount("/simulations/run_1");
-    await screen.findByText("Persistent state");
-    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    const unavailable = await screen.findByRole("button", { name: "Oracle" });
-    expect(unavailable).toBeDisabled();
-    expect(screen.getByText(/Oracle mapping unavailable/)).toBeInTheDocument();
-
-    cleanup();
-    overrides["/jobs/run_1"] = { job, events: [], artifacts: {
-      home_model: { artifactId: "artifact_home", role: "home_model", sha256: "a".repeat(64), sizeBytes: 100 },
-      oracle_mapping: { artifactId: "artifact_oracle", role: "oracle_mapping", sha256: "c".repeat(64), sizeBytes: 100 },
-    } };
-    mount("/simulations/run_1");
-    await screen.findByText("Persistent state");
-    fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(await screen.findByRole("button", { name: "Oracle" })).toBeEnabled();
-    expect(screen.queryByText(/Oracle mapping unavailable/)).not.toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Replay controls" })).toBeInTheDocument();
+    // The workspace reports this session as playable, which is its record that the trace has
+    // already been verified; re-executing the simulation to learn that again is minutes of work.
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/runs/run_1/replay/verify"))).toBe(false);
   });
 
   it("revokes observational Oracle evidence while an Observable reload supersedes it", async () => {
@@ -932,13 +914,16 @@ describe("complete application routes", () => {
 
   it("covers empty evidence and an automatic replay digest mismatch", async () => {
     overrides["/runs/run_1/diary?limit=500"] = { total: 0, items: [] };
+    // A session the workspace cannot report as playable is the one that gets verified, and this
+    // run's trace no longer produces the digest it was published with.
+    overrides["/runs/run_1/replay/session"] = { runId: "run_1", verifiedDigest: null, playable: false, positionAt: null, filters: {} };
     overrides["/runs/run_1/replay/verify"] = { matches: false, actualSemanticDigest: "d".repeat(64) };
     mount("/simulations/run_1"); await screen.findByText("Persistent state");
     fireEvent.click(screen.getByRole("tab", { name: "diary" }));
     expect(await screen.findByText("Select an activity")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(await screen.findByText("Replay digest did not match")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next event" })).toBeDisabled();
+    expect(await screen.findByText(/no longer matches the trace/)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Replay controls" })).not.toBeInTheDocument();
   });
 
   it("covers draft, multi-resident, no-model and invalid publication paths", async () => {
@@ -984,7 +969,7 @@ describe("complete application routes", () => {
     expect(await screen.findByText("No oracle link")).toBeInTheDocument();
     overrides["/runs/run_1/models"] = {};
     fireEvent.click(screen.getByRole("tab", { name: "replay" }));
-    expect(await screen.findByText("Home model unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("The home for this run is not available.")).toBeInTheDocument();
     cleanup(); overrides["/jobs/run_1"] = new Response(JSON.stringify({ error: { message: "Run missing" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/simulations/run_1"); expect(await screen.findByText("Run missing")).toBeInTheDocument();
   });

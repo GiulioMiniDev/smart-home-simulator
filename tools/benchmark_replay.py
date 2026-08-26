@@ -294,9 +294,8 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
     index = replay._index(run_id)
     index_seconds = time.perf_counter() - started
     rng = random.Random(f"replay-benchmark-v1:{label}")
-    instants = [
-        index.event_times[rng.randrange(len(index.event_times))] for _ in range(FRAME_COUNT)
-    ]
+    seekable = index.event_times + index.observation_times
+    instants = [seekable[rng.randrange(len(seekable))] for _ in range(FRAME_COUNT)]
 
     frame_seconds: list[float] = []
     for instant in instants:
@@ -331,6 +330,7 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
         limit=WINDOW_LIMIT,
     )
     assert daily_summaries.total == len(index.trace.daily_summaries) > 0
+    assert not index.oracle.loaded, "Observable replay queries must not read the oracle mapping"
     assert len(daily_summaries.items) <= WINDOW_LIMIT
     assert all(item.kind == "daily_summary" for item in daily_summaries.items)
 
@@ -354,7 +354,11 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
         "dailySummaryWindowTotal": daily_summaries.total,
         "dailySummaryWindowItems": len(daily_summaries.items),
         "observations": len(index.observations.records),
-        "events": len(index.events),
+        "traceEvents": len(index.events),
+        # An Observable session must never pay for the oracle mapping, which outweighs every
+        # other artifact in the run.  This reports whether these queries read it at all.
+        "oracleOnDisk": index.oracle.available,
+        "oracleLoaded": index.oracle.loaded,
         "indexMs": _milliseconds(index_seconds),
         "medianFrameMs": _milliseconds(median_frame),
         "medianWindowMs": _milliseconds(statistics.median(window_seconds)),
@@ -364,10 +368,12 @@ def _measure(label: str, workspace: WorkspaceService, run_id: str) -> dict[str, 
 
 
 def main() -> None:
+    # Every fixture keeps its oracle mapping on disk: an Observable session is only honestly
+    # measured against the artifacts a real run leaves beside it.
     fixtures = [
         ("weekly", WEEKLY_PERIODS, 7, False),
         ("four-week-month-scale", MONTHLY_PERIODS, 28, False),
-        ("yearly", YEARLY_PERIODS, 364, True),
+        ("yearly", YEARLY_PERIODS, 364, False),
     ]
     with tempfile.TemporaryDirectory(prefix="smart-home-replay-benchmark-") as temporary:
         results = []

@@ -4,10 +4,22 @@ import hashlib
 import json
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, JsonValue, model_validator
+from pydantic import (
+    AwareDatetime,
+    ConfigDict,
+    Field,
+    JsonValue,
+    ValidationInfo,
+    model_validator,
+)
 
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.domain.environment import Point2D, Polygon2D
+
+# Validation-context key: the caller has already authenticated these bytes against the digest
+# the workspace recorded for the artifact, so a model may skip a redundant self-check whose
+# cost grows with the artifact rather than with the query.
+TRUSTED_ARTIFACT_DIGEST = "trustedArtifactDigest"
 
 SENSOR_PROJECTION_ISSUE_CODES = frozenset(
     {
@@ -360,10 +372,16 @@ class OracleMapping(ContractModel):
     links: list[OracleObservationLink]
 
     @model_validator(mode="after")
-    def check_links(self) -> OracleMapping:
+    def check_links(self, info: ValidationInfo) -> OracleMapping:
         identifiers = [item.observation_id for item in self.links]
         if len(identifiers) != len(set(identifiers)):
             raise ValueError("oracle observationId values must be unique")
+        # Re-deriving the identifier canonicalizes every link a second time.  For a year of
+        # sensor coverage that is over a million re-serializations, and it authenticates the
+        # same bytes the workspace already authenticates by recorded artifact digest before
+        # it hands out the path.  A caller that has passed that check opts out of this one.
+        if info.context is not None and info.context.get(TRUSTED_ARTIFACT_DIGEST):
+            return self
         digest = _canonical_sha256([item.model_dump(mode="json") for item in self.links])
         if self.mapping_id != f"oracle_{digest[:16]}":
             raise ValueError("oracle mappingId does not match its links")

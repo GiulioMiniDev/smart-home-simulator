@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
@@ -39,7 +39,11 @@ from smart_home_sim.domain.execution import (
 )
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.profile import ResidentProfile
-from smart_home_sim.domain.sensors import ObservableSensorLog, OracleMapping
+from smart_home_sim.domain.sensors import (
+    TRUSTED_ARTIFACT_DIGEST,
+    ObservableSensorLog,
+    OracleMapping,
+)
 from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, profile_from_trace
 from smart_home_sim.simulation import replay_files
 
@@ -108,9 +112,53 @@ class _FrameSources:
     active_movement_times: tuple[datetime, ...]
     active_movement_snapshots: tuple[tuple[MovementExecution, ...], ...]
     resource_timelines: tuple[tuple[tuple[str, str], tuple[datetime, ...], tuple[Any, ...]], ...]
-    resource_availability_timelines: tuple[
-        tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...
-    ]
+    resource_availability_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...]
+
+
+class _OracleSource:
+    """The oracle mapping, read only once a request actually asks to see it.
+
+    It is the largest artifact a run owns -- for a year of sensor coverage it outweighs every
+    other artifact combined -- and Observable replay is never allowed to read it.  Loading it
+    on first oracle use keeps an Observable session's footprint proportional to the evidence
+    it may see, and keeps its link lookup built once instead of once per frame.
+    """
+
+    def __init__(self, path: str | None) -> None:
+        self._path = path
+        self._mapping: OracleMapping | None = None
+        self._causes: dict[str, Any] | None = None
+        self._read = False
+
+    @property
+    def available(self) -> bool:
+        return self._path is not None
+
+    @property
+    def loaded(self) -> bool:
+        """Whether this run's oracle mapping has been read into memory yet."""
+        return self._read
+
+    def mapping(self) -> OracleMapping | None:
+        if not self._read:
+            self._mapping = (
+                OracleMapping.model_validate_json(
+                    Path(self._path).read_text(encoding="utf-8"),
+                    context={TRUSTED_ARTIFACT_DIGEST: True},
+                )
+                if self._path is not None
+                else None
+            )
+            self._read = True
+        return self._mapping
+
+    def causes(self) -> dict[str, Any]:
+        if self._causes is None:
+            mapping = self.mapping()
+            self._causes = (
+                {item.observation_id: item for item in mapping.links} if mapping is not None else {}
+            )
+        return self._causes
 
 
 @dataclass(frozen=True)
@@ -119,11 +167,13 @@ class _ReplayIndex:
     trace_end: datetime
     events: tuple[ReplayEventView, ...]
     event_times: tuple[datetime, ...]
+    observation_records: tuple[Any, ...]
+    observation_times: tuple[datetime, ...]
     trace: ExecutionTrace
     observations: ObservableSensorLog
     sensor_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...]
     frame_sources: _FrameSources
-    oracle: OracleMapping | None
+    oracle: _OracleSource
     bundle: SimulationBundle | None
 
 
@@ -240,7 +290,6 @@ def _daily_summary_available_at(
 
 def _events(
     trace: ExecutionTrace,
-    observations: ObservableSensorLog,
     timezone: tzinfo | None = None,
 ) -> tuple[ReplayEventView, ...]:
     events: list[ReplayEventView] = []
@@ -294,13 +343,24 @@ def _events(
             )
         )
     for item in trace.state_transitions:
+        # Which thing changed is half of what a transition says, and the event carried only the
+        # other half. A resident's identity travels as the actor, which the Observable
+        # projection already strips; anything else is an object, and naming it discloses
+        # nothing about a person.
+        resident = item.subject_type == "resident"
         events.append(
             ReplayEventView(
                 at=item.at,
                 kind="state_transition",
                 event_id=item.transition_id,
                 label=f"{item.subject_type}.{item.fact}",
-                details={"operation": item.operation, "value": item.value},
+                actor_id=item.subject_id if resident else None,
+                details={
+                    "operation": item.operation,
+                    "value": item.value,
+                    "previousValue": item.previous_value,
+                    **({} if resident else {"subjectId": item.subject_id}),
+                },
             )
         )
     for item in trace.resource_events:
@@ -362,24 +422,65 @@ def _events(
                 },
             )
         )
-    for item in observations.records:
-        details: dict[str, JsonValue] = {
-            "measurement": item.measurement,
-            "value": item.value,
-            "unit": item.unit,
-            "quality": item.quality,
-        }
-        events.append(
-            ReplayEventView(
-                at=item.observed_at,
-                kind="observation",
-                event_id=item.observation_id,
-                label=item.measurement,
-                sensor_id=item.sensor_id,
-                details=details,
+    return tuple(sorted(events, key=lambda item: (item.at, item.kind, item.event_id)))
+
+
+def _observation_event(record: Any) -> ReplayEventView:
+    """Project one stored observation into its replay event.
+
+    Observations outnumber every other evidence family by two orders of magnitude, so their
+    events are built for the window a caller asked for rather than held for the whole trace.
+    """
+    details: dict[str, JsonValue] = {
+        "measurement": record.measurement,
+        "value": record.value,
+        "unit": record.unit,
+        "quality": record.quality,
+    }
+    return ReplayEventView(
+        at=record.observed_at,
+        kind="observation",
+        event_id=record.observation_id,
+        label=record.measurement,
+        sensor_id=record.sensor_id,
+        details=details,
+    )
+
+
+def _merged_window(
+    traced: Sequence[ReplayEventView], observed: Sequence[Any], limit: int
+) -> list[ReplayEventView]:
+    """Take the first ``limit`` events of two already-ordered evidence sequences.
+
+    Both sides carry the same ``(at, kind, event_id)`` order the index sorts by, so merging
+    them yields exactly the prefix one globally sorted window would yield -- while projecting
+    only the observation records that survive the bound.
+    """
+    merged: list[ReplayEventView] = []
+    traced_position = observed_position = 0
+    while len(merged) < limit and (
+        traced_position < len(traced) or observed_position < len(observed)
+    ):
+        take_observation = traced_position >= len(traced) or (
+            observed_position < len(observed)
+            and (
+                observed[observed_position].observed_at,
+                "observation",
+                observed[observed_position].observation_id,
+            )
+            < (
+                traced[traced_position].at,
+                traced[traced_position].kind,
+                traced[traced_position].event_id,
             )
         )
-    return tuple(sorted(events, key=lambda item: (item.at, item.kind, item.event_id)))
+        if take_observation:
+            merged.append(_observation_event(observed[observed_position]))
+            observed_position += 1
+        else:
+            merged.append(traced[traced_position])
+            traced_position += 1
+    return merged
 
 
 def _replay_index(
@@ -402,11 +503,6 @@ def _replay_index(
     observations = ObservableSensorLog.model_validate_json(
         Path(observations_path).read_text(encoding="utf-8")
     )
-    oracle = (
-        OracleMapping.model_validate_json(Path(oracle_path).read_text(encoding="utf-8"))
-        if oracle_path
-        else None
-    )
     bundle = (
         SimulationBundle.model_validate_json(Path(bundle_path).read_text(encoding="utf-8"))
         if bundle_path
@@ -419,10 +515,11 @@ def _replay_index(
     )
     events = _events(
         trace,
-        observations,
         ZoneInfo(bundle.scenario.time_zone)
         if bundle is not None
-        else ZoneInfo(scenario.time_zone) if scenario is not None else None,
+        else ZoneInfo(scenario.time_zone)
+        if scenario is not None
+        else None,
     )
     sensor_records: dict[str, list[Any]] = {}
     for record in observations.records:
@@ -431,17 +528,24 @@ def _replay_index(
         (sensor_id, tuple(item.observed_at for item in records), tuple(records))
         for sensor_id, records in sorted(sensor_records.items())
     )
+    # Observation events carry a constant kind, so ordering them by instant and identifier
+    # reproduces the order they would hold inside one globally sorted event sequence.
+    observation_records = tuple(
+        sorted(observations.records, key=lambda item: (item.observed_at, item.observation_id))
+    )
     frame_sources = _frame_sources(trace, bundle)
     return _ReplayIndex(
         trace_start=trace.started_at,
         trace_end=trace.ended_at,
         events=events,
         event_times=tuple(item.at for item in events),
+        observation_records=observation_records,
+        observation_times=tuple(item.observed_at for item in observation_records),
         trace=trace,
         observations=observations,
         sensor_timelines=sensor_timelines,
         frame_sources=frame_sources,
-        oracle=oracle,
+        oracle=_OracleSource(oracle_path),
         bundle=bundle,
     )
 
@@ -581,9 +685,7 @@ def _resident_frames(
             value = _fold_transition_value(state["execution_state"], transition)
             state["execution_state"] = value if isinstance(value, str) and value else "unknown"
     active_activities = (
-        _active_items_at(
-            sources.active_activity_times, sources.active_activity_snapshots, at
-        )
+        _active_items_at(sources.active_activity_times, sources.active_activity_snapshots, at)
         if sources
         else tuple(
             item for item in trace.activity_executions if item.actual_start <= at < item.actual_end
@@ -750,8 +852,10 @@ def _indexed_resident_frames(
             transition = latest_transitions.get(("resident", resident_id, fact))
             if transition is not None:
                 value = _fold_transition_value(state[fact], transition)
-                state[fact] = value if isinstance(value, str) and value else (
-                    "unknown" if fact == "execution_state" else None
+                state[fact] = (
+                    value
+                    if isinstance(value, str) and value
+                    else ("unknown" if fact == "execution_state" else None)
                 )
         for key, transition in latest_transitions.items():
             if key[:2] != ("resident", resident_id) or key[2] == "execution_state":
@@ -813,7 +917,9 @@ def _indexed_resident_frames(
                 state[field] = (
                     Point2D.model_validate(candidate)
                     if field == "position" and isinstance(candidate, dict)
-                    else candidate if field == "region_id" and isinstance(candidate, str) else None
+                    else candidate
+                    if field == "region_id" and isinstance(candidate, str)
+                    else None
                 )
         if movement is not None:
             state["execution_state"] = "moving"
@@ -959,6 +1065,7 @@ def _sensor_state_at(
     at: datetime,
     include_oracle: bool,
     sensor_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...] | None = None,
+    causes: Mapping[str, Any] | None = None,
 ) -> list[ReplaySensorFrame]:
     if sensor_timelines is None:
         latest: dict[str, Any] = {}
@@ -972,11 +1079,14 @@ def _sensor_state_at(
             position = bisect_right(times, at)
             if position:
                 latest[sensor_id] = records[position - 1]
-    causes = (
-        {item.observation_id: item for item in oracle.links}
-        if include_oracle and oracle is not None
-        else {}
-    )
+    # Deriving the cause lookup costs one pass over every link in the run, so a caller that
+    # holds it across requests passes it in rather than paying that per frame.
+    if causes is None:
+        causes = (
+            {item.observation_id: item for item in oracle.links}
+            if include_oracle and oracle is not None
+            else {}
+        )
     changed_after = at - timedelta(milliseconds=500)
     return [
         ReplaySensorFrame(
@@ -1226,7 +1336,7 @@ class ReplayService:
         window_end = min(end or index.trace_end, index.trace_end)
         left = bisect_left(index.event_times, window_start)
         right = bisect_right(index.event_times, window_end)
-        selected = [
+        traced = [
             item
             for item in index.events[left:right]
             if (kinds is None or item.kind in kinds)
@@ -1234,20 +1344,28 @@ class ReplayService:
             and (actor_id is None or item.actor_id == actor_id)
             and (sensor_id is None or item.sensor_id == sensor_id)
         ]
-        bounded = max(1, min(limit, 5_000))
-        visible = selected[:bounded]
-        if include_oracle:
-            oracle_links = (
-                {item.observation_id: item for item in index.oracle.links}
-                if index.oracle is not None
-                else None
+        # An observation has neither a status nor an actor, so either filter rules the whole
+        # family out before a single record is read.
+        observed: Sequence[Any] = ()
+        if (kinds is None or "observation" in kinds) and statuses is None and actor_id is None:
+            first = bisect_left(index.observation_times, window_start)
+            last = bisect_right(index.observation_times, window_end)
+            window = index.observation_records[first:last]
+            observed = (
+                window
+                if sensor_id is None
+                else [record for record in window if record.sensor_id == sensor_id]
             )
+        bounded = max(1, min(limit, 5_000))
+        visible = _merged_window(traced, observed, bounded)
+        if include_oracle:
+            oracle_links = index.oracle.causes() if index.oracle.available else None
             visible = [_with_oracle(item, oracle_links) for item in visible]
         else:
             visible = [_without_oracle(item) for item in visible]
         return ReplayEventWindow(
             items=deepcopy(visible),
-            total=len(selected),
+            total=len(traced) + len(observed),
             trace_start=index.trace_start,
             trace_end=index.trace_end,
             window_start=window_start,
@@ -1272,10 +1390,11 @@ class ReplayService:
         resources = _resource_state_at(index.trace, index.bundle, instant, index.frame_sources)
         sensors = _sensor_state_at(
             index.observations,
-            index.oracle,
+            None,
             instant,
             include_oracle,
             index.sensor_timelines,
+            causes=index.oracle.causes() if include_oracle and index.oracle.available else None,
         )
         frame = ReplayFrame(
             run_id=run_id,

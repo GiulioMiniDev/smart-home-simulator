@@ -1,28 +1,16 @@
 import { readFile } from "node:fs/promises";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import axe from "axe-core";
 
 type ReplayRun = { runId: string };
-type ObservableReplaySession = {
-  runId: string;
-  playable: boolean;
-  positionAt: string | null;
-  filters: {
-    eventKinds: string[];
-    sensorIds: string[];
-    statuses: string[];
-    detailMode: string;
-    visibilityMode: string;
-    speed: number;
-  };
-};
 
 async function replayRun(): Promise<ReplayRun> {
   return JSON.parse(await readFile("../reports/e2e-replay-run.json", "utf8")) as ReplayRun;
 }
 
-async function resetReplaySession(page: import("@playwright/test").Page, run: ReplayRun): Promise<void> {
+/** Put the run back at its beginning, so a test never inherits where the last one stopped. */
+async function resetReplaySession(page: Page, run: ReplayRun): Promise<void> {
   const tokenResponse = await page.request.get("/api/session");
   expect(tokenResponse.status()).toBe(200);
   const { token } = await tokenResponse.json() as { token: string };
@@ -33,37 +21,22 @@ async function resetReplaySession(page: import("@playwright/test").Page, run: Re
 
   const response = await page.request.put(`/api/runs/${encodeURIComponent(run.runId)}/replay/session`, {
     headers,
-    data: {
-      positionAt: null,
-      filters: {
-        eventKinds: [], actorIds: [], sensorIds: [], statuses: [],
-        detailMode: "presentation", visibilityMode: "observable", speed: 1, selectedResidentId: null,
-      },
-    },
+    data: { positionAt: null, filters: { speed: 1 } },
   });
   expect(response.status()).toBe(200);
-  const session = await response.json() as ObservableReplaySession;
-  expect(session).toMatchObject({
-    runId: run.runId, playable: true, positionAt: null,
-    filters: { eventKinds: [], sensorIds: [], statuses: [], detailMode: "presentation", visibilityMode: "observable", speed: 1 },
-  });
-  expect(session.filters).not.toHaveProperty("actorIds");
-  expect(session.filters).not.toHaveProperty("selectedResidentId");
+  expect(await response.json() as { playable: boolean; positionAt: string | null })
+    .toMatchObject({ playable: true, positionAt: null });
 }
 
-function selectedEvent(page: import("@playwright/test").Page) {
-  return page.locator(".replay-track-events button.is-selected, button.replay-cluster-mark.is-selected");
+async function openScene(page: Page, run: ReplayRun): Promise<void> {
+  await page.goto(`/simulations/${run.runId}`);
+  await page.getByRole("tab", { name: "replay" }).click();
+  await expect(page.getByRole("region", { name: "Replay controls" })).toBeVisible();
+  // The ribbon only reports a count once the day behind the scene has arrived.
+  await expect(page.getByLabel(/^The day, [1-9]/)).toBeVisible();
 }
 
-async function selectEvent(page: import("@playwright/test").Page): Promise<void> {
-  await page.locator("button.replay-cluster-mark").first().click();
-  const clustered = page.locator(".replay-cluster-items button").first();
-  if (await clustered.isVisible()) {
-    await clustered.evaluate((element: HTMLButtonElement) => element.click());
-  }
-}
-
-async function expectNoAxeViolations(page: import("@playwright/test").Page): Promise<void> {
+async function expectNoAxeViolations(page: Page): Promise<void> {
   await page.addScriptTag({ content: axe.source });
   const violations = await page.evaluate(async () => {
     const result = await (
@@ -76,7 +49,7 @@ async function expectNoAxeViolations(page: import("@playwright/test").Page): Pro
   expect(violations).toEqual([]);
 }
 
-async function expectNoPageHorizontalOverflow(page: import("@playwright/test").Page): Promise<void> {
+async function expectNoPageHorizontalOverflow(page: Page): Promise<void> {
   const sizes = await page.evaluate(() => ({
     documentElement: { scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth },
     body: { scrollWidth: document.body.scrollWidth, clientWidth: document.body.clientWidth },
@@ -85,125 +58,79 @@ async function expectNoPageHorizontalOverflow(page: import("@playwright/test").P
   expect(sizes.body.scrollWidth, `body widths: ${JSON.stringify(sizes.body)}`).toBeLessThanOrEqual(sizes.body.clientWidth);
 }
 
-test("replays one verified run in presentation and analysis modes", async ({ page }) => {
+test("shows the flat, the resident in it, and what the day has them doing", async ({ page }) => {
   const run = await replayRun();
   await resetReplaySession(page, run);
-  await page.goto(`/simulations/${run.runId}`);
-  await page.getByRole("tab", { name: "replay" }).click();
-  await expect(page.getByText("Replay verified")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Presentation" })).toHaveAttribute("aria-pressed", "true");
-  const time = page.getByRole("slider", { name: "Replay time" });
-  const initial = await time.inputValue();
+  await openScene(page, run);
+
+  const scene = page.getByRole("img", { name: /flat, seen from above/ });
+  await expect(scene).toBeVisible();
+  await expect(scene.locator(".scene-floor").first()).toBeVisible();
+  await expect(scene.locator(".scene-avatar")).toHaveCount(1);
+  await expect(scene.locator(".scene-furniture use").first()).toBeVisible();
+
+  // The whole day is one bar, and every block on it is somewhere the viewer can jump to.
+  const ribbon = page.getByLabel(/^The day, [1-9]/);
+  const firstActivity = ribbon.getByRole("button").first();
+  const label = await firstActivity.getAttribute("aria-label");
+  await firstActivity.click();
+  await expect(page.getByRole("heading", { level: 2 })).toContainText(/\w/);
+  expect(label).toMatch(/^\d\d:\d\d, /);
+});
+
+test("plays in real time, tells the viewer what happens, and can be skipped past", async ({ page }) => {
+  const run = await replayRun();
+  await resetReplaySession(page, run);
+  await openScene(page, run);
+  const scrub = page.getByRole("slider", { name: "Replay time" });
+  const start = await scrub.inputValue();
+
+  await expect(page.getByLabel("Playback speed")).toHaveValue("1");
   await page.getByRole("button", { name: "Play" }).click();
-  await expect.poll(() => time.inputValue()).not.toBe(initial);
-  await page.getByRole("button", { name: "Open evidence" }).click();
-  await expect(page.getByRole("heading", { name: "Timeline" })).toBeVisible();
-  await selectEvent(page);
-  await expect(selectedEvent(page)).toHaveCount(1);
-  const selectedSemanticLabel = await selectedEvent(page).getAttribute("aria-label");
-  const selectedTime = await time.inputValue();
+  await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+  await expect.poll(() => scrub.inputValue()).not.toBe(start);
+  await page.getByRole("button", { name: "Pause" }).click();
 
-  await page.getByRole("button", { name: "Presentation" }).click();
-  await expect(time).toHaveValue(selectedTime);
-  await page.getByRole("button", { name: "Analysis" }).click();
-  await expect(time).toHaveValue(selectedTime);
-  await expect(selectedEvent(page)).toHaveAttribute("aria-label", selectedSemanticLabel ?? "");
-
-  await page.getByRole("button", { name: "Oracle" }).click();
-  await expect(page.getByText("Simulated cause").first()).toBeVisible();
-  await expect(time).toHaveValue(selectedTime);
-  const oracleSelection = await selectedEvent(page).getAttribute("aria-label");
-  // Projection can disclose a richer label, but it must retain the selected instant.
-  expect(oracleSelection?.slice(0, 5)).toBe(selectedSemanticLabel?.slice(0, 5));
-  await page.getByRole("button", { name: "Observable" }).click();
-  await expect(time).toHaveValue(selectedTime);
-  await expect(selectedEvent(page)).toHaveAttribute("aria-label", selectedSemanticLabel ?? "");
-
-  await expectNoAxeViolations(page);
+  // An activity that runs for hours is crossed with the control, not with the scrubber.
+  const paused = Number(await scrub.inputValue());
+  await page.getByRole("button", { name: "Skip ahead" }).click();
+  await expect.poll(async () => Number(await scrub.inputValue())).toBeGreaterThan(paused);
+  await expect(page.locator(".scene-beat")).toContainText(/\w/);
 });
 
-test("keeps the replay presentation plan passive and its transport visible", async ({ page }) => {
+test("keeps the scene, its caption and its controls inside the viewport in dark theme", async ({ page }) => {
   const run = await replayRun();
   await resetReplaySession(page, run);
-  await page.goto(`/simulations/${run.runId}`);
-  await page.getByRole("tab", { name: "replay" }).click();
-  await expect(page.getByText("Replay verified")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Presentation" })).toHaveAttribute("aria-pressed", "true");
-
-  const canvas = page.locator(".replay-presentation-stage svg.plan-canvas");
-  const transport = page.getByRole("region", { name: "Replay transport" });
-  await expect(canvas).toBeVisible();
-  await expect(transport).toBeVisible();
-  expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe("auto");
-  await expect(canvas).toHaveCSS("cursor", "default");
-  expect(await transport.evaluate((element) => ({
-    position: getComputedStyle(element).position,
-    bottom: getComputedStyle(element).bottom,
-  }))).toEqual({ position: "sticky", bottom: "0px" });
-
-  await canvas.hover();
-  await page.mouse.down();
-  try {
-    await expect(canvas).toHaveCSS("cursor", "default");
-  } finally {
-    await page.mouse.up();
-  }
-
-  await page.setViewportSize({ width: 540, height: 900 });
-  await expect.poll(() => canvas.evaluate((element) => getComputedStyle(element).minHeight)).toBe("320px");
-});
-
-test("replay survives reload and keyboard stepping", async ({ page }) => {
-  const run = await replayRun();
-  await resetReplaySession(page, run);
-  await page.goto(`/simulations/${run.runId}`);
-  await page.getByRole("tab", { name: "replay" }).click();
-  await page.getByRole("button", { name: "Analysis" }).click();
-  await expect(page.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
-  const time = page.getByRole("slider", { name: "Replay time" });
-  const stepStartingPoint = String(Date.parse("2026-10-30T06:14:00.000Z"));
-  await time.fill(stepStartingPoint);
-  await expect(time).toHaveValue(stepStartingPoint);
-  await expect(page.locator("button.replay-cluster-mark").first()).toBeVisible();
-  await selectEvent(page);
-  await expect(selectedEvent(page)).toHaveCount(1);
-  const beforeStep = await time.inputValue();
-  const beforeSemanticEvent = await selectedEvent(page).getAttribute("aria-label");
-  const next = page.getByRole("button", { name: "Next event" });
-  await expect(next).toBeEnabled();
-  await next.press("Enter");
-  await expect(time).not.toHaveValue(beforeStep);
-  await expect(selectedEvent(page)).not.toHaveAttribute("aria-label", beforeSemanticEvent ?? "");
-  const saved = await time.inputValue();
-  await page.waitForTimeout(750);
-  await page.reload();
-  await page.getByRole("tab", { name: "replay" }).click();
-  await expect(page.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("slider", { name: "Replay time" })).toHaveValue(saved);
-});
-
-test("keeps replay accessible and within the viewport in dark theme", async ({ page }) => {
-  const run = await replayRun();
-  await resetReplaySession(page, run);
-  await page.goto(`/simulations/${run.runId}`);
+  await openScene(page, run);
+  // The theme control lives in a sidebar the narrow layout collapses, so it is used when it is
+  // there and the assertion holds either way.
   const darkTheme = page.getByRole("button", { name: "Use dark theme" });
-  const toggledToDark = await darkTheme.isVisible();
-  if (toggledToDark) await darkTheme.click();
+  if (await darkTheme.isVisible()) await darkTheme.click();
   await expect(page.locator(".app-shell")).toHaveAttribute("data-theme", "dark");
 
-  await page.getByRole("tab", { name: "replay" }).click();
-  await expect(page.getByText("Replay verified")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Presentation" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open evidence" })).toBeVisible();
-  await expect(page.getByRole("group", { name: /Plan of / })).toBeVisible();
-
-  await page.getByRole("button", { name: "Open evidence" }).click();
-  await expect(page.getByRole("button", { name: "Analysis" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("heading", { name: "Event timeline" })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
-  await expect(page.getByRole("slider", { name: "Replay time" })).toBeVisible();
-  await expectNoAxeViolations(page);
+  await expect(page.locator(".scene-canvas")).toBeVisible();
+  await expect(page.locator(".scene-clock")).toContainText(/^\d\d:\d\d:\d\d$/);
   await expectNoPageHorizontalOverflow(page);
-  if (toggledToDark) await page.getByRole("button", { name: "Use light theme" }).click();
+  await expectNoAxeViolations(page);
+  const lightTheme = page.getByRole("button", { name: "Use light theme" });
+  if (await lightTheme.isVisible()) await lightTheme.click();
+});
+
+test("returns to the instant the viewer left it at", async ({ page }) => {
+  const run = await replayRun();
+  await resetReplaySession(page, run);
+  await openScene(page, run);
+  const scrub = page.getByRole("slider", { name: "Replay time" });
+
+  const target = page.getByLabel(/^The day, [1-9]/).getByRole("button").nth(2);
+  await target.click();
+  const chosen = await scrub.inputValue();
+  expect(chosen).not.toBe("");
+  // The save is debounced, so the reload has to come after the server has been told.
+  await page.waitForTimeout(1_200);
+
+  await page.reload();
+  await page.getByRole("tab", { name: "replay" }).click();
+  await expect(page.getByRole("region", { name: "Replay controls" })).toBeVisible();
+  await expect.poll(() => page.getByRole("slider", { name: "Replay time" }).inputValue()).toBe(chosen);
 });

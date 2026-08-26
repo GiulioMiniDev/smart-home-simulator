@@ -289,7 +289,7 @@
         },
         "speed": {
           "default": 1,
-          "maximum": 32,
+          "maximum": 3600,
           "minimum": 0.25,
           "title": "Speed",
           "type": "number"

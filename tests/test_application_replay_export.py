@@ -311,9 +311,8 @@ def test_indexed_frame_reconstruction_matches_the_trace_fold_for_random_seeks(
     index = replay._index(run_id)
     instants = [index.trace_start, index.trace_end]
     rng = random.Random("replay-index-equivalence-v1")
-    instants.extend(
-        index.event_times[rng.randrange(len(index.event_times))] for _ in range(48)
-    )
+    seekable = index.event_times + index.observation_times
+    instants.extend(seekable[rng.randrange(len(seekable))] for _ in range(48))
     rng.shuffle(instants)
 
     for instant in instants:
@@ -452,6 +451,10 @@ def test_observable_replay_events_hide_execution_identifiers_but_oracle_events_k
         "plan_deviation": {item.deviation_id for item in index.trace.plan_deviations},
     }
     assert all("oracleCause" not in item.details for item in index.events)
+    assert all(
+        "oracleCause" not in item.details
+        for item in replay.events(run_id, kinds={"observation"}, limit=5_000).items
+    )
     for kind, identifiers in raw_ids.items():
         observable = json.dumps(
             replay.events(run_id, kinds={kind}).model_dump(mode="json", by_alias=True)
@@ -492,6 +495,54 @@ def test_replay_observable_and_oracle_results_are_isolated_from_the_cache(
     frame.residents[0].facts["cacheMutation"] = True
     fresh_frame = replay.frame(run_id, at=replay._index(run_id).trace.movements[0].started_at)
     assert "cacheMutation" not in fresh_frame.residents[0].facts
+
+
+def test_observable_replay_never_reads_the_oracle_mapping(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    """The largest artifact a run owns is also the one Observable replay may not see.
+
+    Reading it anyway made opening a long run cost more memory than the machine had, for
+    evidence the session was never allowed to show.
+    """
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+
+    assert index.oracle.available, "this fixture is only meaningful with an oracle artifact"
+    assert not index.oracle.loaded
+
+    replay.events(run_id, limit=5_000)
+    replay.frame(run_id, at=index.trace_start)
+    replay.frame(run_id, at=index.trace_end)
+
+    assert not index.oracle.loaded
+
+    oracle_window = replay.events(run_id, kinds={"observation"}, include_oracle=True, limit=5_000)
+
+    assert index.oracle.loaded
+    assert any(item.details.get("oracleCause") for item in oracle_window.items)
+
+
+def test_replay_windows_project_observations_only_within_their_bound(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    """Observations outnumber the trace, so they are built per window, not held for the run."""
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+
+    assert all(item.kind != "observation" for item in index.events)
+
+    full = replay.events(run_id, limit=5_000)
+    bounded = replay.events(run_id, limit=3)
+
+    assert {item.kind for item in full.items} >= {"observation"}
+    assert bounded.total == full.total
+    assert [item.event_id for item in bounded.items] == [item.event_id for item in full.items[:3]]
+    # A status or actor filter excludes the whole observation family, which carries neither.
+    statuses = replay.events(run_id, statuses={"completed"}, limit=5_000)
+    assert all(item.kind != "observation" for item in statuses.items)
 
 
 def test_replay_indexes_do_not_cross_workspace_service_boundaries(tmp_path: Path) -> None:

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Breadcrumbs, EmptyState, ErrorPanel, Metric, PageHeader, PlanCanvas, ProgressBar, RunLink, Shell, Skeleton, StatusBadge } from "../components";
-import type { HomeModel, ReplayOverlay, SensorModel } from "../types";
+import type { HomeModel, SensorModel } from "../types";
 
 const home: HomeModel = {
   schemaVersion: "1.0.0", documentType: "home_model", homeId: "home", homeVersion: "1", coordinateSystem: {},
@@ -77,15 +77,14 @@ describe("application components", () => {
     expect(screen.getByText("Open").closest("a")).toHaveAttribute("href", "/simulations/run");
   });
 
-  it("supports pointer and keyboard plan selection plus replay trajectories", () => {
+  it("supports pointer and keyboard plan selection", () => {
     const select = vi.fn();
-    const view = render(<PlanCanvas home={home} sensors={sensors} selectedId="kitchen" onSelect={select} viewport={{ zoom: 2, x: 1, y: -1 }} replayOverlay={{ residents: [], activeRegionIds: [], activeSensorIds: [], trajectory: [{ x: 1, y: 1 }, { x: 2, y: 2 }] }} />);
+    const view = render(<PlanCanvas home={home} sensors={sensors} selectedId="kitchen" onSelect={select} viewport={{ zoom: 2, x: 1, y: -1 }} />);
     fireEvent.click(screen.getByLabelText("room kitchen"));
     fireEvent.keyDown(screen.getByLabelText("oven oven"), { key: "Enter" });
     fireEvent.keyDown(screen.getByLabelText("pir sensor pir"), { key: " " });
     fireEvent.click(screen.getByLabelText("Obstacle table"));
     expect(select.mock.calls.flat()).toEqual(["kitchen", "oven", "pir", "table"]);
-    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
     view.rerender(<PlanCanvas home={{ ...home, connections: [{ connectionId: "broken", regionAId: "kitchen", regionBId: "missing", kind: "doorway", bidirectional: true, widthMeters: 1 }], entities: [...home.entities, { ...home.entities[0], entityId: "orphan", interactionPointId: "missing" }] }} />);
     expect(screen.queryByLabelText("oven orphan")).not.toBeInTheDocument();
   });
@@ -111,28 +110,6 @@ describe("application components", () => {
 
     expect(interactiveWheel.defaultPrevented).toBe(true);
     expect(interactivePlan).toHaveAttribute("data-interaction-mode", "interactive");
-  });
-
-  it("shows replay residents, active regions and changed sensors without inventing unknown positions", () => {
-    const overlay: ReplayOverlay = {
-      residents: [
-        { residentId: "mario", label: "Mario", marker: "1", regionId: "kitchen", position: { x: 2, y: 2 }, executionState: "moving" },
-        { residentId: "luisa", label: "Luisa", marker: "2", executionState: "idle" },
-      ],
-      activeRegionIds: ["kitchen"],
-      activeSensorIds: ["pir"],
-      trajectory: [{ x: 1, y: 1 }, { x: 2, y: 2 }],
-      selectedResidentId: "mario",
-    };
-    const { container } = render(<PlanCanvas home={home} sensors={sensors} replayOverlay={overlay} />);
-
-    expect(screen.getByLabelText("Mario in kitchen, moving")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Luisa in/)).not.toBeInTheDocument();
-    expect(container.querySelector("[data-region-id='kitchen']")).toHaveClass("is-replay-active");
-    expect(screen.getByLabelText("pir sensor pir")).toHaveClass("is-replay-active");
-    expect(screen.getByLabelText("Active trajectory")).toBeInTheDocument();
-    expect(screen.getByLabelText("Mario in kitchen, moving")).toHaveClass("is-selected");
-    expect(container.querySelector("[data-resident-index='0']")?.textContent).toContain("1");
   });
 
   it("moves and resizes plan objects by pointer, reporting gestures in metres", () => {

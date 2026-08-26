@@ -483,11 +483,21 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
         )
         assert cleared_position.status_code == 200
         assert cleared_position.json()["positionAt"] is None
+        # Playback reaches an hour of simulated time per second so a year-long run is watchable;
+        # past that the ceiling still holds, and sixty-four is now an ordinary speed.
         assert (
             client.put(
                 f"/api/runs/{job.job_id}/replay/session",
                 headers=headers,
                 json={"filters": {"speed": 64}},
+            ).json()["filters"]["speed"]
+            == 64
+        )
+        assert (
+            client.put(
+                f"/api/runs/{job.job_id}/replay/session",
+                headers=headers,
+                json={"filters": {"speed": 3_601}},
             ).status_code
             == 422
         )

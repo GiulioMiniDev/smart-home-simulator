@@ -36,7 +36,7 @@ import {
 import type { ResizeHandle } from "./editor";
 import { furnitureSymbol } from "./furniture";
 import { FurnitureSymbols } from "./furniture-symbols";
-import type { HomeModel, JobStatus, Point, Polygon, ReplayOverlay, SensorModel } from "./types";
+import type { HomeModel, JobStatus, Point, Polygon, SensorModel } from "./types";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Activity },
@@ -449,7 +449,6 @@ export function PlanCanvas({
   sensors,
   selectedId,
   onSelect,
-  replayOverlay,
   viewport,
   editing,
   showExternalPlaces = false,
@@ -460,7 +459,6 @@ export function PlanCanvas({
   sensors?: SensorModel;
   selectedId?: string;
   onSelect?: (id: string) => void;
-  replayOverlay?: ReplayOverlay;
   viewport?: { zoom: number; x: number; y: number };
   editing?: PlanEditing;
   showExternalPlaces?: boolean;
@@ -663,7 +661,7 @@ export function PlanCanvas({
               onClick={() => activate(region.regionId)}
               onKeyDown={(event) => keyboard(event, region.regionId)}
               data-region-id={region.regionId}
-              className={`${selectedId === region.regionId ? "is-selected " : ""}${replayOverlay?.activeRegionIds.includes(region.regionId) ? "is-replay-active" : ""}`.trim()}
+              className={selectedId === region.regionId ? "is-selected" : undefined}
               {...draggable(region.regionId)}
             >
               <polygon points={polygonPoints(region.boundary.vertices)} className={`region region-${region.kind}`} />
@@ -784,7 +782,6 @@ export function PlanCanvas({
           {sensorsShown.map((sensor) => {
             const coverage = sensor.sensorType === "pir" ? (sensor.coverage as Polygon | undefined) : undefined;
             const isSelected = selectedId === sensor.sensorId;
-            const isReplayActive = replayOverlay?.activeSensorIds.includes(sensor.sensorId) ?? false;
             return (
               <g key={sensor.sensorId}>
                 {/* Six overlapping translucent rectangles say nothing about any one of them. The
@@ -797,8 +794,7 @@ export function PlanCanvas({
                   tabIndex={0}
                   aria-label={`${sensor.sensorType} sensor ${sensor.sensorId}`}
                   transform={`translate(${sensor.position.x} ${sensor.position.y})`}
-                  className={`sensor-node sensor-${sensor.sensorType} ${isSelected ? "is-selected " : ""}${isReplayActive ? "is-replay-active" : ""}`.trim()}
-                  data-pulse={isReplayActive && !replayOverlay?.reducedMotion ? "on" : "off"}
+                  className={`sensor-node sensor-${sensor.sensorType}${isSelected ? " is-selected" : ""}`}
                   onClick={() => activate(sensor.sensorId)}
                   onKeyDown={(event) => keyboard(event, sensor.sensorId)}
                   {...draggable(sensor.sensorId)}
@@ -837,27 +833,6 @@ export function PlanCanvas({
             );
           })}
         </g>}
-        {(replayOverlay?.trajectory.length ?? 0) > 1 && <g role="group" aria-label="Active trajectory" className="active-trajectory">
-          <polyline points={polygonPoints(replayOverlay!.trajectory)} />
-          {replayOverlay!.trajectory.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r=".12" />)}
-        </g>}
-        <g role="group" aria-label="Replay residents" className="replay-residents">
-          {replayOverlay?.residents.map((item, index) => item.position ? (
-            <g
-              key={item.residentId}
-              role="img"
-              aria-label={`${item.label} in ${item.regionId ?? "unknown region"}, ${item.executionState}`}
-              className={`replay-resident ${item.residentId === replayOverlay.selectedResidentId ? "is-selected" : ""}`}
-              transform={`translate(${item.position!.x} ${item.position!.y})`}
-              data-motion={item.motion ?? "none"}
-              data-resident-index={index}
-            >
-              <circle r=".22" />
-              <text textAnchor="middle" y=".08">{item.marker}</text>
-              <text className="replay-resident-label" x=".3" y="-.26">{item.label}</text>
-            </g>
-          ) : null)}
-        </g>
       </svg>
       <div className="plan-legend" aria-label="Plan legend">
         <span><i className="legend-room" /> Room</span>

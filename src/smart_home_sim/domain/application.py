@@ -472,6 +472,12 @@ class ReplayFrame(ContractModel):
     active_event_ids: list[str] = Field(default_factory=list)
 
 
+# A run can cover a year.  At the old 32x ceiling a researcher needed days of wall clock to
+# watch one, so replay speed reaches an hour of simulated time per second; the clock stays a
+# plain multiplier so a stated speed still means exactly what it says.
+MAX_REPLAY_SPEED = 3_600
+
+
 class ReplayFilters(ContractModel):
     event_kinds: list[ReplayEventKind] = Field(default_factory=list)
     actor_ids: list[str] = Field(default_factory=list)
@@ -479,7 +485,7 @@ class ReplayFilters(ContractModel):
     statuses: list[str] = Field(default_factory=list)
     detail_mode: ReplayDetailMode = "presentation"
     visibility_mode: ReplayVisibilityMode = "observable"
-    speed: float = Field(default=1, ge=0.25, le=32)
+    speed: float = Field(default=1, ge=0.25, le=MAX_REPLAY_SPEED)
     selected_resident_id: str | None = None
 
 
@@ -729,7 +735,7 @@ class ObservableReplayFilters(ContractModel):
     statuses: list[str] = Field(default_factory=list)
     detail_mode: ReplayDetailMode = "presentation"
     visibility_mode: ReplayVisibilityMode = "observable"
-    speed: float = Field(default=1, ge=0.25, le=32)
+    speed: float = Field(default=1, ge=0.25, le=MAX_REPLAY_SPEED)
 
     @classmethod
     def from_filters(cls, filters: ReplayFilters) -> ObservableReplayFilters:

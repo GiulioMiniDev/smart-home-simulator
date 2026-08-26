@@ -1,0 +1,133 @@
+/*
+ * The watched replay.
+ *
+ * This is not a plan and it does not want to read like one: no grid, no measurements, no device
+ * glyphs, no legend. A warm floor, walls that read as walls, the furniture the flat actually has
+ * and one person moving between it. Everything on screen is the execution trace; nothing on
+ * screen is a control the viewer has to learn before the picture makes sense.
+ */
+
+.scene-page {
+  --scene-floor: oklch(94% 0.02 78);
+  --scene-floor-lit: oklch(97% 0.035 82);
+  --scene-wall: oklch(46% 0.02 240);
+  --scene-ink: oklch(38% 0.03 240);
+  --scene-glow: oklch(82% 0.14 78);
+  --scene-person: oklch(52% 0.13 25);
+  display: grid;
+  min-width: 0;
+  grid-template-rows: minmax(320px, 1fr) auto auto auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: clip;
+}
+
+.app-shell[data-theme="dark"] .scene-page {
+  --scene-floor: oklch(31% 0.022 250);
+  --scene-floor-lit: oklch(38% 0.035 255);
+  --scene-wall: oklch(72% 0.02 240);
+  --scene-ink: oklch(80% 0.02 240);
+  --scene-glow: oklch(72% 0.14 78);
+  --scene-person: oklch(72% 0.13 25);
+}
+
+.scene-viewport { position: relative; display: grid; min-height: 0; place-items: center; padding: 1rem; background: var(--surface-cool); }
+.scene-stage { display: grid; width: 100%; min-width: 0; place-items: center; }
+.scene-canvas { width: 100%; max-height: clamp(320px, 58vh, 620px); }
+.scene-unavailable, .scene-blocked { margin: 0; padding: 1rem; color: var(--text-soft); font-size: .82rem; }
+.scene-blocked { color: var(--red); }
+.scene-loading { position: absolute; inset-block-start: .8rem; margin: 0; padding: .3rem .6rem; border-radius: 999px; background: var(--surface-raised); color: var(--text-soft); font-size: .74rem; }
+.scene-loading.is-quiet { opacity: .8; }
+
+/* --- the set ------------------------------------------------------------------------- */
+.scene-floor { fill: var(--scene-floor); stroke: none; transition: fill .4s ease; }
+.scene-rooms .is-occupied .scene-floor { fill: var(--scene-floor-lit); }
+.scene-wall { stroke: var(--scene-wall); stroke-width: 6px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.scene-wall.is-exterior { stroke-width: 9px; }
+.scene-door { stroke: var(--scene-floor-lit); stroke-width: 7px; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
+.scene-door-entrance { stroke: var(--scene-glow); }
+
+.scene-furniture { color: var(--scene-ink); }
+.scene-furniture use { color: inherit; opacity: .92; transition: opacity .3s ease; }
+.scene-block { fill: color-mix(in oklch, var(--scene-ink) 18%, transparent); }
+.scene-thing.is-open use { opacity: 1; }
+.scene-thing.is-active { color: oklch(45% 0.13 60); }
+.app-shell[data-theme="dark"] .scene-thing.is-active { color: oklch(82% 0.13 78); }
+.scene-thing-glow { fill: var(--scene-glow); opacity: .3; }
+/* A ring around the thing somebody is standing at: without it, "watching television" is a
+   person on one side of the room and a lit screen on the other, with nothing joining them. */
+.scene-thing-use { fill: none; stroke: var(--scene-person); stroke-width: 2px; stroke-dasharray: 4 3; stroke-opacity: .8; vector-effect: non-scaling-stroke; }
+.scene-away { position: absolute; inset-block-end: 1.1rem; margin: 0; padding: .35rem .7rem; border-radius: 999px; background: var(--surface-raised); color: var(--text-soft); font-size: .78rem; text-transform: capitalize; }
+
+.scene-room-name {
+  fill: var(--text-faint); font-size: .3px; font-weight: 600; text-anchor: middle;
+  letter-spacing: .02px; text-transform: capitalize; pointer-events: none; transition: fill .4s ease;
+}
+.scene-room-name.is-occupied { fill: var(--text-soft); }
+
+/* --- the person ---------------------------------------------------------------------- */
+.scene-trail { fill: none; stroke: var(--scene-person); stroke-opacity: .28; stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.scene-avatar-shadow { fill: oklch(30% 0.02 240 / .18); }
+.scene-avatar-torso { fill: var(--scene-person); }
+.scene-avatar-head { fill: color-mix(in oklch, var(--scene-person) 62%, white); stroke: var(--scene-person); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.scene-avatar-load { fill: var(--scene-glow); stroke: var(--scene-ink); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.scene-avatar-name { fill: var(--text-soft); font-size: .26px; font-weight: 650; text-anchor: middle; pointer-events: none; }
+/* Only the walk cycle bobs, and only while there is a walk. */
+.scene-avatar[data-moving="true"] .scene-avatar-body { animation: scene-step .42s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes scene-step { 50% { transform: translateY(-.035px) scale(1.03); } }
+
+/* --- what is happening ---------------------------------------------------------------- */
+.scene-caption { display: grid; gap: .2rem; padding: .85rem 1rem .7rem; border-top: 1px solid var(--line); background: var(--surface); }
+.scene-when { display: flex; flex-wrap: wrap; gap: .1rem .7rem; align-items: baseline; margin: 0; color: var(--text-faint); font-size: .76rem; }
+.scene-clock { color: var(--text); font: 700 1.5rem/1 "Cascadia Code", monospace; font-variant-numeric: tabular-nums; }
+.scene-date { text-transform: none; }
+.scene-where { text-transform: capitalize; }
+.scene-headline { margin: .1rem 0 0; color: var(--text); font-size: 1.18rem; font-weight: 650; letter-spacing: -.01em; }
+.scene-beat { margin: 0; color: var(--indigo); font-size: .92rem; font-weight: 600; }
+.scene-history { display: grid; gap: .05rem; margin: .25rem 0 0; padding: 0; list-style: none; color: var(--text-faint); font-size: .76rem; }
+.scene-history li { opacity: .85; }
+.scene-history li:nth-child(2) { opacity: .6; }
+.scene-history li:nth-child(3) { opacity: .4; }
+.scene-history time { font-family: "Cascadia Code", monospace; font-size: .7rem; }
+.scene-holding { margin: .3rem 0 0; color: var(--text-soft); font-size: .77rem; text-transform: capitalize; }
+.scene-notice { margin: 0; padding: .5rem 1rem; border-top: 1px solid var(--line); color: var(--text-faint); font-size: .74rem; }
+
+/* --- the day, and the way through it --------------------------------------------------- */
+.scene-ribbon { display: grid; gap: .2rem; padding: .5rem 1rem .1rem; border-top: 1px solid var(--line); background: var(--surface-raised); }
+.scene-ribbon-track { position: relative; block-size: 16px; border-radius: 4px; background: color-mix(in oklch, var(--line) 55%, transparent); cursor: pointer; overflow: hidden; }
+.scene-ribbon .scene-block { position: absolute; inset-block: 2px; min-inline-size: 1px; padding: 0; border: 0; border-radius: 2px; background: var(--indigo); opacity: .55; cursor: pointer; }
+.scene-ribbon .scene-block:hover, .scene-ribbon .scene-block:focus-visible { opacity: 1; }
+.scene-ribbon .scene-block.is-deviated { background: var(--amber); }
+.scene-ribbon-playhead {
+  position: absolute; inset-block: -2px; inline-size: 2px; margin-inline-start: -1px;
+  background: var(--text); pointer-events: none;
+  inset-inline-start: calc(var(--scene-playhead, 0) * 100%);
+}
+.scene-ribbon-hours { position: relative; block-size: .8rem; color: var(--text-faint); font-size: .62rem; font-family: "Cascadia Code", monospace; }
+.scene-ribbon-hours span { position: absolute; }
+
+.scene-transport { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding: .55rem 1rem .7rem; border-top: 1px solid var(--line); background: var(--surface-raised); }
+.scene-transport button { min-height: 34px; padding: .35rem .8rem; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; font-size: .82rem; cursor: pointer; }
+.scene-transport button:hover:not(:disabled) { border-color: var(--indigo); color: var(--indigo); }
+.scene-transport button:disabled { cursor: not-allowed; opacity: .5; }
+/* The accent is dark in the light theme and light in the dark one, so the label takes the
+   surface colour of whichever theme is running rather than a fixed white that only reads on one
+   of them: on the dark theme white on this indigo comes out at 2.5:1. */
+.scene-transport .scene-play { min-inline-size: 84px; border-color: var(--indigo); background: var(--indigo); color: var(--surface); font-weight: 650; }
+.scene-transport .scene-play:hover:not(:disabled) { border-color: var(--indigo); color: var(--surface); filter: brightness(1.08); }
+.scene-key { font-variant-numeric: tabular-nums; }
+.scene-speed { display: inline-flex; gap: .35rem; align-items: center; color: var(--text-soft); font-size: .78rem; }
+.scene-speed select { min-height: 34px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; font-size: .8rem; }
+.scene-scrub { flex: 1 1 180px; min-inline-size: 120px; accent-color: var(--indigo); }
+
+@media (max-width: 720px) {
+  .scene-transport { gap: .4rem; }
+  .scene-scrub { flex-basis: 100%; order: 9; }
+  .scene-clock { font-size: 1.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-avatar[data-moving="true"] .scene-avatar-body { animation: none; }
+  .scene-floor, .scene-room-name, .scene-furniture use { transition-duration: 0s; }
+}
