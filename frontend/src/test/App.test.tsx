@@ -154,10 +154,50 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const outline = new File(["{}"], "outline.json", { type: "application/json" });
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText("Horizon outline"), { target: { files: [outline] } });
+    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
     fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
     // The counts are the whole point of showing anything: a structure went in, days came out.
     expect(await screen.findAllByText(/243 days, 2535 activities and 5 habit bands/)).not.toHaveLength(0);
+  });
+
+  it("draws the chosen outline before it is imported, and imports it from there", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: true, issues: [], expansion: { dayCount: 243, activityCount: 2535, habitBandCount: 5 } };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const text = JSON.stringify({
+      documentType: "horizon_outline",
+      title: "Eight months on Long Island",
+      residentId: "meredith",
+      timeZone: "America/New_York",
+      startDate: "2026-08-03",
+      months: 8,
+      world: { locations: [{ locationId: "bedroom", kind: "room" }], startLocationId: "bedroom" },
+      profile: { recurringActivities: [{ recurringActivityId: "sleep", label: "Sleep", kind: "anchor", cadence: { period: "day", timesPerPeriod: 1, windowStart: "22:30", windowEnd: "06:30" } }] },
+      habits: [{ habitId: "night", label: "Night", windowStart: "22:30", windowEnd: "06:00", recurringActivityIds: ["sleep"] }],
+      provenance: { authorType: "external_llm", modelName: "GPT-5.6 Thinking", humanReviewed: false },
+    });
+    const outline = new File([text], "meredith.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve(text) });
+    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
+    // Reading the file is the whole point: the outline is unreadable as JSON and the server's
+    // verdict only arrives after it has already computed 243 days from it.
+    expect(await screen.findByRole("heading", { name: "Eight months on Long Island" })).toBeInTheDocument();
+    expect(screen.getByText(/243 days for/)).toHaveTextContent("3 Aug 2026 → 2 Apr 2027");
+    fireEvent.click(screen.getByRole("button", { name: /Looks right/ }));
+    expect(await screen.findAllByText(/243 days, 2535 activities and 5 habit bands/)).not.toHaveLength(0);
+  });
+
+  it("names the wrong file instead of drawing an empty horizon, and still allows the import", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const text = JSON.stringify({ documentType: "simulation_authoring_bundle", scenario: {} });
+    const wrong = new File([text], "bundle.json", { type: "application/json" });
+    Object.defineProperty(wrong, "text", { value: () => Promise.resolve(text) });
+    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [wrong] } });
+    expect(await screen.findByText(/It is a complete authoring bundle/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand and import outline" })).toBeEnabled();
   });
 
   it("shows the single sentence when an outline is refused before any day exists", async () => {
@@ -167,7 +207,7 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const outline = new File(["{}"], "outline.json", { type: "application/json" });
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText("Horizon outline"), { target: { files: [outline] } });
+    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
     fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
     expect(await screen.findAllByText(/the rhythm emits these intents on its own/)).not.toHaveLength(0);
   });
@@ -196,7 +236,7 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const outline = new File(["{}"], "outline.json", { type: "application/json" });
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText("Horizon outline"), { target: { files: [outline] } });
+    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
     fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
 
     await vi.advanceTimersByTimeAsync(3500);

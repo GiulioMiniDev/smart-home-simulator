@@ -257,6 +257,9 @@ dd { margin: 0; }
 .file-picker:hover { border-color: var(--teal); }
 .file-picker > span { display: flex; flex-direction: column; }
 .file-picker small { color: var(--text-faint); }
+/* A document type named in this line is there to be compared against the file on disk, and the
+   global code size is a fraction of a size that is already a fraction — it landed at 8px. */
+.file-picker small code { font-size: 1em; color: var(--text-soft); }
 .file-picker input { position: absolute; inset: 0; cursor: pointer; opacity: 0; }
 .bundle-picker { min-height: 76px; border-color: color-mix(in oklch, var(--teal) 60%, var(--line)); background: var(--teal-soft); }
 .advanced-import { margin-top: .4rem; border-top: 1px solid var(--line); }

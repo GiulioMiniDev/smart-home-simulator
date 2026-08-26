@@ -1,0 +1,147 @@
+/* The horizon preview. Drawn entirely with the application's own tokens: this is the same clock
+   and the same calendar the rest of the workspace talks about, and a second palette here would
+   make it look like a different program. */
+
+.horizon-preview { display: grid; gap: 1.1rem; padding: 1.2rem 1.3rem 1.4rem; }
+
+.horizon-headline { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.2rem; align-items: start; }
+.horizon-headline h2 { margin-bottom: .3rem; }
+.horizon-headline p { margin-bottom: .4rem; font-size: .9rem; }
+@media (max-width: 760px) { .horizon-headline { grid-template-columns: minmax(0, 1fr); } }
+
+.horizon-provenance { display: flex; flex-wrap: wrap; gap: .4rem .6rem; margin: 0; font-size: .78rem; }
+.horizon-provenance span { display: inline-flex; align-items: center; gap: .3rem; padding: .18rem .5rem; border-radius: 99px; background: var(--surface-cool); color: var(--text-soft); }
+.horizon-provenance .is-checked { background: var(--green-soft); color: color-mix(in oklch, var(--green) 75%, var(--text)); }
+.horizon-provenance .is-unchecked { background: var(--amber-soft); color: color-mix(in oklch, var(--amber) 60%, var(--text)); }
+
+.horizon-counts { display: flex; gap: .4rem; flex-wrap: wrap; }
+.horizon-counts > div { display: grid; justify-items: center; gap: .1rem; min-width: 62px; padding: .5rem .55rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-raised); }
+.horizon-counts b { font-size: 1.25rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.horizon-counts span { display: inline-flex; align-items: center; gap: .2rem; color: var(--text-faint); font-size: .7rem; }
+
+.horizon-toggle { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+.horizon-note { margin: 0; padding: .5rem .7rem; border-left: 3px solid var(--line-strong); background: var(--surface-cool); font-size: .82rem; }
+
+/* --- sections --- */
+
+.horizon-section { display: grid; gap: .75rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.horizon-section > header { display: flex; align-items: flex-start; gap: .6rem; }
+.horizon-section > header > svg { flex: none; margin-top: .15rem; color: var(--teal); }
+.horizon-section h3 { margin: 0 0 .2rem; font-size: 1rem; }
+.horizon-section header p { margin: 0; font-size: .84rem; max-width: 72ch; }
+.horizon-empty { margin: 0; padding: .55rem .7rem; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: .83rem; }
+
+/* --- the day --- */
+
+.horizon-day { display: grid; gap: .3rem; }
+.horizon-row { display: grid; grid-template-columns: minmax(140px, 230px) minmax(0, 1fr); gap: .8rem; align-items: center; }
+.horizon-row-name { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.horizon-row-name strong { font-size: .84rem; line-height: 1.25; }
+.horizon-row-name small { color: var(--text-faint); font-size: .72rem; line-height: 1.35; }
+@media (max-width: 700px) { .horizon-row { grid-template-columns: minmax(0, 1fr); gap: .2rem; } }
+
+.horizon-hours { position: relative; height: 16px; }
+.horizon-hours span { position: absolute; top: 0; transform: translateX(-50%); color: var(--text-faint); font-size: .68rem; font-variant-numeric: tabular-nums; }
+.horizon-hours span:first-child { transform: none; }
+.horizon-hours span:last-child { transform: translateX(-100%); }
+.horizon-row-axis { align-items: end; }
+
+/* Three-hour gridlines run through every track, so a bar can be read against the clock without
+   tracing it back up to the axis. */
+.horizon-track {
+  position: relative; height: 22px; border-radius: 5px; background: var(--surface-cool);
+  background-image: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 12.5%);
+}
+.horizon-track-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-faint); font-size: .7rem; }
+
+.horizon-bar { position: absolute; top: 3px; bottom: 3px; min-width: 3px; border-radius: 4px; background: var(--line-strong); }
+.horizon-bar.tone-fixed { background: color-mix(in oklch, var(--amber) 70%, var(--surface)); border: 1px solid color-mix(in oklch, var(--amber) 85%, var(--text)); }
+.horizon-bar.tone-anchor { background: color-mix(in oklch, var(--teal) 55%, var(--surface)); }
+.horizon-bar.tone-contextual { background: color-mix(in oklch, var(--indigo) 40%, var(--surface)); }
+.horizon-bar.tone-optional { background: color-mix(in oklch, var(--indigo) 18%, var(--surface)); border: 1px dashed color-mix(in oklch, var(--indigo) 45%, var(--line)); }
+.horizon-bar.tone-rare { background: repeating-linear-gradient(45deg, var(--line-strong) 0 3px, transparent 3px 7px); border: 1px solid var(--line-strong); }
+
+.horizon-spine { height: 34px; }
+.horizon-band { position: absolute; top: 2px; bottom: 2px; min-width: 4px; display: flex; align-items: center; overflow: hidden; border-radius: 4px; }
+/* A bar narrower than its own name is normal on a 24-hour track. Fading the label out says that
+   deliberately, where a hard cut reads as a rendering fault; the full name is in the list below. */
+.horizon-band span, .horizon-phase span, .horizon-event span { mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent); }
+.horizon-band span { padding: 0 .35rem; color: var(--text); font-size: .7rem; font-style: normal; white-space: nowrap; }
+.horizon-band.tone-band-0 { background: color-mix(in oklch, var(--indigo) 26%, var(--surface)); }
+.horizon-band.tone-band-1 { background: color-mix(in oklch, var(--teal) 30%, var(--surface)); }
+.horizon-band.tone-band-2 { background: color-mix(in oklch, var(--amber) 30%, var(--surface)); }
+.horizon-band.tone-band-3 { background: color-mix(in oklch, var(--green) 26%, var(--surface)); }
+.horizon-band.tone-band-4 { background: color-mix(in oklch, var(--red) 20%, var(--surface)); }
+
+.horizon-legend { display: flex; flex-wrap: wrap; gap: .5rem .9rem; margin: 0; padding: 0; list-style: none; color: var(--text-faint); font-size: .74rem; }
+.horizon-legend li { display: inline-flex; align-items: center; gap: .35rem; }
+.horizon-swatch { width: 22px; height: 10px; border-radius: 3px; background: var(--line-strong); }
+.horizon-swatch.tone-fixed { background: color-mix(in oklch, var(--amber) 70%, var(--surface)); border: 1px solid color-mix(in oklch, var(--amber) 85%, var(--text)); }
+.horizon-swatch.tone-anchor { background: color-mix(in oklch, var(--teal) 55%, var(--surface)); }
+.horizon-swatch.tone-contextual { background: color-mix(in oklch, var(--indigo) 40%, var(--surface)); }
+.horizon-swatch.tone-optional { background: color-mix(in oklch, var(--indigo) 18%, var(--surface)); border: 1px dashed color-mix(in oklch, var(--indigo) 45%, var(--line)); }
+.horizon-swatch.tone-rare { background: repeating-linear-gradient(45deg, var(--line-strong) 0 3px, transparent 3px 7px); border: 1px solid var(--line-strong); }
+
+/* --- the week --- */
+
+.horizon-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .4rem; }
+@media (max-width: 700px) { .horizon-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.horizon-week > div { display: grid; align-content: start; gap: .3rem; padding: .5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-raised); }
+.horizon-week > div.is-plain { background: transparent; border-style: dashed; }
+.horizon-week strong { font-size: .78rem; }
+.horizon-week small { color: var(--text-faint); font-size: .68rem; line-height: 1.3; }
+.horizon-week ul { display: grid; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+.horizon-week li { padding: .2rem .35rem; border-radius: 4px; background: var(--surface-cool); font-size: .7rem; line-height: 1.25; }
+.horizon-week li.entry-commitment { background: var(--amber-soft); }
+.horizon-week li.entry-band { background: var(--indigo-soft); }
+
+/* --- the horizon --- */
+
+.horizon-span { display: grid; gap: .3rem; }
+.horizon-months { position: relative; height: 15px; }
+.horizon-months span { position: absolute; top: 0; color: var(--text-faint); font-size: .68rem; white-space: nowrap; }
+.horizon-months b { margin-left: .25rem; color: var(--text-soft); font-weight: 600; }
+
+.horizon-span-track { position: relative; min-height: calc(var(--lanes, 1) * 26px + 6px); padding: 3px 0; border-radius: 6px; background: var(--surface-cool); }
+.horizon-span-track.is-events { min-height: calc(var(--lanes, 1) * 24px + 6px); background: transparent; border: 1px solid var(--line); }
+.horizon-span-track u { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+
+.horizon-phase, .horizon-event { position: absolute; display: flex; align-items: center; overflow: hidden; border-radius: 5px; }
+.horizon-phase { height: 22px; min-width: 4px; background: color-mix(in oklch, var(--teal) 32%, var(--surface)); border: 1px solid color-mix(in oklch, var(--teal) 55%, var(--line)); }
+.horizon-event { height: 20px; min-width: 4px; background: color-mix(in oklch, var(--amber) 26%, var(--surface)); border: 1px dashed color-mix(in oklch, var(--amber) 60%, var(--line)); }
+.horizon-phase span, .horizon-event span { padding: 0 .35rem; font-size: .69rem; font-style: normal; white-space: nowrap; }
+
+.horizon-list { display: grid; gap: .45rem; margin: 0; }
+.horizon-list > div { display: grid; grid-template-columns: minmax(130px, 210px) minmax(0, 1fr); gap: .7rem; padding: .45rem .55rem; border-radius: 6px; background: var(--surface-raised); }
+@media (max-width: 700px) { .horizon-list > div { grid-template-columns: minmax(0, 1fr); gap: .15rem; } }
+.horizon-list dt { font-size: .84rem; font-weight: 600; }
+.horizon-list dd { display: grid; gap: .2rem; margin: 0; font-size: .8rem; color: var(--text-soft); }
+.horizon-list dd ul { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.horizon-list dd li { padding: .12rem .4rem; border-radius: 4px; background: var(--surface-cool); font-size: .72rem; }
+.horizon-list dd small { color: var(--text-faint); font-size: .72rem; line-height: 1.4; }
+
+/* --- places --- */
+
+.horizon-places { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .6rem; }
+.horizon-places > div { display: grid; align-content: start; gap: .35rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: 6px; }
+.horizon-places strong { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; }
+.horizon-places ul { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.horizon-places li { padding: .15rem .4rem; border-radius: 4px; background: var(--teal-soft); font-size: .73rem; }
+.horizon-places li.is-outside { background: var(--surface-cool); }
+.horizon-places small { color: var(--text-faint); font-size: .73rem; }
+
+/* --- what could not be read --- */
+
+.horizon-gaps { display: grid; gap: .35rem; padding: .65rem .8rem; border: 1px solid color-mix(in oklch, var(--amber) 40%, var(--line)); border-radius: var(--radius); background: color-mix(in oklch, var(--amber) 9%, var(--surface)); }
+.horizon-gaps strong { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; }
+.horizon-gaps ul { display: grid; gap: .2rem; margin: 0; padding-left: 1.1rem; }
+.horizon-gaps li { font-size: .8rem; line-height: 1.45; }
+.horizon-gaps small { color: var(--text-faint); font-size: .73rem; }
+
+/* --- the refusal, when the file is something else entirely --- */
+
+.horizon-mismatch { display: flex; align-items: flex-start; gap: .55rem; padding: .7rem .85rem; border: 1px solid color-mix(in oklch, var(--amber) 45%, var(--line)); border-radius: var(--radius); background: color-mix(in oklch, var(--amber) 10%, var(--surface)); }
+.horizon-mismatch svg { flex: none; margin-top: .15rem; }
+.horizon-mismatch p { margin: 0; font-size: .83rem; line-height: 1.5; color: var(--text); }
+.horizon-mismatch small { display: block; margin-top: .25rem; color: var(--text-faint); font-size: .74rem; }
