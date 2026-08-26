@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { cutDoorways, dwellingRegionIds, planDoors, planWalls } from "../editor";
 import { furnitureSymbol } from "../furniture";
 import { FurnitureSymbols } from "../furniture-symbols";
+import { CustomFurnitureSymbols } from "../vocabulary/CustomFurnitureSymbols";
 import type { HomeModel, Point } from "../types";
 import type { SceneWorld, WorldResident } from "./replay-world";
 import type { SceneMotion } from "./scene-motion";
@@ -146,7 +147,7 @@ export function SceneStage({
         role="img"
         aria-label={`The flat, seen from above, with ${String(world.residents.length)} resident${world.residents.length === 1 ? "" : "s"}`}
       >
-        <defs><FurnitureSymbols /></defs>
+        <defs><FurnitureSymbols /><CustomFurnitureSymbols /></defs>
 
         <g className="scene-rooms">
           {set.regions.map((region) => (

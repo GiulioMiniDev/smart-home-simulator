@@ -8,6 +8,7 @@ import {
   Download,
   FlaskConical,
   Home,
+  ListTree,
   Menu,
   Moon,
   PanelLeftClose,
@@ -36,12 +37,14 @@ import {
 import type { ResizeHandle } from "./editor";
 import { furnitureSymbol } from "./furniture";
 import { FurnitureSymbols } from "./furniture-symbols";
+import { CustomFurnitureSymbols } from "./vocabulary/CustomFurnitureSymbols";
 import type { HomeModel, JobStatus, Point, Polygon, SensorModel } from "./types";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Activity },
   { to: "/generate", label: "Generate", icon: Sparkles },
   { to: "/homes", label: "Homes", icon: Home },
+  { to: "/vocabulary", label: "Vocabulary", icon: ListTree },
   { to: "/residents", label: "Residents", icon: Users },
   { to: "/simulations", label: "Simulations", icon: FlaskConical },
   { to: "/exports", label: "Exports", icon: Download },
@@ -649,6 +652,7 @@ export function PlanCanvas({
           <pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M 1 0 L 0 0 0 1" /></pattern>
           <pattern id="obstacle" width=".55" height=".55" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2=".55" /></pattern>
           <FurnitureSymbols />
+          <CustomFurnitureSymbols />
         </defs>
         <rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill="url(#grid)" className="plan-grid" />
         <g role="group" aria-label="Regions">

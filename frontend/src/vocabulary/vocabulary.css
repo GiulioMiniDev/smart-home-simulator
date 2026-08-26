@@ -1,0 +1,140 @@
+/* The vocabulary editor. Uses the application's own tokens throughout — a second palette here
+   would drift from the one every other page is drawn with. */
+
+.vocabulary-page { display: grid; gap: 1.1rem; }
+
+.vocab-status { display: grid; gap: .7rem; padding: .85rem 1rem; }
+.vocab-status > div { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.vocab-status p { margin: 0; color: var(--text-soft); font-size: .85rem; }
+
+.save-state { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .5rem; border-radius: 5px; background: var(--surface-cool); color: var(--text-faint); font-size: .74rem; white-space: nowrap; border: 0; }
+.save-state.is-working { color: var(--text-soft); }
+.save-state.is-done { color: color-mix(in oklch, var(--green, var(--teal)) 80%, var(--text)); }
+.save-state.is-bad { background: color-mix(in oklch, var(--amber) 16%, var(--surface)); color: var(--text); cursor: pointer; }
+
+.vocab-warning { display: flex; align-items: flex-start; gap: .5rem; margin: 0; padding: .6rem .75rem; border: 1px solid color-mix(in oklch, var(--amber) 40%, var(--line)); border-radius: var(--radius); background: color-mix(in oklch, var(--amber) 9%, var(--surface)); font-size: .82rem; line-height: 1.5; }
+.vocab-warning svg { flex: none; margin-top: .15rem; }
+
+.tab-count { margin-left: .4rem; padding: 0 .35rem; border-radius: 99px; background: var(--surface-cool); font-size: .68rem; }
+
+/* --- two-pane board --- */
+
+.vocab-board { display: grid; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+@media (max-width: 900px) { .vocab-board { grid-template-columns: minmax(0, 1fr); } }
+
+.vocab-rail { display: grid; gap: .6rem; align-content: start; }
+.vocab-rail-scroll { display: grid; gap: .9rem; max-height: min(70vh, 780px); overflow-y: auto; padding-right: .2rem; }
+
+.vocab-group { display: grid; gap: .1rem; }
+.vocab-group-head { margin: 0 0 .25rem; padding-bottom: .25rem; border-bottom: 1px solid var(--line); color: var(--text-faint); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+
+.vocab-pick { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; padding: .38rem .5rem; border: 0; border-left: 2px solid transparent; border-radius: 0 4px 4px 0; background: none; color: var(--text-soft); font: inherit; text-align: left; cursor: pointer; }
+.vocab-pick:hover { background: var(--surface-cool); color: var(--text); }
+.vocab-pick[aria-current="true"] { border-left-color: var(--indigo); background: var(--indigo-soft, var(--surface-cool)); color: var(--text); font-weight: 600; }
+.vocab-pick small { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.vocab-pick-furniture { justify-content: flex-start; }
+.vocab-pick-furniture span { flex: 1; }
+
+.vocab-empty { color: var(--text-faint); font-size: .82rem; }
+.vocab-add { justify-content: center; width: 100%; }
+
+.vocab-new { padding: .8rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-cool); }
+.vocab-new-inline { display: flex; gap: .35rem; }
+.vocab-new-inline input { flex: 1; }
+
+.vocab-note { margin: 0; color: var(--text-faint); font-size: .76rem; line-height: 1.5; }
+.vocab-note.is-warning { display: flex; align-items: center; gap: .35rem; color: var(--text-soft); }
+.vocab-lede { max-width: 74ch; margin: 0; color: var(--text-soft); font-size: .88rem; line-height: 1.6; }
+
+/* --- the detail panel --- */
+
+.vocab-detail { display: grid; gap: 1rem; padding: 1.1rem 1.2rem; }
+.vocab-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.vocab-furniture-title { display: flex; align-items: center; gap: .8rem; }
+.vocab-title-input { width: auto; min-width: 16ch; padding: .15rem .3rem; border-color: transparent; background: none; font-size: 1.3rem; font-weight: 650; letter-spacing: -.01em; }
+.vocab-title-input:hover, .vocab-title-input:focus { border-color: var(--line); background: var(--surface-raised); }
+.vocab-id { display: block; margin-top: .15rem; color: var(--text-faint); font-size: .75rem; }
+
+.vocab-facts { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.vocab-facts label { display: grid; gap: .2rem; min-width: 12rem; color: var(--text-faint); font-size: .72rem; }
+.vocab-mapping { margin: 0 0 .35rem; color: var(--text-soft); font-size: .8rem; }
+
+.vocab-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.6rem; }
+@media (max-width: 820px) { .vocab-columns { grid-template-columns: minmax(0, 1fr); } }
+.vocab-columns h3 { margin: 0; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+
+/* --- steps --- */
+
+.vocab-steps { display: grid; margin: 0; padding: 0; list-style: none; }
+.vocab-step { display: grid; grid-template-columns: 1.7rem minmax(0, 1fr) auto; gap: 0 .7rem; padding: .6rem 0; border-top: 1px solid var(--line); align-items: start; }
+.vocab-step:first-child { border-top: 0; }
+.vocab-step.is-unseen .vocab-step-phrase { color: var(--text-faint); }
+.vocab-step-number { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--text-faint); font-size: .7rem; font-variant-numeric: tabular-nums; }
+.vocab-step-body { min-width: 0; display: grid; gap: .35rem; }
+.vocab-step-phrase { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 1.02rem; text-align: left; cursor: pointer; }
+.vocab-step-phrase:hover { text-decoration: underline; }
+.vocab-step-meta { display: flex; align-items: center; gap: .3rem .4rem; flex-wrap: wrap; }
+.vocab-step-meta code { padding: .08rem .32rem; border-radius: 3px; background: var(--surface-cool); color: var(--text-faint); font-size: .72rem; }
+.vocab-step-timing { margin-left: auto; color: var(--text-faint); font-size: .72rem; white-space: nowrap; }
+.vocab-step-controls { display: flex; gap: .15rem; }
+.vocab-step-editor { padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-cool); }
+.vocab-step-editor label { display: grid; gap: .2rem; color: var(--text-faint); font-size: .72rem; }
+
+.chip { padding: .1rem .38rem; border-radius: 3px; font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.chip-object { background: var(--teal-soft, var(--surface-cool)); color: var(--text); }
+.chip-walk { background: none; box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--amber) 60%, var(--line)); color: var(--text-soft); }
+.chip-contact { background: var(--indigo-soft, var(--surface-cool)); color: var(--text); }
+.chip-presence { background: var(--surface-cool); color: var(--text-faint); font-style: italic; text-transform: none; letter-spacing: 0; }
+.chip-gap { background: color-mix(in oklch, var(--amber) 18%, var(--surface)); color: var(--text); text-transform: none; letter-spacing: 0; }
+
+.vocab-add-step { display: flex; gap: .4rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+.vocab-add-step select { width: auto; min-width: 14rem; }
+
+/* --- tables --- */
+
+.vocab-single { display: grid; gap: 1rem; }
+.vocab-table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.vocab-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.vocab-table th, .vocab-table td { padding: .5rem .7rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.vocab-table th { color: var(--text-faint); font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.vocab-table td.is-quiet { color: var(--text-faint); font-style: italic; }
+.vocab-row-controls { display: flex; gap: .2rem; justify-content: flex-end; }
+.vocab-row-editor td { background: var(--surface-cool); }
+.vocab-row-editor .form-stack { display: grid; gap: .7rem; max-width: 60ch; }
+.vocab-row-editor fieldset { display: grid; gap: .4rem; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--radius); }
+.vocab-row-editor legend { padding: 0 .3rem; color: var(--text-faint); font-size: .72rem; }
+
+.check-field { display: flex; align-items: flex-start; gap: .5rem; font-size: .84rem; }
+.check-field input { width: auto; margin-top: .2rem; flex: none; }
+.check-field small { display: block; margin-top: .15rem; color: var(--text-faint); font-size: .74rem; line-height: 1.5; }
+
+/* --- furniture --- */
+
+.vocab-symbol { color: var(--text-soft); flex: none; }
+.vocab-symbol-stage { display: grid; justify-items: center; gap: .5rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); }
+.vocab-svg-input { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .76rem; line-height: 1.5; }
+.vocab-usedby { display: flex; gap: .3rem; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.vocab-usedby li { padding: .12rem .4rem; border-radius: 3px; background: var(--surface-cool); font-size: .76rem; }
+
+.token-editor { display: grid; gap: .4rem; }
+.token-editor ul { display: flex; gap: .3rem; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.token-editor li { display: inline-flex; align-items: center; gap: .1rem; padding: .1rem .15rem .1rem .4rem; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-raised); }
+.token-editor li.is-empty { padding: .1rem .4rem; border-style: dashed; color: var(--text-faint); font-size: .76rem; }
+.token-editor code { font-size: .74rem; }
+.token-entry { display: flex; gap: .3rem; }
+.token-entry input { flex: 1; }
+.token-entry .button { flex: none; }
+
+/* --- gaps --- */
+
+.vocab-gap-group { display: grid; gap: .5rem; }
+.vocab-gap-group h3 { margin: 0; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+.vocab-gap-list { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.vocab-gap { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .65rem .8rem; border: 1px solid var(--line); border-left-width: 3px; border-radius: var(--radius); background: var(--surface); }
+.vocab-gap.is-blocking { border-left-color: var(--red, var(--amber)); }
+.vocab-gap.is-warning { border-left-color: var(--amber); }
+.vocab-gap.is-note { border-left-color: var(--line-strong); }
+.vocab-gap strong { font-size: .88rem; font-weight: 600; }
+.vocab-gap p { margin: .2rem 0 0; color: var(--text-soft); font-size: .8rem; line-height: 1.5; }
+.vocab-gap .vocab-gap-detail { color: var(--text-faint); font-size: .76rem; }
+.vocab-gap > code { flex: none; color: var(--text-faint); font-size: .68rem; }

@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { VocabularyPage } from "./vocabulary/VocabularyPage";
+import { useCustomSymbols } from "./vocabulary/symbol-registry";
 import { api, clearSession, download, eventSourceUrl, health } from "./api";
 import {
   Breadcrumbs,
@@ -156,6 +158,9 @@ function summarizeIssues(issues: ImportIssue[]): string {
 
 export function App() {
   const overview = useResource<Overview>("/overview");
+  // Furniture the researcher drew themselves, so the plan and the replay draw it too rather
+  // than falling back to an anonymous box.
+  useCustomSymbols();
   const [theme, setTheme] = useStoredState<"light" | "dark">("habitat-theme", "light");
   const [navOpen, setNavOpen] = useState(false);
   // Collapsing the navigation is a preference about this workspace, so it outlives the tab.
@@ -190,6 +195,7 @@ export function App() {
         <Route path="/generate" element={<GeneratePage />} />
         <Route path="/homes" element={<HomesPage />} />
         <Route path="/homes/:homeId" element={<HomePage />} />
+        <Route path="/vocabulary" element={<VocabularyPage />} />
         <Route path="/residents" element={<ResidentsPage />} />
         <Route path="/simulations" element={<SimulationsPage />} />
         <Route path="/simulations/:runId" element={<RunPage />} />

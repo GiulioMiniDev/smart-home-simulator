@@ -1,3 +1,5 @@
+import { customSymbolId } from "./vocabulary/symbol-registry";
+
 /**
  * Which glyph draws which entity type on the plan canvas.
  *
@@ -25,7 +27,20 @@ const SYMBOL_BY_ENTITY_TYPE: Record<string, string> = {
   garden_planter: "planter",
 };
 
+/**
+ * Every entity type the bundled glyphs cover.
+ *
+ * The vocabulary editor asks the server which types have no drawing, and the server cannot know:
+ * the glyphs live here. So the list travels the other way, and there is no second copy of it to
+ * drift from the one that draws.
+ */
+export function drawableEntityTypes(): string[] {
+  return Object.keys(SYMBOL_BY_ENTITY_TYPE).sort();
+}
+
 export function furnitureSymbol(entityType: string | undefined): string | undefined {
   if (!entityType) return undefined;
-  return SYMBOL_BY_ENTITY_TYPE[entityType];
+  // A drawing the researcher authored for this type wins over the bundled glyph: they added the
+  // type, and if they also drew it they meant that drawing.
+  return customSymbolId(entityType) ?? SYMBOL_BY_ENTITY_TYPE[entityType];
 }
