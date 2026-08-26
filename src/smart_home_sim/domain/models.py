@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import AwareDatetime, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from smart_home_sim.domain.base import ContractModel
+
+if TYPE_CHECKING:
+    from smart_home_sim.domain.vocabulary import VocabularyPack
 
 
 class AuthorType(StrEnum):
@@ -187,6 +190,24 @@ RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
 }
 
 
+def _active_pack() -> VocabularyPack:
+    """The vocabulary this process runs on.
+
+    Imported inside the call rather than at module scope: the pack is built *from* this module's
+    tables, so a top-level import would close a cycle. `RESOURCE_ROLE_ALIASES` below stays as it
+    was — it is what the built-in pack is derived from, and the two must not drift.
+    """
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return active_pack()
+
+
+def _role_aliases() -> dict[str, frozenset[str]]:
+    from smart_home_sim.vocabulary import views
+
+    return views.resource_role_aliases(_active_pack())
+
+
 def resource_roles_for_type(resource_type: str) -> frozenset[str]:
     """Every role a declared resource of this type can answer to.
 
@@ -194,7 +215,7 @@ def resource_roles_for_type(resource_type: str) -> frozenset[str]:
     entity's roles. Asking "can anything in this package reach this object?" needs the direction
     that starts from the furniture.
     """
-    return frozenset({resource_type}) | RESOURCE_ROLE_ALIASES.get(resource_type, frozenset())
+    return frozenset({resource_type}) | _role_aliases().get(resource_type, frozenset())
 
 
 def resource_types_for_role(role: str) -> frozenset[str]:
@@ -207,14 +228,9 @@ def resource_types_for_role(role: str) -> frozenset[str]:
     A resource type names itself, matching how materialization builds an entity's roles: an author
     who writes `refrigerator` where the reference models write `food_storage` still binds.
     """
-    return frozenset(
-        {
-            resource_type
-            for resource_type, aliases in RESOURCE_ROLE_ALIASES.items()
-            if role in aliases
-        }
-        | ({role} if role in RESOURCE_ROLE_ALIASES else set())
-    )
+    from smart_home_sim.vocabulary import views
+
+    return views.resource_types_for_role(_active_pack(), role)
 
 
 class ResidentInitialState(ContractModel):

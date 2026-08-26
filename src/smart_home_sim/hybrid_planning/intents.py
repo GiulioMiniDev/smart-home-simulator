@@ -12,13 +12,14 @@ package, on which stage A2b anchors the LLM authoring and its deterministic fall
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from enum import StrEnum
-from functools import lru_cache
-from importlib.resources import files
+from typing import TYPE_CHECKING
 
 from smart_home_sim.domain.behavior import ProcessModel
+
+if TYPE_CHECKING:
+    from smart_home_sim.domain.vocabulary import VocabularyPack
 
 REFERENCE_FILE = "reference-process-models-1.4.0.json"
 
@@ -139,59 +140,59 @@ AWAY_LOCATION = "outdoors"
 ACTIVITY_CATALOG_FILE = "activity-catalog-1.4.0.json"
 
 
-@lru_cache(maxsize=1)
+def _pack() -> VocabularyPack:
+    """The vocabulary this process runs on.
+
+    Imported inside the call because the built-in pack is derived from the literals below, so a
+    top-level import would close a cycle. `INTENT_CATALOG` and the catalog files stay exactly as
+    they were: they are what the default pack is built from, and the two must not drift.
+    """
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return active_pack()
+
+
+def intent_catalog() -> tuple[IntentSpec, ...]:
+    """The in-home activity alphabet in force — the pack's, which defaults to `INTENT_CATALOG`."""
+    from smart_home_sim.vocabulary import views
+
+    return views.intent_specs(_pack())
+
+
 def away_intent_specs() -> tuple[IntentSpec, ...]:
     """The catalog's away intents, minus anything the home vocabulary already claims.
 
     The two lists are rendered side by side in the authoring prompt as "inside the home" and "away
-    from home", and an intent printed in both would be an instruction to guess. Excluding the home
-    ids here makes them disjoint by construction rather than by the discipline of choosing catalog
-    categories carefully: `intent_spec` already resolves `INTENT_CATALOG` first, so a duplicate
-    would not change where an activity happens — it would only mislead whoever is reading.
+    from home", and an intent printed in both would be an instruction to guess. The pack enforces
+    that disjointness on the way in, so nothing has to be filtered out here.
     """
-    catalog = json.loads(
-        files("smart_home_sim.catalogs").joinpath(ACTIVITY_CATALOG_FILE).read_text(encoding="utf-8")
-    )
-    return tuple(
-        IntentSpec(
-            activity["intent"],
-            activity.get("displayName") or activity["intent"],
-            IntentCategory.outdoor,
-            AWAY_LOCATION,
-        )
-        for activity in sorted(catalog["activities"], key=lambda item: item["intent"])
-        if activity["category"] in AWAY_CATEGORIES and activity["intent"] not in _BY_ID
-    )
+    from smart_home_sim.vocabulary import views
+
+    return views.away_intent_specs(_pack())
 
 
 _BY_ID: dict[str, IntentSpec] = {spec.intent_id: spec for spec in INTENT_CATALOG}
 
 
 def intent_ids() -> list[str]:
-    return [spec.intent_id for spec in INTENT_CATALOG]
+    return [spec.intent_id for spec in intent_catalog()]
 
 
 def intent_spec(intent_id: str) -> IntentSpec:
-    spec = _BY_ID.get(intent_id)
-    if spec is not None:
-        return spec
+    for spec in intent_catalog():
+        if spec.intent_id == intent_id:
+            return spec
     for away in away_intent_specs():
         if away.intent_id == intent_id:
             return away
     raise KeyError(f"unknown intent: {intent_id!r}")
 
 
-@lru_cache(maxsize=1)
 def load_reference_models() -> dict[str, ProcessModel]:
-    """Load and parse the bundled reference process models, keyed by canonical intent id."""
-    raw = json.loads(
-        files("smart_home_sim.catalogs").joinpath(REFERENCE_FILE).read_text(encoding="utf-8")
-    )
-    # ContractModel is strict, so string enums parse via JSON rather than model_validate(dict).
-    return {
-        intent_id: ProcessModel.model_validate_json(json.dumps(model))
-        for intent_id, model in raw["models"].items()
-    }
+    """The process model behind each in-home intent, keyed by intent id."""
+    from smart_home_sim.vocabulary import views
+
+    return views.reference_models(_pack())
 
 
 def reference_model(intent_id: str) -> ProcessModel:

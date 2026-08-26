@@ -18,8 +18,8 @@ from smart_home_sim.domain.behavior import (
     VariableCatalog,
 )
 from smart_home_sim.domain.environment import (
-    ENTITY_TYPE_CAPABILITIES,
     UNIVERSAL_ENTITY_CAPABILITIES,
+    capabilities_for_entity_type,
 )
 from smart_home_sim.domain.models import (
     DayPlan,
@@ -29,7 +29,7 @@ from smart_home_sim.domain.models import (
     resource_types_for_role,
 )
 from smart_home_sim.domain.plan import CanonicalActivity, CanonicalPlan
-from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
+from smart_home_sim.domain.sensors import contact_instrumented_types
 
 _UNKNOWN = object()
 _ABSENT = object()
@@ -725,7 +725,7 @@ def validate_declared_objects_are_reachable(
 
     by_type: dict[str, list[str]] = defaultdict(list)
     for resource in scenario.resources:
-        offered = ENTITY_TYPE_CAPABILITIES.get(resource.resource_type)
+        offered = capabilities_for_entity_type(resource.resource_type)
         roles = {resource.resource_id, resource.resource_type} | resource_roles_for_type(
             resource.resource_type
         )
@@ -815,7 +815,7 @@ def validate_instrumented_objects_are_opened(
 
     by_type: dict[str, list[str]] = defaultdict(list)
     for resource in scenario.resources:
-        if resource.resource_type in CONTACT_INSTRUMENTED_TYPES:
+        if resource.resource_type in contact_instrumented_types():
             by_type[resource.resource_type].append(resource.resource_id)
 
     findings: list[PreflightFinding] = []

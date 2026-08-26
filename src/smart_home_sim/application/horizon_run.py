@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from smart_home_sim.application import vocabulary_store
 from smart_home_sim.application.generation_paths import generation_run_dir
 from smart_home_sim.application.plan_approval import approved_home_model, approved_sensor_model
 from smart_home_sim.application.workspace import WorkspaceService
@@ -568,4 +569,7 @@ def run_horizon_job(workspace: WorkspaceService, job_id: str) -> None:
 
 def _horizon_worker(root: str, job_id: str) -> None:
     workspace = WorkspaceService.open(Path(root), reconcile=False, recover_jobs=False)
+    # A worker is its own process, so it adopts the workspace's vocabulary itself. See
+    # `jobs._materialization_worker` for why doing it in the API process is not enough.
+    vocabulary_store.adopt(workspace.root)
     run_horizon_job(workspace, job_id)

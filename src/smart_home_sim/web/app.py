@@ -32,6 +32,7 @@ from pydantic import (
 from starlette.background import BackgroundTask
 
 from smart_home_sim.application import configuration as configuration_store
+from smart_home_sim.application import vocabulary_store
 from smart_home_sim.application.export import ExportService
 from smart_home_sim.application.generation_ingest import (
     GenerationIngestError,
@@ -54,7 +55,9 @@ from smart_home_sim.domain.application import (
     ReplayEventKind,
     ReplayFilters,
 )
+from smart_home_sim.domain.vocabulary import VocabularyPack
 from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, render_profile_html
+from smart_home_sim.vocabulary.gaps import gaps_report
 
 
 class ApiModel(BaseModel):
@@ -64,6 +67,30 @@ class ApiModel(BaseModel):
 class HomeCreate(ApiModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=1000)
+
+
+class VocabularySave(ApiModel):
+    """A whole pack, replacing whatever is stored.
+
+    Whole-document rather than a patch because the pack's validity is a property of the document —
+    a process model may only call actions the pack declares, and an author deleting an action needs
+    to be told which activity still needs it. A patch would let the two halves of that check arrive
+    separately.
+    """
+
+    pack: dict[str, Any]
+    # What the editor believes it is replacing. A mismatch means the pack changed underneath it —
+    # a second tab, or another window — and overwriting would silently discard that work.
+    expected_digest: str | None = None
+
+
+class VocabularyPreview(ApiModel):
+    """A candidate pack to validate and report on without storing it."""
+
+    pack: dict[str, Any]
+    # Entity types the viewer can already draw. Passed in because the glyphs live in the frontend,
+    # and a copy of that list on the server could only drift from the one that draws.
+    drawable_types: list[str] = Field(default_factory=list)
 
 
 class AuthoringImport(ApiModel):
@@ -454,6 +481,80 @@ def create_app(
             status_code=409,
             content={"error": {"code": "CONFIGURATION_REJECTED", "message": str(error)}},
         )
+
+    # ---- the editable vocabulary -------------------------------------------------------------
+    #
+    # A pack is a document, so it is read and written whole. The editor autosaves, which means it
+    # writes far more often than anything reads; `vocabulary_store.save` is atomic so a run never
+    # meets a half-written vocabulary.
+
+    def _parse_pack(payload: dict[str, Any]) -> VocabularyPack:
+        """Strictly, and with the failure turned into something an editor can show.
+
+        `ContractModel` is strict, so the document is parsed from JSON text rather than from the
+        dict FastAPI already built: a bare `"string"` only becomes a `ValueType` on the way through
+        the JSON parser.
+        """
+        try:
+            return VocabularyPack.model_validate_json(json.dumps(payload))
+        except ValueError as error:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "VOCABULARY_REJECTED", "message": str(error)},
+            ) from error
+
+    def _vocabulary_view(stored: vocabulary_store.StoredVocabulary) -> dict[str, Any]:
+        return {
+            "pack": stored.pack.model_dump(mode="json", by_alias=True),
+            "customised": stored.customised,
+            "digest": stored.pack.digest,
+            # Kept apart from the digest on purpose: a change here means the ground-truth labels
+            # moved, and datasets either side of it are no longer answering the same question.
+            "labelSpaceDigest": stored.pack.label_space_digest,
+        }
+
+    @app.get("/api/vocabulary", dependencies=[secured])
+    def read_vocabulary() -> dict[str, Any]:
+        return _vocabulary_view(vocabulary_store.load(workspace_root))
+
+    @app.put("/api/vocabulary", dependencies=[secured])
+    def write_vocabulary(request: VocabularySave) -> dict[str, Any]:
+        """Store a pack, refusing to overwrite work the editor has not seen."""
+        current = vocabulary_store.load(workspace_root)
+        if request.expected_digest is not None and request.expected_digest != current.pack.digest:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "VOCABULARY_CHANGED_ELSEWHERE",
+                    "message": (
+                        "The stored vocabulary changed since this editor loaded it. Reload to see "
+                        "the current version before saving again."
+                    ),
+                    "digest": current.pack.digest,
+                },
+            )
+        return _vocabulary_view(vocabulary_store.save(workspace_root, _parse_pack(request.pack)))
+
+    @app.delete("/api/vocabulary", dependencies=[secured])
+    def reset_vocabulary() -> dict[str, Any]:
+        """Forget every edit and go back to the vocabulary the simulator ships with."""
+        return _vocabulary_view(vocabulary_store.reset(workspace_root))
+
+    @app.post("/api/vocabulary/review", dependencies=[secured])
+    def review_vocabulary(request: VocabularyPreview) -> dict[str, Any]:
+        """Validate a candidate pack and report what will fail quietly, without storing it.
+
+        The editor calls this as the researcher works, so a role nothing answers or a container
+        with no contact sensor is visible while it is still being written rather than a month into
+        a generated dataset.
+        """
+        pack = _parse_pack(request.pack)
+        report = gaps_report(pack, drawable_types=frozenset(request.drawable_types))
+        return {
+            "digest": pack.digest,
+            "labelSpaceDigest": pack.label_space_digest,
+            "report": report.model_dump(mode="json", by_alias=True),
+        }
 
     @app.get("/api/configuration", dependencies=[secured])
     def read_configuration() -> dict[str, Any]:

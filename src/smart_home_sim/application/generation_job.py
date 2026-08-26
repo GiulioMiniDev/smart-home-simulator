@@ -15,6 +15,7 @@ import os
 from datetime import date
 from pathlib import Path
 
+from smart_home_sim.application import vocabulary_store
 from smart_home_sim.application.generation_ingest import ingest_generation
 from smart_home_sim.application.generation_paths import GENERATION_ARTIFACTS, generation_run_dir
 from smart_home_sim.application.workspace import WorkspaceService
@@ -59,6 +60,9 @@ def run_generation_job(
     workspace: WorkspaceService, job_id: str, *, client: LMStudioClient | None = None
 ) -> None:
     """Run the generation pipeline for one job, updating its status/progress in the workspace."""
+    # See `_materialization_worker`: a worker is its own process and must adopt the workspace's
+    # vocabulary itself.
+    vocabulary_store.adopt(workspace.root)
     request = workspace.job_request(job_id)
     output = generation_run_dir(workspace, job_id)
 

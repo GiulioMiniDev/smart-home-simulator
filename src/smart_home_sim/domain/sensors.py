@@ -116,6 +116,18 @@ CONTACT_INSTRUMENTED_TYPES = frozenset(
 )
 
 
+def contact_instrumented_types() -> frozenset[str]:
+    """The furniture a deployment fits with a reed switch, per the active vocabulary pack.
+
+    The frozenset above stays as the built-in value the default pack is derived from; an author who
+    adds a cupboard says here whether it has a sensor on its door.
+    """
+    from smart_home_sim.vocabulary import views
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return views.contact_instrumented_types(active_pack())
+
+
 class ContactSensor(SensorBase):
     sensor_type: Literal["contact"] = "contact"
     entity_id: str = Field(min_length=1)

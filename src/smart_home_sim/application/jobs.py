@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from smart_home_sim.application import vocabulary_store
 from smart_home_sim.application.generation_ingest import generation_job_for_home
 from smart_home_sim.application.generation_job import _generation_worker
 from smart_home_sim.application.horizon_run import _horizon_worker
@@ -43,6 +44,10 @@ def _sensor_policy_from_request(payload: dict[str, Any] | None) -> SensorDeploym
 
 def _materialization_worker(root: str, job_id: str) -> None:
     workspace = WorkspaceService.open(Path(root), reconcile=False, recover_jobs=False)
+    # Before anything reads an action's length or an intent's room. This is a fresh process, so the
+    # pack the API adopted is not in it, and a run generated on the built-in vocabulary while the
+    # editor showed the researcher their own would be the one failure nothing downstream reports.
+    vocabulary_store.adopt(Path(root))
     request = workspace.job_request(job_id)
 
     def progress(phase: str, percent: float, message: str, counters: dict[str, int]) -> None:

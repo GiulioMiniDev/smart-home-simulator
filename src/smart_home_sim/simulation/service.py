@@ -121,6 +121,18 @@ PUNCTUAL_ACTION_SECONDS = {
 }
 
 
+def _gesture_table() -> dict[str, float]:
+    """The gesture lengths in force, from the active vocabulary pack.
+
+    `PUNCTUAL_ACTION_SECONDS` above stays as the built-in values the default pack is derived from;
+    an author who adds an action states its length there instead of here.
+    """
+    from smart_home_sim.vocabulary import views
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return views.gesture_seconds_table(active_pack())
+
+
 class SimulationFailure(RuntimeError):
     def __init__(
         self,
@@ -612,7 +624,7 @@ def _expand_process(
 
 def _gesture_seconds(node: ProcessNode) -> float | None:
     """How long this node's gesture takes, or None when the node is elastic."""
-    return PUNCTUAL_ACTION_SECONDS.get(node.action_type or "")
+    return _gesture_table().get(node.action_type or "")
 
 
 def _phase_durations(
@@ -890,7 +902,7 @@ class SimulationEngine:
         transitions = self.kinematics[actor_id].posture_transition_seconds
 
         def resolve(node: ProcessNode) -> float | None:
-            fallback = PUNCTUAL_ACTION_SECONDS.get(node.action_type or "")
+            fallback = _gesture_table().get(node.action_type or "")
             if node.action_type != "change_posture":
                 return fallback
             posture = self.bindings[(activity_id, node.node_id)].resolved_arguments.get("posture")

@@ -25,7 +25,6 @@ from smart_home_sim.domain.behavior import (
     ValueSource,
 )
 from smart_home_sim.domain.environment import (
-    ENTITY_TYPE_CAPABILITIES,
     UNIVERSAL_ENTITY_CAPABILITIES,
     ConnectionKind,
     EntityCapability,
@@ -42,6 +41,7 @@ from smart_home_sim.domain.environment import (
     ResourceBinding,
     SimulationBundle,
     TraversalMode,
+    capabilities_for_entity_type,
 )
 from smart_home_sim.domain.materialization import (
     EnvironmentMaterializationManifest,
@@ -59,7 +59,6 @@ from smart_home_sim.domain.materialization import (
 )
 from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES, LocationKind, Scenario
 from smart_home_sim.domain.sensors import (
-    CONTACT_INSTRUMENTED_TYPES,
     ContactSensor,
     PirSensor,
     SensorErrorModel,
@@ -68,6 +67,7 @@ from smart_home_sim.domain.sensors import (
     SensorTiming,
     TemperatureSensor,
     TemperatureSource,
+    contact_instrumented_types,
 )
 from smart_home_sim.environment import build_bundle_files, validate_home_model
 from smart_home_sim.materialization import floorplan
@@ -192,7 +192,7 @@ def _entity_capabilities(
     resource_type: str, capabilities: list[EntityCapability]
 ) -> list[EntityCapability]:
     """The subset of the scenario's capabilities this piece of furniture genuinely offers."""
-    allowed = ENTITY_TYPE_CAPABILITIES.get(resource_type)
+    allowed = capabilities_for_entity_type(resource_type)
     return [
         item
         for item in capabilities
@@ -987,7 +987,7 @@ def deploy_sensors(
     contact_entities = [
         entity
         for entity in sorted(home.entities, key=lambda item: item.entity_id)
-        if entity.entity_type in CONTACT_INSTRUMENTED_TYPES
+        if entity.entity_type in contact_instrumented_types()
     ]
     if policy.preset == "minimal":
         contact_entities = []

@@ -50,6 +50,8 @@ from smart_home_sim.validation.service import (
     _reject_duplicate_keys,
     _reject_non_finite_constant,
 )
+from smart_home_sim.vocabulary import views
+from smart_home_sim.vocabulary.active import active_pack
 
 SUPPORTED_SENSOR_MODEL_VERSION = "1.0.0"
 SUPPORTED_TRACE_VERSION = "1.0.0"
@@ -262,11 +264,14 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
     }
 
     pulses: list[_MotionPulse] = []
+    # From the pack rather than the constant, so an action a researcher adds is seen by the
+    # detector it works in front of without the sensor projector being edited.
+    motion_actions = views.motion_action_types(active_pack())
 
     # Working at something: the hands move, and fast.
     retrigger: dict[str, random.Random] = {}
     for action in trace.action_executions:
-        if action.action_type not in PIR_ACTIVITY_ACTION_TYPES or action.status != "completed":
+        if action.action_type not in motion_actions or action.status != "completed":
             continue
         entity = next(
             (

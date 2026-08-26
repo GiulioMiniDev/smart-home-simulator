@@ -201,6 +201,22 @@ ENTITY_TYPE_CAPABILITIES: dict[str, frozenset[str]] = {
 UNIVERSAL_ENTITY_CAPABILITIES = frozenset({"interaction_point", "reachable", "transport_reachable"})
 
 
+def capabilities_for_entity_type(entity_type: str) -> frozenset[str] | None:
+    """What this kind of furniture is for, according to the active vocabulary pack.
+
+    `None` keeps its old meaning and is not the same as an empty set: a type nothing declares keeps
+    every capability, because a scenario naming an unrecognised resource must stay simulable. An
+    author who adds furniture states its capabilities in the pack, which is how a new object stops
+    being permissive and starts being a specific thing.
+
+    The table above stays as the built-in values the default pack is derived from.
+    """
+    from smart_home_sim.vocabulary import views
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return views.entity_type_capabilities(active_pack()).get(entity_type)
+
+
 class HomeEntity(ContractModel):
     entity_id: str = Field(min_length=1)
     entity_type: str = Field(min_length=1)
