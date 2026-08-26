@@ -295,7 +295,14 @@ def test_rhythm_lays_night_visits_before_the_wake() -> None:
         nights += bool(visits)
         for visit in visits:
             assert visit.start_window.preferred < wake.start_window.preferred
-            assert visit.location_ids == [intent_spec("morning_toilet_and_wash").default_location]
+            # Its own intent since catalog 1.4.0, and it declares two rooms: the bathroom it
+            # happens in and the bedroom it ends in. Both matter. The intent is the ground-truth
+            # label a dataset publishes, and it used to say `morning_toilet_and_wash` at two in the
+            # morning; the second room is what lets the process put the resident back to bed
+            # instead of leaving her at the washbasin until the next activity comes for her.
+            assert visit.intent == "night_toilet_visit"
+            assert visit.location_ids == ["bathroom", "bedroom"]
+            assert intent_spec("night_toilet_visit").return_location == "bedroom"
     assert nights > 15
 
 

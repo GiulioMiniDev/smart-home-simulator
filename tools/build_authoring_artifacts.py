@@ -63,10 +63,10 @@ SIMPLIFIED_PROMPT_PATH = ROOT / "prompts/generate-simulation-inputs-1.2.3-simpli
 
 # Pinned to what the local generation pipeline emits (`hybrid_planning.package_authoring`), so both
 # authoring paths label their datasets from one vocabulary and stay comparable.
-SIMPLIFIED_ACTIVITY_CATALOG_VERSION = "1.3.0"
+SIMPLIFIED_ACTIVITY_CATALOG_VERSION = "1.4.0"
 SIMPLIFIED_VARIABLE_CATALOG_VERSION = "1.0.0"
 SIMPLIFIED_ACTION_CATALOG_VERSION = "1.1.0"
-SIMPLIFIED_REFERENCE_MODELS = "reference-process-models-1.3.0.json"
+SIMPLIFIED_REFERENCE_MODELS = "reference-process-models-1.4.0.json"
 
 
 def _compact_json(path: Path) -> str:
@@ -220,7 +220,11 @@ def _literal_arguments(node: dict[str, Any]) -> dict[str, str]:
         elif source == "activity_intent":
             rendered[name] = "<intent>"
         elif source == "activity_location":
-            rendered[name] = "<activity location>"
+            # The index is part of the instruction wherever an activity declares more than one
+            # room: `night_toilet_visit` runs in the bathroom and ends in the bedroom, and a model
+            # that reads index 0 for both walks the resident back to the toilet to go to sleep.
+            index = expression.get("index") or 0
+            rendered[name] = f"<activity location {index}>" if index else "<activity location>"
         else:
             rendered[name] = f"<{source}>"
     return rendered
@@ -422,8 +426,25 @@ def build_example() -> None:
 # The outline prompt reuses the process-package half of 1.3.0 verbatim. It is extracted from the
 # frozen prompt rather than restated, so a change there cannot leave this one teaching the old
 # contract — the same reason the catalogs are embedded instead of retyped.
-OUTLINE_TEMPLATE_PATH = ROOT / "prompts/templates/generate-horizon-outline-1.0.0.template.md"
 OUTLINE_PROMPT_PATH = ROOT / "prompts/generate-horizon-outline-1.0.0.md"
+# 1.1.0 is 1.0.0 plus what a generated year taught about filling a band you have just split, and it
+# is the version the outline path actually distributes. It had no template and was kept as a copy
+# edited by hand, so its rendered halves — the intent list, the furniture, the rhythm intents —
+# stopped moving with the catalogs the moment it was branched. The catalog gaining
+# `night_toilet_visit` is what surfaced that: the prompt went on teaching a vocabulary the engine no
+# longer had, which is precisely what
+# `test_distributed_outline_prompt_is_self_contained_and_cannot_drift` exists to prevent. Both
+# versions are now rendered from templates that carry only their prose.
+OUTLINE_PROMPTS = (
+    (
+        ROOT / "prompts/templates/generate-horizon-outline-1.0.0.template.md",
+        ROOT / "prompts/generate-horizon-outline-1.0.0.md",
+    ),
+    (
+        ROOT / "prompts/templates/generate-horizon-outline-1.1.0.template.md",
+        ROOT / "prompts/generate-horizon-outline-1.1.0.md",
+    ),
+)
 OUTLINE_BUNDLE_SCHEMA_PATH = ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json"
 REUSED_FROM_1_3_0 = ("## Personal ADL process-model rules", "## Required final consistency checks")
 
@@ -599,8 +620,13 @@ def _retarget_action_state_contract(section: str) -> str:
 
 
 def build_outline_prompt() -> None:
+    for template, destination in OUTLINE_PROMPTS:
+        _render_outline_prompt(template, destination)
+
+
+def _render_outline_prompt(template_path: Path, destination: Path) -> None:
     frozen = PROMPT_1_3_PATH.read_text(encoding="utf-8")
-    prompt = OUTLINE_TEMPLATE_PATH.read_text(encoding="utf-8")
+    prompt = template_path.read_text(encoding="utf-8")
     prompt = prompt.replace("{{ACTIVITY_PORTFOLIO}}", _render_activity_portfolio())
     prompt = prompt.replace("{{CATALOG_ROOMS}}", _render_catalog_rooms())
     prompt = prompt.replace("{{CATALOG_INTENTS}}", _render_catalog_intents())
@@ -618,7 +644,7 @@ def build_outline_prompt() -> None:
     unresolved = [item for item in OUTLINE_PLACEHOLDERS if item in prompt]
     if unresolved:
         raise RuntimeError(f"Unresolved outline prompt placeholders: {unresolved}")
-    OUTLINE_PROMPT_PATH.write_text(prompt, encoding="utf-8", newline="\n")
+    destination.write_text(prompt, encoding="utf-8", newline="\n")
 
 
 def main() -> None:

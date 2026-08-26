@@ -62,7 +62,7 @@ from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenari
 GENERATOR_NAME = "smart-home-sim.hybrid_planning.package_authoring"
 GENERATOR_VERSION = "1.0.0"
 
-ACTIVITY_CATALOG_VERSION = "1.3.0"
+ACTIVITY_CATALOG_VERSION = "1.4.0"
 VARIABLE_CATALOG_VERSION = "1.0.0"
 ACTION_CATALOG_VERSION = "1.1.0"
 

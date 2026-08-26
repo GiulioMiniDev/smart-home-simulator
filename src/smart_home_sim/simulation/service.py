@@ -333,11 +333,16 @@ def _initial_runtime(bundle: SimulationBundle) -> RuntimeState:
         region_id, position = _point_for_location(bundle, initial.location_id)
         facts = dict(initial.facts)
         facts.setdefault("at_home", not initial.location_id.startswith("outside"))
+        posture = "lying" if not bool(facts.get("awake", True)) else "standing"
+        # The fact store is told the opening posture too, not only the runtime field. Without it
+        # the day's first `change_posture` reported its `previousValue` as null — a resident who
+        # was asleep in bed read as having come from nowhere.
+        facts.setdefault("posture", posture)
         residents[initial.resident_id] = ResidentRuntime(
             resident_id=initial.resident_id,
             region_id=region_id,
             position=position,
-            posture="lying" if not bool(facts.get("awake", True)) else "standing",
+            posture=posture,
             facts=facts,
         )
     entity_states = {
@@ -1296,19 +1301,13 @@ class SimulationEngine:
                 yield self.env.timeout(payload["duration_us"])
                 actor.execution_state = "performing_activity"
         if node.action_type == "change_posture":
-            posture = binding.resolved_arguments["posture"]
-            previous = actor.posture
-            actor.posture = str(posture)
-            self._state_transition(
-                "resident",
-                actor.resident_id,
-                "posture",
-                previous,
-                actor.posture,
-                "set",
-                "action_effect",
-                action_id,
-            )
+            # Only the runtime field is set here. The transition is left to the catalog effect
+            # below — `change_posture` declares `resident.posture := {posture}` — because writing it
+            # in both places wrote it to the trace twice: two ids, one moment, one cause, ten of ten
+            # posture changes on a generated day. A reader counting how often the resident sat down
+            # got double, and the pair disagreed about where she had been, the fact store having
+            # never been told her opening posture.
+            actor.posture = str(binding.resolved_arguments["posture"])
         definition = self.action_definitions[node.action_type or ""]
         arguments = {key: str(value) for key, value in binding.resolved_arguments.items()}
         for template in definition.effects:

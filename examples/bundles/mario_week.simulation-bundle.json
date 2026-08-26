@@ -33780,10 +33780,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a03",
@@ -33900,10 +33898,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a04",
@@ -34064,10 +34060,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a05",
@@ -34088,10 +34082,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a05",
@@ -34112,10 +34104,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a06",
@@ -34256,10 +34246,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a07",
@@ -34280,10 +34268,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a07",
@@ -34304,10 +34290,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a08",
@@ -34352,10 +34336,8 @@
           "interactionPointId": "ip_entrance_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "entrance"
-      ],
-      "destinationInteractionPointId": "ip_entrance_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a08",
@@ -34678,10 +34660,8 @@
           "interactionPointId": "ip_supermarket_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "supermarket"
-      ],
-      "destinationInteractionPointId": "ip_supermarket_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a13",
@@ -34848,10 +34828,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a14",
@@ -34920,10 +34898,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a15",
@@ -34944,10 +34920,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a15",
@@ -34968,10 +34942,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a16",
@@ -35016,10 +34988,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a16",
@@ -35136,10 +35106,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a17",
@@ -35674,10 +35642,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a22",
@@ -35794,10 +35760,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a23",
@@ -35864,10 +35828,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a23",
@@ -35934,10 +35896,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a24",
@@ -35982,10 +35942,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a25",
@@ -36636,10 +36594,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a03",
@@ -36756,10 +36712,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a04",
@@ -36920,10 +36874,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a05",
@@ -36944,10 +36896,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a05",
@@ -36968,10 +36918,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a06",
@@ -37112,10 +37060,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a07",
@@ -37136,10 +37082,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a07",
@@ -37160,10 +37104,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a08",
@@ -37208,10 +37150,8 @@
           "interactionPointId": "ip_entrance_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "entrance"
-      ],
-      "destinationInteractionPointId": "ip_entrance_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a08",
@@ -37538,10 +37478,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a12",
@@ -37562,10 +37500,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a12",
@@ -37586,10 +37522,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a13",
@@ -37634,10 +37568,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a14",
@@ -38240,10 +38172,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_alt03",
@@ -38264,10 +38194,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_alt03",
@@ -38288,10 +38216,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a18",
@@ -38336,10 +38262,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a18",
@@ -38456,10 +38380,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a18",
@@ -38504,10 +38426,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_alt04",
@@ -38576,10 +38496,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_alt04",
@@ -38696,10 +38614,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_alt04",
@@ -38744,10 +38660,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_alt04",
@@ -38792,10 +38706,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a19",
@@ -38862,10 +38774,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a19",
@@ -38932,10 +38842,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a20",
@@ -38980,10 +38888,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a21",
@@ -39608,10 +39514,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a03",
@@ -39728,10 +39632,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a03",
@@ -39798,10 +39700,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a03",
@@ -39868,10 +39768,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a04",
@@ -39892,10 +39790,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a04",
@@ -39916,10 +39812,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a05",
@@ -40060,10 +39954,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a06",
@@ -40084,10 +39976,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a06",
@@ -40108,10 +39998,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a07",
@@ -40386,10 +40274,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a11",
@@ -40410,10 +40296,8 @@
           "interactionPointId": "ip_pharmacy_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "pharmacy"
-      ],
-      "destinationInteractionPointId": "ip_pharmacy_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a12",
@@ -40556,10 +40440,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a13",
@@ -40580,10 +40462,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a13",
@@ -40604,10 +40484,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a13",
@@ -40652,10 +40530,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a14",
@@ -40924,10 +40800,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a17",
@@ -41044,10 +40918,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a18",
@@ -41114,10 +40986,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a18",
@@ -41184,10 +41054,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a19",
@@ -41232,10 +41100,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a20",
@@ -41886,10 +41752,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a03",
@@ -42006,10 +41870,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a03",
@@ -42076,10 +41938,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a03",
@@ -42146,10 +42006,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a04",
@@ -42170,10 +42028,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a04",
@@ -42194,10 +42050,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a05",
@@ -42338,10 +42192,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a06",
@@ -42362,10 +42214,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a06",
@@ -42386,10 +42236,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a07",
@@ -42716,10 +42564,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a11",
@@ -42740,10 +42586,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a11",
@@ -42764,10 +42608,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a11",
@@ -42812,10 +42654,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a12",
@@ -42860,10 +42700,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a12",
@@ -42954,10 +42792,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a13",
@@ -43252,10 +43088,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a16",
@@ -43372,10 +43206,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a17",
@@ -43442,10 +43274,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a17",
@@ -43512,10 +43342,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a18",
@@ -43560,10 +43388,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a19",
@@ -44214,10 +44040,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a03",
@@ -44334,10 +44158,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a03",
@@ -44404,10 +44226,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a03",
@@ -44474,10 +44294,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a04",
@@ -44498,10 +44316,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a04",
@@ -44522,10 +44338,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a05",
@@ -44666,10 +44480,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a06",
@@ -44690,10 +44502,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a06",
@@ -44714,10 +44524,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a07",
@@ -45044,10 +44852,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a11",
@@ -45068,10 +44874,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a11",
@@ -45092,10 +44896,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a11",
@@ -45140,10 +44942,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a12",
@@ -45344,10 +45144,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a13",
@@ -45368,10 +45166,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a13",
@@ -45392,10 +45188,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a14",
@@ -45534,10 +45328,8 @@
           "interactionPointId": "ip_neighborhood_bar_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "neighborhood_bar"
-      ],
-      "destinationInteractionPointId": "ip_neighborhood_bar_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a16",
@@ -45704,10 +45496,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a17",
@@ -45824,10 +45614,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a18",
@@ -45894,10 +45682,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a18",
@@ -46474,10 +46260,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a03",
@@ -46594,10 +46378,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a04",
@@ -46758,10 +46540,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a05",
@@ -46782,10 +46562,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a05",
@@ -46806,10 +46584,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a06",
@@ -46854,10 +46630,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a06",
@@ -46902,10 +46676,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a07",
@@ -46950,10 +46722,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a07",
@@ -47046,10 +46816,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a07",
@@ -47094,10 +46862,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a07",
@@ -47142,10 +46908,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a08",
@@ -47284,10 +47048,8 @@
           "interactionPointId": "ip_market_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "market"
-      ],
-      "destinationInteractionPointId": "ip_market_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a10",
@@ -47454,10 +47216,8 @@
           "interactionPointId": "ip_bathroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bathroom"
-      ],
-      "destinationInteractionPointId": "ip_bathroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a10",
@@ -47550,10 +47310,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a11",
@@ -47670,10 +47428,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a12",
@@ -47740,10 +47496,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a12",
@@ -47810,10 +47564,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a13",
@@ -47858,10 +47610,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a14",
@@ -48036,10 +47786,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a15",
@@ -48060,10 +47808,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a15",
@@ -48084,10 +47830,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a15",
@@ -48132,10 +47876,8 @@
           "interactionPointId": "ip_bedroom_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "bedroom"
-      ],
-      "destinationInteractionPointId": "ip_bedroom_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a16",
@@ -48296,10 +48038,8 @@
           "interactionPointId": "ip_mothers_home_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "mothers_home"
-      ],
-      "destinationInteractionPointId": "ip_mothers_home_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a17",
@@ -48974,10 +48714,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a03",
@@ -49094,10 +48832,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a04",
@@ -49258,10 +48994,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a05",
@@ -49282,10 +49016,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a05",
@@ -49306,10 +49038,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a06",
@@ -49618,10 +49348,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a09",
@@ -49738,10 +49466,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a10",
@@ -49808,10 +49534,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a10",
@@ -49878,10 +49602,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a11",
@@ -49926,10 +49648,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a12",
@@ -50094,10 +49814,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a13",
@@ -50214,10 +49932,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a13",
@@ -50334,10 +50050,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a13",
@@ -50478,10 +50192,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a14",
@@ -50810,10 +50522,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a17",
@@ -50930,10 +50640,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a18",
@@ -51000,10 +50708,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a18",
@@ -51070,10 +50776,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a19",
@@ -51118,10 +50822,8 @@
           "interactionPointId": "ip_kitchen_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "ip_kitchen_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a20",

@@ -130,11 +130,14 @@ _INTENT_DURATION_SHAPE: dict[str, tuple[int, int, int, float]] = {
     "prepare_and_drink_hot_drink": (5, 13, 35, 0.35),
 }
 
-# A nocturnal bathroom trip is short and reuses the only executable toilet intent; the label keeps
-# it distinguishable from the morning routine in the ground truth. The intent stays what it was
-# even though `use_toilet` now exists and would read better: every horizon already generated
-# carries this one, and re-labelling them for tidiness is not worth breaking their reproducibility.
-_NIGHT_VISIT_INTENT = "morning_toilet_and_wash"
+# A nocturnal bathroom trip: short, and its own intent since activity catalog 1.4.0. It borrowed
+# `morning_toilet_and_wash` for as long as that was the only executable toilet intent, which put a
+# morning routine in the ground truth at two in the morning — 73 of its 75 occurrences on a
+# generated year fell between midnight and six. Worse than the label, the borrowed process was a
+# daytime one and ended wherever its last action left the resident, so she stood at the washbasin
+# until the next thing in the plan came for her and `wake_up` walked her back to a bedroom she had
+# never left. `night_toilet_visit` ends by going back to bed.
+_NIGHT_VISIT_INTENT = "night_toilet_visit"
 _NIGHT_VISIT_LABEL = "night_visit"
 _NIGHT_VISIT_SHAPE = (3, 6, 12, 0.35)
 _NAP_INTENT = "rest_or_nap"
@@ -525,11 +528,17 @@ def _activity(
     labels = [f"activity:{recurring_activity_id}"] if recurring_activity_id else []
     if label:
         labels.append(label)
+    # An intent that ends somewhere else declares both rooms, in the order its process model reads
+    # them: `activity_location[0]` is where the activity happens, `[1]` where it leaves the
+    # resident. Only the nocturnal toilet visit uses this, and it is why it can put her back to bed.
+    location_ids = [spec.default_location]
+    if spec.return_location is not None:
+        location_ids.append(spec.return_location)
     return Activity(
         activity_id=f"{day_date.isoformat()}_{index:02d}_{intent_id}",
         actor_id=actor_id,
         intent=intent_id,
-        location_ids=[spec.default_location],
+        location_ids=location_ids,
         start_window=window_around(moment, _WINDOW_FLEX),
         duration=DurationRange(minimum_minutes=low, preferred_minutes=pref, maximum_minutes=high),
         mandatory=not truncatable,

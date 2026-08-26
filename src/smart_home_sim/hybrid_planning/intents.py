@@ -20,7 +20,7 @@ from importlib.resources import files
 
 from smart_home_sim.domain.behavior import ProcessModel
 
-REFERENCE_FILE = "reference-process-models-1.3.0.json"
+REFERENCE_FILE = "reference-process-models-1.4.0.json"
 
 
 class IntentCategory(StrEnum):
@@ -49,9 +49,14 @@ class IntentSpec:
     label: str
     category: IntentCategory
     default_location: str
+    # Where the activity leaves the resident, when that is not where it happens. Only a nocturnal
+    # trip needs it so far: a process ends where its last action left the body, and for everything
+    # else that is the room the activity ran in. The process model reaches it as
+    # `activity_location[1]`, so an intent that declares one must have a model that walks there.
+    return_location: str | None = None
 
 
-# ~25 sensor-distinct ADL intents. Each intent_id is an EXACT activity-catalog 1.3.0 intent (so
+# ~25 sensor-distinct ADL intents. Each intent_id is an EXACT activity-catalog 1.4.0 intent (so
 # bindings validate) that also has a reference process model; default_location must be a standard
 # PlanningWorld location. Catalog 1.2.0 made the vocabulary neutral, so an id no longer names a
 # private individual: who is on the other end of a call is scenario data, not a ground-truth label.
@@ -82,6 +87,18 @@ INTENT_CATALOG: tuple[IntentSpec, ...] = (
     # ground-truth label a dataset publishes, so an afternoon trip was recorded as a morning
     # routine.
     IntentSpec("use_toilet", "Use the toilet", IntentCategory.hygiene, "bathroom"),
+    # The same trip made in the middle of the night, and a separate intent because it ends
+    # differently: the resident goes back to bed. Sharing `use_toilet` left her standing at the
+    # washbasin until the next thing in the plan came for her, and `wake_up` then began by walking
+    # her to the bedroom she had never left in the first place. Catalog 1.4.0 carries it, and with
+    # it the `Bed_to_Toilet` mapping onto CASAS Aruba, which is this trip and not an afternoon one.
+    IntentSpec(
+        "night_toilet_visit",
+        "Night toilet visit",
+        IntentCategory.hygiene,
+        "bathroom",
+        return_location="bedroom",
+    ),
     IntentSpec(
         "prepare_and_drink_hot_drink", "Make a hot drink", IntentCategory.cooking, "kitchen"
     ),
@@ -119,7 +136,7 @@ INTENT_CATALOG: tuple[IntentSpec, ...] = (
 # model like any other indoor activity.
 AWAY_CATEGORIES: frozenset[str] = frozenset({"travel", "work", "social_visit"})
 AWAY_LOCATION = "outdoors"
-ACTIVITY_CATALOG_FILE = "activity-catalog-1.3.0.json"
+ACTIVITY_CATALOG_FILE = "activity-catalog-1.4.0.json"
 
 
 @lru_cache(maxsize=1)

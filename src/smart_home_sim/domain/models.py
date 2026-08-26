@@ -169,7 +169,13 @@ RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
     "sink": frozenset(
         {"washing_area", "food_preparation_area", "drinking_water_source", "sink_faucet"}
     ),
-    "washbasin": frozenset({"washing_area", "personal_care_fixture"}),
+    # A washbasin is a basin with a tap on it. Leaving `sink` and `sink_faucet` off it made the
+    # kitchen sink the only object in the flat that answered either role, so a hygiene activity
+    # declared in the bathroom sent the resident to the kitchen to wash her face and came back —
+    # 150 of 1069 movements inside hygiene activities on a generated year. The resolver was right;
+    # the table was wrong. What stays kitchen-only is what a washbasin genuinely is not:
+    # `food_preparation_area` and `drinking_water_source`.
+    "washbasin": frozenset({"washing_area", "personal_care_fixture", "sink", "sink_faucet"}),
     "shower": frozenset({"shower", "personal_care_fixture", "shower_water"}),
     "toilet": frozenset({"toilet", "personal_care_fixture"}),
     "bed": frozenset({"bed", "sleeping_area"}),

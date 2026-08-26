@@ -29,7 +29,7 @@ interface SimulationAuthoringBundle {
     seed: number;
     provenance: Provenance;
     modelReferences: {
-      activityCatalog: { referenceId: "activity_catalog"; version: "1.3.0" };
+      activityCatalog: { referenceId: "activity_catalog"; version: "1.4.0" };
       homeModel: { referenceId: string; version: "1.0.0" };
     };
     residents: Array<{ residentId: string; displayName: string; profile?: Record<string, JsonValue> }>;
@@ -68,7 +68,7 @@ interface SimulationAuthoringBundle {
     language: string;
     provenance: Provenance;
     catalogs: {
-      activityCatalog: { catalogId: "smart_home_activity_catalog"; version: "1.3.0" };
+      activityCatalog: { catalogId: "smart_home_activity_catalog"; version: "1.4.0" };
       variableCatalog: { catalogId: "smart_home_variable_catalog"; version: "1.0.0" };
       actionCatalog: { catalogId: "smart_home_action_catalog"; version: "1.1.0" };
     };
@@ -208,6 +208,7 @@ leave_home = leave_home
 long_sunday_walk = walk
 morning_toilet_and_shower = use_toilet, shower
 morning_toilet_and_wash = use_toilet, wash_face
+night_toilet_visit = use_toilet, return_to_bed
 phone_call = phone_call
 portion_and_store_prepared_food = portion_food, store_food
 post_walk_shower = shower
@@ -309,6 +310,7 @@ read_in_bed: change_posture -> leisure
 read_news: leisure
 reheat_food: take_item -> activate -> prepare_food -> deactivate
 rest: change_posture -> wait
+return_to_bed: change_posture
 shop: shop
 shower: activate -> personal_care -> deactivate
 sleep: change_posture -> wait
@@ -383,6 +385,10 @@ morning_toilet_and_wash  [use_toilet, wash_face]
   move_to_capability(toilet) -> personal_care(use_toilet) -> move_to_capability(sink) -> activate(sink_faucet) ->
   personal_care(wash_face) -> deactivate(sink_faucet)
 
+night_toilet_visit  [use_toilet, return_to_bed]
+  change_posture(standing) -> move_to(<activity location>) -> move_to_capability(toilet) -> personal_care(use_toilet) ->
+  move_to_capability(washing_area) -> personal_care(wash_hands) -> move_to(<activity location 1>) -> change_posture(lying)
+
 phone_call  [phone_call]
   move_to_capability(communication_area) -> change_posture(sitting) -> communicate(phone) -> change_posture(standing)
 
@@ -409,11 +415,11 @@ put_groceries_away  [store_purchases]
 
 read_and_rest  [read, rest]
   move_to(<activity location>) -> change_posture(sitting) -> wait(rest) -> move_to(<activity location>) ->
-  change_posture(sitting) -> leisure(read)
+  change_posture(sitting) -> leisure(read) -> change_posture(standing)
 
 rest_or_nap  [rest, nap]
   move_to(<activity location>) -> change_posture(sitting) -> wait(rest) -> change_posture(lying) ->
-  wait(nap)
+  wait(nap) -> change_posture(standing)
 
 sleep  [sleep]
   move_to(<activity location>) -> change_posture(lying) -> wait(sleep)
@@ -441,7 +447,7 @@ wake_up  [wake_up]
 
 watch_television  [watch_media]
   move_to_capability(television) -> change_posture(sitting) -> activate(television) -> leisure(<intent>) ->
-  deactivate(television)
+  deactivate(television) -> change_posture(standing)
 
 weekly_meal_preparation  [prepare_food, portion_food, store_food]
   move_to_capability(food_preparation_area) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->

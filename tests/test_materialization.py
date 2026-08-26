@@ -229,6 +229,135 @@ def test_generated_bindings_use_physical_interaction_targets() -> None:
     assert providers_by_action["leave_home"] == {"entrance_door"}
 
 
+def test_a_hygiene_activity_washes_in_the_bathroom_rather_than_the_kitchen() -> None:
+    """A washbasin answers for a tap, so a bathroom activity never resolves into the kitchen.
+
+    `sink_faucet` and `sink` used to be declared by the kitchen sink alone. Nothing was formally
+    wrong with that — the role existed and resolved, so the compilation report had nothing to say —
+    but it made the kitchen sink the only object in the flat that could answer "turn the tap on",
+    and every hygiene process that asks for one walked the resident out of the bathroom to do it.
+    On a generated year that was 150 of 1069 movements inside hygiene activities, and the trace
+    then left her standing at the kitchen sink for the rest of the night.
+
+    The check is on the resolved bundle rather than on the table, because the table is only half
+    the mechanism: `_entity_candidates` prefers the activity's own regions, and it is the two
+    together that keep the wash in the bathroom while `clean_kitchen` still gets the kitchen sink.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    regions = {entity.entity_id: entity.region_id for entity in bundle.home_model.entities}
+    activities = {
+        activity.activity_id: activity
+        for day in bundle.scenario.days
+        for activity in day.activities
+    }
+    hygiene = {
+        "morning_toilet_and_wash",
+        "morning_toilet_and_shower",
+        "evening_hygiene",
+        "use_toilet",
+    }
+
+    elsewhere = [
+        (activities[binding.source_activity_id].intent, binding.node_id, capability.provider_id)
+        for binding in bundle.action_bindings
+        if binding.source_activity_id in activities
+        and activities[binding.source_activity_id].intent in hygiene
+        and activities[binding.source_activity_id].location_ids == ["bathroom"]
+        for capability in binding.capability_bindings
+        if regions.get(capability.provider_id) not in {None, "bathroom"}
+    ]
+    assert not elsewhere
+
+    washbasin = next(item for item in bundle.home_model.entities if item.entity_type == "washbasin")
+    roles = {role for capability in washbasin.capabilities for role in capability.roles}
+    assert {"sink", "sink_faucet", "washing_area"} <= roles
+    # What a washbasin is not: the kitchen keeps the roles that belong to a kitchen.
+    assert not {"food_preparation_area", "drinking_water_source"} & roles
+
+
+def test_an_action_happens_at_the_fixture_the_process_walked_to() -> None:
+    """An action performed on nothing in particular happens where the process last put the body.
+
+    `personal_care` names a procedure, not an object, so the binder had only the capability
+    `personal_care_support` to choose by and took the first candidate by entity id. In a bathroom
+    holding a toilet, a washbasin and a shower that is the shower every time — and because binding a
+    provider also means walking to it, the resident who had just crossed to the toilet was walked
+    back out to the shower to use it. Every hygiene action in the home was attributed to the shower:
+    32 of 32 on a generated horizon.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    models = {item.process_model_id: item for item in bundle.behavior_package.process_models}
+    order = {
+        model_id: {node.node_id: index for index, node in enumerate(model.nodes)}
+        for model_id, model in models.items()
+    }
+    by_activity: dict[str, list[Any]] = defaultdict(list)
+    for binding in bundle.action_bindings:
+        by_activity[binding.source_activity_id].append(binding)
+
+    checked = 0
+    for bindings in by_activity.values():
+        positions = order[bindings[0].process_model_id]
+        approached: str | None = None
+        for binding in sorted(bindings, key=lambda item: positions[item.node_id]):
+            providers = [
+                item.provider_id
+                for item in binding.capability_bindings
+                if item.provider_type == "entity"
+            ]
+            if binding.action_type == "move_to_capability":
+                approached = providers[0] if providers else None
+            elif binding.action_type == "move_to":
+                approached = None
+            elif binding.action_type == "personal_care" and approached is not None:
+                assert providers == [approached], (
+                    f"{binding.source_activity_id}/{binding.node_id} walked to {approached} "
+                    f"and then performed on {providers}"
+                )
+                checked += 1
+    assert checked
+
+
+def test_eating_happens_at_the_table_rather_than_at_the_refrigerator() -> None:
+    """Binding the thing an action is performed *with* must not move the resident to it.
+
+    `consume` binds whatever holds the food, and binding a provider is also an instruction to walk
+    there, so a resident who had just sat down at the table was walked back to the refrigerator to
+    eat: 3.2 metres, seated, three times a day. The provider is still the refrigerator — that is
+    where the meal came from — but an `item` no longer carries the body with it.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    eating = [item for item in bundle.action_bindings if item.action_type == "consume"]
+
+    assert eating
+    assert all(item.destination_interaction_point_id is None for item in eating)
+    assert all(item.capability_bindings for item in eating)
+
+
+def test_a_posture_change_is_written_to_the_trace_once() -> None:
+    """`change_posture` had two writers, and the trace carried both.
+
+    The engine set the runtime field and recorded a transition; the catalog also declares
+    `resident.posture := {posture}`, and the generic effect loop recorded a second one. Two ids, one
+    moment, one cause — ten of ten posture changes on a generated day, so anything counting how
+    often the resident sat down got double. The pair also disagreed about where she had come from,
+    the fact store never having been told her opening posture: the first read `null -> lying` for a
+    resident who had been in bed since midnight.
+    """
+    trace = golden_model("execution-trace.json", ExecutionTrace)
+    postures = [
+        item
+        for item in trace.state_transitions
+        if item.subject_type == "resident" and item.fact == "posture"
+    ]
+
+    assert postures
+    moments = Counter((item.at, item.subject_id) for item in postures)
+    assert not [key for key, count in moments.items() if count > 1]
+    # And the first one knows what it came from, rather than reporting an empty history.
+    assert postures[0].previous_value is not None
+
+
 def test_workspace_is_transactional_replayable_and_self_verifying(tmp_path: Path) -> None:
     first_path = tmp_path / "first"
     second_path = tmp_path / "second"

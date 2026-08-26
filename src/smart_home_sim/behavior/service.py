@@ -55,7 +55,7 @@ def _default_catalog_path(filename: str) -> Path:
 
 
 def default_activity_catalog_path(version: str = "1.0.0") -> Path:
-    if version not in {"1.0.0", "1.1.0", "1.2.0", "1.3.0"}:
+    if version not in {"1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"}:
         raise ValueError(f"unsupported built-in activity catalog version: {version}")
     return _default_catalog_path(f"activity-catalog-{version}.json")
 

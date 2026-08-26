@@ -486,6 +486,12 @@ def _resolve_expression(
     if expression.source is ValueSource.literal:
         return True, expression.value
     if expression.source is ValueSource.activity_location:
+        # Guarded the way its `activity_resource` sibling below already is. Most activities declare
+        # one room and a model that reaches for a second is asking for something the activity never
+        # offered; that is an unresolved binding to report, not an IndexError that takes the whole
+        # bundle down.
+        if expression.index >= len(activity.location_ids):
+            return False, None
         return True, activity.location_ids[expression.index]
     if expression.source is ValueSource.activity_resource:
         if expression.index >= len(activity.required_resources):
@@ -543,6 +549,78 @@ def _entity_candidates(
     )
 
 
+# The role a requirement names is a statement about the body as well as about the object. `target`,
+# `fixture`, `equipment`, `place` are where the resident has to be; `item` is what she is holding,
+# and holding something does not move her.
+_CARRIED_ROLE = "item"
+# Capabilities that are not about standing anywhere in particular.
+_NON_POSITIONING = frozenset({"reachable", "transport_reachable", "posture_control"})
+
+
+def _standing_roles(
+    model: Any,
+    arguments_by_node: dict[str, dict[str, Any]],
+    action_definitions: dict[str, Any],
+) -> dict[str, str | None]:
+    """Per action node, the role naming the object the resident is standing at when it runs.
+
+    A process states where the body is with `move_to_capability`, and the actions that follow
+    happen there. Each node is bound on its own, though, so an action whose requirement names no
+    object — `personal_care` names a procedure, not a fixture — had only its capability to go on
+    and took the first candidate by entity id. In a bathroom holding a toilet, a washbasin and a
+    shower that is the shower every time: the process walked the resident to the toilet and
+    `personal_care` then walked her back out to the shower to use it, undoing the approach it was
+    supposed to complete. On a generated horizon it was 32 of 32.
+
+    Inherited along the graph, because the answer is wherever the last approach left her, and reset
+    by `move_to`, which goes to a room rather than to an object. Where the arms of a choice
+    approached different things the answer is nobody's guess, so it is None and the binder falls
+    back to choosing by capability alone.
+    """
+    nodes = {node.node_id: node for node in model.nodes}
+    outgoing: dict[str, list[str]] = {}
+    indegree: dict[str, int] = {node_id: 0 for node_id in nodes}
+    for edge in model.edges:
+        if edge.source_node_id not in nodes or edge.target_node_id not in nodes:
+            continue
+        outgoing.setdefault(edge.source_node_id, []).append(edge.target_node_id)
+        indegree[edge.target_node_id] += 1
+
+    def leaving(node_id: str, entered_at: str | None) -> str | None:
+        node = nodes[node_id]
+        if node.kind is not ProcessNodeKind.action:
+            return entered_at
+        if node.action_type == "move_to":
+            return None
+        definition = action_definitions.get(node.action_type or "")
+        arguments = arguments_by_node.get(node_id, {})
+        for requirement in getattr(definition, "required_capabilities", []):
+            if requirement.role == _CARRIED_ROLE or requirement.capability in _NON_POSITIONING:
+                continue
+            if not requirement.parameter_name:
+                continue
+            value = arguments.get(requirement.parameter_name)
+            if value is not None:
+                return str(value)
+        return entered_at
+
+    entering: dict[str, str | None] = {}
+    arriving: dict[str, list[str | None]] = {}
+    queue = [node_id for node_id, count in indegree.items() if count == 0]
+    remaining = dict(indegree)
+    while queue:
+        node_id = queue.pop(0)
+        value = leaving(node_id, entering.get(node_id))
+        for target in outgoing.get(node_id, []):
+            arriving.setdefault(target, []).append(value)
+            remaining[target] -= 1
+            if remaining[target] == 0:
+                distinct = set(arriving[target])
+                entering[target] = distinct.pop() if len(distinct) == 1 else None
+                queue.append(target)
+    return entering
+
+
 def _build_action_bindings(
     home: HomeModel,
     scenario: Scenario,
@@ -593,12 +671,14 @@ def _build_action_bindings(
                 for location_id in activity.location_ids
                 for region_id in locations[location_id].region_ids
             }
+            # Arguments first, for every node: where an action leaves the resident standing is read
+            # off its arguments, and the node after it needs that answer before it can be bound.
+            arguments_by_node: dict[str, dict[str, Any]] = {}
+            unresolved_nodes: set[str] = set()
             for node in model.nodes:
                 if node.kind is not ProcessNodeKind.action:
                     continue
-                definition = action_definitions[node.action_type]
-                resolved_arguments: dict[str, Any] = {}
-                failed = False
+                resolved: dict[str, Any] = {}
                 for name, expression in node.arguments.items():
                     present, value = _resolve_expression(
                         expression,
@@ -608,7 +688,7 @@ def _build_action_bindings(
                         variables=variable_definitions,
                     )
                     if not present:
-                        failed = True
+                        unresolved_nodes.add(node.node_id)
                         issues.append(
                             environment_issue(
                                 "ACTION_BINDING_UNRESOLVED",
@@ -618,7 +698,16 @@ def _build_action_bindings(
                             )
                         )
                     else:
-                        resolved_arguments[name] = value
+                        resolved[name] = value
+                arguments_by_node[node.node_id] = resolved
+            standing_roles = _standing_roles(model, arguments_by_node, action_definitions)
+
+            for node in model.nodes:
+                if node.kind is not ProcessNodeKind.action:
+                    continue
+                definition = action_definitions[node.action_type]
+                resolved_arguments: dict[str, Any] = arguments_by_node[node.node_id]
+                failed = node.node_id in unresolved_nodes
                 capability_bindings: list[ResolvedCapabilityBinding] = []
                 destination_regions: list[str] = []
                 destination_interaction_point_id: str | None = None
@@ -673,6 +762,23 @@ def _build_action_bindings(
                         preferred_regions=preferred_regions,
                         action_type=node.action_type,
                     )
+                    standing = standing_roles.get(node.node_id)
+                    if role_value is None and standing is not None:
+                        # The process said nothing about which object, but it did just walk her to
+                        # one. If that object can answer, it is the answer: a resident who has
+                        # crossed the room to the toilet uses the toilet, not whichever fixture
+                        # sorts first. Where it cannot, the capability-only choice stands.
+                        at_hand = _entity_candidates(
+                            home,
+                            capability=requirement.capability,
+                            role_value=standing,
+                            actor_id=activity.actor_id,
+                            mobility_profile=mobility_profiles[activity.actor_id],
+                            preferred_regions=preferred_regions,
+                            action_type=node.action_type,
+                        )
+                        if at_hand:
+                            candidates = at_hand
                     if not candidates:
                         failed = True
                         issues.append(
@@ -695,7 +801,16 @@ def _build_action_bindings(
                             interaction_point_id=entity.interaction_point_id,
                         )
                     )
-                    if entity.interaction_point_id:
+                    # Binding a provider is also an instruction to walk there, which is right for
+                    # the object an action is performed *on* and wrong for the one it is performed
+                    # *with*. `consume` binds whatever holds the food, so a resident who had just
+                    # sat down at the table was walked back to the refrigerator to eat — 3.2 metres,
+                    # seated, three times a day. Where the process has already stated where she is,
+                    # an `item` provider hands over the item and leaves the body alone; where it has
+                    # not, the approach still happens, so a `take_item` nobody walked to does not
+                    # reach through a wall.
+                    carried = requirement.role == _CARRIED_ROLE and standing is not None
+                    if entity.interaction_point_id and not carried:
                         destination_interaction_point_id = entity.interaction_point_id
                         destination_regions = [
                             interaction_points[entity.interaction_point_id].region_id

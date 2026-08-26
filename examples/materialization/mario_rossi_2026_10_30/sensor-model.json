@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "73693f8d615c4ec69e84060abba6c6b04d4c107e661dd84edd853c8742859b28",
+  "sourceBundleSha256": "35e58c3acf15a1e488eb5d35ff3fb15d291968c2e6f4bb13f97a862d58fefbfd",
   "seed": 42,
   "regionIds": [
     "balcony",
@@ -556,6 +556,16 @@
           "riseDurationSeconds": 0.0,
           "decayDurationSeconds": 0.0,
           "sampleIntervalSeconds": 900.0
+        },
+        {
+          "entityId": "washbasin",
+          "fact": "active",
+          "activeValue": true,
+          "deltaCelsius": 0.5,
+          "responseDelaySeconds": 0.0,
+          "riseDurationSeconds": 0.0,
+          "decayDurationSeconds": 0.0,
+          "sampleIntervalSeconds": 900.0
         }
       ]
     },
@@ -591,16 +601,6 @@
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
       "sources": [
-        {
-          "entityId": "kitchen_sink",
-          "fact": "active",
-          "activeValue": true,
-          "deltaCelsius": 0.5,
-          "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
-          "sampleIntervalSeconds": 900.0
-        },
         {
           "entityId": "stove",
           "fact": "active",
