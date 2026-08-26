@@ -1,0 +1,792 @@
+<title>What the Resident Does</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --ground: #ECEFE9;
+  --surface: #FBFCFA;
+  --surface-2: #E2E7DE;
+  --ink: #171C18;
+  --ink-2: #444E47;
+  --muted: #737C75;
+  --rule: #D0D7CD;
+  --rule-strong: #B6BFB2;
+  --accent: #0E6A72;
+  --accent-ink: #0A4C52;
+  --accent-soft: #D5E7E7;
+  --pir: #8E5405;
+  --pir-soft: #F1E3C8;
+  --contact: #57398F;
+  --contact-soft: #E1D9F1;
+  --blind: #7C857D;
+  --blind-soft: #DFE3DC;
+
+  --step-1: 0.78rem;
+  --step-2: 0.94rem;
+  --step-3: 1.06rem;
+  --step-4: 1.35rem;
+  --step-5: 2.05rem;
+  --step-6: 3.1rem;
+
+  --sans: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0F120F;
+    --surface: #171B17;
+    --surface-2: #212720;
+    --ink: #E7ECE5;
+    --ink-2: #B2BBB1;
+    --muted: #8A938A;
+    --rule: #2C332B;
+    --rule-strong: #3E463D;
+    --accent: #52BEC3;
+    --accent-ink: #7FD4D8;
+    --accent-soft: #11302F;
+    --pir: #DFA351;
+    --pir-soft: #35280F;
+    --contact: #A78FE2;
+    --contact-soft: #262040;
+    --blind: #6B746C;
+    --blind-soft: #242A23;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0F120F;
+  --surface: #171B17;
+  --surface-2: #212720;
+  --ink: #E7ECE5;
+  --ink-2: #B2BBB1;
+  --muted: #8A938A;
+  --rule: #2C332B;
+  --rule-strong: #3E463D;
+  --accent: #52BEC3;
+  --accent-ink: #7FD4D8;
+  --accent-soft: #11302F;
+  --pir: #DFA351;
+  --pir-soft: #35280F;
+  --contact: #A78FE2;
+  --contact-soft: #262040;
+  --blind: #6B746C;
+  --blind-soft: #242A23;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--step-2);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3.25rem) clamp(1rem, 3vw, 2rem) 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ---------- masthead ---------- */
+
+.masthead { display: flex; flex-direction: column; gap: 1.1rem; }
+
+.eyebrow {
+  font-size: var(--step-1);
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+.eyebrow .ver { color: var(--muted); font-family: var(--mono); letter-spacing: 0.02em; font-weight: 400; }
+
+h1 {
+  margin: 0;
+  font-size: var(--step-6);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.standfirst {
+  margin: 0;
+  max-width: 62ch;
+  font-family: var(--serif);
+  font-size: var(--step-4);
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.tallies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2.25rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--rule);
+}
+.tally { display: flex; flex-direction: column; padding: 0.7rem 0 0.2rem; }
+.tally b {
+  font-size: var(--step-5);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.tally span { font-size: var(--step-1); color: var(--muted); letter-spacing: 0.04em; }
+
+/* ---------- layout ---------- */
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: clamp(1.25rem, 2.5vw, 2.25rem);
+  align-items: start;
+}
+
+@media (max-width: 880px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static !important; max-height: 340px; }
+}
+
+/* ---------- intent rail ---------- */
+
+.rail {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-height: calc(100vh - 2rem);
+  min-height: 0;
+}
+
+.search {
+  width: 100%;
+  font: inherit;
+  font-size: var(--step-2);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  padding: 0.55rem 0.7rem;
+}
+.search::placeholder { color: var(--muted); }
+.search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.rail-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding-right: 0.35rem;
+}
+
+.group { display: flex; flex-direction: column; gap: 0.15rem; }
+.group-head {
+  font-size: var(--step-1);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 0.3rem;
+}
+
+.pick {
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink-2);
+  padding: 0.36rem 0.55rem;
+  border-left: 2px solid transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  border-radius: 0 2px 2px 0;
+}
+.pick:hover { background: var(--surface-2); color: var(--ink); }
+.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pick[aria-current="true"] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.pick .n {
+  font-family: var(--mono);
+  font-size: var(--step-1);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.pick[aria-current="true"] .n { color: var(--accent-ink); }
+
+/* ---------- detail ---------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: clamp(1.15rem, 2.5vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.panel-head { display: flex; flex-direction: column; gap: 0.7rem; }
+
+h2 {
+  margin: 0;
+  font-size: var(--step-5);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.intent-id {
+  font-family: var(--mono);
+  font-size: var(--step-2);
+  color: var(--accent);
+  word-break: break-all;
+}
+.blurb {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--step-3);
+  color: var(--ink-2);
+  max-width: 66ch;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+}
+.fact {
+  font-size: var(--step-1);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0.16rem 0.5rem;
+  color: var(--ink-2);
+}
+.fact b { font-weight: 600; color: var(--ink); }
+.fact.none { color: var(--muted); border-style: dashed; }
+
+/* ---------- the score ---------- */
+
+.score-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.1rem;
+}
+.score-title {
+  font-size: var(--step-1);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.legend { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.step {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  gap: 0 0.85rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--rule);
+  align-items: start;
+}
+.step:first-child { border-top: 0; }
+
+.marker {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  padding-top: 0.15rem;
+}
+.marker::before {
+  content: "";
+  position: absolute;
+  top: 1.65rem;
+  bottom: -0.95rem;
+  width: 1px;
+  background: var(--rule-strong);
+}
+.step:last-child .marker::before { display: none; }
+.dot {
+  position: relative;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--rule-strong);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.step.unseen .dot { border-style: dashed; color: var(--blind); }
+
+.phrase {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--step-4);
+  line-height: 1.3;
+  color: var(--ink);
+}
+.step.unseen .phrase { color: var(--blind); }
+
+.under { display: flex; flex-wrap: wrap; gap: 0.35rem 0.45rem; margin-top: 0.45rem; align-items: center; }
+
+.call {
+  font-family: var(--mono);
+  font-size: var(--step-1);
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: 2px;
+  padding: 0.12rem 0.4rem;
+  word-break: break-word;
+}
+
+.chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  padding: 0.16rem 0.42rem;
+  white-space: nowrap;
+}
+.chip-object { background: var(--accent-soft); color: var(--accent-ink); }
+.chip-pir { background: var(--pir-soft); color: var(--pir); }
+.chip-contact { background: var(--contact-soft); color: var(--contact); }
+.chip-walk { background: transparent; color: var(--pir); box-shadow: inset 0 0 0 1px var(--pir); }
+.chip-presence { background: var(--blind-soft); color: var(--blind); text-transform: none; letter-spacing: 0.01em; font-style: italic; }
+.chip-blind { background: var(--blind-soft); color: var(--blind); font-style: italic; text-transform: none; letter-spacing: 0.01em; }
+
+.timing {
+  text-align: right;
+  font-size: var(--step-1);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.28rem;
+  padding-top: 0.28rem;
+  min-width: 6.5rem;
+}
+.timing .kind { font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.68rem; }
+.bar { height: 4px; background: var(--accent); border-radius: 2px; min-width: 4px; }
+.bar.fixed { background: var(--rule-strong); }
+
+@media (max-width: 620px) {
+  .step { grid-template-columns: 1.9rem minmax(0, 1fr); }
+  .timing {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    padding-top: 0.5rem;
+    gap: 0.5rem;
+  }
+  .bar { width: 60px; }
+}
+
+/* ---------- edit block ---------- */
+
+.edit {
+  border-top: 1px solid var(--rule);
+  padding-top: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.edit h3 {
+  margin: 0;
+  font-size: var(--step-1);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.edit-rows { display: flex; flex-direction: column; gap: 0.5rem; }
+.edit-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 15rem) minmax(0, 1fr);
+  gap: 0.2rem 1rem;
+  font-size: var(--step-1);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dotted var(--rule);
+}
+.edit-row:last-child { border-bottom: 0; }
+.edit-row dt { color: var(--ink); font-weight: 600; }
+.edit-row dd { margin: 0; color: var(--muted); }
+.edit-row code { font-family: var(--mono); color: var(--accent); word-break: break-all; }
+@media (max-width: 620px) { .edit-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- appendix ---------- */
+
+.appendix {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-top: 1px solid var(--rule-strong);
+  padding-top: 1.75rem;
+}
+.appendix h2 { font-size: var(--step-4); }
+.appendix p { margin: 0; max-width: 68ch; font-family: var(--serif); font-size: var(--step-3); color: var(--ink-2); }
+
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step-1); min-width: 520px; }
+th, td { text-align: left; padding: 0.45rem 0.7rem 0.45rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom-color: var(--rule-strong);
+}
+td code { font-family: var(--mono); color: var(--accent); }
+td.num { font-variant-numeric: tabular-nums; text-align: right; padding-right: 1.2rem; white-space: nowrap; }
+
+.foot { font-size: var(--step-1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+.foot code { font-family: var(--mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">
+      <span>Reference process models</span>
+      <span class="ver" id="ver"></span>
+    </div>
+    <h1>What the resident does</h1>
+    <p class="standfirst">
+      Every activity the simulator can perform, opened up one action at a time — what the person is
+      doing, which object in the flat she touches, and whether any sensor is there to witness it.
+    </p>
+    <div class="tallies" id="tallies"></div>
+  </header>
+
+  <div class="board">
+    <aside class="rail">
+      <label class="sr-only" for="search" hidden>Filter activities</label>
+      <input class="search" id="search" type="search" placeholder="Filter activities…" autocomplete="off">
+      <div class="rail-scroll" id="rail"></div>
+    </aside>
+
+    <main class="panel" id="panel" aria-live="polite"></main>
+  </div>
+
+  <section class="appendix">
+    <h2>The 27 actions everything is built from</h2>
+    <p>
+      An activity is a sequence drawn from this alphabet, and nothing else. A <em>gesture</em> has a
+      length of its own — closing a door takes three seconds whether it happens during a five-minute
+      breakfast or a two-hour dinner. Everything else is <em>elastic</em>: it is what the activity is
+      actually made of, and it absorbs whatever time the day allots, shared out by weight. As for what the sensors
+      catch: walking trips every detector along the route, working at an object stirs the one
+      that watches it, and everything else leaves nothing but the faint pulses a still body gives
+      off anyway.
+    </p>
+    <div class="table-scroll">
+      <table id="actions">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Reads as</th>
+            <th>Arguments</th>
+            <th class="num">Length</th>
+            <th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody id="actions-body"></tbody>
+      </table>
+    </div>
+    <p class="foot" id="foot"></p>
+  </section>
+
+</div>
+
+<script type="application/json" id="payload">{"intents": [{"id": "sleep", "label": "Sleep", "category": "sleep_wake", "room": "bedroom", "returnRoom": null, "description": "Project-specific activity intent 'sleep'. Enter, leave, or maintain a sleeping state.", "components": ["sleep"], "aruba": "Sleeping", "modelId": "reference__sleep", "steps": [{"nodeId": "step_1", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "change_posture", "phrase": "Lies down", "call": "change_posture(posture: lying)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_3", "action": "wait", "phrase": "Waits — asleep", "call": "wait(purpose: sleep)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 1}, {"id": "wake_up", "label": "Wake up", "category": "sleep_wake", "room": "bedroom", "returnRoom": null, "description": "Project-specific activity intent 'wake_up'. Enter, leave, or maintain a sleeping state.", "components": ["wake_up"], "aruba": "Sleeping", "modelId": "reference__wake_up", "steps": [{"nodeId": "step_1", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 0}, {"id": "evening_hygiene", "label": "Evening hygiene", "category": "hygiene", "room": "bathroom", "returnRoom": null, "description": "Project-specific activity intent 'evening_hygiene'. Perform personal hygiene or bathroom care.", "components": ["personal_hygiene"], "aruba": null, "modelId": "reference__evening_hygiene", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the basin", "call": "move_to_capability(targetRole: personal_care_fixture)", "role": "personal_care_fixture", "resolvesTo": ["shower", "toilet", "washbasin"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "personal_care", "phrase": "Washes and brushes her teeth for the night", "call": "personal_care(procedure: evening_hygiene)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 0}, {"id": "morning_toilet_and_shower", "label": "Morning shower", "category": "hygiene", "room": "bathroom", "returnRoom": null, "description": "Project-specific activity intent 'morning_toilet_and_shower'. Perform personal hygiene or bathroom care.", "components": ["use_toilet", "shower"], "aruba": null, "modelId": "reference__morning_toilet_and_shower", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the toilet", "call": "move_to_capability(targetRole: toilet)", "role": "toilet", "resolvesTo": ["toilet"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "personal_care", "phrase": "Uses the toilet", "call": "personal_care(procedure: use_toilet)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_3", "action": "move_to_capability", "phrase": "Walks over to Showers", "call": "move_to_capability(targetRole: shower)", "role": "shower", "resolvesTo": ["shower"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_4", "action": "activate", "phrase": "Switches on the shower", "call": "activate(target: shower_water)", "role": "shower_water", "resolvesTo": ["shower"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_5", "action": "personal_care", "phrase": "Showers", "call": "personal_care(procedure: shower)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_6", "action": "deactivate", "phrase": "Switches off the shower", "call": "deactivate(target: shower_water)", "role": "shower_water", "resolvesTo": ["shower"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 4, "walkSteps": 2, "contactSteps": 0, "blindSteps": 0}, {"id": "morning_toilet_and_wash", "label": "Morning wash", "category": "hygiene", "room": "bathroom", "returnRoom": null, "description": "Project-specific activity intent 'morning_toilet_and_wash'. Perform personal hygiene or bathroom care.", "components": ["use_toilet", "wash_face"], "aruba": null, "modelId": "reference__morning_toilet_and_wash", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the toilet", "call": "move_to_capability(targetRole: toilet)", "role": "toilet", "resolvesTo": ["toilet"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "personal_care", "phrase": "Uses the toilet", "call": "personal_care(procedure: use_toilet)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_3", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: sink)", "role": "sink", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_4", "action": "activate", "phrase": "Switches on the tap", "call": "activate(target: sink_faucet)", "role": "sink_faucet", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_5", "action": "personal_care", "phrase": "Washes her face", "call": "personal_care(procedure: wash_face)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_6", "action": "deactivate", "phrase": "Switches off the tap", "call": "deactivate(target: sink_faucet)", "role": "sink_faucet", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 4, "walkSteps": 2, "contactSteps": 0, "blindSteps": 0}, {"id": "night_toilet_visit", "label": "Night toilet visit", "category": "hygiene", "room": "bathroom", "returnRoom": "bedroom", "description": "Project-specific activity intent 'night_toilet_visit'. A trip to the bathroom during the night, ending back in bed.", "components": ["use_toilet", "return_to_bed"], "aruba": "Bed_to_Toilet", "modelId": "reference__night_toilet_visit", "steps": [{"nodeId": "step_1", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_2", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_3", "action": "move_to_capability", "phrase": "Walks over to the toilet", "call": "move_to_capability(targetRole: toilet)", "role": "toilet", "resolvesTo": ["toilet"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_4", "action": "personal_care", "phrase": "Uses the toilet", "call": "personal_care(procedure: use_toilet)", "role": null, "resolvesTo": [], "weight": 3.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_5", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "personal_care", "phrase": "Washes her hands", "call": "personal_care(procedure: wash_hands)", "role": null, "resolvesTo": [], "weight": 1.5, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_8", "action": "change_posture", "phrase": "Lies down", "call": "change_posture(posture: lying)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 4, "walkSteps": 4, "contactSteps": 0, "blindSteps": 0}, {"id": "use_toilet", "label": "Use the toilet", "category": "hygiene", "room": "bathroom", "returnRoom": null, "description": "Project-specific activity intent 'use_toilet'. A short visit to the bathroom on its own, outside the morning and evening hygiene routines.", "components": ["use_toilet"], "aruba": null, "modelId": "reference__use_toilet", "steps": [{"nodeId": "step_1", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "move_to_capability", "phrase": "Walks over to the toilet", "call": "move_to_capability(targetRole: toilet)", "role": "toilet", "resolvesTo": ["toilet"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_3", "action": "personal_care", "phrase": "Uses the toilet", "call": "personal_care(procedure: use_toilet)", "role": null, "resolvesTo": [], "weight": 3.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_5", "action": "personal_care", "phrase": "Washes her hands", "call": "personal_care(procedure: wash_hands)", "role": null, "resolvesTo": [], "weight": 1.5, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 2, "walkSteps": 3, "contactSteps": 0, "blindSteps": 0}, {"id": "take_morning_medication", "label": "Take medication", "category": "medication", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'take_morning_medication'. Take, collect, or manage medication.", "components": ["take_medication"], "aruba": null, "modelId": "reference__take_morning_medication", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the medicine cabinet", "call": "move_to_capability(targetRole: medication_storage)", "role": "medication_storage", "resolvesTo": ["storage cabinet"], "weight": 1.4, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the medicine cabinet", "call": "open(target: medication_cabinet)", "role": "medication_cabinet", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the pill box", "call": "take_item(itemRole: medication_dose_container)", "role": "medication_dose_container", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the medicine cabinet", "call": "close(target: medication_cabinet)", "role": "medication_cabinet", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_5", "action": "move_to_capability", "phrase": "Walks over to the tap", "call": "move_to_capability(targetRole: drinking_water_source)", "role": "drinking_water_source", "resolvesTo": ["kitchen sink"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "take_item", "phrase": "Picks up a glass", "call": "take_item(itemRole: drinking_glass)", "role": "drinking_glass", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "manage_medication", "phrase": "Medication: takes the dose", "call": "manage_medication(operation: take)", "role": null, "resolvesTo": [], "weight": 2.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "consume", "phrase": "Eats or drinks some water", "call": "consume(itemRole: drinking_water)", "role": "drinking_water", "resolvesTo": [], "weight": 1.5, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "put_item", "phrase": "Puts a glass down", "call": "put_item(itemRole: drinking_glass)", "role": "drinking_glass", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_10", "action": "move_to_capability", "phrase": "Walks over to the medicine cabinet", "call": "move_to_capability(targetRole: medication_storage)", "role": "medication_storage", "resolvesTo": ["storage cabinet"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_11", "action": "open", "phrase": "Opens the medicine cabinet", "call": "open(target: medication_cabinet)", "role": "medication_cabinet", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_12", "action": "put_item", "phrase": "Puts the pill box down", "call": "put_item(itemRole: medication_dose_container)", "role": "medication_dose_container", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_13", "action": "close", "phrase": "Closes the medicine cabinet", "call": "close(target: medication_cabinet)", "role": "medication_cabinet", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}], "pirSteps": 10, "walkSteps": 3, "contactSteps": 4, "blindSteps": 0}, {"id": "eat_breakfast", "label": "Eat breakfast", "category": "meal", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'eat_breakfast'. Consume a meal, snack, or drink.", "components": ["consume_meal"], "aruba": "Eating", "modelId": "reference__eat_breakfast", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the fridge", "call": "move_to_capability(targetRole: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.4, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the meal", "call": "take_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_5", "action": "move_to_capability", "phrase": "Walks over to the table", "call": "move_to_capability(targetRole: consumption_area)", "role": "consumption_area", "resolvesTo": ["chair", "table"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "consume", "phrase": "Eats or drinks the meal", "call": "consume(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 4.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "move_to_capability", "phrase": "Walks over to the fridge", "call": "move_to_capability(targetRole: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_10", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_11", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_12", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_13", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_14", "action": "put_item", "phrase": "Puts the meal down", "call": "put_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 10, "walkSteps": 4, "contactSteps": 4, "blindSteps": 0}, {"id": "eat_dinner", "label": "Eat dinner", "category": "meal", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'eat_dinner'. Consume a meal, snack, or drink.", "components": ["consume_meal"], "aruba": "Eating", "modelId": "reference__eat_dinner", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the fridge", "call": "move_to_capability(targetRole: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.4, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the meal", "call": "take_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_5", "action": "move_to_capability", "phrase": "Walks over to the table", "call": "move_to_capability(targetRole: consumption_area)", "role": "consumption_area", "resolvesTo": ["chair", "table"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "consume", "phrase": "Eats or drinks the meal", "call": "consume(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_10", "action": "put_item", "phrase": "Puts the meal down", "call": "put_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 7, "walkSteps": 3, "contactSteps": 2, "blindSteps": 0}, {"id": "eat_lunch", "label": "Eat lunch", "category": "meal", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'eat_lunch'. Consume a meal, snack, or drink.", "components": ["consume_meal"], "aruba": "Eating", "modelId": "reference__eat_lunch", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the fridge", "call": "move_to_capability(targetRole: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.4, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the meal", "call": "take_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_5", "action": "move_to_capability", "phrase": "Walks over to the table", "call": "move_to_capability(targetRole: consumption_area)", "role": "consumption_area", "resolvesTo": ["chair", "table"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "consume", "phrase": "Eats or drinks the meal", "call": "consume(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_10", "action": "put_item", "phrase": "Puts the meal down", "call": "put_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 7, "walkSteps": 3, "contactSteps": 2, "blindSteps": 0}, {"id": "prepare_and_drink_hot_drink", "label": "Make a hot drink", "category": "cooking", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'prepare_and_drink_hot_drink'. Make a coffee or tea and drink it: the short trip to the kitchen that breaks up a stretch of work or an afternoon.", "components": ["prepare_drink", "consume_drink"], "aruba": null, "modelId": "reference__prepare_and_drink_hot_drink", "steps": [{"nodeId": "step_1", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "move_to_capability", "phrase": "Walks over to the breakfast cupboard", "call": "move_to_capability(targetRole: coffee_and_breakfast_storage)", "role": "coffee_and_breakfast_storage", "resolvesTo": ["fridge"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_3", "action": "open", "phrase": "Opens the breakfast cupboard", "call": "open(target: coffee_and_breakfast_storage)", "role": "coffee_and_breakfast_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_4", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_5", "action": "close", "phrase": "Closes the breakfast cupboard", "call": "close(target: coffee_and_breakfast_storage)", "role": "coffee_and_breakfast_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_6", "action": "move_to_capability", "phrase": "Walks over to the moka pot", "call": "move_to_capability(targetRole: coffee_equipment)", "role": "coffee_equipment", "resolvesTo": ["moka pot"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_7", "action": "activate", "phrase": "Switches on the moka pot", "call": "activate(target: coffee_equipment)", "role": "coffee_equipment", "resolvesTo": ["moka pot"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "prepare_food", "phrase": "Cooks a hot drink", "call": "prepare_food(mealKind: hot_drink, outputRole: drink)", "role": null, "resolvesTo": [], "weight": 3.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "deactivate", "phrase": "Switches off the moka pot", "call": "deactivate(target: coffee_equipment)", "role": "coffee_equipment", "resolvesTo": ["moka pot"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_10", "action": "move_to_capability", "phrase": "Walks over to the table", "call": "move_to_capability(targetRole: consumption_area)", "role": "consumption_area", "resolvesTo": ["chair", "table"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_11", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_12", "action": "consume", "phrase": "Eats or drinks the drink", "call": "consume(itemRole: drink)", "role": "drink", "resolvesTo": [], "weight": 4.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_13", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_14", "action": "put_item", "phrase": "Puts the ingredients down", "call": "put_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 10, "walkSteps": 4, "contactSteps": 2, "blindSteps": 0}, {"id": "prepare_light_dinner", "label": "Prepare dinner", "category": "cooking", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'prepare_light_dinner'. Prepare, cook, reheat, portion, or store food and drinks.", "components": ["prepare_food"], "aruba": "Meal_Preparation", "modelId": "reference__prepare_light_dinner", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the worktop", "call": "move_to_capability(targetRole: food_preparation_area)", "role": "food_preparation_area", "resolvesTo": ["kitchen sink", "hob"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_5", "action": "activate", "phrase": "Switches on the hob", "call": "activate(target: cooking_appliance)", "role": "cooking_appliance", "resolvesTo": ["hob"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_6", "action": "prepare_food", "phrase": "Cooks the meal", "call": "prepare_food(mealKind: activity_intent, outputRole: prepared_meal)", "role": null, "resolvesTo": [], "weight": 4.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_8", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_10", "action": "prepare_food", "phrase": "Cooks the meal", "call": "prepare_food(mealKind: activity_intent, outputRole: prepared_meal)", "role": null, "resolvesTo": [], "weight": 3.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_11", "action": "deactivate", "phrase": "Switches off the hob", "call": "deactivate(target: cooking_appliance)", "role": "cooking_appliance", "resolvesTo": ["hob"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_12", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_13", "action": "put_item", "phrase": "Puts the meal down", "call": "put_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 11, "walkSteps": 2, "contactSteps": 4, "blindSteps": 0}, {"id": "prepare_simple_lunch", "label": "Prepare lunch", "category": "cooking", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'prepare_simple_lunch'. Prepare, cook, reheat, portion, or store food and drinks.", "components": ["prepare_food"], "aruba": "Meal_Preparation", "modelId": "reference__prepare_simple_lunch", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the worktop", "call": "move_to_capability(targetRole: food_preparation_area)", "role": "food_preparation_area", "resolvesTo": ["kitchen sink", "hob"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_5", "action": "activate", "phrase": "Switches on the hob", "call": "activate(target: cooking_appliance)", "role": "cooking_appliance", "resolvesTo": ["hob"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_6", "action": "prepare_food", "phrase": "Cooks the meal", "call": "prepare_food(mealKind: activity_intent, outputRole: prepared_meal)", "role": null, "resolvesTo": [], "weight": 4.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_8", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_10", "action": "prepare_food", "phrase": "Cooks the meal", "call": "prepare_food(mealKind: activity_intent, outputRole: prepared_meal)", "role": null, "resolvesTo": [], "weight": 3.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_11", "action": "deactivate", "phrase": "Switches off the hob", "call": "deactivate(target: cooking_appliance)", "role": "cooking_appliance", "resolvesTo": ["hob"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_12", "action": "move_to_capability", "phrase": "Walks over to the sink", "call": "move_to_capability(targetRole: washing_area)", "role": "washing_area", "resolvesTo": ["kitchen sink", "washbasin"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_13", "action": "put_item", "phrase": "Puts the meal down", "call": "put_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 11, "walkSteps": 2, "contactSteps": 4, "blindSteps": 0}, {"id": "weekly_meal_preparation", "label": "Batch cook", "category": "cooking", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'weekly_meal_preparation'. Prepare, cook, reheat, portion, or store food and drinks.", "components": ["prepare_food", "portion_food", "store_food"], "aruba": "Meal_Preparation", "modelId": "reference__weekly_meal_preparation", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the worktop", "call": "move_to_capability(targetRole: food_preparation_area)", "role": "food_preparation_area", "resolvesTo": ["kitchen sink", "hob"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the ingredients", "call": "take_item(itemRole: ingredients)", "role": "ingredients", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_5", "action": "activate", "phrase": "Switches on the hob", "call": "activate(target: cooking_appliance)", "role": "cooking_appliance", "resolvesTo": ["hob"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_6", "action": "prepare_food", "phrase": "Cooks the meal", "call": "prepare_food(mealKind: activity_intent, outputRole: prepared_meal)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "deactivate", "phrase": "Switches off the hob", "call": "deactivate(target: cooking_appliance)", "role": "cooking_appliance", "resolvesTo": ["hob"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "put_item", "phrase": "Puts the meal down", "call": "put_item(itemRole: prepared_meal)", "role": "prepared_meal", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_9", "action": "move_to_capability", "phrase": "Walks over to the worktop", "call": "move_to_capability(targetRole: food_preparation_area)", "role": "food_preparation_area", "resolvesTo": ["kitchen sink", "hob"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_10", "action": "organize", "phrase": "Tidies the portions", "call": "organize(targetRole: prepared_food_portions)", "role": "prepared_food_portions", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_11", "action": "move_to_capability", "phrase": "Walks over to the fridge", "call": "move_to_capability(targetRole: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_12", "action": "open", "phrase": "Opens the fridge", "call": "open(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}, {"nodeId": "step_13", "action": "put_item", "phrase": "Puts the portions down", "call": "put_item(itemRole: prepared_food_portions)", "role": "prepared_food_portions", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_14", "action": "close", "phrase": "Closes the fridge", "call": "close(target: food_storage)", "role": "food_storage", "resolvesTo": ["fridge"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "fridge door"}]}], "pirSteps": 11, "walkSteps": 3, "contactSteps": 4, "blindSteps": 0}, {"id": "clean_kitchen", "label": "Clean the kitchen", "category": "chores", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'clean_kitchen'. Clean, tidy, maintain, or organize the home.", "components": ["clean_surface"], "aruba": "Housekeeping", "modelId": "reference__clean_kitchen", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the cleaning cupboard", "call": "move_to_capability(targetRole: cleaning_product_storage)", "role": "cleaning_product_storage", "resolvesTo": ["storage cabinet"], "weight": 1.4, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the cleaning cupboard", "call": "open(target: cleaning_product_storage)", "role": "cleaning_product_storage", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_3", "action": "take_item", "phrase": "Picks up the cloth", "call": "take_item(itemRole: cleaning_tool)", "role": "cleaning_tool", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the cleaning cupboard", "call": "close(target: cleaning_product_storage)", "role": "cleaning_product_storage", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_5", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "clean", "phrase": "Cleans the kitchen surfaces", "call": "clean(targetRole: kitchen_surfaces)", "role": "kitchen_surfaces", "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_7", "action": "move_to_capability", "phrase": "Walks over to the cleaning cupboard", "call": "move_to_capability(targetRole: cleaning_product_storage)", "role": "cleaning_product_storage", "resolvesTo": ["storage cabinet"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_8", "action": "open", "phrase": "Opens the cleaning cupboard", "call": "open(target: cleaning_product_storage)", "role": "cleaning_product_storage", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_9", "action": "put_item", "phrase": "Puts the cloth down", "call": "put_item(itemRole: cleaning_tool)", "role": "cleaning_tool", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_10", "action": "close", "phrase": "Closes the cleaning cupboard", "call": "close(target: cleaning_product_storage)", "role": "cleaning_product_storage", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}], "pirSteps": 7, "walkSteps": 3, "contactSteps": 4, "blindSteps": 0}, {"id": "put_groceries_away", "label": "Put groceries away", "category": "chores", "room": "kitchen", "returnRoom": null, "description": "Project-specific activity intent 'put_groceries_away'. Acquire goods, medication, or household supplies outside the home.", "components": ["store_purchases"], "aruba": null, "modelId": "reference__put_groceries_away", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the household cupboard", "call": "move_to_capability(targetRole: household_storage)", "role": "household_storage", "resolvesTo": ["storage cabinet"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the household cupboard", "call": "open(target: household_storage)", "role": "household_storage", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}, {"nodeId": "step_3", "action": "put_item", "phrase": "Puts the shopping down", "call": "put_item(itemRole: purchases)", "role": "purchases", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the household cupboard", "call": "close(target: household_storage)", "role": "household_storage", "resolvesTo": ["storage cabinet"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "storage cabinet door"}]}], "pirSteps": 3, "walkSteps": 1, "contactSteps": 2, "blindSteps": 0}, {"id": "tidy_living_room_and_hallway", "label": "Tidy the living room", "category": "chores", "room": "living_room", "returnRoom": null, "description": "Project-specific activity intent 'tidy_living_room_and_hallway'. Clean, tidy, maintain, or organize the home.", "components": ["tidy_area"], "aruba": "Housekeeping", "modelId": "reference__tidy_living_room_and_hallway", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the room", "call": "move_to_capability(targetRole: tidying_area)", "role": "tidying_area", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "organize", "phrase": "Tidies what this activity calls for", "call": "organize(targetRole: activity_intent)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 0}, {"id": "hang_laundry", "label": "Hang laundry", "category": "laundry", "room": "balcony", "returnRoom": null, "description": "Project-specific activity intent 'hang_laundry'. Wash, dry, hang, or iron clothing and household textiles.", "components": ["hang_laundry"], "aruba": null, "modelId": "reference__hang_laundry", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the drying rack", "call": "move_to_capability(targetRole: drying_area)", "role": "drying_area", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "laundry_step", "phrase": "Laundry: hangs it out to dry", "call": "laundry_step(operation: hang)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 0}, {"id": "start_laundry", "label": "Start laundry", "category": "laundry", "room": "bathroom", "returnRoom": null, "description": "Project-specific activity intent 'start_laundry'. Wash, dry, hang, or iron clothing and household textiles.", "components": ["collect_laundry", "load_laundry", "start_laundry"], "aruba": null, "modelId": "reference__start_laundry", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the laundry basket", "call": "move_to_capability(targetRole: laundry_storage)", "role": "laundry_storage", "resolvesTo": ["wardrobe"], "weight": 1.4, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "open", "phrase": "Opens the laundry basket", "call": "open(target: laundry_storage)", "role": "laundry_storage", "resolvesTo": ["wardrobe"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "wardrobe door"}]}, {"nodeId": "step_3", "action": "laundry_step", "phrase": "Laundry: gathers the washing", "call": "laundry_step(operation: collect)", "role": null, "resolvesTo": [], "weight": 2.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "close", "phrase": "Closes the laundry basket", "call": "close(target: laundry_storage)", "role": "laundry_storage", "resolvesTo": ["wardrobe"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "wardrobe door"}]}, {"nodeId": "step_5", "action": "move_to_capability", "phrase": "Walks over to the washing machine", "call": "move_to_capability(targetRole: washing_machine)", "role": "washing_machine", "resolvesTo": ["washing machine"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_6", "action": "open", "phrase": "Opens the washing machine", "call": "open(target: laundry_equipment)", "role": "laundry_equipment", "resolvesTo": ["washing machine"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "washing machine door"}]}, {"nodeId": "step_7", "action": "laundry_step", "phrase": "Laundry: loads the drum", "call": "laundry_step(operation: load)", "role": null, "resolvesTo": [], "weight": 2.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_8", "action": "close", "phrase": "Closes the washing machine", "call": "close(target: laundry_equipment)", "role": "laundry_equipment", "resolvesTo": ["washing machine"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}, {"kind": "contact", "label": "washing machine door"}]}, {"nodeId": "step_9", "action": "laundry_step", "phrase": "Laundry: starts the cycle", "call": "laundry_step(operation: start)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 7, "walkSteps": 2, "contactSteps": 4, "blindSteps": 0}, {"id": "indoor_light_exercise", "label": "Indoor exercise", "category": "exercise", "room": "living_room", "returnRoom": null, "description": "Project-specific activity intent 'indoor_light_exercise'. Perform intentional physical exercise or walking.", "components": ["exercise"], "aruba": null, "modelId": "reference__indoor_light_exercise", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to a clear bit of floor", "call": "move_to_capability(targetRole: exercise_area)", "role": "exercise_area", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "exercise", "phrase": "Exercises — light exercise indoors", "call": "exercise(kind: indoor_light_exercise)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 0}, {"id": "evening_walk", "label": "Walk outdoors", "category": "outdoor", "room": "outdoors", "returnRoom": null, "description": "Project-specific activity intent 'evening_walk'. Perform intentional physical exercise or walking.", "components": ["walk"], "aruba": null, "modelId": "reference__evening_walk", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the front door", "call": "move_to_capability(targetRole: walking_area)", "role": "walking_area", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "exercise", "phrase": "Exercises — a walk", "call": "exercise(kind: walking)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 1, "contactSteps": 0, "blindSteps": 0}, {"id": "buy_groceries", "label": "Go shopping", "category": "errand", "room": "outdoors", "returnRoom": null, "description": "Project-specific activity intent 'buy_groceries'. Acquire goods, medication, or household supplies outside the home.", "components": ["shop", "carry_purchases"], "aruba": null, "modelId": "reference__buy_groceries", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the shop", "call": "move_to_capability(targetRole: retail_area)", "role": "retail_area", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "shop", "phrase": "Does the shopping", "call": "shop(purpose: activity_intent)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "step_3", "action": "move_to_capability", "phrase": "Walks over to the shopping", "call": "move_to_capability(targetRole: purchases)", "role": "purchases", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_4", "action": "take_item", "phrase": "Picks up the shopping", "call": "take_item(itemRole: purchases)", "role": "purchases", "resolvesTo": [], "weight": 1.0, "gestureSeconds": 6.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 1, "walkSteps": 2, "contactSteps": 0, "blindSteps": 1}, {"id": "read_and_rest", "label": "Read and rest", "category": "leisure", "room": "living_room", "returnRoom": null, "description": "Project-specific activity intent 'read_and_rest'. Rest, read, watch media, or perform another leisure activity.", "components": ["read", "rest"], "aruba": "Relax", "modelId": "reference__read_and_rest", "steps": [{"nodeId": "step_1", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_3", "action": "wait", "phrase": "Waits — resting", "call": "wait(purpose: rest)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "step_4", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_5", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_6", "action": "leisure", "phrase": "Relaxes — reading", "call": "leisure(kind: read)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "stand_up", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 3, "walkSteps": 2, "contactSteps": 0, "blindSteps": 2}, {"id": "rest_or_nap", "label": "Nap", "category": "leisure", "room": "bedroom", "returnRoom": null, "description": "Project-specific activity intent 'rest_or_nap'. Rest, read, watch media, or perform another leisure activity.", "components": ["rest", "nap"], "aruba": "Relax", "modelId": "reference__rest_or_nap", "steps": [{"nodeId": "move_to_activity", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "rest_posture", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "rest", "action": "wait", "phrase": "Waits — resting", "call": "wait(purpose: rest)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "nap_posture", "action": "change_posture", "phrase": "Lies down", "call": "change_posture(posture: lying)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "nap", "action": "wait", "phrase": "Waits — napping", "call": "wait(purpose: nap)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "stand_up", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 3, "walkSteps": 1, "contactSteps": 0, "blindSteps": 2}, {"id": "watch_television", "label": "Watch television", "category": "leisure", "room": "living_room", "returnRoom": null, "description": "Project-specific activity intent 'watch_television'. Rest, read, watch media, or perform another leisure activity.", "components": ["watch_media"], "aruba": "Relax", "modelId": "reference__watch_television", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the television", "call": "move_to_capability(targetRole: television)", "role": "television", "resolvesTo": ["television"], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_3", "action": "activate", "phrase": "Switches on the television", "call": "activate(target: television)", "role": "television", "resolvesTo": ["television"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "leisure", "phrase": "Relaxes — what this activity calls for", "call": "leisure(kind: activity_intent)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "step_5", "action": "deactivate", "phrase": "Switches off the television", "call": "deactivate(target: television)", "role": "television", "resolvesTo": ["television"], "weight": 1.0, "gestureSeconds": 3.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "stand_up", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 4, "walkSteps": 1, "contactSteps": 0, "blindSteps": 1}, {"id": "phone_call", "label": "Phone a relative or friend", "category": "social", "room": "living_room", "returnRoom": null, "description": "Project-specific activity intent 'phone_call'. Communicate or maintain a social relationship.", "components": ["phone_call"], "aruba": null, "modelId": "reference__phone_call", "steps": [{"nodeId": "step_1", "action": "move_to_capability", "phrase": "Walks over to the armchair", "call": "move_to_capability(targetRole: communication_area)", "role": "communication_area", "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_3", "action": "communicate", "phrase": "Talks over the phone", "call": "communicate(channel: phone)", "role": null, "resolvesTo": [], "weight": 5.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "step_4", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 2, "walkSteps": 1, "contactSteps": 0, "blindSteps": 1}, {"id": "work_from_home", "label": "Work from home", "category": "home_work", "room": "living_room", "returnRoom": null, "description": "Project-specific activity intent 'work_from_home'. Perform paid work inside the dwelling, at the resident's own desk or table, in one block of a working day that is split into several.", "components": ["work"], "aruba": "Work", "modelId": "reference__work_from_home", "steps": [{"nodeId": "step_1", "action": "move_to", "phrase": "Walks to where the activity happens", "call": "move_to(destination: activity_location)", "role": null, "resolvesTo": [], "weight": 1.6, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_2", "action": "move_to_capability", "phrase": "Walks over to the table", "call": "move_to_capability(targetRole: table)", "role": "table", "resolvesTo": ["table"], "weight": 1.2, "gestureSeconds": 0.0, "elastic": false, "travel": true, "sensors": [{"kind": "walk", "label": "motion along the way"}]}, {"nodeId": "step_3", "action": "change_posture", "phrase": "Sits down", "call": "change_posture(posture: sitting)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}, {"nodeId": "step_4", "action": "perform_work", "phrase": "Works", "call": "perform_work(mode: focused_work)", "role": null, "resolvesTo": [], "weight": 20.0, "gestureSeconds": null, "elastic": true, "travel": false, "sensors": [{"kind": "presence", "label": "presence only"}]}, {"nodeId": "step_5", "action": "change_posture", "phrase": "Stands up", "call": "change_posture(posture: standing)", "role": null, "resolvesTo": [], "weight": 1.0, "gestureSeconds": 4.0, "elastic": false, "travel": false, "sensors": [{"kind": "pir", "label": "motion at the object"}]}], "pirSteps": 2, "walkSteps": 2, "contactSteps": 0, "blindSteps": 1}], "actions": [{"type": "activate", "params": ["target"], "gestureSeconds": 3.0, "evidence": "work", "phrase": "Switches on {0}"}, {"type": "change_posture", "params": ["posture"], "gestureSeconds": 4.0, "evidence": "work", "phrase": "Sits, stands or lies down"}, {"type": "clean", "params": ["targetRole"], "gestureSeconds": null, "evidence": "work", "phrase": "Cleans {0}"}, {"type": "close", "params": ["target"], "gestureSeconds": 3.0, "evidence": "work", "phrase": "Closes {0}"}, {"type": "communicate", "params": ["channel"], "gestureSeconds": null, "evidence": "presence", "phrase": "Talks over {0}"}, {"type": "consume", "params": ["itemRole"], "gestureSeconds": null, "evidence": "work", "phrase": "Eats or drinks {0}"}, {"type": "deactivate", "params": ["target"], "gestureSeconds": 3.0, "evidence": "work", "phrase": "Switches off {0}"}, {"type": "dress", "params": ["purpose"], "gestureSeconds": null, "evidence": "presence", "phrase": "Gets dressed"}, {"type": "enter_home", "params": [], "gestureSeconds": 6.0, "evidence": "presence", "phrase": "Comes back into the flat"}, {"type": "exercise", "params": ["kind"], "gestureSeconds": null, "evidence": "work", "phrase": "Exercises — {0}"}, {"type": "inspect", "params": ["targetRole"], "gestureSeconds": null, "evidence": "work", "phrase": "Checks {0}"}, {"type": "laundry_step", "params": ["operation"], "gestureSeconds": null, "evidence": "work", "phrase": "Laundry: {0}"}, {"type": "leave_home", "params": [], "gestureSeconds": 6.0, "evidence": "presence", "phrase": "Leaves the flat"}, {"type": "leisure", "params": ["kind"], "gestureSeconds": null, "evidence": "presence", "phrase": "Relaxes — {0}"}, {"type": "manage_medication", "params": ["operation"], "gestureSeconds": null, "evidence": "work", "phrase": "Medication: {0}"}, {"type": "move_to", "params": ["destination"], "gestureSeconds": 0.0, "evidence": "walk", "phrase": "Walks to where the activity happens"}, {"type": "move_to_capability", "params": ["targetRole"], "gestureSeconds": 0.0, "evidence": "walk", "phrase": "Walks over to {0}"}, {"type": "open", "params": ["target"], "gestureSeconds": 3.0, "evidence": "work", "phrase": "Opens {0}"}, {"type": "organize", "params": ["targetRole"], "gestureSeconds": null, "evidence": "work", "phrase": "Tidies {0}"}, {"type": "perform_work", "params": ["mode"], "gestureSeconds": null, "evidence": "presence", "phrase": "Works"}, {"type": "personal_care", "params": ["procedure"], "gestureSeconds": null, "evidence": "work", "phrase": "Washes, showers or uses the toilet"}, {"type": "prepare_food", "params": ["mealKind", "outputRole"], "gestureSeconds": null, "evidence": "work", "phrase": "Cooks {0}"}, {"type": "put_item", "params": ["itemRole"], "gestureSeconds": 6.0, "evidence": "work", "phrase": "Puts {0} down"}, {"type": "shop", "params": ["purpose"], "gestureSeconds": null, "evidence": "presence", "phrase": "Does the shopping"}, {"type": "take_item", "params": ["itemRole"], "gestureSeconds": 6.0, "evidence": "work", "phrase": "Picks up {0}"}, {"type": "travel_to", "params": ["destination"], "gestureSeconds": null, "evidence": "walk", "phrase": "Travels to {0}"}, {"type": "wait", "params": ["purpose"], "gestureSeconds": null, "evidence": "presence", "phrase": "Waits — {0}"}], "categories": {"sleep_wake": "Getting up and going to bed", "hygiene": "Washing and the bathroom", "medication": "Taking medicine", "meal": "Sitting down to eat", "cooking": "Making food and drink", "chores": "Tidying and cleaning", "laundry": "Washing clothes", "exercise": "Moving on purpose", "outdoor": "Time outside the flat", "errand": "Going out to fetch something", "leisure": "Free time at home", "social": "Contact with other people", "home_work": "Paid work done indoors"}, "catalogVersion": "1.4.0", "files": {"reference": "src/smart_home_sim/catalogs/reference-process-models-1.4.0.json", "activity": "src/smart_home_sim/catalogs/activity-catalog-1.4.0.json", "action": "src/smart_home_sim/catalogs/action-catalog-1.1.0.json", "intents": "src/smart_home_sim/hybrid_planning/intents.py", "durations": "src/smart_home_sim/simulation/service.py", "pir": "src/smart_home_sim/sensors/service.py", "roles": "src/smart_home_sim/domain/models.py"}}</script>
+<script>
+(function () {
+  "use strict";
+
+  var DATA = JSON.parse(document.getElementById("payload").textContent);
+  var current = DATA.intents[0];
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+
+  /* ---- masthead tallies ---- */
+
+  document.getElementById("ver").textContent = DATA.catalogVersion;
+
+  var steps = 0, pir = 0, walk = 0, contact = 0, blind = 0;
+  DATA.intents.forEach(function (intent) {
+    steps += intent.steps.length;
+    pir += intent.pirSteps;
+    walk += intent.walkSteps;
+    contact += intent.contactSteps;
+    blind += intent.blindSteps;
+  });
+
+  var tallies = [
+    [DATA.intents.length, "activities"],
+    [steps, "actions in total"],
+    [walk, "trip a detector on the way"],
+    [pir, "stir the detector at the object"],
+    [contact, "swing a fitted door"],
+    [blind, "leave only presence"]
+  ];
+  var talliesNode = document.getElementById("tallies");
+  tallies.forEach(function (item) {
+    var box = el("div", "tally");
+    box.appendChild(el("b", null, String(item[0])));
+    box.appendChild(el("span", null, item[1]));
+    talliesNode.appendChild(box);
+  });
+
+  /* ---- rail ---- */
+
+  var railNode = document.getElementById("rail");
+
+  function buildRail(filter) {
+    railNode.textContent = "";
+    var needle = (filter || "").trim().toLowerCase();
+    var groups = {};
+    var order = [];
+    DATA.intents.forEach(function (intent) {
+      if (needle) {
+        var hay = (intent.id + " " + intent.label + " " + intent.room + " " + intent.category).toLowerCase();
+        if (hay.indexOf(needle) === -1) return;
+      }
+      if (!groups[intent.category]) { groups[intent.category] = []; order.push(intent.category); }
+      groups[intent.category].push(intent);
+    });
+
+    if (!order.length) {
+      railNode.appendChild(el("p", "foot", "Nothing matches that."));
+      return;
+    }
+
+    order.forEach(function (category) {
+      var group = el("div", "group");
+      group.appendChild(el("div", "group-head", DATA.categories[category] || category));
+      groups[category].forEach(function (intent) {
+        var button = el("button", "pick");
+        button.type = "button";
+        button.appendChild(el("span", null, intent.label));
+        button.appendChild(el("span", "n", intent.steps.length));
+        button.setAttribute("aria-current", intent.id === current.id ? "true" : "false");
+        button.addEventListener("click", function () {
+          current = intent;
+          buildRail(document.getElementById("search").value);
+          render();
+        });
+        group.appendChild(button);
+      });
+      railNode.appendChild(group);
+    });
+  }
+
+  document.getElementById("search").addEventListener("input", function (event) {
+    buildRail(event.target.value);
+  });
+
+  /* ---- detail ---- */
+
+  var panel = document.getElementById("panel");
+
+  function fact(label, value, missing) {
+    var node = el("span", missing ? "fact none" : "fact");
+    node.appendChild(el("b", null, label + " "));
+    node.appendChild(document.createTextNode(value));
+    return node;
+  }
+
+  function render() {
+    panel.textContent = "";
+    var intent = current;
+
+    var head = el("div", "panel-head");
+    head.appendChild(el("h2", null, intent.label));
+    head.appendChild(el("div", "intent-id", intent.id));
+    if (intent.description) head.appendChild(el("p", "blurb", intent.description));
+
+    var facts = el("div", "facts");
+    facts.appendChild(fact("Happens in", intent.room.replace(/_/g, " ")));
+    if (intent.returnRoom) facts.appendChild(fact("Ends in", intent.returnRoom.replace(/_/g, " ")));
+    facts.appendChild(fact("Kind", DATA.categories[intent.category] || intent.category));
+    if (intent.aruba) {
+      facts.appendChild(fact("CASAS Aruba", intent.aruba));
+    } else {
+      facts.appendChild(fact("CASAS Aruba", "no equivalent — this activity exists only here", true));
+    }
+    head.appendChild(facts);
+    panel.appendChild(head);
+
+    var scoreHead = el("div", "score-head");
+    scoreHead.appendChild(el("div", "score-title", intent.steps.length + " actions, in order"));
+    var legend = el("div", "legend");
+    legend.appendChild(el("span", "chip chip-walk", "walking"));
+    legend.appendChild(el("span", "chip chip-pir", "at the object"));
+    legend.appendChild(el("span", "chip chip-contact", "door"));
+    legend.appendChild(el("span", "chip chip-presence", "presence only"));
+    scoreHead.appendChild(legend);
+    panel.appendChild(scoreHead);
+
+    var maxWeight = 1;
+    intent.steps.forEach(function (step) {
+      if (step.elastic && step.weight > maxWeight) maxWeight = step.weight;
+    });
+
+    var list = el("ol", "steps");
+    intent.steps.forEach(function (step, index) {
+      var seen = step.sensors[0].kind !== "presence";
+      var row = el("li", seen ? "step" : "step unseen");
+
+      var marker = el("div", "marker");
+      marker.appendChild(el("span", "dot", String(index + 1)));
+      row.appendChild(marker);
+
+      var body = el("div", "body");
+      body.appendChild(el("p", "phrase", step.phrase));
+
+      var under = el("div", "under");
+      under.appendChild(el("code", "call", step.call));
+      if (step.resolvesTo.length) {
+        under.appendChild(el("span", "chip chip-object", step.resolvesTo.join(" / ")));
+      } else if (step.role) {
+        under.appendChild(el("span", "chip chip-blind", "no furniture answers " + step.role + " — falls back to the room"));
+      }
+      step.sensors.forEach(function (sensor) {
+        under.appendChild(el("span", "chip chip-" + sensor.kind, sensor.label));
+      });
+      body.appendChild(under);
+      row.appendChild(body);
+
+      var timing = el("div", "timing");
+      if (step.elastic) {
+        timing.appendChild(el("span", "kind", "fills"));
+        var bar = el("div", "bar");
+        bar.style.width = Math.round(18 + (step.weight / maxWeight) * 54) + "px";
+        timing.appendChild(bar);
+        timing.appendChild(el("span", null, "weight " + step.weight.toFixed(1)));
+      } else if (step.travel) {
+        timing.appendChild(el("span", "kind", "walk"));
+        var walkBar = el("div", "bar fixed");
+        walkBar.style.width = "26px";
+        timing.appendChild(walkBar);
+        timing.appendChild(el("span", null, "as long as the walk"));
+      } else {
+        timing.appendChild(el("span", "kind", "gesture"));
+        var fixed = el("div", "bar fixed");
+        fixed.style.width = Math.max(4, Math.round(step.gestureSeconds * 3)) + "px";
+        timing.appendChild(fixed);
+        timing.appendChild(el("span", null, step.gestureSeconds + "s"));
+      }
+      row.appendChild(timing);
+
+      list.appendChild(row);
+    });
+    panel.appendChild(list);
+
+    var edit = el("div", "edit");
+    edit.appendChild(el("h3", null, "To change this activity"));
+    var rows = el("dl", "edit-rows");
+    var recipe = [
+      ["Its steps, and their order", DATA.files.reference, "models → " + intent.id + " → nodes / edges"],
+      ["What it is called and where it happens", DATA.files.intents, "INTENT_CATALOG"],
+      ["Its description and components", DATA.files.activity, "activities → " + intent.id],
+      ["Which actions exist at all", DATA.files.action, "actions"],
+      ["How long a gesture takes", DATA.files.durations, "PUNCTUAL_ACTION_SECONDS"],
+      ["Which actions the motion detector sees", DATA.files.pir, "PIR_ACTIVITY_ACTION_TYPES"],
+      ["Which object a role binds to", DATA.files.roles, "RESOURCE_ROLE_ALIASES"]
+    ];
+    recipe.forEach(function (item) {
+      var pair = el("div", "edit-row");
+      pair.appendChild(el("dt", null, item[0]));
+      var dd = el("dd");
+      dd.appendChild(el("code", null, item[1]));
+      dd.appendChild(document.createTextNode("  ·  " + item[2]));
+      pair.appendChild(dd);
+      rows.appendChild(pair);
+    });
+    edit.appendChild(rows);
+    panel.appendChild(edit);
+  }
+
+  /* ---- action appendix ---- */
+
+  var body = document.getElementById("actions-body");
+  DATA.actions.forEach(function (action) {
+    var row = el("tr");
+    var first = el("td");
+    first.appendChild(el("code", null, action.type));
+    row.appendChild(first);
+    row.appendChild(el("td", null, (action.phrase || "—").replace("{0}", "…")));
+    row.appendChild(el("td", null, action.params.length ? action.params.join(", ") : "—"));
+    row.appendChild(el("td", "num",
+      action.evidence === "walk" ? "the walk"
+        : action.gestureSeconds === null ? "elastic" : action.gestureSeconds + "s"));
+    row.appendChild(el("td", null, {
+      walk: "motion along the way",
+      work: "motion at the object",
+      presence: "presence only"
+    }[action.evidence]));
+    body.appendChild(row);
+  });
+
+  document.getElementById("foot").textContent =
+    "Generated from " + DATA.files.reference + ", " + DATA.files.activity + " and " +
+    DATA.files.action + ". Nothing on this page is written by hand — change a catalog and rebuild.";
+
+  buildRail("");
+  render();
+})();
+</script>
