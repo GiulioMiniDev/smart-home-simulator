@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "oracle_mapping",
-  "mappingId": "oracle_2d53302af666f605",
+  "mappingId": "oracle_4a2f5290fc93c9c3",
   "observableLogId": "sensor_log_4bf2afca5857f209",
   "sourceTraceId": "trace_d9e579d360b65b6d",
-  "sourceTraceSemanticDigest": "f2ed12a85b8dde08d682d8ed6c9b70a949b10c79f491c4cb728245302288b3af",
+  "sourceTraceSemanticDigest": "0f540e4dee2640085ccc1c0e246e6a7a714925d56c656080070fc1b6ddaffde4",
   "links": [
     {
       "observationId": "observation_c4e119226965f1bd",
@@ -5282,7 +5282,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_a5d36dc68387d92a"
+        "state_2f94d0c6c932a56a"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -5687,7 +5687,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_44198d2ae76400b5"
+        "state_a8f64b4a196ef9cb"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -5874,7 +5874,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_76bd56fcb3790b01"
+        "state_6f08a9d0e0b2bded"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -7159,7 +7159,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_203242e72217b8e0"
+        "state_4c288916c6c25b11"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -9019,7 +9019,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_633e1f76fea175fe"
+        "state_277f6a5e729e2c30"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -14075,7 +14075,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_9c5de2e6b71da51d"
+        "state_eabdfad3e314ea41"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -14177,7 +14177,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_428a59357f0efede"
+        "state_b51b31e07eefd8f8"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -17181,7 +17181,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_08dcd26ab55731ae"
+        "state_76f2352e626492f7"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -18541,7 +18541,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_13fd33bf88624050"
+        "state_c0eac48e3764501d"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -21529,7 +21529,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_8465d62886e32a72"
+        "state_b43ef968627ebf9f"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -23074,7 +23074,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_53ced55e06f1b295"
+        "state_a364aa52fd12e28a"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -26591,7 +26591,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_e36f2b8b547b7ac3"
+        "state_50c6cb67986835ae"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -26710,7 +26710,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_79b9b1a466848589"
+        "state_cb9ed20c41372c16"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -27723,7 +27723,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_259388d5d29a3431"
+        "state_fed149285c7dffa1"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -33233,7 +33233,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_9464f0b95858792c"
+        "state_30affc87dd44338a"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -53519,7 +53519,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_8b6e9a8bf017c1b6"
+        "state_28f7d04bfb0dd3d5"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -53621,7 +53621,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_f25caee56b6c8a72"
+        "state_0ce6404897629084"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -54532,7 +54532,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_6142a1bf4d341dae"
+        "state_87f35b01758a40be"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -56407,7 +56407,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_15a035086c8d42a2"
+        "state_ea507bf2c3964174"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -61100,7 +61100,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_62fe98730a14c692"
+        "state_640f74349ee21c2d"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -63366,7 +63366,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_3dba54b59aa862a1"
+        "state_9fcd617b20cb166e"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -75274,7 +75274,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_242ef885e4e0d8d4"
+        "state_81b2ae6415b633fe"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -78087,7 +78087,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_e441d93b4664e038"
+        "state_fa2b059c8a304759"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -78223,7 +78223,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_c4d060818a6e89ac"
+        "state_28c8fd2bb8887c2d"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -80716,7 +80716,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_e2948f3c52861213"
+        "state_7a5be5e13d9a0826"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -80755,7 +80755,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_5bb63bc66f7b6f3b"
+        "state_a6da497a85593622"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -83241,7 +83241,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_8fb5ec4e264641fe"
+        "state_1d71e998479e330e"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -86123,7 +86123,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_7b5dec2d9a5b17c1"
+        "state_5aaa98ef8fab30ec"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -86225,7 +86225,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_40f7b7cf5366a353"
+        "state_0cda769c0029b2ce"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -90627,7 +90627,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_a9003fed9667d4c1"
+        "state_09a6750beed28cab"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -90729,7 +90729,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_5469e0d3bd88685f"
+        "state_4cd3c62a87bac725"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -91538,7 +91538,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_62991659e2bda96f"
+        "state_ced446664ef695df"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -103587,7 +103587,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_262e11fe6ef352ce"
+        "state_059afa0c9a9edb89"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -104788,7 +104788,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_e4691ee3bfac9dfb"
+        "state_d2f49e42ff69e504"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -104873,7 +104873,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_87af6bb7ec241c7e"
+        "state_182dccb09b1c3127"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -108796,7 +108796,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_943d98cbabb28de6"
+        "state_4b928133272871c3"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -108898,7 +108898,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_2a1b0d13f9d80535"
+        "state_74ec9d38b36e7456"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -113315,7 +113315,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_faf3548b8582e183"
+        "state_b181e906a71e5147"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -113417,7 +113417,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_8d60a0bf2ab446a6"
+        "state_63933b82b7aa695d"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -114991,7 +114991,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_d214f8442f0af9ac"
+        "state_9ace3ba174983772"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -120076,7 +120076,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_33973c57ecd3aead"
+        "state_08642b57e24aaf22"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -135399,7 +135399,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_a52e61a6706be43d"
+        "state_6601ac1ecf316452"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -135501,7 +135501,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_340988415958f33a"
+        "state_c4606a027483dea1"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -137908,7 +137908,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_3e6163ef7b397d1b"
+        "state_db681b7ec1e8646b"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -139901,7 +139901,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_417160513ec8a739"
+        "state_beee83228a76fb87"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -143552,7 +143552,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_77d5e6643055913e"
+        "state_8b71f2255e9fee35"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -145694,7 +145694,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_712b68537808bd97"
+        "state_3d5ee85ad2d51c9f"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -156126,7 +156126,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_d5a5d9397d9572ac"
+        "state_7ae0faa368fe3324"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -157785,7 +157785,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_99f1b63575d03c5e"
+        "state_f12ed2de8c6c9ab0"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -157921,7 +157921,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_08f7a8a6bf9c631a"
+        "state_f7fd8d0a03c12784"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -158952,7 +158952,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_0859391fe784a5ab"
+        "state_d65141b6b79af5b6"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -158991,7 +158991,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_f7ac571420c35e2b"
+        "state_793056ee7f02ba3e"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -161086,7 +161086,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_fcac271d5436ea83"
+        "state_69a114974722a654"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -165683,7 +165683,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_9ea9aeec25543611"
+        "state_dc2d5c26d9a86ff7"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -165785,7 +165785,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_517c977b97650e69"
+        "state_0b9dd39a37362f9d"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -173087,7 +173087,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_00cf92db00063e68"
+        "state_bce5e3f74d138f6a"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -173189,7 +173189,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_9967e8d86fc3a352"
+        "state_100e10e210d6857b"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -174627,7 +174627,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_a357d714421bf3ca"
+        "state_c8a393d8cac9af5d"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -182039,7 +182039,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_af24e4fc06331e0b"
+        "state_a334b31ff69df443"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -199453,7 +199453,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_6816c1876d68269f"
+        "state_c53c43cdbea773a2"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -199555,7 +199555,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_15dd0ef26c576245"
+        "state_beef5a06cb96ebd3"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -202421,7 +202421,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_90ddb185a450af60"
+        "state_e40516b154f0867f"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -204254,7 +204254,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_e762978bc6583cf6"
+        "state_b58344e7cf4266b5"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -208320,7 +208320,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_f037fe00f3f5d59b"
+        "state_b512e283fec1596a"
       ],
       "residentIds": [
         "resident_mario_rossi"
@@ -210530,7 +210530,7 @@
       "origin": "simulated_cause",
       "causeType": "state_transition",
       "causeIds": [
-        "state_15502ed7a7e66520"
+        "state_69e39e08e322ad0f"
       ],
       "residentIds": [
         "resident_mario_rossi"

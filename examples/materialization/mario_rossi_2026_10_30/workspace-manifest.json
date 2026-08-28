@@ -76,17 +76,17 @@
     {
       "role": "simulation_report",
       "relativePath": "simulation-report.json",
-      "sha256": "b044a370ce93414005772dd3dfd4fe16b4ab3592d0884648ec3089fbf9c6489c"
+      "sha256": "1e1bc7ca66b08c18a981322ed33e47d28fedbf5c69cb23366516dc2b7741f0ec"
     },
     {
       "role": "execution_trace",
       "relativePath": "execution-trace.json",
-      "sha256": "fcbe78adaf27b6dead0e2ad793d49ca90792f8f9c1345ed980aaefa9916015a8"
+      "sha256": "109a680ffe028d7cdc2d9a8e68e952996345034b53a0e292f16a8c7fa20082b2"
     },
     {
       "role": "projection_report",
       "relativePath": "sensor-projection-report.json",
-      "sha256": "2a9c791ac1d3ad4580e39259f666c8088db16f0353b252550a609bd19f62162d"
+      "sha256": "4b3d67cfa923ef95501125cc547e8454f2dfec818f3a96efed65c8029efff107"
     },
     {
       "role": "observable_sensor_log",
@@ -96,7 +96,7 @@
     {
       "role": "oracle_mapping",
       "relativePath": "oracle-mapping.json",
-      "sha256": "30673b540c832f3d10e253bde1e5ff2ac5cea9e314ad6caa4ea84f78ba87202b"
+      "sha256": "1effd87382eff949902265e67ce709858cd1a061950ef88d828e685d23dce1ca"
     }
   ]
 }

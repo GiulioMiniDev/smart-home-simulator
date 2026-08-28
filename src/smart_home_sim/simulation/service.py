@@ -1023,6 +1023,37 @@ class SimulationEngine:
             )
         )
 
+    def _set_execution_state(
+        self,
+        actor: ResidentRuntime,
+        value: str,
+        cause_type: str,
+        cause_id: str,
+    ) -> None:
+        """Move the resident between idle, moving, performing and interrupted, and say so.
+
+        The field was always maintained; only two of its six assignments were ever written to the
+        trace, both inside a movement. So `idle` — which the domain has declared since the first
+        contract — appeared nowhere in a year of state transitions, and a resident standing in the
+        bathroom for two hours with nothing scheduled was reported as `performing_activity`. A
+        reader could not tell an occupied hour from an empty one without reconstructing the
+        activity intervals herself, which is the one thing the state stream exists to spare her.
+        """
+        if actor.execution_state == value:
+            return
+        previous = actor.execution_state
+        actor.execution_state = value
+        self._state_transition(
+            "resident",
+            actor.resident_id,
+            "execution_state",
+            previous,
+            value,
+            "set",
+            cause_type,
+            cause_id,
+        )
+
     def _resource_event(
         self, resource_id: str, activity_id: str, actor_id: str, operation: str, units: int
     ) -> None:
@@ -1216,18 +1247,7 @@ class SimulationEngine:
         movement_us = int(round((path.duration_seconds if path else 0) * 1_000_000))
         actual_duration = max(duration_us, movement_us)
         if path and path.distance_meters > 1e-9:
-            previous_state = actor.execution_state
-            actor.execution_state = "moving"
-            self._state_transition(
-                "resident",
-                actor.resident_id,
-                "execution_state",
-                previous_state,
-                "moving",
-                "set",
-                "process_edge",
-                action_id,
-            )
+            self._set_execution_state(actor, "moving", "process_edge", action_id)
             segment_lengths = [
                 ((right.x - left.x) ** 2 + (right.y - left.y) ** 2) ** 0.5
                 for left, right in zip(path.waypoints, path.waypoints[1:], strict=False)
@@ -1271,18 +1291,7 @@ class SimulationEngine:
                     waypoints=waypoints,
                 )
             )
-            previous_state = actor.execution_state
-            actor.execution_state = "performing_activity"
-            self._state_transition(
-                "resident",
-                actor.resident_id,
-                "execution_state",
-                previous_state,
-                actor.execution_state,
-                "set",
-                "process_edge",
-                action_id,
-            )
+            self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
         remaining = max(0, actual_duration - int(self.env.now - started))
         while remaining:
             before = self.env.now
@@ -1309,9 +1318,13 @@ class SimulationEngine:
                             cause_id=payload["event_id"],
                         )
                     )
-                actor.execution_state = "interrupted"
+                self._set_execution_state(
+                    actor, "interrupted", "runtime_event", payload["event_id"]
+                )
                 yield self.env.timeout(payload["duration_us"])
-                actor.execution_state = "performing_activity"
+                self._set_execution_state(
+                    actor, "performing_activity", "runtime_event", payload["event_id"]
+                )
         if node.action_type == "change_posture":
             # Only the runtime field is set here. The transition is left to the catalog effect
             # below — `change_posture` declares `resident.posture := {posture}` — because writing it
@@ -1441,7 +1454,7 @@ class SimulationEngine:
                 )
                 return
             actor = self.state.residents[actor_id]
-            actor.execution_state = "performing_activity"
+            self._set_execution_state(actor, "performing_activity", "plan", execution_id)
             requirements = {item.resource_id: item.units for item in activity.required_resources}
             allocation: ResourceAllocation | None = None
             for resource_id, units in sorted(requirements.items()):
@@ -1546,7 +1559,9 @@ class SimulationEngine:
                         if payload.get("kind") == "resource_preemption":
                             preempted_at = int(self.env.now)
                             preempted_resources = set(payload["resource_ids"])
-                            actor.execution_state = "interrupted"
+                            self._set_execution_state(
+                                actor, "interrupted", "resource", execution_id
+                            )
                             resume_event = self.env.event()
                             for process in processes:
                                 if process.is_alive:
@@ -1612,7 +1627,9 @@ class SimulationEngine:
                                     units,
                                 )
                             resume_event.succeed()
-                            actor.execution_state = "performing_activity"
+                            self._set_execution_state(
+                                actor, "performing_activity", "resource", execution_id
+                            )
                             cause = "resource:" + ",".join(sorted(preempted_resources))
                             deviation_id = self.trace.identifier(
                                 "deviation", [activity.source_activity_id, cause]
@@ -1644,9 +1661,13 @@ class SimulationEngine:
                                 )
                             )
                             deviations.append(deviation_id)
-                        actor.execution_state = "interrupted"
+                        self._set_execution_state(
+                            actor, "interrupted", "runtime_event", payload["event_id"]
+                        )
                         yield self.env.timeout(payload["duration_us"])
-                        actor.execution_state = "performing_activity"
+                        self._set_execution_state(
+                            actor, "performing_activity", "runtime_event", payload["event_id"]
+                        )
                 action_ids.extend(result for result in results.values() if isinstance(result, str))
             self.active_processes.pop(actor_id, None)
             if allocation is not None:
@@ -1659,7 +1680,7 @@ class SimulationEngine:
             for effect in activity.effects:
                 self._apply_effect(effect, actor_id, execution_id)
             self.state.completed_activities.add(activity.source_activity_id)
-            actor.execution_state = "idle"
+            self._set_execution_state(actor, "idle", "plan", execution_id)
             if self.extension_us[activity.source_activity_id]:
                 event_id = next(
                     item.event_id
