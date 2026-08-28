@@ -2,9 +2,9 @@
   "reportVersion": "1.0.0",
   "success": true,
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "35e58c3acf15a1e488eb5d35ff3fb15d291968c2e6f4bb13f97a862d58fefbfd",
-  "traceSha256": "88071be32a62a7360880469d1562a9df9a2ea995094d566197ea7d830382299e",
-  "semanticDigest": "0e350afede941b1110f563847c7393813ceb80e9cb142122b4a8d26d6ba9ab5e",
+  "sourceBundleSha256": "d9e579d360b65b6d19a9f82fa08bb480fb8800b74db18e216ac09d136074325d",
+  "traceSha256": "fcbe78adaf27b6dead0e2ad793d49ca90792f8f9c1345ed980aaefa9916015a8",
+  "semanticDigest": "f2ed12a85b8dde08d682d8ed6c9b70a949b10c79f491c4cb728245302288b3af",
   "issues": [],
   "summary": {
     "plannedActivityCount": 57,
@@ -13,8 +13,8 @@
     "failedActivityCount": 0,
     "droppedActivityCount": 2,
     "actionExecutionCount": 293,
-    "movementCount": 87,
-    "stateTransitionCount": 433,
+    "movementCount": 85,
+    "stateTransitionCount": 429,
     "runtimeEventCount": 0,
     "errorCount": 0,
     "warningCount": 0

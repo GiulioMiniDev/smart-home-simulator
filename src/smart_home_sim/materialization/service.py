@@ -186,6 +186,14 @@ def _stable_fraction(*parts: str) -> float:
 
 
 ENTRANCE_CAPABILITIES = frozenset({"home_egress", "home_ingress"})
+# The roles that name the front door, and nothing else. They belong to `entrance_door` alone: the
+# per-region service anchors used to carry them too, and since `move_to_capability{home_entrance}`
+# asks for an `interaction_point` — a capability the door did not offer — "walk to the front door"
+# bound to whichever anchor sorted first. On a day with an outing that was the one outdoors, so
+# leaving the flat became a 504-metre hop *out*, a `leave_home` that walked back *in* to the door,
+# and a second hop out: 515 exits a year, 1,030 ghost crossings of the living room, and the door
+# contact firing on only one of the three legs.
+ENTRANCE_ROLES = ("entrance", "home_entrance", "home_exit")
 
 
 def _entity_capabilities(
@@ -631,15 +639,18 @@ def generate_home(
         approach_radius_meters=policy.approach_radius_meters,
     )
     interaction_points.append(entrance_point)
+    # The door answers to its own roles for going out, coming in, opening — and for being walked
+    # to. That last one is `interaction_point`, and leaving it off is what sent the resident
+    # outdoors to reach her own front door; see the note on `ENTRANCE_ROLES`.
     entrance_capabilities = [
-        item.model_copy(update={"roles": ["entrance", "home_entrance", "home_exit"]})
+        item.model_copy(update={"roles": list(ENTRANCE_ROLES)})
         for item in capabilities
-        if item.capability in ENTRANCE_CAPABILITIES
+        if item.capability in ENTRANCE_CAPABILITIES or item.capability == "interaction_point"
     ]
     entrance_capabilities.append(
         EntityCapability(
             capability="openable",
-            roles=["entrance", "home_entrance", "home_exit"],
+            roles=list(ENTRANCE_ROLES),
             supported_operations=["enter_home", "leave_home"],
         )
     )
@@ -673,7 +684,11 @@ def generate_home(
                 interaction_point_id=interaction_id,
                 capabilities=[
                     item.model_copy(
-                        update={"roles": sorted(set(item.roles) - assigned_semantic_roles)}
+                        update={
+                            "roles": sorted(
+                                set(item.roles) - assigned_semantic_roles - set(ENTRANCE_ROLES)
+                            )
+                        }
                     )
                     for item in capabilities
                     if item.capability not in ENTRANCE_CAPABILITIES

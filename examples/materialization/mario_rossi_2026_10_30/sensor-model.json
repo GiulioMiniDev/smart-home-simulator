@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "35e58c3acf15a1e488eb5d35ff3fb15d291968c2e6f4bb13f97a862d58fefbfd",
+  "sourceBundleSha256": "d9e579d360b65b6d19a9f82fa08bb480fb8800b74db18e216ac09d136074325d",
   "seed": 42,
   "regionIds": [
     "balcony",

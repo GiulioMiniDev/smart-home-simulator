@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "execution_trace",
-  "traceId": "trace_35e58c3acf15a1e4",
+  "traceId": "trace_d9e579d360b65b6d",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "35e58c3acf15a1e488eb5d35ff3fb15d291968c2e6f4bb13f97a862d58fefbfd",
+  "sourceBundleSha256": "d9e579d360b65b6d19a9f82fa08bb480fb8800b74db18e216ac09d136074325d",
   "seed": 42,
   "engine": {
     "engineName": "smart-home-sim-engine",
@@ -204,7 +204,7 @@
       "plannedStart": "2026-10-30T10:45:00+01:00",
       "plannedEnd": "2026-10-30T11:00:00+01:00",
       "actualStart": "2026-10-30T10:45:00+01:00",
-      "actualEnd": "2026-10-30T10:59:27.135380+01:00",
+      "actualEnd": "2026-10-30T10:59:25.020603+01:00",
       "status": "completed",
       "actionExecutionIds": [
         "action_f284b70c1f0dd90a",
@@ -855,7 +855,7 @@
       "plannedStart": "2026-10-31T19:20:00+01:00",
       "plannedEnd": "2026-10-31T19:38:00+01:00",
       "actualStart": "2026-10-31T19:20:00+01:00",
-      "actualEnd": "2026-10-31T19:37:50.253755+01:00",
+      "actualEnd": "2026-10-31T19:37:48.138978+01:00",
       "status": "completed",
       "actionExecutionIds": [
         "action_41b8fabc0a8b6c5b",
@@ -2200,13 +2200,13 @@
       "actionType": "move_to_capability",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T10:59:05.643008+01:00",
-      "endedAt": "2026-10-30T10:59:21.135380+01:00",
+      "endedAt": "2026-10-30T10:59:19.020603+01:00",
       "status": "completed",
       "resolvedArguments": {
         "targetRole": "home_entrance"
       },
       "providerIds": [
-        "service_balcony"
+        "entrance_door"
       ],
       "selectedEdgeTargetId": null,
       "failureCode": null
@@ -2218,8 +2218,8 @@
       "occurrenceIndex": 0,
       "actionType": "enter_home",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T10:59:21.135380+01:00",
-      "endedAt": "2026-10-30T10:59:27.135380+01:00",
+      "startedAt": "2026-10-30T10:59:19.020603+01:00",
+      "endedAt": "2026-10-30T10:59:25.020603+01:00",
       "status": "completed",
       "resolvedArguments": {},
       "providerIds": [
@@ -5005,13 +5005,13 @@
       "actionType": "move_to_capability",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T19:37:28.761383+01:00",
-      "endedAt": "2026-10-31T19:37:44.253755+01:00",
+      "endedAt": "2026-10-31T19:37:42.138978+01:00",
       "status": "completed",
       "resolvedArguments": {
         "targetRole": "home_entrance"
       },
       "providerIds": [
-        "service_balcony"
+        "entrance_door"
       ],
       "selectedEdgeTargetId": null,
       "failureCode": null
@@ -5023,8 +5023,8 @@
       "occurrenceIndex": 0,
       "actionType": "enter_home",
       "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T19:37:44.253755+01:00",
-      "endedAt": "2026-10-31T19:37:50.253755+01:00",
+      "startedAt": "2026-10-31T19:37:42.138978+01:00",
+      "endedAt": "2026-10-31T19:37:48.138978+01:00",
       "status": "completed",
       "resolvedArguments": {},
       "providerIds": [
@@ -7460,11 +7460,11 @@
       "actionExecutionId": "action_64017b2940bdf16c",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-30T10:59:05.643008+01:00",
-      "endedAt": "2026-10-30T10:59:21.135380+01:00",
+      "endedAt": "2026-10-30T10:59:19.020603+01:00",
       "originRegionId": "bedroom",
-      "destinationRegionId": "balcony",
-      "distanceMeters": 13.943135198398672,
-      "durationMicroseconds": 15492372,
+      "destinationRegionId": "hallway",
+      "distanceMeters": 12.03983519839867,
+      "durationMicroseconds": 13377595,
       "waypoints": [
         {
           "at": "2026-10-30T10:59:05.643008+01:00",
@@ -7512,7 +7512,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T10:59:17.018491+01:00",
+          "at": "2026-10-30T10:59:17.018492+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.6938,
@@ -7521,7 +7521,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T10:59:17.907380+01:00",
+          "at": "2026-10-30T10:59:17.907381+01:00",
           "regionId": "hallway",
           "position": {
             "x": 9.6938,
@@ -7530,74 +7530,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-30T10:59:19.689269+01:00",
-          "regionId": "hallway",
-          "position": {
-            "x": 9.6938,
-            "y": 5.369
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T10:59:20.578158+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.169
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T10:59:21.135380+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.6705
-          },
-          "traversalMode": "walking"
-        }
-      ]
-    },
-    {
-      "movementId": "movement_f4604f31bb908d4e",
-      "actionExecutionId": "action_5175e0b5bddc329f",
-      "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-30T10:59:21.135380+01:00",
-      "endedAt": "2026-10-30T10:59:23.250158+01:00",
-      "originRegionId": "balcony",
-      "destinationRegionId": "hallway",
-      "distanceMeters": 1.9032999999999998,
-      "durationMicroseconds": 2114778,
-      "waypoints": [
-        {
-          "at": "2026-10-30T10:59:21.135380+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.6705
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T10:59:21.692602+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.169
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T10:59:22.581491+01:00",
-          "regionId": "hallway",
-          "position": {
-            "x": 9.6938,
-            "y": 5.369
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-30T10:59:23.250158+01:00",
+          "at": "2026-10-30T10:59:19.020603+01:00",
           "regionId": "hallway",
           "position": {
             "x": 9.6938,
@@ -9875,11 +9808,11 @@
       "actionExecutionId": "action_17a97933e083b331",
       "actorId": "resident_mario_rossi",
       "startedAt": "2026-10-31T19:37:28.761383+01:00",
-      "endedAt": "2026-10-31T19:37:44.253755+01:00",
+      "endedAt": "2026-10-31T19:37:42.138978+01:00",
       "originRegionId": "bedroom",
-      "destinationRegionId": "balcony",
-      "distanceMeters": 13.943135198398672,
-      "durationMicroseconds": 15492372,
+      "destinationRegionId": "hallway",
+      "distanceMeters": 12.03983519839867,
+      "durationMicroseconds": 13377595,
       "waypoints": [
         {
           "at": "2026-10-31T19:37:28.761383+01:00",
@@ -9927,7 +9860,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:37:40.136866+01:00",
+          "at": "2026-10-31T19:37:40.136867+01:00",
           "regionId": "kitchen",
           "position": {
             "x": 9.6938,
@@ -9936,7 +9869,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:37:41.025755+01:00",
+          "at": "2026-10-31T19:37:41.025756+01:00",
           "regionId": "hallway",
           "position": {
             "x": 9.6938,
@@ -9945,74 +9878,7 @@
           "traversalMode": "walking"
         },
         {
-          "at": "2026-10-31T19:37:42.807644+01:00",
-          "regionId": "hallway",
-          "position": {
-            "x": 9.6938,
-            "y": 5.369
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:37:43.696533+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.169
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:37:44.253755+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.6705
-          },
-          "traversalMode": "walking"
-        }
-      ]
-    },
-    {
-      "movementId": "movement_8d03665f4c23b203",
-      "actionExecutionId": "action_f911917e908430eb",
-      "actorId": "resident_mario_rossi",
-      "startedAt": "2026-10-31T19:37:44.253755+01:00",
-      "endedAt": "2026-10-31T19:37:46.368533+01:00",
-      "originRegionId": "balcony",
-      "destinationRegionId": "hallway",
-      "distanceMeters": 1.9032999999999998,
-      "durationMicroseconds": 2114778,
-      "waypoints": [
-        {
-          "at": "2026-10-31T19:37:44.253755+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.6705
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:37:44.810977+01:00",
-          "regionId": "balcony",
-          "position": {
-            "x": 9.6938,
-            "y": 6.169
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:37:45.699866+01:00",
-          "regionId": "hallway",
-          "position": {
-            "x": 9.6938,
-            "y": 5.369
-          },
-          "traversalMode": "walking"
-        },
-        {
-          "at": "2026-10-31T19:37:46.368533+01:00",
+          "at": "2026-10-31T19:37:42.138978+01:00",
           "regionId": "hallway",
           "position": {
             "x": 9.6938,
@@ -12256,36 +12122,8 @@
       }
     },
     {
-      "transitionId": "state_116cac335820c09b",
-      "at": "2026-10-30T10:59:21.135380+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_64017b2940bdf16c"
-      }
-    },
-    {
-      "transitionId": "state_3dd1a6ee7ba6f219",
-      "at": "2026-10-30T10:59:21.135380+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_5175e0b5bddc329f"
-      }
-    },
-    {
-      "transitionId": "state_60845a946d28a6ec",
-      "at": "2026-10-30T10:59:21.135380+01:00",
+      "transitionId": "state_4d621df748d72726",
+      "at": "2026-10-30T10:59:19.020603+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "location",
@@ -12298,8 +12136,8 @@
       }
     },
     {
-      "transitionId": "state_9e51dd44ad81f4b3",
-      "at": "2026-10-30T10:59:23.250158+01:00",
+      "transitionId": "state_d1b39f19442fc8ce",
+      "at": "2026-10-30T10:59:19.020603+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -12308,12 +12146,12 @@
       "operation": "set",
       "causality": {
         "causeType": "process_edge",
-        "causeId": "action_5175e0b5bddc329f"
+        "causeId": "action_64017b2940bdf16c"
       }
     },
     {
-      "transitionId": "state_cb7b19346829d8db",
-      "at": "2026-10-30T10:59:27.135380+01:00",
+      "transitionId": "state_c57af10dcff3446e",
+      "at": "2026-10-30T10:59:25.020603+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "at_home",
@@ -12326,7 +12164,7 @@
       }
     },
     {
-      "transitionId": "state_631f726e4fc74e25",
+      "transitionId": "state_f19c95a8ba103a43",
       "at": "2026-10-30T11:00:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12340,7 +12178,7 @@
       }
     },
     {
-      "transitionId": "state_6683be70774a2823",
+      "transitionId": "state_75437fe93448400d",
       "at": "2026-10-30T11:00:01.570266+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12354,7 +12192,7 @@
       }
     },
     {
-      "transitionId": "state_004696d37d0ba893",
+      "transitionId": "state_e989dc55d087e190",
       "at": "2026-10-30T11:06:15.261912+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12368,7 +12206,7 @@
       }
     },
     {
-      "transitionId": "state_4bd14ca3e14751d5",
+      "transitionId": "state_8465d62886e32a72",
       "at": "2026-10-30T11:10:09.800607+01:00",
       "subjectType": "entity",
       "subjectId": "medication_cleaning_cabinet",
@@ -12382,7 +12220,7 @@
       }
     },
     {
-      "transitionId": "state_202f56264015591d",
+      "transitionId": "state_581e35e3088c1eba",
       "at": "2026-10-30T11:14:04.339302+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12396,7 +12234,7 @@
       }
     },
     {
-      "transitionId": "state_86881a4cf314bbbb",
+      "transitionId": "state_53ced55e06f1b295",
       "at": "2026-10-30T11:17:58.877997+01:00",
       "subjectType": "entity",
       "subjectId": "medication_cleaning_cabinet",
@@ -12410,7 +12248,7 @@
       }
     },
     {
-      "transitionId": "state_896016be03e0ebc8",
+      "transitionId": "state_4bd050e0987a2e6a",
       "at": "2026-10-30T12:40:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12429,20 +12267,6 @@
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_58613c296a033dad"
-      }
-    },
-    {
-      "transitionId": "state_18c802a68c8af6ef",
-      "at": "2026-10-30T12:40:05.201202+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
       "previousValue": "performing_activity",
       "value": "moving",
       "operation": "set",
@@ -12452,7 +12276,21 @@
       }
     },
     {
-      "transitionId": "state_283a6d1498c2ff50",
+      "transitionId": "state_2c76f9b7ea7199cc",
+      "at": "2026-10-30T12:40:05.201202+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_58613c296a033dad"
+      }
+    },
+    {
+      "transitionId": "state_870c109b0bb87f55",
       "at": "2026-10-30T12:40:05.201202+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12466,7 +12304,7 @@
       }
     },
     {
-      "transitionId": "state_643c1c7f8df708fe",
+      "transitionId": "state_f273ecc39934c57a",
       "at": "2026-10-30T12:40:07.097430+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12480,7 +12318,7 @@
       }
     },
     {
-      "transitionId": "state_bc32bb2d8177df85",
+      "transitionId": "state_e36f2b8b547b7ac3",
       "at": "2026-10-30T12:40:08.201202+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -12494,7 +12332,7 @@
       }
     },
     {
-      "transitionId": "state_a8eb0e9d37d6c985",
+      "transitionId": "state_4d36329f316fb6e4",
       "at": "2026-10-30T12:40:14.201202+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12508,7 +12346,7 @@
       }
     },
     {
-      "transitionId": "state_b8cdefec426370ae",
+      "transitionId": "state_62ee1aaed5c7a7c6",
       "at": "2026-10-30T12:40:17.201202+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12522,7 +12360,7 @@
       }
     },
     {
-      "transitionId": "state_e434193f383a4a76",
+      "transitionId": "state_79b9b1a466848589",
       "at": "2026-10-30T12:40:17.201202+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -12536,7 +12374,7 @@
       }
     },
     {
-      "transitionId": "state_2d824562d76e8e8b",
+      "transitionId": "state_b786638d20cd0901",
       "at": "2026-10-30T12:40:18.041910+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12550,7 +12388,7 @@
       }
     },
     {
-      "transitionId": "state_41698a1453647cd6",
+      "transitionId": "state_259388d5d29a3431",
       "at": "2026-10-30T12:40:20.201202+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -12564,7 +12402,7 @@
       }
     },
     {
-      "transitionId": "state_47143d694b3d95e8",
+      "transitionId": "state_b994cd6105c77c34",
       "at": "2026-10-30T13:08:01.294426+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12578,7 +12416,7 @@
       }
     },
     {
-      "transitionId": "state_56f4f48bd42ce0f8",
+      "transitionId": "state_9464f0b95858792c",
       "at": "2026-10-30T13:08:04.294426+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -12592,21 +12430,7 @@
       }
     },
     {
-      "transitionId": "state_0d3ab24f540d041a",
-      "at": "2026-10-30T13:08:10.294426+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_8fde67e9d2f17f6e"
-      }
-    },
-    {
-      "transitionId": "state_de9a1d4662c7ae32",
+      "transitionId": "state_23d87f087075d6d4",
       "at": "2026-10-30T13:08:10.294426+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12620,7 +12444,21 @@
       }
     },
     {
-      "transitionId": "state_2474092e06d0d12e",
+      "transitionId": "state_46698633cc4b025a",
+      "at": "2026-10-30T13:08:10.294426+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_8fde67e9d2f17f6e"
+      }
+    },
+    {
+      "transitionId": "state_72413322b84efb74",
       "at": "2026-10-30T13:08:14.744423+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12634,7 +12472,7 @@
       }
     },
     {
-      "transitionId": "state_97d1897d3fb82933",
+      "transitionId": "state_bfec8f2451ac7838",
       "at": "2026-10-30T13:08:14.744423+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12648,7 +12486,7 @@
       }
     },
     {
-      "transitionId": "state_c477db3021d0622b",
+      "transitionId": "state_b8fe557a0a4e27e7",
       "at": "2026-10-30T13:08:16.744423+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12662,7 +12500,7 @@
       }
     },
     {
-      "transitionId": "state_dcad3a8f16662a48",
+      "transitionId": "state_25a3e91a9c4cbcf6",
       "at": "2026-10-30T13:40:36.463069+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -12676,7 +12514,7 @@
       }
     },
     {
-      "transitionId": "state_6246b719ddda3c40",
+      "transitionId": "state_102165e4651a35fe",
       "at": "2026-10-30T13:40:37.963069+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12690,7 +12528,7 @@
       }
     },
     {
-      "transitionId": "state_7c02481cfe568965",
+      "transitionId": "state_0ae2ef802c85c962",
       "at": "2026-10-30T14:05:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12704,7 +12542,7 @@
       }
     },
     {
-      "transitionId": "state_51fdab483c2310fa",
+      "transitionId": "state_0bb11291e38aa73e",
       "at": "2026-10-30T14:05:04.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12718,7 +12556,7 @@
       }
     },
     {
-      "transitionId": "state_9a63603ffb8e063c",
+      "transitionId": "state_e15b9b362fe02dde",
       "at": "2026-10-30T14:05:04.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12732,7 +12570,7 @@
       }
     },
     {
-      "transitionId": "state_2614a96719d01722",
+      "transitionId": "state_edf005f966e70a16",
       "at": "2026-10-30T14:05:06.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12746,7 +12584,7 @@
       }
     },
     {
-      "transitionId": "state_b716e5306054fa3c",
+      "transitionId": "state_e4713f50a250e366",
       "at": "2026-10-30T14:36:14.286604+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12760,7 +12598,21 @@
       }
     },
     {
-      "transitionId": "state_dc2f8672e6aaaed0",
+      "transitionId": "state_2e21ce287180ddc3",
+      "at": "2026-10-30T14:36:16.286604+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_3c2a51b9376dd014"
+      }
+    },
+    {
+      "transitionId": "state_ca81178c04c1d417",
       "at": "2026-10-30T14:36:16.286604+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12774,21 +12626,7 @@
       }
     },
     {
-      "transitionId": "state_f07151feb17c4017",
-      "at": "2026-10-30T14:36:16.286604+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_3c2a51b9376dd014"
-      }
-    },
-    {
-      "transitionId": "state_7672017918dac79f",
+      "transitionId": "state_64a91272c0217e08",
       "at": "2026-10-30T14:36:18.983319+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12802,7 +12640,7 @@
       }
     },
     {
-      "transitionId": "state_d2f50af42828e4fd",
+      "transitionId": "state_b77f34bb53fc9a7f",
       "at": "2026-10-30T15:45:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12816,7 +12654,7 @@
       }
     },
     {
-      "transitionId": "state_0c317c032b7c7912",
+      "transitionId": "state_3a15ccc48718abef",
       "at": "2026-10-30T15:45:12.313942+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12830,7 +12668,7 @@
       }
     },
     {
-      "transitionId": "state_d628c69d619854bf",
+      "transitionId": "state_d17f5be575c6e9e8",
       "at": "2026-10-30T15:45:12.313942+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12844,21 +12682,7 @@
       }
     },
     {
-      "transitionId": "state_03064d040ee242a3",
-      "at": "2026-10-30T15:45:18.313942+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_446803257d215d39"
-      }
-    },
-    {
-      "transitionId": "state_b0390c7a56b6e202",
+      "transitionId": "state_0647ac85c95865f1",
       "at": "2026-10-30T15:45:18.313942+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12872,7 +12696,49 @@
       }
     },
     {
-      "transitionId": "state_62f7d86fa2fdb37b",
+      "transitionId": "state_3382eb1c88821acb",
+      "at": "2026-10-30T15:45:18.313942+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_446803257d215d39"
+      }
+    },
+    {
+      "transitionId": "state_2489de03635fd70b",
+      "at": "2026-10-30T15:45:22.164706+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_446803257d215d39"
+      }
+    },
+    {
+      "transitionId": "state_7c2e186bd886951f",
+      "at": "2026-10-30T15:45:22.164706+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_d521b94f47698efb"
+      }
+    },
+    {
+      "transitionId": "state_d6271df3acc913ec",
       "at": "2026-10-30T15:45:22.164706+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12886,35 +12752,7 @@
       }
     },
     {
-      "transitionId": "state_70cc8f7f5b3769ad",
-      "at": "2026-10-30T15:45:22.164706+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_d521b94f47698efb"
-      }
-    },
-    {
-      "transitionId": "state_7c2e186bd886951f",
-      "at": "2026-10-30T15:45:22.164706+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_446803257d215d39"
-      }
-    },
-    {
-      "transitionId": "state_f56a12dd868b210b",
+      "transitionId": "state_758f9dd01c75c62c",
       "at": "2026-10-30T15:45:25.657557+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12928,7 +12766,7 @@
       }
     },
     {
-      "transitionId": "state_231eff02f6336720",
+      "transitionId": "state_d477d272e36b4b00",
       "at": "2026-10-30T16:15:51.684300+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12942,21 +12780,7 @@
       }
     },
     {
-      "transitionId": "state_847be09cb1969e56",
-      "at": "2026-10-30T16:15:53.254566+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_a9bf266246f6e6fc"
-      }
-    },
-    {
-      "transitionId": "state_cea01d6b75d506f2",
+      "transitionId": "state_55ff03038df93214",
       "at": "2026-10-30T16:15:53.254566+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12970,7 +12794,21 @@
       }
     },
     {
-      "transitionId": "state_10756c84027ae6c0",
+      "transitionId": "state_69adf5c5c0cab313",
+      "at": "2026-10-30T16:15:53.254566+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_a9bf266246f6e6fc"
+      }
+    },
+    {
+      "transitionId": "state_5166f343850df12f",
       "at": "2026-10-30T16:15:59.254566+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12984,7 +12822,7 @@
       }
     },
     {
-      "transitionId": "state_81003be8f031518b",
+      "transitionId": "state_fa70b35c798d9934",
       "at": "2026-10-30T16:30:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -12998,7 +12836,21 @@
       }
     },
     {
-      "transitionId": "state_a7d7d7a1b201ef50",
+      "transitionId": "state_7287f336cc5ff02b",
+      "at": "2026-10-30T16:30:01.570266+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_58ecf786e9093b6d"
+      }
+    },
+    {
+      "transitionId": "state_9bd268dfa0755503",
       "at": "2026-10-30T16:30:01.570266+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13012,21 +12864,7 @@
       }
     },
     {
-      "transitionId": "state_ec5b9013f5c00ddb",
-      "at": "2026-10-30T16:30:01.570266+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_58ecf786e9093b6d"
-      }
-    },
-    {
-      "transitionId": "state_9948beb55e9cb622",
+      "transitionId": "state_d912219197b2e428",
       "at": "2026-10-30T18:00:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13040,7 +12878,21 @@
       }
     },
     {
-      "transitionId": "state_8ae7ba13efa84b31",
+      "transitionId": "state_4d5af1a2d7909723",
+      "at": "2026-10-30T18:00:09.873088+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_4b5541dab473e8cc"
+      }
+    },
+    {
+      "transitionId": "state_7dd7944cbba3d386",
       "at": "2026-10-30T18:00:09.873088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13054,21 +12906,7 @@
       }
     },
     {
-      "transitionId": "state_f8e29a1f5c9e0dcb",
-      "at": "2026-10-30T18:00:09.873088+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_4b5541dab473e8cc"
-      }
-    },
-    {
-      "transitionId": "state_e84a709b1d5ddc1e",
+      "transitionId": "state_4ea299cc2be219b2",
       "at": "2026-10-30T18:00:11.873088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13082,7 +12920,7 @@
       }
     },
     {
-      "transitionId": "state_a4a7650c39a31944",
+      "transitionId": "state_6b8047b5f839042d",
       "at": "2026-10-30T18:23:05.655988+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13096,7 +12934,7 @@
       }
     },
     {
-      "transitionId": "state_130ec0138489d8e4",
+      "transitionId": "state_eec7246463e18cf5",
       "at": "2026-10-30T19:25:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13110,35 +12948,7 @@
       }
     },
     {
-      "transitionId": "state_54eb9f21729ef2c0",
-      "at": "2026-10-30T19:25:06.073947+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_51f8f98111395864"
-      }
-    },
-    {
-      "transitionId": "state_612226ae945ef0f8",
-      "at": "2026-10-30T19:25:06.073947+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_57aa86c0fc0d1c57"
-      }
-    },
-    {
-      "transitionId": "state_dc8a8224bfe6d6e4",
+      "transitionId": "state_325f7af6ed9bdd37",
       "at": "2026-10-30T19:25:06.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13152,7 +12962,35 @@
       }
     },
     {
-      "transitionId": "state_0a6dffd059e2b7ee",
+      "transitionId": "state_54eb9f21729ef2c0",
+      "at": "2026-10-30T19:25:06.073947+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_57aa86c0fc0d1c57"
+      }
+    },
+    {
+      "transitionId": "state_b42aa8997845d993",
+      "at": "2026-10-30T19:25:06.073947+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_51f8f98111395864"
+      }
+    },
+    {
+      "transitionId": "state_f6074dbbbc0bb07c",
       "at": "2026-10-30T19:25:07.970175+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13166,7 +13004,7 @@
       }
     },
     {
-      "transitionId": "state_c422c4878eb92907",
+      "transitionId": "state_8b6e9a8bf017c1b6",
       "at": "2026-10-30T19:25:09.073947+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -13180,7 +13018,7 @@
       }
     },
     {
-      "transitionId": "state_09182a66a6270efe",
+      "transitionId": "state_68946fdb8ccb34e9",
       "at": "2026-10-30T19:25:15.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13194,7 +13032,7 @@
       }
     },
     {
-      "transitionId": "state_663dc190605db1a5",
+      "transitionId": "state_abb0e352d85c151c",
       "at": "2026-10-30T19:25:18.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13208,7 +13046,7 @@
       }
     },
     {
-      "transitionId": "state_d9cdcc3e34a6948b",
+      "transitionId": "state_f25caee56b6c8a72",
       "at": "2026-10-30T19:25:18.073947+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -13222,7 +13060,7 @@
       }
     },
     {
-      "transitionId": "state_06d82e3e86b4099f",
+      "transitionId": "state_4d20b97779968691",
       "at": "2026-10-30T19:25:18.914655+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13236,7 +13074,7 @@
       }
     },
     {
-      "transitionId": "state_540d4c222c2d15dd",
+      "transitionId": "state_6142a1bf4d341dae",
       "at": "2026-10-30T19:25:21.073947+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -13250,7 +13088,7 @@
       }
     },
     {
-      "transitionId": "state_8ad928496629ca5e",
+      "transitionId": "state_081da5d7cef27c4d",
       "at": "2026-10-30T19:42:57.269794+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13264,7 +13102,7 @@
       }
     },
     {
-      "transitionId": "state_d5563bc9e9bd10e4",
+      "transitionId": "state_15a035086c8d42a2",
       "at": "2026-10-30T19:43:00.269794+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -13278,7 +13116,7 @@
       }
     },
     {
-      "transitionId": "state_cc97326e475167fe",
+      "transitionId": "state_bbf77ef9de26e13a",
       "at": "2026-10-30T19:43:06.269794+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13292,7 +13130,7 @@
       }
     },
     {
-      "transitionId": "state_ac2e478d4bbc320f",
+      "transitionId": "state_b088566fe700f5fd",
       "at": "2026-10-30T19:47:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13306,7 +13144,7 @@
       }
     },
     {
-      "transitionId": "state_157cd7247969bdc7",
+      "transitionId": "state_b9709ea9072928a2",
       "at": "2026-10-30T19:47:04.449997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13320,7 +13158,7 @@
       }
     },
     {
-      "transitionId": "state_dad1b91897466932",
+      "transitionId": "state_c1b7db5fec146d95",
       "at": "2026-10-30T19:47:04.449997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13334,7 +13172,7 @@
       }
     },
     {
-      "transitionId": "state_7aafb01c62593584",
+      "transitionId": "state_244234755d02d1c0",
       "at": "2026-10-30T19:47:06.449997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13348,7 +13186,7 @@
       }
     },
     {
-      "transitionId": "state_ed839e05564c9ea6",
+      "transitionId": "state_ae63998a2993ab2a",
       "at": "2026-10-30T20:10:53.912740+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -13362,7 +13200,7 @@
       }
     },
     {
-      "transitionId": "state_9e9e25df69e59359",
+      "transitionId": "state_003827643b3bba1d",
       "at": "2026-10-30T20:10:55.412740+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13376,7 +13214,7 @@
       }
     },
     {
-      "transitionId": "state_e9f87faede2bc9c4",
+      "transitionId": "state_91b6c0d36a2ed6fc",
       "at": "2026-10-30T20:40:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13390,7 +13228,21 @@
       }
     },
     {
-      "transitionId": "state_7e9710f53653d9d1",
+      "transitionId": "state_3f0890eda5bd850e",
+      "at": "2026-10-30T20:40:04.957741+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_c2bce5e0aafe5fa5"
+      }
+    },
+    {
+      "transitionId": "state_e718c5a032e82185",
       "at": "2026-10-30T20:40:04.957741+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13404,21 +13256,7 @@
       }
     },
     {
-      "transitionId": "state_9dbddeec0f1fde60",
-      "at": "2026-10-30T20:40:04.957741+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_c2bce5e0aafe5fa5"
-      }
-    },
-    {
-      "transitionId": "state_2153f44fa468caa3",
+      "transitionId": "state_853d0aa77f25a853",
       "at": "2026-10-30T20:40:06.957741+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13432,7 +13270,7 @@
       }
     },
     {
-      "transitionId": "state_27413ede5b89ad36",
+      "transitionId": "state_62fe98730a14c692",
       "at": "2026-10-30T20:40:09.957741+01:00",
       "subjectType": "entity",
       "subjectId": "television",
@@ -13446,7 +13284,7 @@
       }
     },
     {
-      "transitionId": "state_97f081b9e1ea4176",
+      "transitionId": "state_3dba54b59aa862a1",
       "at": "2026-10-30T21:59:12.539137+01:00",
       "subjectType": "entity",
       "subjectId": "television",
@@ -13460,7 +13298,7 @@
       }
     },
     {
-      "transitionId": "state_30218b5dba085d81",
+      "transitionId": "state_e8e5c51114fd0caf",
       "at": "2026-10-30T22:32:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13474,7 +13312,7 @@
       }
     },
     {
-      "transitionId": "state_107356de08455c59",
+      "transitionId": "state_0533b3c38ba57d1d",
       "at": "2026-10-30T22:32:13.062235+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13488,7 +13326,7 @@
       }
     },
     {
-      "transitionId": "state_f212de3552e24278",
+      "transitionId": "state_c48aee2b4d1cdb70",
       "at": "2026-10-30T22:32:13.062235+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13502,7 +13340,7 @@
       }
     },
     {
-      "transitionId": "state_f3682db926b6337e",
+      "transitionId": "state_d16ddd3d0bed9da0",
       "at": "2026-10-30T23:05:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13516,21 +13354,7 @@
       }
     },
     {
-      "transitionId": "state_11a3d95a0d447e24",
-      "at": "2026-10-30T23:05:16.173274+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_1cccc122a301af0f"
-      }
-    },
-    {
-      "transitionId": "state_e88f44d19f075c54",
+      "transitionId": "state_f423b062075a804c",
       "at": "2026-10-30T23:05:16.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13544,7 +13368,21 @@
       }
     },
     {
-      "transitionId": "state_f2426c90c4f10b62",
+      "transitionId": "state_faddda399657eaf3",
+      "at": "2026-10-30T23:05:16.173274+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_1cccc122a301af0f"
+      }
+    },
+    {
+      "transitionId": "state_448ba3e6950c0c8a",
       "at": "2026-10-30T23:05:19.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13558,7 +13396,7 @@
       }
     },
     {
-      "transitionId": "state_0891b765b79406dc",
+      "transitionId": "state_7bd9fde5efa4c756",
       "at": "2026-10-31T08:10:07.736207+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13572,7 +13410,21 @@
       }
     },
     {
-      "transitionId": "state_95f1ebffd844bcbd",
+      "transitionId": "state_6b8cff57bb32e82b",
+      "at": "2026-10-31T08:13:11.722093+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_726b78603ffe8ffc"
+      }
+    },
+    {
+      "transitionId": "state_edd50bf47fadddc9",
       "at": "2026-10-31T08:13:11.722093+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13586,21 +13438,7 @@
       }
     },
     {
-      "transitionId": "state_dc9896c895d7b6ba",
-      "at": "2026-10-31T08:13:11.722093+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_726b78603ffe8ffc"
-      }
-    },
-    {
-      "transitionId": "state_3c64fed13c6be5cc",
+      "transitionId": "state_0a904fa7adb7845a",
       "at": "2026-10-31T08:13:28.966762+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13614,7 +13452,7 @@
       }
     },
     {
-      "transitionId": "state_ed24f27a24d4f374",
+      "transitionId": "state_94ae412b40b48768",
       "at": "2026-10-31T08:13:28.966762+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13628,7 +13466,7 @@
       }
     },
     {
-      "transitionId": "state_3b9449f07d40c815",
+      "transitionId": "state_3b124afa74ed4f44",
       "at": "2026-10-31T08:29:30.710587+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13642,7 +13480,7 @@
       }
     },
     {
-      "transitionId": "state_37555f214acf2a6d",
+      "transitionId": "state_d3cbdabdef00064b",
       "at": "2026-10-31T08:29:33.549414+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13656,7 +13494,7 @@
       }
     },
     {
-      "transitionId": "state_a64dc07761b6f5ea",
+      "transitionId": "state_e4c14a4e5c4ad751",
       "at": "2026-10-31T08:29:33.549414+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13670,7 +13508,7 @@
       }
     },
     {
-      "transitionId": "state_d7d1b95c07a0e1e6",
+      "transitionId": "state_242ef885e4e0d8d4",
       "at": "2026-10-31T08:29:36.549414+01:00",
       "subjectType": "entity",
       "subjectId": "shower",
@@ -13684,21 +13522,7 @@
       }
     },
     {
-      "transitionId": "state_10ded63974526295",
-      "at": "2026-10-31T08:45:41.293239+01:00",
-      "subjectType": "entity",
-      "subjectId": "shower",
-      "fact": "active",
-      "previousValue": true,
-      "value": false,
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_6642e1196f2d4424"
-      }
-    },
-    {
-      "transitionId": "state_c65466117ae02a9f",
+      "transitionId": "state_7f905bbfffbf319f",
       "at": "2026-10-31T08:45:41.293239+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13712,21 +13536,35 @@
       }
     },
     {
-      "transitionId": "state_2367ad2d6c1f3ece",
+      "transitionId": "state_e2948f3c52861213",
+      "at": "2026-10-31T08:45:41.293239+01:00",
+      "subjectType": "entity",
+      "subjectId": "shower",
+      "fact": "active",
+      "previousValue": true,
+      "value": false,
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_6642e1196f2d4424"
+      }
+    },
+    {
+      "transitionId": "state_2a54856d7aa6b832",
       "at": "2026-10-31T08:45:47.581769+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
+      "previousValue": "moving",
+      "value": "performing_activity",
       "operation": "set",
       "causality": {
         "causeType": "process_edge",
-        "causeId": "action_6bc26e42392165e0"
+        "causeId": "action_3a406379b1fc4e82"
       }
     },
     {
-      "transitionId": "state_41437fc6d9b30a66",
+      "transitionId": "state_b85abc28e4a929cc",
       "at": "2026-10-31T08:45:47.581769+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13745,16 +13583,16 @@
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
+      "previousValue": "performing_activity",
+      "value": "moving",
       "operation": "set",
       "causality": {
         "causeType": "process_edge",
-        "causeId": "action_3a406379b1fc4e82"
+        "causeId": "action_6bc26e42392165e0"
       }
     },
     {
-      "transitionId": "state_4918f335d0d0208c",
+      "transitionId": "state_0ba77d44d27627dd",
       "at": "2026-10-31T08:45:49.305829+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13768,7 +13606,7 @@
       }
     },
     {
-      "transitionId": "state_93cb8e3f9351391c",
+      "transitionId": "state_827d7196382ae73f",
       "at": "2026-10-31T08:45:49.305829+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13782,7 +13620,7 @@
       }
     },
     {
-      "transitionId": "state_102720c3778579c3",
+      "transitionId": "state_e441d93b4664e038",
       "at": "2026-10-31T08:45:52.305829+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -13796,7 +13634,7 @@
       }
     },
     {
-      "transitionId": "state_9b171a11b81ba474",
+      "transitionId": "state_4f236cbdb1720cf7",
       "at": "2026-10-31T08:45:58.305829+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13810,7 +13648,7 @@
       }
     },
     {
-      "transitionId": "state_387dcbe75f2eb32d",
+      "transitionId": "state_ec60363ec2dd6177",
       "at": "2026-10-31T08:46:04.305829+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13824,7 +13662,7 @@
       }
     },
     {
-      "transitionId": "state_0fccae903d0b0b93",
+      "transitionId": "state_c4d060818a6e89ac",
       "at": "2026-10-31T08:46:07.305829+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -13838,7 +13676,7 @@
       }
     },
     {
-      "transitionId": "state_f953b8cc9ab8161f",
+      "transitionId": "state_f8b3d97ca54b09cb",
       "at": "2026-10-31T08:46:07.305829+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13852,21 +13690,7 @@
       }
     },
     {
-      "transitionId": "state_26b87baefce657d4",
-      "at": "2026-10-31T08:46:09.029889+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_4e81dcd2c98ee72c"
-      }
-    },
-    {
-      "transitionId": "state_318817755e6f0c7b",
+      "transitionId": "state_2f423d8a2fe74464",
       "at": "2026-10-31T08:46:09.029889+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13880,7 +13704,21 @@
       }
     },
     {
-      "transitionId": "state_89bd2afad331c7f9",
+      "transitionId": "state_7ea1f698a4074c88",
+      "at": "2026-10-31T08:46:09.029889+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_4e81dcd2c98ee72c"
+      }
+    },
+    {
+      "transitionId": "state_5bb63bc66f7b6f3b",
       "at": "2026-10-31T08:46:12.029889+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
@@ -13894,7 +13732,7 @@
       }
     },
     {
-      "transitionId": "state_16bc7525c5e380bc",
+      "transitionId": "state_6379c950d14480e8",
       "at": "2026-10-31T09:06:13.142627+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13908,7 +13746,7 @@
       }
     },
     {
-      "transitionId": "state_be550a233f0f721e",
+      "transitionId": "state_8fb5ec4e264641fe",
       "at": "2026-10-31T09:06:16.142627+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
@@ -13922,7 +13760,7 @@
       }
     },
     {
-      "transitionId": "state_c42719a591c18a97",
+      "transitionId": "state_b9243dc4d7da0dbe",
       "at": "2026-10-31T09:06:22.142627+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13936,7 +13774,7 @@
       }
     },
     {
-      "transitionId": "state_e559244eea43bd5b",
+      "transitionId": "state_d8c7c8689e20e5a2",
       "at": "2026-10-31T09:06:28.142627+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13950,7 +13788,7 @@
       }
     },
     {
-      "transitionId": "state_fde2ec3e3444cec6",
+      "transitionId": "state_9bc099e513b5ad9f",
       "at": "2026-10-31T09:06:28.142628+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13964,7 +13802,7 @@
       }
     },
     {
-      "transitionId": "state_1aa14339c43a61a5",
+      "transitionId": "state_bc6118085daece26",
       "at": "2026-10-31T09:06:30.142628+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -13978,7 +13816,7 @@
       }
     },
     {
-      "transitionId": "state_cfe056d8a706accd",
+      "transitionId": "state_8a69d9a38c16085b",
       "at": "2026-10-31T09:37:08.217303+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
@@ -13992,7 +13830,7 @@
       }
     },
     {
-      "transitionId": "state_0a4d4d5c60d89813",
+      "transitionId": "state_afe9d430e5a3e45a",
       "at": "2026-10-31T09:37:09.717303+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14006,7 +13844,7 @@
       }
     },
     {
-      "transitionId": "state_3c58ce71a029185c",
+      "transitionId": "state_fb94c8bfe9b23bbb",
       "at": "2026-10-31T09:37:09.717303+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14020,21 +13858,7 @@
       }
     },
     {
-      "transitionId": "state_7eed05f19c3fb2f2",
-      "at": "2026-10-31T09:37:13.568067+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_c2d399ec2727e0be"
-      }
-    },
-    {
-      "transitionId": "state_e0f0eba67aa5b927",
+      "transitionId": "state_70644e4ae90f962b",
       "at": "2026-10-31T09:37:13.568067+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14048,7 +13872,21 @@
       }
     },
     {
-      "transitionId": "state_fdb32d7165ddf14d",
+      "transitionId": "state_8ac36558a7281ac5",
+      "at": "2026-10-31T09:37:13.568067+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_c2d399ec2727e0be"
+      }
+    },
+    {
+      "transitionId": "state_7b5dec2d9a5b17c1",
       "at": "2026-10-31T09:37:16.568067+01:00",
       "subjectType": "entity",
       "subjectId": "medication_cleaning_cabinet",
@@ -14062,7 +13900,7 @@
       }
     },
     {
-      "transitionId": "state_65cf0a915c94f460",
+      "transitionId": "state_7b7725bfd027eaf4",
       "at": "2026-10-31T09:37:22.568067+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14076,21 +13914,7 @@
       }
     },
     {
-      "transitionId": "state_b0d17047f4b9d9cc",
-      "at": "2026-10-31T09:37:25.568067+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_2b75d59033369050"
-      }
-    },
-    {
-      "transitionId": "state_bd4e8061f5f35062",
+      "transitionId": "state_40f7b7cf5366a353",
       "at": "2026-10-31T09:37:25.568067+01:00",
       "subjectType": "entity",
       "subjectId": "medication_cleaning_cabinet",
@@ -14104,7 +13928,21 @@
       }
     },
     {
-      "transitionId": "state_17f3ec534ebcff62",
+      "transitionId": "state_7e66f047538cf332",
+      "at": "2026-10-31T09:37:25.568067+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_2b75d59033369050"
+      }
+    },
+    {
+      "transitionId": "state_2772679dd27786d1",
       "at": "2026-10-31T09:37:30.769269+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14118,7 +13956,7 @@
       }
     },
     {
-      "transitionId": "state_fef22511f8fb02a8",
+      "transitionId": "state_54e3e4aa8edaece9",
       "at": "2026-10-31T09:37:30.769269+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14132,7 +13970,7 @@
       }
     },
     {
-      "transitionId": "state_f226057e27efec79",
+      "transitionId": "state_3f26379e2fb3e30c",
       "at": "2026-10-31T09:37:36.769269+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14146,7 +13984,7 @@
       }
     },
     {
-      "transitionId": "state_be81e94887809ed2",
+      "transitionId": "state_b3d297c6dd20808e",
       "at": "2026-10-31T09:39:50.432307+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14160,7 +13998,7 @@
       }
     },
     {
-      "transitionId": "state_f7f3c726b5b185f2",
+      "transitionId": "state_5b6acc3f82fa3246",
       "at": "2026-10-31T09:42:04.095345+01:00",
       "subjectType": "entity",
       "subjectId": "service_hallway",
@@ -14174,7 +14012,7 @@
       }
     },
     {
-      "transitionId": "state_83ad85730d41489b",
+      "transitionId": "state_f292ee2428c693c3",
       "at": "2026-10-31T09:42:10.095345+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14188,7 +14026,7 @@
       }
     },
     {
-      "transitionId": "state_0859109216ee1da4",
+      "transitionId": "state_9a04520d318b739d",
       "at": "2026-10-31T09:42:16.095345+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14202,7 +14040,7 @@
       }
     },
     {
-      "transitionId": "state_443d2363cd73b6de",
+      "transitionId": "state_dd29ca84fc347f24",
       "at": "2026-10-31T09:42:16.095345+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14216,21 +14054,7 @@
       }
     },
     {
-      "transitionId": "state_b0e30720eee3477d",
-      "at": "2026-10-31T09:42:26.085818+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_2eb6b11e65e05852"
-      }
-    },
-    {
-      "transitionId": "state_f514aec5a1306c91",
+      "transitionId": "state_3746d12784a4a9bc",
       "at": "2026-10-31T09:42:26.085818+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14244,7 +14068,21 @@
       }
     },
     {
-      "transitionId": "state_4e4a7e64881f5bf3",
+      "transitionId": "state_f3f41e9bd7996024",
+      "at": "2026-10-31T09:42:26.085818+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_2eb6b11e65e05852"
+      }
+    },
+    {
+      "transitionId": "state_a1ad87bf18444b4d",
       "at": "2026-10-31T09:46:45.491690+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14258,7 +14096,7 @@
       }
     },
     {
-      "transitionId": "state_9c9082cfea146080",
+      "transitionId": "state_805ba89e8719d13b",
       "at": "2026-10-31T09:47:03.027477+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14272,7 +14110,7 @@
       }
     },
     {
-      "transitionId": "state_9fea9981648f88e2",
+      "transitionId": "state_b577c3282488561f",
       "at": "2026-10-31T09:47:03.027477+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14286,7 +14124,7 @@
       }
     },
     {
-      "transitionId": "state_92f3d5588c769c22",
+      "transitionId": "state_8ef906fd025412ef",
       "at": "2026-10-31T09:51:22.433350+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14300,7 +14138,7 @@
       }
     },
     {
-      "transitionId": "state_d64440e58f1f149d",
+      "transitionId": "state_1171af5c034d058b",
       "at": "2026-10-31T10:10:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14314,35 +14152,7 @@
       }
     },
     {
-      "transitionId": "state_4c569b9aa05b89e9",
-      "at": "2026-10-31T10:10:08.589462+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_26a7e9c9c2648297"
-      }
-    },
-    {
-      "transitionId": "state_629995f58d9f195d",
-      "at": "2026-10-31T10:10:08.589462+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_aa1d755952b09603"
-      }
-    },
-    {
-      "transitionId": "state_7d0de8b1670f1f1d",
+      "transitionId": "state_018e31bf8e2c7a54",
       "at": "2026-10-31T10:10:08.589462+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14356,7 +14166,35 @@
       }
     },
     {
-      "transitionId": "state_c0b69b8e1cf07d1f",
+      "transitionId": "state_4c569b9aa05b89e9",
+      "at": "2026-10-31T10:10:08.589462+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_aa1d755952b09603"
+      }
+    },
+    {
+      "transitionId": "state_ae15efdb7ba38516",
+      "at": "2026-10-31T10:10:08.589462+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_26a7e9c9c2648297"
+      }
+    },
+    {
+      "transitionId": "state_9a46cc8a7bfff178",
       "at": "2026-10-31T10:10:10.485690+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14370,7 +14208,7 @@
       }
     },
     {
-      "transitionId": "state_bd5a0ecab9353f32",
+      "transitionId": "state_a9003fed9667d4c1",
       "at": "2026-10-31T10:10:11.589462+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14384,7 +14222,7 @@
       }
     },
     {
-      "transitionId": "state_ce166d26f075cc2c",
+      "transitionId": "state_a83f10f25662a52f",
       "at": "2026-10-31T10:10:17.589462+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14398,7 +14236,7 @@
       }
     },
     {
-      "transitionId": "state_141cb2448fb101cc",
+      "transitionId": "state_5469e0d3bd88685f",
       "at": "2026-10-31T10:10:20.589462+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14412,7 +14250,7 @@
       }
     },
     {
-      "transitionId": "state_b021b65ef34c9bfb",
+      "transitionId": "state_bec20842da8f6fc2",
       "at": "2026-10-31T10:10:20.589462+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14426,7 +14264,7 @@
       }
     },
     {
-      "transitionId": "state_e1e30dbda8770ba9",
+      "transitionId": "state_84a9ab13c4ca92f1",
       "at": "2026-10-31T10:10:21.430170+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14440,7 +14278,7 @@
       }
     },
     {
-      "transitionId": "state_740428a0ddfd4d1b",
+      "transitionId": "state_62991659e2bda96f",
       "at": "2026-10-31T10:10:23.589462+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -14454,7 +14292,7 @@
       }
     },
     {
-      "transitionId": "state_07b47ebbcac997da",
+      "transitionId": "state_72f62f117475bf4f",
       "at": "2026-10-31T11:22:33.974427+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14468,7 +14306,7 @@
       }
     },
     {
-      "transitionId": "state_103fe2c6c5778ef1",
+      "transitionId": "state_262e11fe6ef352ce",
       "at": "2026-10-31T11:22:36.974427+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -14482,7 +14320,7 @@
       }
     },
     {
-      "transitionId": "state_01a08b343fcce692",
+      "transitionId": "state_9700afef379eb052",
       "at": "2026-10-31T11:22:42.974427+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14496,7 +14334,7 @@
       }
     },
     {
-      "transitionId": "state_07a7de510dbf1973",
+      "transitionId": "state_e33a199885ceb8b4",
       "at": "2026-10-31T11:22:42.974427+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14510,7 +14348,7 @@
       }
     },
     {
-      "transitionId": "state_9f18dc972f29ca26",
+      "transitionId": "state_04178c3621e40901",
       "at": "2026-10-31T11:22:45.697268+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14524,21 +14362,7 @@
       }
     },
     {
-      "transitionId": "state_a709ca3c160cadb8",
-      "at": "2026-10-31T11:22:45.697268+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_e2b30b468ac39f93"
-      }
-    },
-    {
-      "transitionId": "state_f02249bad1bd7bc4",
+      "transitionId": "state_160234f550d6564b",
       "at": "2026-10-31T11:22:45.697268+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14552,7 +14376,21 @@
       }
     },
     {
-      "transitionId": "state_285e157afee1dc98",
+      "transitionId": "state_9f18dc972f29ca26",
+      "at": "2026-10-31T11:22:45.697268+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_e2b30b468ac39f93"
+      }
+    },
+    {
+      "transitionId": "state_c454b22bd7f94035",
       "at": "2026-10-31T11:22:47.593496+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14566,7 +14404,7 @@
       }
     },
     {
-      "transitionId": "state_34b94bfb888fb2d4",
+      "transitionId": "state_0379e302970d3dca",
       "at": "2026-10-31T11:37:11.774261+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14580,7 +14418,7 @@
       }
     },
     {
-      "transitionId": "state_e901fab803afbaa2",
+      "transitionId": "state_10ed16b8ed86e6db",
       "at": "2026-10-31T11:37:11.774262+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14594,7 +14432,7 @@
       }
     },
     {
-      "transitionId": "state_7c78f87ff3ba12d3",
+      "transitionId": "state_e4691ee3bfac9dfb",
       "at": "2026-10-31T11:37:14.774262+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14608,7 +14446,7 @@
       }
     },
     {
-      "transitionId": "state_b5a11a8467d9d933",
+      "transitionId": "state_b2d8b15fad82237e",
       "at": "2026-10-31T11:37:20.774262+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14622,7 +14460,7 @@
       }
     },
     {
-      "transitionId": "state_4d0011496236f4be",
+      "transitionId": "state_4237bebb8d95ce6a",
       "at": "2026-10-31T11:37:23.774262+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14636,7 +14474,7 @@
       }
     },
     {
-      "transitionId": "state_a3c50789d65fc1a9",
+      "transitionId": "state_87af6bb7ec241c7e",
       "at": "2026-10-31T11:37:23.774262+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14650,7 +14488,7 @@
       }
     },
     {
-      "transitionId": "state_369b3a045baa0468",
+      "transitionId": "state_26f9637e37366ff8",
       "at": "2026-10-31T11:37:25.670490+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14664,21 +14502,7 @@
       }
     },
     {
-      "transitionId": "state_d75fef5c0dc9bf03",
-      "at": "2026-10-31T11:37:25.670490+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_6975dc4d6be1d2e8"
-      }
-    },
-    {
-      "transitionId": "state_ed82563896e9a941",
+      "transitionId": "state_544f043694234298",
       "at": "2026-10-31T11:37:25.670490+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14692,7 +14516,21 @@
       }
     },
     {
-      "transitionId": "state_a6e65a04fc547d18",
+      "transitionId": "state_ed82563896e9a941",
+      "at": "2026-10-31T11:37:25.670490+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_6975dc4d6be1d2e8"
+      }
+    },
+    {
+      "transitionId": "state_1f671aefd0656325",
       "at": "2026-10-31T11:37:27.566718+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14706,7 +14544,7 @@
       }
     },
     {
-      "transitionId": "state_49b5862d875aee91",
+      "transitionId": "state_db406aa32c9eb905",
       "at": "2026-10-31T12:01:50.799248+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14720,7 +14558,7 @@
       }
     },
     {
-      "transitionId": "state_becff483abad68bc",
+      "transitionId": "state_c958eddb3b42740d",
       "at": "2026-10-31T12:01:50.799249+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14734,7 +14572,7 @@
       }
     },
     {
-      "transitionId": "state_f3291c4f54380688",
+      "transitionId": "state_943d98cbabb28de6",
       "at": "2026-10-31T12:01:53.799249+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14748,7 +14586,7 @@
       }
     },
     {
-      "transitionId": "state_ad29d0b6f9e63720",
+      "transitionId": "state_1cd2219aaba350c8",
       "at": "2026-10-31T12:01:59.799249+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14762,7 +14600,7 @@
       }
     },
     {
-      "transitionId": "state_96f03c0c2ef62d01",
+      "transitionId": "state_2a1b0d13f9d80535",
       "at": "2026-10-31T12:02:02.799249+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14776,7 +14614,7 @@
       }
     },
     {
-      "transitionId": "state_efd625dfd7ef3556",
+      "transitionId": "state_a754ea5acfdb76a6",
       "at": "2026-10-31T12:02:02.799249+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14790,7 +14628,7 @@
       }
     },
     {
-      "transitionId": "state_081c2c2e27a5c394",
+      "transitionId": "state_72f3e2f563711988",
       "at": "2026-10-31T12:02:09.030021+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14804,7 +14642,7 @@
       }
     },
     {
-      "transitionId": "state_983b4885a434d0f6",
+      "transitionId": "state_b32a99133c7f1b79",
       "at": "2026-10-31T12:02:09.030021+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14818,7 +14656,7 @@
       }
     },
     {
-      "transitionId": "state_f985b5f954bca075",
+      "transitionId": "state_27b094aedcb1ecfa",
       "at": "2026-10-31T12:35:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14837,20 +14675,6 @@
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_4276c17fd3bd3816"
-      }
-    },
-    {
-      "transitionId": "state_4955b8ba4d9e9a77",
-      "at": "2026-10-31T12:35:06.958067+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
       "previousValue": "performing_activity",
       "value": "moving",
       "operation": "set",
@@ -14860,7 +14684,21 @@
       }
     },
     {
-      "transitionId": "state_890e0bcbec5c8908",
+      "transitionId": "state_3f07c71726bf3be5",
+      "at": "2026-10-31T12:35:06.958067+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_4276c17fd3bd3816"
+      }
+    },
+    {
+      "transitionId": "state_44acb80acd1deb1f",
       "at": "2026-10-31T12:35:06.958067+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14874,7 +14712,7 @@
       }
     },
     {
-      "transitionId": "state_ef244d45879276ad",
+      "transitionId": "state_759c068cecd0a9cd",
       "at": "2026-10-31T12:35:08.854295+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14888,7 +14726,7 @@
       }
     },
     {
-      "transitionId": "state_d0d579ca092e98c9",
+      "transitionId": "state_faf3548b8582e183",
       "at": "2026-10-31T12:35:09.958067+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14902,7 +14740,7 @@
       }
     },
     {
-      "transitionId": "state_9164acd818aac263",
+      "transitionId": "state_633bb177ee1dfe29",
       "at": "2026-10-31T12:35:15.958067+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14916,21 +14754,7 @@
       }
     },
     {
-      "transitionId": "state_212b3001a1cc7e24",
-      "at": "2026-10-31T12:35:18.958067+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_d1301823b6e49038"
-      }
-    },
-    {
-      "transitionId": "state_5db81364abc05e6a",
+      "transitionId": "state_8d60a0bf2ab446a6",
       "at": "2026-10-31T12:35:18.958067+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -14944,7 +14768,21 @@
       }
     },
     {
-      "transitionId": "state_b35da8728b9da09b",
+      "transitionId": "state_9759f0dab3847a83",
+      "at": "2026-10-31T12:35:18.958067+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_d1301823b6e49038"
+      }
+    },
+    {
+      "transitionId": "state_39f8a68b95b28be4",
       "at": "2026-10-31T12:35:19.798775+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14958,7 +14796,7 @@
       }
     },
     {
-      "transitionId": "state_ceb238498d261027",
+      "transitionId": "state_d214f8442f0af9ac",
       "at": "2026-10-31T12:35:21.958067+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -14972,7 +14810,7 @@
       }
     },
     {
-      "transitionId": "state_e869f7dc0b2dcd42",
+      "transitionId": "state_343a6455705907c8",
       "at": "2026-10-31T13:02:19.818186+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -14986,7 +14824,7 @@
       }
     },
     {
-      "transitionId": "state_1ba88fd4851c2731",
+      "transitionId": "state_33973c57ecd3aead",
       "at": "2026-10-31T13:02:22.818186+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -15000,21 +14838,7 @@
       }
     },
     {
-      "transitionId": "state_131bd097bb429297",
-      "at": "2026-10-31T13:02:28.818186+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_baa48392cae1bf0a"
-      }
-    },
-    {
-      "transitionId": "state_333e1e47a1148486",
+      "transitionId": "state_166f892b8042085f",
       "at": "2026-10-31T13:02:28.818186+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15028,21 +14852,21 @@
       }
     },
     {
-      "transitionId": "state_5ed9c3e838001c7c",
-      "at": "2026-10-31T13:02:33.268183+01:00",
+      "transitionId": "state_265249901a808c40",
+      "at": "2026-10-31T13:02:28.818186+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
-      "fact": "location",
-      "previousValue": "food_preparation_area",
-      "value": "consumption_area",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
       "operation": "set",
       "causality": {
-        "causeType": "action_effect",
+        "causeType": "process_edge",
         "causeId": "action_baa48392cae1bf0a"
       }
     },
     {
-      "transitionId": "state_efd91c60f12daaeb",
+      "transitionId": "state_39e643b922f6cc2f",
       "at": "2026-10-31T13:02:33.268183+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15056,7 +14880,21 @@
       }
     },
     {
-      "transitionId": "state_7be46529b503a16e",
+      "transitionId": "state_84d4488e1b892cee",
+      "at": "2026-10-31T13:02:33.268183+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "location",
+      "previousValue": "food_preparation_area",
+      "value": "consumption_area",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_baa48392cae1bf0a"
+      }
+    },
+    {
+      "transitionId": "state_cc7fced58c8cffcc",
       "at": "2026-10-31T13:02:35.268183+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15070,7 +14908,7 @@
       }
     },
     {
-      "transitionId": "state_b1f279f4a55a52cf",
+      "transitionId": "state_80ad6d93cb41bc03",
       "at": "2026-10-31T13:32:15.240942+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -15084,7 +14922,7 @@
       }
     },
     {
-      "transitionId": "state_a679880ceaf7578d",
+      "transitionId": "state_1fa5557dce52f1dc",
       "at": "2026-10-31T13:32:16.740942+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15098,7 +14936,7 @@
       }
     },
     {
-      "transitionId": "state_da24983738ff6275",
+      "transitionId": "state_04976bc4a94887e7",
       "at": "2026-10-31T13:50:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15112,7 +14950,7 @@
       }
     },
     {
-      "transitionId": "state_59ca5d9466fd2ea9",
+      "transitionId": "state_2dad8ae13d03a927",
       "at": "2026-10-31T13:50:04.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15126,7 +14964,7 @@
       }
     },
     {
-      "transitionId": "state_71e4650c12cb79e4",
+      "transitionId": "state_7d9dcf4da400ba69",
       "at": "2026-10-31T13:50:04.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15140,7 +14978,7 @@
       }
     },
     {
-      "transitionId": "state_f33f2204a38f7c7e",
+      "transitionId": "state_ca7394f04e2f87f6",
       "at": "2026-10-31T13:50:06.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15154,7 +14992,7 @@
       }
     },
     {
-      "transitionId": "state_4a807be6fc05a5d2",
+      "transitionId": "state_8291918e337772fe",
       "at": "2026-10-31T15:15:00.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15168,7 +15006,7 @@
       }
     },
     {
-      "transitionId": "state_b5d7f9e63561f475",
+      "transitionId": "state_9ea96e4d2ab53f39",
       "at": "2026-10-31T16:05:00.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15182,7 +15020,7 @@
       }
     },
     {
-      "transitionId": "state_7e9488ec9a3e4697",
+      "transitionId": "state_eaf6a892fe15f830",
       "at": "2026-10-31T16:05:02.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15196,7 +15034,7 @@
       }
     },
     {
-      "transitionId": "state_046e3ee861839f4e",
+      "transitionId": "state_31d2e1fbc9de596a",
       "at": "2026-10-31T18:15:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15210,7 +15048,7 @@
       }
     },
     {
-      "transitionId": "state_4086ca2ddbc27013",
+      "transitionId": "state_6617a5cb970e58b2",
       "at": "2026-10-31T18:15:09.873088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15224,21 +15062,7 @@
       }
     },
     {
-      "transitionId": "state_cbecf0e9d6dd9795",
-      "at": "2026-10-31T18:15:09.873088+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_9b8e5674f57d61c3"
-      }
-    },
-    {
-      "transitionId": "state_e53988dbd214fb3f",
+      "transitionId": "state_e3eb3d5af7aaffad",
       "at": "2026-10-31T18:15:09.873088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15252,7 +15076,21 @@
       }
     },
     {
-      "transitionId": "state_56012bc3842c25d5",
+      "transitionId": "state_e53988dbd214fb3f",
+      "at": "2026-10-31T18:15:09.873088+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_9b8e5674f57d61c3"
+      }
+    },
+    {
+      "transitionId": "state_b5a351557c6318d9",
       "at": "2026-10-31T18:16:12.373088+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15266,7 +15104,7 @@
       }
     },
     {
-      "transitionId": "state_690666fa317b8cf4",
+      "transitionId": "state_ba122a81c45b524f",
       "at": "2026-10-31T18:30:37.097769+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15280,7 +15118,7 @@
       }
     },
     {
-      "transitionId": "state_be01ac40bcc6d50f",
+      "transitionId": "state_fe2d25bb8a20b3c0",
       "at": "2026-10-31T18:30:37.097770+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15294,7 +15132,7 @@
       }
     },
     {
-      "transitionId": "state_049d42406ea143c8",
+      "transitionId": "state_7d409346175f0cf3",
       "at": "2026-10-31T18:53:17.904737+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15308,7 +15146,21 @@
       }
     },
     {
-      "transitionId": "state_8bcfa4624a3a501f",
+      "transitionId": "state_039262e12a0fe422",
+      "at": "2026-10-31T18:54:26.372515+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_22224bcd9110cffe"
+      }
+    },
+    {
+      "transitionId": "state_ffe062d17d961a51",
       "at": "2026-10-31T18:54:26.372515+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15322,21 +15174,7 @@
       }
     },
     {
-      "transitionId": "state_c261a77316700fa5",
-      "at": "2026-10-31T18:54:26.372515+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_22224bcd9110cffe"
-      }
-    },
-    {
-      "transitionId": "state_77ec26ce1a6f3ca6",
+      "transitionId": "state_1eb0e76be228e9fc",
       "at": "2026-10-31T19:17:07.179482+01:00",
       "subjectType": "entity",
       "subjectId": "service_neighborhood_bar",
@@ -15350,7 +15188,7 @@
       }
     },
     {
-      "transitionId": "state_aacdca8648d038d3",
+      "transitionId": "state_7ad8e8d400234486",
       "at": "2026-10-31T19:20:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15364,7 +15202,7 @@
       }
     },
     {
-      "transitionId": "state_ba3c37b8fc067966",
+      "transitionId": "state_65f84f06a55684be",
       "at": "2026-10-31T19:20:08.068779+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15378,7 +15216,21 @@
       }
     },
     {
-      "transitionId": "state_58b91fb3e321c6dd",
+      "transitionId": "state_7737e2c37d1454a5",
+      "at": "2026-10-31T19:37:28.761383+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_17a97933e083b331"
+      }
+    },
+    {
+      "transitionId": "state_bb5746ec616254a4",
       "at": "2026-10-31T19:37:28.761383+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15392,22 +15244,8 @@
       }
     },
     {
-      "transitionId": "state_c3140d9352c5616b",
-      "at": "2026-10-31T19:37:28.761383+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_17a97933e083b331"
-      }
-    },
-    {
-      "transitionId": "state_2c716f6cc9de4d92",
-      "at": "2026-10-31T19:37:44.253755+01:00",
+      "transitionId": "state_54fa8fed3df641df",
+      "at": "2026-10-31T19:37:42.138978+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -15420,8 +15258,8 @@
       }
     },
     {
-      "transitionId": "state_755a5f50bc100d8e",
-      "at": "2026-10-31T19:37:44.253755+01:00",
+      "transitionId": "state_ffdca4afb96b55d5",
+      "at": "2026-10-31T19:37:42.138978+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "location",
@@ -15434,36 +15272,8 @@
       }
     },
     {
-      "transitionId": "state_af33548572d8bec3",
-      "at": "2026-10-31T19:37:44.253755+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_f911917e908430eb"
-      }
-    },
-    {
-      "transitionId": "state_10f8640da1b8bfb9",
-      "at": "2026-10-31T19:37:46.368533+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_f911917e908430eb"
-      }
-    },
-    {
-      "transitionId": "state_37714ab5cd230ca7",
-      "at": "2026-10-31T19:37:50.253755+01:00",
+      "transitionId": "state_bcf18d04f53d00ff",
+      "at": "2026-10-31T19:37:48.138978+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "at_home",
@@ -15476,7 +15286,7 @@
       }
     },
     {
-      "transitionId": "state_d42c93eb4ecc002c",
+      "transitionId": "state_6004ce6eb7400784",
       "at": "2026-10-31T20:15:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15490,7 +15300,21 @@
       }
     },
     {
-      "transitionId": "state_36fecbdea2e6dd4d",
+      "transitionId": "state_b9bbe5127a544451",
+      "at": "2026-10-31T20:15:04.843289+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_6d196b7db4835a31"
+      }
+    },
+    {
+      "transitionId": "state_c75be8ce85c1bb42",
       "at": "2026-10-31T20:15:04.843289+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15504,21 +15328,7 @@
       }
     },
     {
-      "transitionId": "state_6fd3f3bed7b034f7",
-      "at": "2026-10-31T20:15:04.843289+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_6d196b7db4835a31"
-      }
-    },
-    {
-      "transitionId": "state_9fcfce76462dcc51",
+      "transitionId": "state_f6797a98e6db770e",
       "at": "2026-10-31T20:15:04.843289+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15532,7 +15342,7 @@
       }
     },
     {
-      "transitionId": "state_680319421fb375be",
+      "transitionId": "state_a9ccd8f56b54e6bb",
       "at": "2026-10-31T20:15:06.739517+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15546,7 +15356,7 @@
       }
     },
     {
-      "transitionId": "state_de9892a2c874a6af",
+      "transitionId": "state_a52e61a6706be43d",
       "at": "2026-10-31T20:15:07.843289+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -15560,7 +15370,7 @@
       }
     },
     {
-      "transitionId": "state_3520a771201edaf5",
+      "transitionId": "state_0eec68539304bda6",
       "at": "2026-10-31T20:15:13.843289+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15574,21 +15384,7 @@
       }
     },
     {
-      "transitionId": "state_19bb036d1ed3cf12",
-      "at": "2026-10-31T20:15:16.843289+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_9e8d4493442c5875"
-      }
-    },
-    {
-      "transitionId": "state_1e2d86a6b6e75574",
+      "transitionId": "state_340988415958f33a",
       "at": "2026-10-31T20:15:16.843289+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -15602,7 +15398,21 @@
       }
     },
     {
-      "transitionId": "state_47b091fbb2b1ac13",
+      "transitionId": "state_54ba92e1482eae3f",
+      "at": "2026-10-31T20:15:16.843289+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_9e8d4493442c5875"
+      }
+    },
+    {
+      "transitionId": "state_58fe1ab4e1d6e04e",
       "at": "2026-10-31T20:15:17.683997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15616,7 +15426,7 @@
       }
     },
     {
-      "transitionId": "state_950c03ce0dba5a30",
+      "transitionId": "state_3e6163ef7b397d1b",
       "at": "2026-10-31T20:15:19.843289+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -15630,7 +15440,7 @@
       }
     },
     {
-      "transitionId": "state_8d9c801232b69d13",
+      "transitionId": "state_6a71871900400977",
       "at": "2026-10-31T20:40:23.640120+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15644,7 +15454,7 @@
       }
     },
     {
-      "transitionId": "state_c666079e0428c83b",
+      "transitionId": "state_417160513ec8a739",
       "at": "2026-10-31T20:40:26.640120+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -15658,7 +15468,7 @@
       }
     },
     {
-      "transitionId": "state_59b303ad8eec38a8",
+      "transitionId": "state_0fa97eca6dc1d9cc",
       "at": "2026-10-31T20:40:32.640120+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15672,7 +15482,7 @@
       }
     },
     {
-      "transitionId": "state_5bc977404533aaf2",
+      "transitionId": "state_527c38cc5b82db5b",
       "at": "2026-10-31T20:40:32.640120+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15686,21 +15496,7 @@
       }
     },
     {
-      "transitionId": "state_2ec88ed4e9bee6da",
-      "at": "2026-10-31T20:40:37.090117+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "location",
-      "previousValue": "food_preparation_area",
-      "value": "consumption_area",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_e5fb5f38f66eb1c5"
-      }
-    },
-    {
-      "transitionId": "state_a8f99a85ae41f6fc",
+      "transitionId": "state_50e7a324a853ea9a",
       "at": "2026-10-31T20:40:37.090117+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15714,7 +15510,21 @@
       }
     },
     {
-      "transitionId": "state_d274dce7ccf64170",
+      "transitionId": "state_aca01f1f9064f645",
+      "at": "2026-10-31T20:40:37.090117+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "location",
+      "previousValue": "food_preparation_area",
+      "value": "consumption_area",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_e5fb5f38f66eb1c5"
+      }
+    },
+    {
+      "transitionId": "state_ac38facde60d5b2e",
       "at": "2026-10-31T20:40:39.090117+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15728,7 +15538,7 @@
       }
     },
     {
-      "transitionId": "state_52951ef6cbb14dbd",
+      "transitionId": "state_ae34186be4d85cd0",
       "at": "2026-10-31T21:07:53.858885+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -15742,7 +15552,7 @@
       }
     },
     {
-      "transitionId": "state_a3c1c201267ea208",
+      "transitionId": "state_76e25505e8f04f63",
       "at": "2026-10-31T21:07:55.358885+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15756,7 +15566,7 @@
       }
     },
     {
-      "transitionId": "state_f2bfd117148c6ee4",
+      "transitionId": "state_a3e68a3b3d0088c0",
       "at": "2026-10-31T21:07:55.358885+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15770,21 +15580,7 @@
       }
     },
     {
-      "transitionId": "state_215962f600d2d8d5",
-      "at": "2026-10-31T21:08:00.316626+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "location",
-      "previousValue": "consumption_area",
-      "value": "television",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_17789fd0da92e52b"
-      }
-    },
-    {
-      "transitionId": "state_cb8358d768af717d",
+      "transitionId": "state_54f2bc8ae4872df3",
       "at": "2026-10-31T21:08:00.316626+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15798,7 +15594,21 @@
       }
     },
     {
-      "transitionId": "state_3e6073d065cd2b95",
+      "transitionId": "state_f2a4e084b7a9b8a8",
+      "at": "2026-10-31T21:08:00.316626+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "location",
+      "previousValue": "consumption_area",
+      "value": "television",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_17789fd0da92e52b"
+      }
+    },
+    {
+      "transitionId": "state_8b22eb6ffdca0c35",
       "at": "2026-10-31T21:08:02.316626+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15812,7 +15622,7 @@
       }
     },
     {
-      "transitionId": "state_cdf3772b1f272f79",
+      "transitionId": "state_77d5e6643055913e",
       "at": "2026-10-31T21:08:05.316626+01:00",
       "subjectType": "entity",
       "subjectId": "television",
@@ -15826,7 +15636,7 @@
       }
     },
     {
-      "transitionId": "state_ed552ade2fa648d9",
+      "transitionId": "state_712b68537808bd97",
       "at": "2026-10-31T22:16:51.227176+01:00",
       "subjectType": "entity",
       "subjectId": "television",
@@ -15840,7 +15650,7 @@
       }
     },
     {
-      "transitionId": "state_9ea15848337cff8a",
+      "transitionId": "state_e6665ddfbd23d81d",
       "at": "2026-10-31T22:40:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15854,21 +15664,7 @@
       }
     },
     {
-      "transitionId": "state_1c7a49bd8e2fc633",
-      "at": "2026-10-31T22:40:13.062235+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_52ad7f1121bad749"
-      }
-    },
-    {
-      "transitionId": "state_5196c03233f45a2b",
+      "transitionId": "state_340c48043ef57bf1",
       "at": "2026-10-31T22:40:13.062235+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15882,7 +15678,21 @@
       }
     },
     {
-      "transitionId": "state_d569746a329dbe99",
+      "transitionId": "state_a743dd5cace7d043",
+      "at": "2026-10-31T22:40:13.062235+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_52ad7f1121bad749"
+      }
+    },
+    {
+      "transitionId": "state_0700bfca87075d4b",
       "at": "2026-10-31T23:10:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15896,7 +15706,7 @@
       }
     },
     {
-      "transitionId": "state_4dbe5dbcc3a29db3",
+      "transitionId": "state_a6e2f6da22b01612",
       "at": "2026-10-31T23:10:16.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15910,7 +15720,7 @@
       }
     },
     {
-      "transitionId": "state_7dad04ef4bddea29",
+      "transitionId": "state_b22ebf95d989cf67",
       "at": "2026-10-31T23:10:16.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15924,7 +15734,7 @@
       }
     },
     {
-      "transitionId": "state_c53cb81a4d023ea1",
+      "transitionId": "state_498ccc4873c33d5e",
       "at": "2026-10-31T23:10:19.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15938,7 +15748,7 @@
       }
     },
     {
-      "transitionId": "state_1091b5f4e6ad3893",
+      "transitionId": "state_93c5804f7d11fb35",
       "at": "2026-11-01T08:13:32.634937+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15952,7 +15762,7 @@
       }
     },
     {
-      "transitionId": "state_49d7f73255ae65c8",
+      "transitionId": "state_493d0bb1aa8e0b36",
       "at": "2026-11-01T08:17:00.531773+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15966,7 +15776,7 @@
       }
     },
     {
-      "transitionId": "state_c29b631a8ea9f09a",
+      "transitionId": "state_d8ad5cedcfd77143",
       "at": "2026-11-01T08:17:00.531773+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -15980,21 +15790,7 @@
       }
     },
     {
-      "transitionId": "state_63dbdb5fcb06f62f",
-      "at": "2026-11-01T08:17:17.776442+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_7fd6b51bd8b0512f"
-      }
-    },
-    {
-      "transitionId": "state_e28bac7b3898a7d4",
+      "transitionId": "state_40b5a6d5ab24acdc",
       "at": "2026-11-01T08:17:17.776442+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16008,7 +15804,21 @@
       }
     },
     {
-      "transitionId": "state_b1263d21e5986820",
+      "transitionId": "state_8472f3ed1a8ffa36",
+      "at": "2026-11-01T08:17:17.776442+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_7fd6b51bd8b0512f"
+      }
+    },
+    {
+      "transitionId": "state_36a6e01019b8fe6c",
       "at": "2026-11-01T08:28:18.130334+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16022,7 +15832,7 @@
       }
     },
     {
-      "transitionId": "state_cb29220a2eeee8bc",
+      "transitionId": "state_cc5a4be7d8d0c3dc",
       "at": "2026-11-01T08:28:18.963667+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16036,7 +15846,7 @@
       }
     },
     {
-      "transitionId": "state_f382a3f324cf0cf3",
+      "transitionId": "state_fa80a4c08807d30a",
       "at": "2026-11-01T08:28:18.963667+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16050,7 +15860,7 @@
       }
     },
     {
-      "transitionId": "state_6d99542f0a445723",
+      "transitionId": "state_d5a5d9397d9572ac",
       "at": "2026-11-01T08:28:21.963667+01:00",
       "subjectType": "entity",
       "subjectId": "washbasin",
@@ -16064,7 +15874,7 @@
       }
     },
     {
-      "transitionId": "state_46ec18ae7a5ef5c9",
+      "transitionId": "state_0859391fe784a5ab",
       "at": "2026-11-01T08:39:25.317559+01:00",
       "subjectType": "entity",
       "subjectId": "washbasin",
@@ -16078,7 +15888,7 @@
       }
     },
     {
-      "transitionId": "state_f6d72743df5a27a5",
+      "transitionId": "state_4e6bc97d1e028625",
       "at": "2026-11-01T08:39:25.317559+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16092,35 +15902,7 @@
       }
     },
     {
-      "transitionId": "state_00945856315a42f2",
-      "at": "2026-11-01T08:39:32.798409+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_43eca16148dcdab2"
-      }
-    },
-    {
-      "transitionId": "state_6f4a91b4bd5eca39",
-      "at": "2026-11-01T08:39:32.798409+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_740a41429d0b4a94"
-      }
-    },
-    {
-      "transitionId": "state_78b3ee62f98838c1",
+      "transitionId": "state_5ab5358e6321e177",
       "at": "2026-11-01T08:39:32.798409+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16134,8 +15916,22 @@
       }
     },
     {
-      "transitionId": "state_3d5bf2479b2956ff",
-      "at": "2026-11-01T08:39:34.522469+01:00",
+      "transitionId": "state_e595e775ae9a2ebd",
+      "at": "2026-11-01T08:39:32.798409+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_740a41429d0b4a94"
+      }
+    },
+    {
+      "transitionId": "state_e5d98ed980e88946",
+      "at": "2026-11-01T08:39:32.798409+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
@@ -16144,11 +15940,11 @@
       "operation": "set",
       "causality": {
         "causeType": "process_edge",
-        "causeId": "action_740a41429d0b4a94"
+        "causeId": "action_43eca16148dcdab2"
       }
     },
     {
-      "transitionId": "state_b829b27654faad98",
+      "transitionId": "state_2aaca89181e71571",
       "at": "2026-11-01T08:39:34.522469+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16162,7 +15958,21 @@
       }
     },
     {
-      "transitionId": "state_c654bc8b0f84afdd",
+      "transitionId": "state_55d2cdc275fd8e88",
+      "at": "2026-11-01T08:39:34.522469+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_740a41429d0b4a94"
+      }
+    },
+    {
+      "transitionId": "state_99f1b63575d03c5e",
       "at": "2026-11-01T08:39:37.522469+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -16176,7 +15986,7 @@
       }
     },
     {
-      "transitionId": "state_c0fe46ed0d8f2d81",
+      "transitionId": "state_ab779c9dbc3345c2",
       "at": "2026-11-01T08:39:43.522469+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16190,7 +16000,7 @@
       }
     },
     {
-      "transitionId": "state_f45c7456e40c1863",
+      "transitionId": "state_ee03dbf32c1277a1",
       "at": "2026-11-01T08:39:49.522469+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16204,21 +16014,7 @@
       }
     },
     {
-      "transitionId": "state_5a62426dc9d4fe16",
-      "at": "2026-11-01T08:39:52.522469+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_51a9db07ec2ffc40"
-      }
-    },
-    {
-      "transitionId": "state_f177e34544392821",
+      "transitionId": "state_08f7a8a6bf9c631a",
       "at": "2026-11-01T08:39:52.522469+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -16232,13 +16028,13 @@
       }
     },
     {
-      "transitionId": "state_39adaaa9e8c5dfa0",
-      "at": "2026-11-01T08:39:54.246529+01:00",
+      "transitionId": "state_66e974c08d48deb7",
+      "at": "2026-11-01T08:39:52.522469+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
       "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
+      "previousValue": "performing_activity",
+      "value": "moving",
       "operation": "set",
       "causality": {
         "causeType": "process_edge",
@@ -16246,7 +16042,7 @@
       }
     },
     {
-      "transitionId": "state_f765fdec1b7ab972",
+      "transitionId": "state_a037c4413d3bf344",
       "at": "2026-11-01T08:39:54.246529+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16260,7 +16056,21 @@
       }
     },
     {
-      "transitionId": "state_2276f8212fac204f",
+      "transitionId": "state_ccc2c85aca144e84",
+      "at": "2026-11-01T08:39:54.246529+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_51a9db07ec2ffc40"
+      }
+    },
+    {
+      "transitionId": "state_f7ac571420c35e2b",
       "at": "2026-11-01T08:39:57.246529+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
@@ -16274,7 +16084,7 @@
       }
     },
     {
-      "transitionId": "state_a39efe65aed60624",
+      "transitionId": "state_3cd34aee85e1ee01",
       "at": "2026-11-01T08:59:03.685231+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16288,7 +16098,7 @@
       }
     },
     {
-      "transitionId": "state_da9c09a0e4c31dd5",
+      "transitionId": "state_fcac271d5436ea83",
       "at": "2026-11-01T08:59:06.685231+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
@@ -16302,7 +16112,7 @@
       }
     },
     {
-      "transitionId": "state_7b3f45588f052383",
+      "transitionId": "state_12f5958c0b2e9c5d",
       "at": "2026-11-01T08:59:12.685231+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16316,7 +16126,7 @@
       }
     },
     {
-      "transitionId": "state_46fccf0df02f0467",
+      "transitionId": "state_b8f30768f15e8dc1",
       "at": "2026-11-01T08:59:18.685231+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16330,7 +16140,7 @@
       }
     },
     {
-      "transitionId": "state_1333c9f69db568a8",
+      "transitionId": "state_7d9e73012566784f",
       "at": "2026-11-01T08:59:18.685232+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16344,7 +16154,7 @@
       }
     },
     {
-      "transitionId": "state_8942e0a10c89d8ea",
+      "transitionId": "state_47a7919bc0d52d0b",
       "at": "2026-11-01T08:59:20.685232+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16358,7 +16168,7 @@
       }
     },
     {
-      "transitionId": "state_6a2d02199457fe2d",
+      "transitionId": "state_2e96a63e53db78fe",
       "at": "2026-11-01T09:32:08.579257+01:00",
       "subjectType": "entity",
       "subjectId": "service_kitchen",
@@ -16372,21 +16182,7 @@
       }
     },
     {
-      "transitionId": "state_8c04a3c30ac70af0",
-      "at": "2026-11-01T09:32:10.079257+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_6f638d096ec9f50d"
-      }
-    },
-    {
-      "transitionId": "state_a1dba159ea055ee2",
+      "transitionId": "state_9de3b3cfc7f9e1c8",
       "at": "2026-11-01T09:32:10.079257+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16400,7 +16196,35 @@
       }
     },
     {
-      "transitionId": "state_2ef6dfc6a89fbe2e",
+      "transitionId": "state_a24be2054c67b517",
+      "at": "2026-11-01T09:32:10.079257+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_6f638d096ec9f50d"
+      }
+    },
+    {
+      "transitionId": "state_4afab007585069df",
+      "at": "2026-11-01T09:32:13.930021+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "moving",
+      "value": "performing_activity",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_6f638d096ec9f50d"
+      }
+    },
+    {
+      "transitionId": "state_c0b566c87e8f3d10",
       "at": "2026-11-01T09:32:13.930021+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16414,21 +16238,7 @@
       }
     },
     {
-      "transitionId": "state_75492e56d904089a",
-      "at": "2026-11-01T09:32:13.930021+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "moving",
-      "value": "performing_activity",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_6f638d096ec9f50d"
-      }
-    },
-    {
-      "transitionId": "state_9b18561427a352eb",
+      "transitionId": "state_9ea9aeec25543611",
       "at": "2026-11-01T09:32:16.930021+01:00",
       "subjectType": "entity",
       "subjectId": "medication_cleaning_cabinet",
@@ -16442,7 +16252,7 @@
       }
     },
     {
-      "transitionId": "state_47f1b43d66cf3844",
+      "transitionId": "state_f9f34003a61cf005",
       "at": "2026-11-01T09:32:22.930021+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16456,7 +16266,7 @@
       }
     },
     {
-      "transitionId": "state_0baa2f4a2b03af9a",
+      "transitionId": "state_517c977b97650e69",
       "at": "2026-11-01T09:32:25.930021+01:00",
       "subjectType": "entity",
       "subjectId": "medication_cleaning_cabinet",
@@ -16470,7 +16280,7 @@
       }
     },
     {
-      "transitionId": "state_13a25a82eaf00db3",
+      "transitionId": "state_f38b8137b0da26a9",
       "at": "2026-11-01T09:32:25.930021+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16484,7 +16294,7 @@
       }
     },
     {
-      "transitionId": "state_a669c73d41f92c53",
+      "transitionId": "state_218c2d3ff689764d",
       "at": "2026-11-01T09:32:31.131223+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16498,7 +16308,7 @@
       }
     },
     {
-      "transitionId": "state_fe0defd542285c00",
+      "transitionId": "state_9b551939a5cfbbbb",
       "at": "2026-11-01T09:32:31.131223+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16512,7 +16322,7 @@
       }
     },
     {
-      "transitionId": "state_ab4a38c4f174afc3",
+      "transitionId": "state_334e9a94a6b6e136",
       "at": "2026-11-01T09:32:37.131223+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16526,7 +16336,7 @@
       }
     },
     {
-      "transitionId": "state_a399df470aa93a3c",
+      "transitionId": "state_f3c91bd7bcf1cb63",
       "at": "2026-11-01T09:35:07.744434+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16540,7 +16350,7 @@
       }
     },
     {
-      "transitionId": "state_4f652dea334b79e3",
+      "transitionId": "state_e3be4df1af0488b5",
       "at": "2026-11-01T09:37:38.357645+01:00",
       "subjectType": "entity",
       "subjectId": "service_hallway",
@@ -16554,7 +16364,7 @@
       }
     },
     {
-      "transitionId": "state_80ff9b02e4c562b5",
+      "transitionId": "state_258ecb421319832f",
       "at": "2026-11-01T09:37:44.357645+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16568,7 +16378,7 @@
       }
     },
     {
-      "transitionId": "state_6402bec30613d6df",
+      "transitionId": "state_6c5b59c3bc003378",
       "at": "2026-11-01T09:37:50.357645+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16582,21 +16392,7 @@
       }
     },
     {
-      "transitionId": "state_66a787aae49f29e0",
-      "at": "2026-11-01T12:20:00.000001+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_acc88428ca86576b"
-      }
-    },
-    {
-      "transitionId": "state_b8c8401918ac6760",
+      "transitionId": "state_03cbc57e1be50fae",
       "at": "2026-11-01T12:20:00.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16610,7 +16406,21 @@
       }
     },
     {
-      "transitionId": "state_aed065c9c4bf6171",
+      "transitionId": "state_4f2507b74fbc81ac",
+      "at": "2026-11-01T12:20:00.000001+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_acc88428ca86576b"
+      }
+    },
+    {
+      "transitionId": "state_9498dc1b06662993",
       "at": "2026-11-01T12:20:01.896229+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16624,7 +16434,7 @@
       }
     },
     {
-      "transitionId": "state_6ad8b1a491d20cbd",
+      "transitionId": "state_00cf92db00063e68",
       "at": "2026-11-01T12:20:03.000001+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -16638,7 +16448,7 @@
       }
     },
     {
-      "transitionId": "state_e3ee509b9b8a984b",
+      "transitionId": "state_8376c8c65a474b6c",
       "at": "2026-11-01T12:20:09.000001+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16652,7 +16462,21 @@
       }
     },
     {
-      "transitionId": "state_5837b36cb335b147",
+      "transitionId": "state_19aa4166c0ee9087",
+      "at": "2026-11-01T12:20:12.000001+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_9cd07b031ee96b5d"
+      }
+    },
+    {
+      "transitionId": "state_9967e8d86fc3a352",
       "at": "2026-11-01T12:20:12.000001+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -16666,21 +16490,7 @@
       }
     },
     {
-      "transitionId": "state_cea5f01f10ab3939",
-      "at": "2026-11-01T12:20:12.000001+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_9cd07b031ee96b5d"
-      }
-    },
-    {
-      "transitionId": "state_0a3c525691df68dd",
+      "transitionId": "state_72bd3b5ed90c00d6",
       "at": "2026-11-01T12:20:12.840709+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16694,7 +16504,7 @@
       }
     },
     {
-      "transitionId": "state_63131004a4ae0b79",
+      "transitionId": "state_a357d714421bf3ca",
       "at": "2026-11-01T12:20:15.000001+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -16708,7 +16518,7 @@
       }
     },
     {
-      "transitionId": "state_6ea6d15d769e7881",
+      "transitionId": "state_a5baee3cecc1d5db",
       "at": "2026-11-01T13:07:17.599766+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16722,7 +16532,7 @@
       }
     },
     {
-      "transitionId": "state_e46b009783930a01",
+      "transitionId": "state_af24e4fc06331e0b",
       "at": "2026-11-01T13:07:20.599766+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -16736,7 +16546,21 @@
       }
     },
     {
-      "transitionId": "state_1d01505b48dc2a2b",
+      "transitionId": "state_3da6f662999c8b61",
+      "at": "2026-11-01T13:07:26.599766+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_49bdc8aed030ec5c"
+      }
+    },
+    {
+      "transitionId": "state_a7ccc75c137d0b72",
       "at": "2026-11-01T13:07:26.599766+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16750,35 +16574,7 @@
       }
     },
     {
-      "transitionId": "state_e051ae15801f0682",
-      "at": "2026-11-01T13:07:26.599766+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_49bdc8aed030ec5c"
-      }
-    },
-    {
-      "transitionId": "state_479d98dc07d489bc",
-      "at": "2026-11-01T13:07:31.049763+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "location",
-      "previousValue": "food_preparation_area",
-      "value": "consumption_area",
-      "operation": "set",
-      "causality": {
-        "causeType": "action_effect",
-        "causeId": "action_49bdc8aed030ec5c"
-      }
-    },
-    {
-      "transitionId": "state_c993290481af3828",
+      "transitionId": "state_9576efbbcbb0cb8c",
       "at": "2026-11-01T13:07:31.049763+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16792,7 +16588,21 @@
       }
     },
     {
-      "transitionId": "state_21b56cac7114551e",
+      "transitionId": "state_c7d7108e8573acea",
+      "at": "2026-11-01T13:07:31.049763+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "location",
+      "previousValue": "food_preparation_area",
+      "value": "consumption_area",
+      "operation": "set",
+      "causality": {
+        "causeType": "action_effect",
+        "causeId": "action_49bdc8aed030ec5c"
+      }
+    },
+    {
+      "transitionId": "state_1be2b548c5717a71",
       "at": "2026-11-01T13:07:33.049763+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16806,7 +16616,7 @@
       }
     },
     {
-      "transitionId": "state_a8c439e78b28bbf6",
+      "transitionId": "state_847163e4d7e730c1",
       "at": "2026-11-01T13:45:49.028996+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -16820,7 +16630,7 @@
       }
     },
     {
-      "transitionId": "state_fb1901ef79334ace",
+      "transitionId": "state_581336c964767009",
       "at": "2026-11-01T13:45:50.528996+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16834,7 +16644,7 @@
       }
     },
     {
-      "transitionId": "state_165d4ed95e5b4451",
+      "transitionId": "state_145ff5e3e09edbae",
       "at": "2026-11-01T16:15:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16848,7 +16658,7 @@
       }
     },
     {
-      "transitionId": "state_0ecf3076c55055f3",
+      "transitionId": "state_60cccec93b7f493a",
       "at": "2026-11-01T16:15:04.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16862,7 +16672,7 @@
       }
     },
     {
-      "transitionId": "state_90f445b40b6440ee",
+      "transitionId": "state_8bfe790d60c09013",
       "at": "2026-11-01T16:15:04.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16876,7 +16686,7 @@
       }
     },
     {
-      "transitionId": "state_924e3a841df90edb",
+      "transitionId": "state_2b45dff4e627f025",
       "at": "2026-11-01T16:15:06.564273+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16890,7 +16700,7 @@
       }
     },
     {
-      "transitionId": "state_b68e351a66b6eb0d",
+      "transitionId": "state_aa6e91d7763b9cc2",
       "at": "2026-11-01T16:35:24.240968+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16904,7 +16714,7 @@
       }
     },
     {
-      "transitionId": "state_b481c1ab7b4b8e18",
+      "transitionId": "state_baa7a42b59d1937b",
       "at": "2026-11-01T19:15:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16918,21 +16728,7 @@
       }
     },
     {
-      "transitionId": "state_37de8151f3574ffc",
-      "at": "2026-11-01T19:15:06.073947+01:00",
-      "subjectType": "resident",
-      "subjectId": "resident_mario_rossi",
-      "fact": "execution_state",
-      "previousValue": "performing_activity",
-      "value": "moving",
-      "operation": "set",
-      "causality": {
-        "causeType": "process_edge",
-        "causeId": "action_077248bb2c1ff8c9"
-      }
-    },
-    {
-      "transitionId": "state_780323c7eff7399e",
+      "transitionId": "state_0d3efd5b44a7bed4",
       "at": "2026-11-01T19:15:06.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16946,7 +16742,21 @@
       }
     },
     {
-      "transitionId": "state_9d9efe88d1e945bf",
+      "transitionId": "state_3b33635a2b8337d7",
+      "at": "2026-11-01T19:15:06.073947+01:00",
+      "subjectType": "resident",
+      "subjectId": "resident_mario_rossi",
+      "fact": "execution_state",
+      "previousValue": "performing_activity",
+      "value": "moving",
+      "operation": "set",
+      "causality": {
+        "causeType": "process_edge",
+        "causeId": "action_077248bb2c1ff8c9"
+      }
+    },
+    {
+      "transitionId": "state_f9ccc3be0acb64cc",
       "at": "2026-11-01T19:15:06.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16960,7 +16770,7 @@
       }
     },
     {
-      "transitionId": "state_7bcf08d8394e67ee",
+      "transitionId": "state_8d81a393d2bf5767",
       "at": "2026-11-01T19:15:07.970175+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -16974,7 +16784,7 @@
       }
     },
     {
-      "transitionId": "state_2296326593bc77b3",
+      "transitionId": "state_6816c1876d68269f",
       "at": "2026-11-01T19:15:09.073947+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -16988,7 +16798,7 @@
       }
     },
     {
-      "transitionId": "state_082a98d50b6e07d4",
+      "transitionId": "state_3fca2c755392cba4",
       "at": "2026-11-01T19:15:15.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17002,7 +16812,7 @@
       }
     },
     {
-      "transitionId": "state_8c456afc33dab056",
+      "transitionId": "state_0d80ed354bb34954",
       "at": "2026-11-01T19:15:18.073947+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17016,7 +16826,7 @@
       }
     },
     {
-      "transitionId": "state_95dfa061d7b80d45",
+      "transitionId": "state_15dd0ef26c576245",
       "at": "2026-11-01T19:15:18.073947+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -17030,7 +16840,7 @@
       }
     },
     {
-      "transitionId": "state_74e554ec7490ef3f",
+      "transitionId": "state_de2476f8d042d7f2",
       "at": "2026-11-01T19:15:18.914655+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17044,7 +16854,7 @@
       }
     },
     {
-      "transitionId": "state_336ef84d07292273",
+      "transitionId": "state_90ddb185a450af60",
       "at": "2026-11-01T19:15:21.073947+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -17058,7 +16868,7 @@
       }
     },
     {
-      "transitionId": "state_9dae996d5fd0ee4e",
+      "transitionId": "state_3fa9e8ababf051ae",
       "at": "2026-11-01T19:34:54.373951+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17072,7 +16882,7 @@
       }
     },
     {
-      "transitionId": "state_dc48485c68f3d0b5",
+      "transitionId": "state_e762978bc6583cf6",
       "at": "2026-11-01T19:34:57.373951+01:00",
       "subjectType": "entity",
       "subjectId": "stove",
@@ -17086,7 +16896,7 @@
       }
     },
     {
-      "transitionId": "state_398ee5982fd1c76a",
+      "transitionId": "state_8c69353974e02791",
       "at": "2026-11-01T19:35:03.373951+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17100,7 +16910,7 @@
       }
     },
     {
-      "transitionId": "state_9d43d912d6be5448",
+      "transitionId": "state_19524cced002da5b",
       "at": "2026-11-01T19:37:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17114,7 +16924,7 @@
       }
     },
     {
-      "transitionId": "state_63c200665e3f0f65",
+      "transitionId": "state_39bbc3ab2a056c08",
       "at": "2026-11-01T19:37:04.449997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17128,7 +16938,7 @@
       }
     },
     {
-      "transitionId": "state_c6f81ea9bddbca2e",
+      "transitionId": "state_987e528507482f4b",
       "at": "2026-11-01T19:37:04.449997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17142,7 +16952,7 @@
       }
     },
     {
-      "transitionId": "state_8552166982786d8c",
+      "transitionId": "state_47b3f3280e065ef7",
       "at": "2026-11-01T19:37:06.449997+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17156,7 +16966,7 @@
       }
     },
     {
-      "transitionId": "state_33927a2163051fe9",
+      "transitionId": "state_ca20de0060f73782",
       "at": "2026-11-01T20:01:48.422213+01:00",
       "subjectType": "entity",
       "subjectId": "refrigerator",
@@ -17170,7 +16980,7 @@
       }
     },
     {
-      "transitionId": "state_38d283b65f53c811",
+      "transitionId": "state_a9826bed83e127bd",
       "at": "2026-11-01T20:01:49.922213+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17184,7 +16994,7 @@
       }
     },
     {
-      "transitionId": "state_115d9887028e5deb",
+      "transitionId": "state_8d2f12f7adfaab37",
       "at": "2026-11-01T20:30:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17198,7 +17008,7 @@
       }
     },
     {
-      "transitionId": "state_44d144c8e55e5096",
+      "transitionId": "state_958211cd5ce06944",
       "at": "2026-11-01T20:30:04.957741+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17212,7 +17022,7 @@
       }
     },
     {
-      "transitionId": "state_ffea4b45865d1d8d",
+      "transitionId": "state_e9be07d9ab66074c",
       "at": "2026-11-01T20:30:04.957741+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17226,7 +17036,7 @@
       }
     },
     {
-      "transitionId": "state_922833ce1ac02e4f",
+      "transitionId": "state_bee79a4835971eef",
       "at": "2026-11-01T20:30:06.957741+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17240,7 +17050,7 @@
       }
     },
     {
-      "transitionId": "state_69106dc0f7edc554",
+      "transitionId": "state_f037fe00f3f5d59b",
       "at": "2026-11-01T20:30:09.957741+01:00",
       "subjectType": "entity",
       "subjectId": "television",
@@ -17254,7 +17064,7 @@
       }
     },
     {
-      "transitionId": "state_0c229cad157e5269",
+      "transitionId": "state_15502ed7a7e66520",
       "at": "2026-11-01T21:50:14.941035+01:00",
       "subjectType": "entity",
       "subjectId": "television",
@@ -17268,7 +17078,7 @@
       }
     },
     {
-      "transitionId": "state_643ef88cd99a653c",
+      "transitionId": "state_3d20507f9c93ca03",
       "at": "2026-11-01T22:12:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17282,7 +17092,7 @@
       }
     },
     {
-      "transitionId": "state_32789f06cb8f68c6",
+      "transitionId": "state_3af73c9a6f90e0ca",
       "at": "2026-11-01T22:12:13.062235+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17296,7 +17106,7 @@
       }
     },
     {
-      "transitionId": "state_e80720032bf9e95d",
+      "transitionId": "state_459ba10ef07a87fd",
       "at": "2026-11-01T22:12:13.062235+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17310,7 +17120,7 @@
       }
     },
     {
-      "transitionId": "state_e9cac11e4f37584e",
+      "transitionId": "state_f59fcf6e20311a94",
       "at": "2026-11-01T22:52:00+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17324,7 +17134,7 @@
       }
     },
     {
-      "transitionId": "state_19fa5a3e067fdb60",
+      "transitionId": "state_864d0c874eebed03",
       "at": "2026-11-01T22:52:16.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17338,7 +17148,7 @@
       }
     },
     {
-      "transitionId": "state_df987403b48df9f1",
+      "transitionId": "state_c3352a7c68998bc7",
       "at": "2026-11-01T22:52:16.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -17352,7 +17162,7 @@
       }
     },
     {
-      "transitionId": "state_2667c6066ecdb432",
+      "transitionId": "state_85af5b42d7b68956",
       "at": "2026-11-01T22:52:19.173274+01:00",
       "subjectType": "resident",
       "subjectId": "resident_mario_rossi",
@@ -20265,5 +20075,5 @@
       "washing_machine": 1
     }
   },
-  "semanticDigest": "0e350afede941b1110f563847c7393813ceb80e9cb142122b4a8d26d6ba9ab5e"
+  "semanticDigest": "f2ed12a85b8dde08d682d8ed6c9b70a949b10c79f491c4cb728245302288b3af"
 }
