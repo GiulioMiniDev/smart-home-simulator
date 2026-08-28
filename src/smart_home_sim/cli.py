@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import asdict
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
@@ -110,6 +111,7 @@ from smart_home_sim.sensors import project_sensor_files
 from smart_home_sim.simulation import (
     BatchLockedError,
     BatchManifestError,
+    behavioural_indicators,
     replay_files,
     run_batch_file,
     simulate_file,
@@ -399,6 +401,27 @@ def replay(
         typer.echo(f"Replay report written to: {output.resolve()}")
     if not report.matches:
         raise typer.Exit(code=1)
+
+
+@app.command("behaviour-report")
+def behaviour_report_command(
+    trace_path: Path,
+    output: Annotated[Path | None, typer.Option("--output", "-o")] = None,
+) -> None:
+    """Read the behavioural indicators off a finished trace.
+
+    Not a pass/fail gate: a run is entitled to bad readings, and one built from an outline of
+    anchors with no filler behaviour will have them. The point is that the numbers exist and that
+    two exports can be compared without auditing a year of days by hand.
+    """
+    trace = ExecutionTrace.model_validate_json(trace_path.read_text(encoding="utf-8"))
+    indicators = behavioural_indicators(trace)
+    if output is None:
+        for line in indicators.as_lines():
+            typer.echo(line)
+        return
+    _atomic_write(output, json.dumps(asdict(indicators), indent=2))
+    typer.echo(f"Behavioural report written to: {output.resolve()}")
 
 
 @app.command("project-sensors")

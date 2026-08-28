@@ -5,6 +5,10 @@ from smart_home_sim.simulation.batch import (
     run_batch_file,
     run_batch_manifest,
 )
+from smart_home_sim.simulation.behaviour import (
+    BehaviouralIndicators,
+    behavioural_indicators,
+)
 from smart_home_sim.simulation.service import (
     replay_files,
     simulate_bundle,
@@ -14,7 +18,9 @@ from smart_home_sim.simulation.service import (
 
 __all__ = [
     "BatchLockedError",
+    "BehaviouralIndicators",
     "BatchManifestError",
+    "behavioural_indicators",
     "load_batch_manifest_file",
     "replay_files",
     "run_batch_file",
