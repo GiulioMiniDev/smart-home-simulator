@@ -6,7 +6,7 @@
   "scenarioId": "mario_rossi_autonomous_elderly_2026_10_30",
   "bundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
   "traceId": "trace_d9e579d360b65b6d",
-  "sensorLogId": "sensor_log_4bf2afca5857f209",
+  "sensorLogId": "sensor_log_39912bd0a0dfd8d2",
   "artifacts": [
     {
       "role": "scenario",
@@ -76,27 +76,27 @@
     {
       "role": "simulation_report",
       "relativePath": "simulation-report.json",
-      "sha256": "1e1bc7ca66b08c18a981322ed33e47d28fedbf5c69cb23366516dc2b7741f0ec"
+      "sha256": "b18c0fd71100fc4c96f6f0504b93d3ec4c76d8407e5afe315164bb9a178b34b4"
     },
     {
       "role": "execution_trace",
       "relativePath": "execution-trace.json",
-      "sha256": "109a680ffe028d7cdc2d9a8e68e952996345034b53a0e292f16a8c7fa20082b2"
+      "sha256": "44e0caa45104cc31653fbe62201291e6f53af67ab81433576c33741227532079"
     },
     {
       "role": "projection_report",
       "relativePath": "sensor-projection-report.json",
-      "sha256": "4b3d67cfa923ef95501125cc547e8454f2dfec818f3a96efed65c8029efff107"
+      "sha256": "71fee89cc0780a24e074dbbc96efe1200f245793ab6ddf056439c9aa84f05830"
     },
     {
       "role": "observable_sensor_log",
       "relativePath": "observable-sensor-log.json",
-      "sha256": "6d42f231f4270c749238979c7e075a8278ea3ff76d9096b09ec863133295bb02"
+      "sha256": "0c0b87bbecb2c828a6dc3e9b2c1719ad9a36d6543f60f3130d027efc3bc0ad90"
     },
     {
       "role": "oracle_mapping",
       "relativePath": "oracle-mapping.json",
-      "sha256": "1effd87382eff949902265e67ce709858cd1a061950ef88d828e685d23dce1ca"
+      "sha256": "1d764d0cd9f4ee7ddb2d70c6aaa7178bc13eba2344970caa274730b5e1e038c2"
     }
   ]
 }

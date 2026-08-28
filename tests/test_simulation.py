@@ -20,9 +20,12 @@ from smart_home_sim.domain.execution import (
 )
 from smart_home_sim.domain.models import ConditionOperator
 from smart_home_sim.simulation.service import (
+    _AMBULATORY_POSTURES,
+    _TRANSIENT_REGIONS,
     EXECUTION_PACE_MAX_FACTOR,
     EXECUTION_PACE_MIN_FACTOR,
     PUNCTUAL_ACTION_SECONDS,
+    RETURN_NODE_ID,
     NamedRandomStreams,
     ResourceCoordinator,
     SimulationEngine,
@@ -59,8 +62,11 @@ def test_golden_week_executes_complete_vocabulary_and_closes_state(result) -> No
     assert result.report.semantic_digest == trace.semantic_digest
     assert result.report.summary.failed_activity_count == 0
     assert len(trace.activity_executions) == 172
-    assert len(trace.action_executions) == 769
-    assert len(trace.movements) == 202
+    # 769 authored actions plus the 24 walks the engine adds to leave a service room it has
+    # nothing else to do in: they belong to the activity that just ended, so the count of
+    # activities is untouched and no intent is invented.
+    assert len(trace.action_executions) == 793
+    assert len(trace.movements) == 223
     assert all(item.status != "failed" for item in trace.activity_executions)
     expected_actions = {
         item["actionType"]
@@ -82,6 +88,61 @@ def test_golden_week_executes_complete_vocabulary_and_closes_state(result) -> No
         "toilet_01": 1,
         "washing_machine_01": 1,
     }
+
+
+def test_a_service_room_is_left_when_the_plan_has_nothing_next(result) -> None:
+    """The two hours in the bathroom, and why they are not a labelling problem.
+
+    A shower used to end with `deactivate{shower_water}` and nothing after it, so the resident held
+    that spot until the next thing in the plan came for her — 2 h 16 m on the first day of one
+    generated year, 65 minutes a day in the bathroom across the whole of it, and the presence model
+    faithfully emitting a person's worth of bathroom motion the whole time.
+
+    The walk out belongs to the activity that just ended, which is both what the trace contract
+    requires and the honest reading: coming out of the bathroom is part of finishing the shower.
+    Nothing new appears in the ground truth.
+    """
+    trace = result.trace
+    returns = [item for item in trace.action_executions if item.node_id == RETURN_NODE_ID]
+    assert returns
+
+    activities = {item.activity_execution_id: item for item in trace.activity_executions}
+    movements = {item.action_execution_id: item for item in trace.movements}
+    for action in returns:
+        # It hangs off a real activity, and that activity claims it.
+        owner = activities[action.activity_execution_id]
+        assert action.action_execution_id in owner.action_execution_ids
+        assert owner.actual_start <= action.started_at <= owner.actual_end
+        movement = movements[action.action_execution_id]
+        assert movement.origin_region_id in _TRANSIENT_REGIONS
+        assert movement.destination_region_id not in _TRANSIENT_REGIONS
+
+
+def test_the_wait_sits_down_rather_than_standing_for_hours(result) -> None:
+    """What a body does with time nobody planned: it sits.
+
+    Posture and nothing else, deliberately. A posture change needs no action to hang off, so the
+    gaps stay unlabelled — nobody planned anything there and the ground truth should say so — while
+    the log stops describing a person standing still for hours. The presence-pulse rate is read
+    from the posture at every pulse, so this is the whole of the correction on the sensor side.
+    """
+    trace = result.trace
+    settled = [
+        item
+        for item in trace.state_transitions
+        if item.fact == "posture" and item.causality.cause_type == "plan"
+    ]
+    assert settled
+    assert all(str(item.value) not in _AMBULATORY_POSTURES for item in settled)
+
+    # Every one of them falls in a gap: no activity was running when the resident sat down.
+    spans = [(item.actual_start, item.actual_end) for item in trace.activity_executions]
+    for item in settled:
+        assert not any(start < item.at < end for start, end in spans)
+
+    # And none of them invented an activity to hang off: the causes are activity ids that exist.
+    known = {item.activity_execution_id for item in trace.activity_executions}
+    assert all(item.causality.cause_id in known for item in settled)
 
 
 def test_golden_trace_is_deterministic_and_replays(bundle, result, tmp_path: Path) -> None:
@@ -617,17 +678,23 @@ def test_a_process_of_pure_gestures_still_shares_the_budget_by_weight() -> None:
     assert _phase_durations(phases, 90 * 1_000_000) == [30 * 1_000_000] * 3
 
 
-def test_executed_gestures_stay_short_across_a_whole_week(result) -> None:
+def test_executed_gestures_stay_short_across_a_whole_week(result, bundle) -> None:
     """The end-to-end guard: whenever an activity has something to absorb its budget, it does.
 
     `change_posture` is one of the action types the PIR model treats as manual work, emitting a
     pulse every eighteen seconds, so a long one floods the log with motion from a resident who is
-    holding still. A gesture may still run long for one honest reason — it is preceded by a walk,
-    and the walk takes as long as it takes — so the bound is the gesture's own length or its
-    movement, whichever is greater. Activities made of nothing but gestures, `wake_up` among them,
-    have no elastic step to hand the time to and are exempt: stretching them is the only answer.
+    holding still. A gesture may still run long for two honest reasons — it is preceded by a walk,
+    and the walk takes as long as it takes; and if the resident was lying or sitting, the walk is
+    preceded by her standing up. So the bound is the gesture's own length or its movement,
+    whichever is greater, plus the one posture transition a move may carry. Activities made of
+    nothing but gestures, `wake_up` among them, have no elastic step to hand the time to and are
+    exempt: stretching them is the only answer.
     """
     assert result.trace is not None
+    stand_up = max(
+        item.posture_transition_seconds.get("standing", 0.0)
+        for item in bundle.resident_kinematics
+    )
     elastic_activities = {
         item.activity_execution_id
         for item in result.trace.action_executions
@@ -649,6 +716,7 @@ def test_executed_gestures_stay_short_across_a_whole_week(result) -> None:
         for item in gestures
         if (seconds := (item.ended_at - item.started_at).total_seconds())
         > max(PUNCTUAL_ACTION_SECONDS[item.action_type], walked.get(item.action_execution_id, 0.0))
+        + stand_up
         + 1.0
     ]
     assert not overruns

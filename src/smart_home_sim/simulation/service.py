@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import hashlib
 import json
 import math
@@ -85,6 +86,54 @@ EXECUTION_PACE_SIGMA = 0.10
 EXECUTION_PACE_LOG_LIMIT = 0.262
 EXECUTION_PACE_MIN_FACTOR = math.exp(-EXECUTION_PACE_LOG_LIMIT)
 EXECUTION_PACE_MAX_FACTOR = math.exp(EXECUTION_PACE_LOG_LIMIT)
+# The postures a resident can cross a room in. Anything else has to be left first, and
+# `_execute_action` makes her leave it — see the note there.
+_STANDING_POSTURE = "standing"
+_SITTING_POSTURE = "sitting"
+_RECLINING_POSTURE = "lying"
+_AMBULATORY_POSTURES = frozenset({_STANDING_POSTURE, "walking"})
+
+# What the resident does with the time the plan did not ask for.
+#
+# Until now: nothing at all. The plan's last action left her wherever it finished and no process
+# owned the minutes that followed, so she held that spot — standing in the bathroom for two hours
+# and sixteen minutes after a shower, 402 minutes a day across a generated year, 65 of them in the
+# bathroom. The sensor model renders this faithfully and that is the problem: its presence pulses
+# are right ("still, but never perfectly still"), so a statue in a bathroom emits a person's worth
+# of bathroom motion, 162 events a day that no activity explains.
+#
+# Two corrections, both of which stay inside the trace contract. A body leaves the room it has
+# finished with, which needs a movement and therefore an action, so the walk is charged to the
+# activity that just ended — going back to the sitting room is part of finishing the shower, not a
+# new thing the resident decided to do, and nothing new appears in the ground truth. And a body
+# waiting sits down, which is a posture and needs no action at all; the presence-pulse rate follows
+# the posture, so the log stops reporting a standing person for hours on end.
+#
+# What deliberately is *not* here: filler activities. Giving the gaps a name changes what the
+# dataset is asking a recogniser to do, and that is a decision to take with a measurement beside
+# it, not a side effect of a bug fix.
+
+# Rooms a person passes through rather than settles in. The kitchen and the balcony are absent on
+# purpose: standing in a kitchen for twenty minutes is something people do, and the posture
+# settling below covers it. Standing in a shower for two hours is not.
+_TRANSIENT_REGIONS = frozenset(
+    {"bathroom", "hallway", "corridor", "entrance", "entryway", "utility", "laundry"}
+)
+# Where she goes instead, most-preferred first; the first one the dwelling actually has wins.
+_SETTLING_PREFERENCE = ("living_room", "lounge", "sitting_room", "kitchen", "bedroom")
+# Rooms with something to sit back on. Elsewhere she sits but does not lie down.
+_RECLINING_REGIONS = frozenset({"living_room", "lounge", "sitting_room", "bedroom"})
+# Below this the walk is not worth taking: she is between two steps of the same morning.
+IDLE_RETURN_AFTER_SECONDS = 10 * 60
+# How long she stays on her feet before sitting, and before settling back on a long wait.
+IDLE_SIT_AFTER_SECONDS = 120.0
+IDLE_RECLINE_AFTER_SECONDS = 25 * 60.0
+# The spread on both, so a year of waits does not share one stopwatch.
+IDLE_SETTLE_LOG_SIGMA = 0.35
+# The node id the return walk is filed under. Synthetic: it names no node of any process model,
+# because no author wrote it. Nothing downstream resolves node ids against the model.
+RETURN_NODE_ID = "engine_return_from_service_room"
+
 # How long a gesture takes on its own, in seconds, regardless of how much time the plan has
 # budgeted for the activity around it. Sitting down takes a moment whether the meal that follows
 # runs twenty minutes or two hours.
@@ -738,6 +787,10 @@ class SimulationEngine:
         self.extension_us: defaultdict[str, int] = defaultdict(int)
         self.prepared_events: dict[str, PreparedEvent] = {}
         self.replacement_deviations: dict[str, tuple[str, str]] = {}
+        # When each resident is next expected somewhere. Filled in `run`, once the day's selection
+        # is known: an empty stretch is only empty if nothing is coming, and how long it is decides
+        # whether leaving the room is worth the walk.
+        self.commitments_by_actor: dict[str, list[int]] = {}
         self._prepare_events()
 
     def _prepare_events(self) -> None:
@@ -1023,6 +1076,36 @@ class SimulationEngine:
             )
         )
 
+    def _set_posture(
+        self,
+        actor: ResidentRuntime,
+        value: str,
+        cause_type: str,
+        cause_id: str,
+    ) -> None:
+        """Change the posture in the runtime, in the fact store and in the trace, all three.
+
+        `change_posture` reaches the fact store through the catalog effect and the runtime field
+        through `_execute_action`; the engine's own posture changes have no catalog effect to ride
+        on and would otherwise update one and not the other.
+        """
+        if actor.posture == value:
+            return
+        facts = self.state.residents[actor.resident_id].facts
+        previous = facts.get("posture", actor.posture)
+        facts["posture"] = value
+        actor.posture = value
+        self._state_transition(
+            "resident",
+            actor.resident_id,
+            "posture",
+            previous,
+            value,
+            "set",
+            cause_type,
+            cause_id,
+        )
+
     def _set_execution_state(
         self,
         actor: ResidentRuntime,
@@ -1228,6 +1311,212 @@ class SimulationEngine:
             mobility_profile=kinetics.mobility_profile,
         )
 
+    def _settling_region(self) -> str | None:
+        """The room this dwelling settles in, chosen once from what it actually has."""
+        available = {item.region_id for item in self.bundle.home_model.regions}
+        return next((item for item in _SETTLING_PREFERENCE if item in available), None)
+
+    def _settling_point(self, region_id: str) -> Any | None:
+        """Somewhere to stand in that room: its generated anchor first, any fixture otherwise."""
+        points = [
+            item
+            for item in self.bundle.home_model.interaction_points
+            if item.region_id == region_id
+        ]
+        if not points:
+            return None
+        points.sort(
+            key=lambda item: (
+                not item.interaction_point_id.startswith("point_service_"),
+                item.interaction_point_id,
+            )
+        )
+        return points[0]
+
+    def _next_commitment(self, actor_id: str, after_us: int) -> int | None:
+        """When this resident is next due somewhere, or None if the plan is finished with her."""
+        starts = self.commitments_by_actor.get(actor_id, [])
+        index = bisect.bisect_right(starts, after_us)
+        return starts[index] if index < len(starts) else None
+
+    def _return_from_service_room(
+        self,
+        actor: ResidentRuntime,
+        activity: CanonicalActivity,
+        execution_id: str,
+        next_us: int | None,
+    ) -> Generator[Any, Any, str | None]:
+        """Leave the room the activity finished in, when nothing is coming and it is not a room to
+        wait in.
+
+        The walk belongs to the activity that just ended, and that is the honest reading as well as
+        the one the trace contract allows: finishing a shower includes coming out of the bathroom.
+        Nothing new appears in the ground truth, and the resident stops emitting a bathroom's worth
+        of presence motion for the two hours that follow.
+        """
+        if actor.region_id not in _TRANSIENT_REGIONS:
+            return None
+        if next_us is not None and next_us - self.env.now < IDLE_RETURN_AFTER_SECONDS * 1_000_000:
+            return None
+        destination = self._settling_region()
+        if destination is None or destination == actor.region_id:
+            return None
+        point = self._settling_point(destination)
+        if point is None:
+            return None
+        kinetics = self.kinematics[actor.resident_id]
+        path = plan_path(
+            self.bundle.home_model,
+            start_region_id=actor.region_id,
+            start=actor.position,
+            end_region_id=point.region_id,
+            end=point.position,
+            walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+            body_radius_meters=kinetics.body_radius_meters,
+            mobility_profile=kinetics.mobility_profile,
+        )
+        if path is None or path.distance_meters <= 1e-9:
+            return None
+        action_id = self.trace.identifier(
+            "action", [activity.source_activity_id, RETURN_NODE_ID, 0]
+        )
+        started = self.env.now
+        movement_us = int(round(path.duration_seconds * 1_000_000))
+        yield from self._travel(actor, path, movement_us, action_id)
+        self.trace.actions.append(
+            ActionExecution(
+                action_execution_id=action_id,
+                activity_execution_id=execution_id,
+                node_id=RETURN_NODE_ID,
+                occurrence_index=0,
+                action_type="move_to",
+                actor_id=actor.resident_id,
+                started_at=_at(self.origin, started),
+                ended_at=_at(self.origin, self.env.now),
+                status="completed",
+                resolved_arguments={"destination": destination},
+                provider_ids=[actor.resident_id],
+            )
+        )
+        return action_id
+
+    def _settle(
+        self,
+        actor: ResidentRuntime,
+        cause_id: str,
+        until_us: int | None,
+    ) -> Generator[Any, Any, None]:
+        """Sit down while there is nothing to do, and settle back if the wait is a long one.
+
+        Posture and nothing else, which is what keeps this out of the ground truth: a posture
+        change needs no action to hang off, so the gaps stay unlabelled — as they should, since
+        nobody planned anything there — while stopping being a log of a person standing still for
+        hours. The presence-pulse rate is read from the posture at every pulse, so this is also
+        the whole of the correction on the sensor side.
+        """
+        # A resident who is out is not waiting in a room of ours, and sitting her down in
+        # `outdoors` would be a statement about a place the model does not describe.
+        if self.state.residents[actor.resident_id].facts.get("at_home") is False:
+            return
+        horizon_us = _offset(self.origin, self.bundle.scenario.simulation_window.end)
+        limit = horizon_us if until_us is None else min(until_us, horizon_us)
+        stream = self.streams.stream(f"idle-settle:{cause_id}")
+        schedule = [(IDLE_SIT_AFTER_SECONDS, _SITTING_POSTURE)]
+        if actor.region_id in _RECLINING_REGIONS:
+            schedule.append((IDLE_RECLINE_AFTER_SECONDS, _RECLINING_POSTURE))
+        for seconds, posture in schedule:
+            drawn = seconds * math.exp(stream.gauss(0.0, IDLE_SETTLE_LOG_SIGMA))
+            delay = int(round(drawn * 1_000_000))
+            if self.env.now + delay >= limit:
+                return
+            yield self.env.timeout(delay)
+            # She may have been called away while we waited, and a body the plan is using again is
+            # not ours to move.
+            if actor.execution_state != "idle":
+                return
+            self._set_posture(actor, posture, "plan", cause_id)
+
+    def _travel(
+        self,
+        actor: ResidentRuntime,
+        path: NavigationPath,
+        movement_us: int,
+        action_id: str,
+    ) -> Generator[Any, Any, None]:
+        """Walk the resident along one planned path and record the movement it produced.
+
+        Extracted from `_execute_action` so the engine's own walks — the one that leaves a service
+        room when the plan has nothing next — go through the same body, with the same stand-up,
+        the same trajectory and the same movement record. The caller owns the execution state
+        afterwards, because where the resident is going next is the caller's business.
+        """
+        # A body that walks is a body that stood up first. Neither `move_to` nor
+        # `move_to_capability` carried a posture precondition, so a process model ending in
+        # `change_posture{lying}` — which every reading and resting block does — handed the
+        # next activity a resident who then crossed the flat without getting off the sofa.
+        # Over one generated year that was 2,622 inter-room moves begun `lying`, 37.7% of all
+        # of them, and 672 hours spent lying on a kitchen floor. The correction belongs here
+        # rather than in the process models because it is a fact about bodies, not about any
+        # one routine, and the catalogue is written once per resident.
+        #
+        # The stand-up is charged to the action that needed it and comes out of that action's
+        # own budget: `actual_duration` is unchanged, so the day does not grow by a second and
+        # the schedule the compiler solved still holds.
+        if actor.posture not in _AMBULATORY_POSTURES:
+            stand_seconds = self.kinematics[actor.resident_id].posture_transition_seconds.get(
+                _STANDING_POSTURE, _gesture_table()["change_posture"]
+            )
+            yield self.env.timeout(int(round(stand_seconds * 1_000_000)))
+            self._set_posture(actor, _STANDING_POSTURE, "action_effect", action_id)
+        self._set_execution_state(actor, "moving", "process_edge", action_id)
+        # The walk begins when the walk begins, not when the action did: standing up above
+        # already spent part of the action's budget, and back-dating the trajectory to the
+        # action's start would put the first waypoint before the posture change that allowed it.
+        walk_started = int(self.env.now)
+        segment_lengths = [
+            ((right.x - left.x) ** 2 + (right.y - left.y) ** 2) ** 0.5
+            for left, right in zip(path.waypoints, path.waypoints[1:], strict=False)
+        ]
+        accumulated = 0.0
+        waypoints = [
+            TrajectoryWaypoint(
+                at=_at(self.origin, walk_started),
+                region_id=path.waypoints[0].region_id,
+                position=Point2D(x=path.waypoints[0].x, y=path.waypoints[0].y),
+                traversal_mode=path.waypoints[0].traversal_mode,
+            )
+        ]
+        for waypoint, length in zip(path.waypoints[1:], segment_lengths, strict=True):
+            accumulated += length
+            fraction = accumulated / path.distance_meters if path.distance_meters else 1
+            waypoints.append(
+                TrajectoryWaypoint(
+                    at=_at(self.origin, walk_started + movement_us * fraction),
+                    region_id=waypoint.region_id,
+                    position=Point2D(x=waypoint.x, y=waypoint.y),
+                    traversal_mode=waypoint.traversal_mode,
+                )
+            )
+        yield self.env.timeout(movement_us)
+        destination = path.waypoints[-1]
+        origin_region = actor.region_id
+        actor.region_id = destination.region_id
+        actor.position = Point2D(x=destination.x, y=destination.y)
+        self.trace.movements.append(
+            MovementExecution(
+                movement_id=self.trace.identifier("movement", [action_id]),
+                action_execution_id=action_id,
+                actor_id=actor.resident_id,
+                started_at=_at(self.origin, walk_started),
+                ended_at=_at(self.origin, self.env.now),
+                origin_region_id=origin_region,
+                destination_region_id=actor.region_id,
+                distance_meters=path.distance_meters,
+                duration_microseconds=movement_us,
+                waypoints=waypoints,
+            )
+        )
+
     def _execute_action(
         self,
         activity: CanonicalActivity,
@@ -1247,50 +1536,7 @@ class SimulationEngine:
         movement_us = int(round((path.duration_seconds if path else 0) * 1_000_000))
         actual_duration = max(duration_us, movement_us)
         if path and path.distance_meters > 1e-9:
-            self._set_execution_state(actor, "moving", "process_edge", action_id)
-            segment_lengths = [
-                ((right.x - left.x) ** 2 + (right.y - left.y) ** 2) ** 0.5
-                for left, right in zip(path.waypoints, path.waypoints[1:], strict=False)
-            ]
-            accumulated = 0.0
-            waypoints = [
-                TrajectoryWaypoint(
-                    at=_at(self.origin, started),
-                    region_id=path.waypoints[0].region_id,
-                    position=Point2D(x=path.waypoints[0].x, y=path.waypoints[0].y),
-                    traversal_mode=path.waypoints[0].traversal_mode,
-                )
-            ]
-            for waypoint, length in zip(path.waypoints[1:], segment_lengths, strict=True):
-                accumulated += length
-                fraction = accumulated / path.distance_meters if path.distance_meters else 1
-                waypoints.append(
-                    TrajectoryWaypoint(
-                        at=_at(self.origin, started + movement_us * fraction),
-                        region_id=waypoint.region_id,
-                        position=Point2D(x=waypoint.x, y=waypoint.y),
-                        traversal_mode=waypoint.traversal_mode,
-                    )
-                )
-            yield self.env.timeout(movement_us)
-            destination = path.waypoints[-1]
-            origin_region = actor.region_id
-            actor.region_id = destination.region_id
-            actor.position = Point2D(x=destination.x, y=destination.y)
-            self.trace.movements.append(
-                MovementExecution(
-                    movement_id=self.trace.identifier("movement", [action_id]),
-                    action_execution_id=action_id,
-                    actor_id=actor.resident_id,
-                    started_at=_at(self.origin, started),
-                    ended_at=_at(self.origin, self.env.now),
-                    origin_region_id=origin_region,
-                    destination_region_id=actor.region_id,
-                    distance_meters=path.distance_meters,
-                    duration_microseconds=movement_us,
-                    waypoints=waypoints,
-                )
-            )
+            yield from self._travel(actor, path, movement_us, action_id)
             self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
         remaining = max(0, actual_duration - int(self.env.now - started))
         while remaining:
@@ -1680,7 +1926,16 @@ class SimulationEngine:
             for effect in activity.effects:
                 self._apply_effect(effect, actor_id, execution_id)
             self.state.completed_activities.add(activity.source_activity_id)
+            next_us = self._next_commitment(actor_id, int(self.env.now))
+            returned = yield from self._return_from_service_room(
+                actor, activity, execution_id, next_us
+            )
+            if returned is not None:
+                action_ids.append(returned)
             self._set_execution_state(actor, "idle", "plan", execution_id)
+            # Not held while it runs: the waiting owns no lock, so the next activity takes the
+            # resident back the moment it is due and `_settle` simply finds her busy and stops.
+            self.env.process(self._settle(actor, execution_id, next_us))
             if self.extension_us[activity.source_activity_id]:
                 event_id = next(
                     item.event_id
@@ -1727,6 +1982,13 @@ class SimulationEngine:
         for candidate in self.bundle.scenario.runtime_event_candidates:
             self.env.process(self._runtime_event_process(candidate))
         activities = self._selected_activities()
+        for item in activities:
+            planned = _offset(self.origin, item.scheduled_start)
+            self.commitments_by_actor.setdefault(item.actor_id, []).append(
+                planned + self.delay_us[item.source_activity_id]
+            )
+        for starts in self.commitments_by_actor.values():
+            starts.sort()
         processes = [self.env.process(self._activity_process(item)) for item in activities]
         try:
             self.env.run(until=simpy.events.AllOf(self.env, processes))
