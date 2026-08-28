@@ -63,6 +63,7 @@ from smart_home_sim.hybrid_planning.day_generation import (
     DEFAULT_INTENT,
     EVENING_CLEARANCE_MINUTES,
     RHYTHM_EMITTED_INTENTS,
+    WAKE_CLEARANCE_MINUTES,
     at_offset,
     build_day_plan,
     label_to_intent,
@@ -493,6 +494,7 @@ def _wobble(
     seed: int,
     band: tuple[str, str] | None = None,
     lights_out: datetime | None = None,
+    wake: datetime | None = None,
 ) -> Activity:
     """Wobble the preferred time by the habit's jitter, and open the window to its declared band.
 
@@ -510,6 +512,15 @@ def _wobble(
     placed the occurrence before it; the wobble is the last thing to touch the preferred moment, so
     it is the last place the bound can be honoured. An author's band that runs to 23:15 is a
     statement about her usual evenings, not about the evening she went to bed at 22:01.
+
+    ``wake`` is this morning's, and it is the same argument at the other end of the day — which
+    for a long time only the evening had. `_shift` floors every occurrence at the wake, and then
+    this function threw that floor away by rebuilding the window from the author's declared band,
+    which knows nothing about the night that has just ended. A night that ran long therefore put
+    breakfast, the shower and the morning run *before* the wake they follow: 99 days of one
+    generated year, and on the worst of them the resident woke at 09:36 having already eaten,
+    washed and been out running. A band that opens at 07:00 is a statement about her usual
+    mornings, not about the morning she slept until nine.
     """
     if activity.start_window is None:
         return activity
@@ -555,6 +566,20 @@ def _wobble(
         preferred = max(
             earliest - allowance, min(preferred + timedelta(minutes=offset), latest + allowance)
         )
+    if wake is not None and activity.intent not in RHYTHM_OWNED_INTENTS:
+        floor = wake + timedelta(minutes=WAKE_CLEARANCE_MINUTES)
+        if earliest < floor:
+            # Translated, not narrowed, and that distinction is the whole of it. Clamping the early
+            # edge alone left a 07:05-08:15 breakfast with fifteen minutes of window on the morning
+            # the wake landed at 09:07 — and the jog, the shower and the medication with fifteen
+            # minutes each, all over the same quarter of an hour. Three mandatory occurrences and
+            # one window is not a schedule: MAIN_PLAN_INFEASIBLE on 2026-09-01, the very day the
+            # bound was written for. The band is the author's statement of how much room the
+            # occurrence has; a late wake moves that room down the day, it does not shrink it.
+            shift = floor - earliest
+            earliest += shift
+            preferred += shift
+            latest += shift
     if activity.intent not in RHYTHM_OWNED_INTENTS:
         # Kept inside the day, at both ends. The tail of the mixture is deliberately allowed to
         # reach outside the author's band, and the band is not the day: a 45-minute jitter on an
@@ -564,20 +589,31 @@ def _wobble(
         # evening was bounded. The night is the one activity exempt from this: it is emitted onto
         # the day it happens on, which is what `sleep_starts_next_day` decides.
         opens = datetime.combine(day_date, time.min.replace(tzinfo=preferred.tzinfo))
+        if wake is not None:
+            opens = max(opens, wake + timedelta(minutes=WAKE_CLEARANCE_MINUTES))
         closes = datetime.combine(
             day_date + timedelta(days=1), time.min.replace(tzinfo=preferred.tzinfo)
         )
         if lights_out is not None:
             closes = min(closes, lights_out)
-        preferred = max(
-            opens, min(preferred, closes - timedelta(minutes=EVENING_CLEARANCE_MINUTES))
-        )
+        last_moment = closes - timedelta(minutes=EVENING_CLEARANCE_MINUTES)
+        # A wake so late that it passes lights-out is a day with no waking hours in it, which the
+        # rhythm does not produce; the `min` is there so that if one ever appears the window stays
+        # ordered rather than the horizon failing on `earliest <= preferred <= latest`.
+        preferred = max(min(opens, last_moment), min(preferred, last_moment))
     # The drives may have carried the occurrence outside its declared band; the band then follows
     # the occurrence rather than contradicting it. The guard is built in real elapsed time so the
     # band cannot end up straddling a DST transition on the wrong side of its own preferred moment.
     guard = window_around(preferred, timedelta(minutes=MINIMUM_FLEX_MINUTES))
     earliest = min(earliest, guard.earliest)
     latest = max(latest, guard.latest)
+    if wake is not None and activity.intent not in RHYTHM_OWNED_INTENTS:
+        # The guard above may have re-opened the early edge below the floor the translation set,
+        # and the window is a hard bound in the compiler: left open, the band's early edge is
+        # somewhere the solver may still place the occurrence, and it will if that resolves a
+        # collision more cheaply. Closing it here costs nothing, because the late edge travelled
+        # with the rest of the band and the room is still there.
+        earliest = max(earliest, min(wake + timedelta(minutes=WAKE_CLEARANCE_MINUTES), preferred))
     return activity.model_copy(
         update={
             "start_window": DateTimeWindow(earliest=earliest, preferred=preferred, latest=latest),
@@ -589,6 +625,27 @@ def _wobble(
 # A night on this list that starts before this hour came from yesterday evening: it is the night
 # the day woke up from, not the one it is heading into, and it must not bound the evening.
 _INHERITED_NIGHT_BEFORE_HOUR = 12
+
+
+def _wake(plan: DayPlan) -> datetime | None:
+    """The latest moment this day's waking hours can begin.
+
+    The mirror of `_lights_out`, and read the same way: the wake the rhythm placed on this day's
+    list, which belongs to the night that is ending. There is exactly one per day — the intent is
+    rhythm-owned, so no habit can declare a second — and if a day somehow carries none the bound
+    is simply not applied.
+
+    The *latest* edge rather than the preferred moment, because the bound has to hold whatever the
+    compiler decides. Windows are hard bounds there, so a morning floored at the preferred wake
+    can still open ten minutes before a wake placed at its own late edge, and 982 of one year's
+    windows could. Floored at the late edge it cannot, and since the compiler also forbids a
+    resident's activities from overlapping, "starts after the wake starts" is then "starts after
+    the wake is over". The cost is at most the fifteen minutes of the wake's own flex.
+    """
+    for activity in plan.activities:
+        if activity.intent == "wake_up" and activity.start_window is not None:
+            return activity.start_window.latest
+    return None
 
 
 def _lights_out(plan: DayPlan) -> datetime | None:
@@ -723,7 +780,17 @@ def _resolve_overlaps(activities: list[Activity], lights_out: datetime | None) -
         preferred = window.preferred
         # A commitment's hours are not the resident's to move, so it anchors the day rather than
         # yielding to it: it still pushes the frontier forward, it just never slides itself.
-        fixed = any(label.startswith("commitment:") for label in activity.labels)
+        #
+        # The wake anchors for a different reason. It is not queued behind the night, it is where
+        # the night ends, so sliding it to clear the sleep block is backwards — and it is how the
+        # last of the out-of-order mornings survived the bound `_wobble` now applies: pushed past
+        # a breakfast whose own window was too narrow to be pushed after it, the resident had
+        # breakfast at 08:10 and woke at 08:15. Left where it is, it pushes the morning instead,
+        # and the overlap with the night is the one thing the compiler is genuinely good at: the
+        # night's duration has fifteen per cent of give either way.
+        fixed = activity.intent == "wake_up" or any(
+            label.startswith("commitment:") for label in activity.labels
+        )
         if (
             not fixed
             and free_from is not None
@@ -1222,6 +1289,7 @@ def expand_outline(
                 seed,
                 bands.get(activity.activity_id),
                 _lights_out(plan),
+                _wake(plan),
             )
             for activity in plan.activities
         ]

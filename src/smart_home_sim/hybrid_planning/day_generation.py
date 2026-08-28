@@ -161,6 +161,10 @@ _EVENING_FROM_MINUTES = 16 * 60
 _EVENING_FOLLOWS_THE_NIGHT = 0.6
 # The last minutes before lights-out, left clear so a habit and the night do not start together.
 EVENING_CLEARANCE_MINUTES = 20
+# The first minutes after waking, left clear for the same reason at the other end of the day. The
+# expander needs the number too: `_shift` applies it here, and `_wobble` has to apply it again
+# after it has rebuilt the window from the author's declared band.
+WAKE_CLEARANCE_MINUTES = 5
 
 # Evening band a spontaneous call may occupy, in minutes after midnight (17:00-21:30).
 _UNPLANNED_SOCIAL_WINDOW = (17 * 60, 21 * 60 + 30)
@@ -427,7 +431,7 @@ def _shift(
     shifted = minutes + (0 if morning is None else morning.meal_shift_minutes)
     if minutes >= _EVENING_FROM_MINUTES:
         shifted += rhythm.bedtime_shift_minutes * _EVENING_FOLLOWS_THE_NIGHT
-    floor = _to_minutes(wake_time) + 5
+    floor = _to_minutes(wake_time) + WAKE_CLEARANCE_MINUTES
     # Lights-out is the end of the day, so nothing the resident does while awake may be placed after
     # it. `_wobble` applies the same bound again after it has moved the preferred moment.
     ceiling = max(floor, _to_minutes(sleep_time) - EVENING_CLEARANCE_MINUTES)

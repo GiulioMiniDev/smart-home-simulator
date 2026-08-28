@@ -25,8 +25,10 @@ from smart_home_sim.domain.models import (
 from smart_home_sim.hybrid_planning.day_generation import (
     EVENING_CLEARANCE_MINUTES,
     RHYTHM_EMITTED_INTENTS,
+    WAKE_CLEARANCE_MINUTES,
 )
 from smart_home_sim.hybrid_planning.expander import (
+    MINIMUM_FLEX_MINUTES,
     ExpansionError,
     _measure_habits,
     expand_outline,
@@ -773,6 +775,69 @@ def test_the_wobble_never_carries_an_occurrence_out_of_its_day(
     ]
 
     assert stray == []
+
+
+def test_the_morning_never_starts_before_the_wake(package: PersonalProcessPackage) -> None:
+    """Nothing the resident does awake may be scheduled before she is awake.
+
+    The mirror of `test_the_evening_ends_when_the_night_starts`, and it was missing for as long as
+    that one existed. `_shift` floors every occurrence at the wake and `_wobble` then rebuilt the
+    window from the author's declared band, which knows nothing about the night that just ended: on
+    Miriam's twelve-month outline, 99 days of 365 had breakfast, the shower or the morning run
+    before the wake, and on the worst of them she woke at 09:36 having already eaten, washed and
+    been out running.
+
+    The bound is checked on the *edges*, not on the preferred moments, because the compiler treats
+    the window as a hard constraint and will use every minute of it.
+    """
+    early = []
+    for seed in range(4):
+        for day in expand_outline(_outline(), package, seed=seed).bundle.scenario.days:
+            wake = next(
+                (
+                    item.start_window.latest
+                    for item in day.activities
+                    if item.intent == "wake_up" and item.start_window is not None
+                ),
+                None,
+            )
+            if wake is None:
+                continue
+            floor = wake + timedelta(minutes=WAKE_CLEARANCE_MINUTES)
+            early.extend(
+                (day.date, item.activity_id, item.start_window.earliest.isoformat())
+                for item in day.activities
+                if item.start_window is not None
+                and item.intent not in RHYTHM_EMITTED_INTENTS
+                and item.start_window.earliest < floor
+            )
+
+    assert early == []
+
+
+def test_a_late_wake_moves_the_morning_rather_than_squeezing_it(
+    package: PersonalProcessPackage,
+) -> None:
+    """The bound above must translate the band, not clamp its early edge against it.
+
+    Clamping alone left a 70-minute breakfast band with fifteen minutes of window on the morning
+    the wake landed late — and the jog, the shower and the medication with fifteen minutes each,
+    all over the same quarter of an hour. Three mandatory occurrences and one window is not a
+    schedule, and the compiler said so: MAIN_PLAN_INFEASIBLE, on the very day the bound existed
+    for. A late wake moves the room the author gave, it does not take it away.
+    """
+    narrowed = []
+    for seed in range(4):
+        for day in expand_outline(_outline(), package, seed=seed).bundle.scenario.days:
+            for item in day.activities:
+                window = item.start_window
+                if window is None or item.intent in RHYTHM_EMITTED_INTENTS:
+                    continue
+                width = (window.latest - window.earliest).total_seconds() / 60
+                if width < 2 * MINIMUM_FLEX_MINUTES:
+                    narrowed.append((day.date, item.activity_id, width))
+
+    assert narrowed == []
 
 
 def test_the_evening_ends_when_the_night_starts(package: PersonalProcessPackage) -> None:
