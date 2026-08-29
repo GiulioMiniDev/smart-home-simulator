@@ -20,6 +20,8 @@ from zoneinfo import ZoneInfo
 
 from smart_home_sim.domain.models import (
     Activity,
+    Condition,
+    ConditionOperator,
     DateTimeWindow,
     DayContext,
     DayPlan,
@@ -138,6 +140,35 @@ _INTENT_DURATION_SHAPE: dict[str, tuple[int, int, int, float]] = {
 # until the next thing in the plan came for her and `wake_up` walked her back to a bedroom she had
 # never left. `night_toilet_visit` ends by going back to bed.
 _NIGHT_VISIT_INTENT = "night_toilet_visit"
+# The daytime counterpart, and the first activity the *engine* decides rather than the planner.
+#
+# A person voids six to eight times in a waking day; Miriam managed 1.4, because a toilet visit
+# only ever reached the day if an author had declared one, and the outline that declares a bladder
+# has not been written. The planner therefore seeds candidates through the waking hours and each
+# carries one precondition — `bladder_is_full` — which is false until the engine's own drive says
+# otherwise. The surplus is dropped at execution with `optional_dropped`, which is a mechanism that
+# already existed and had nothing to use it.
+#
+# This is also the shape of the gap the real log has and the generated one does not. CASAS Aruba
+# leaves 29 unannotated gaps a day with a median of four minutes; a generated year leaves 11.8 with
+# a median of sixteen. The long gaps already match — 1.94 a day on both sides. What is missing is
+# the short ones, and a bathroom trip is the shortest honest thing a person does.
+_TOILET_INTENT = "use_toilet"
+_TOILET_LABEL = "bladder_drive"
+# How many chances a day the engine is given. Above the six to eight a person makes, because the
+# drive turns most of them down: seeding at the target would land under it.
+_TOILET_CANDIDATES_PER_DAY = 8
+# Clear of the wake and of lights-out; the night has its own trip and its own model.
+_TOILET_WAKE_MARGIN_MINUTES = 25
+_TOILET_NIGHT_MARGIN_MINUTES = 45
+# Everything already on the day's list that empties the bladder, and how far a seeded candidate
+# keeps away from one. An outline may declare its own bathroom breaks — Miriam's declares one for
+# every working day — and those are mandatory, so the drive cannot turn them down: seeding beside
+# one produced two visits within a quarter of an hour, which reads as a symptom rather than a day.
+_TOILET_RELIEVING_INTENTS = frozenset(
+    {_TOILET_INTENT, "morning_toilet_and_shower", "morning_toilet_and_wash", _NIGHT_VISIT_INTENT}
+)
+_TOILET_SPACING_MINUTES = 75
 _NIGHT_VISIT_LABEL = "night_visit"
 _NIGHT_VISIT_SHAPE = (3, 6, 12, 0.35)
 _NAP_INTENT = "rest_or_nap"
@@ -151,7 +182,14 @@ _UNPLANNED_SOCIAL_INTENT = "phone_call"
 # implement all of them or the days will reference behaviour nobody wrote, which is why the
 # authoring prompt renders this set rather than restating it.
 RHYTHM_EMITTED_INTENTS: frozenset[str] = frozenset(
-    {"wake_up", "sleep", _NAP_INTENT, _NIGHT_VISIT_INTENT, _UNPLANNED_SOCIAL_INTENT}
+    {
+        "wake_up",
+        "sleep",
+        _NAP_INTENT,
+        _NIGHT_VISIT_INTENT,
+        _UNPLANNED_SOCIAL_INTENT,
+        _TOILET_INTENT,
+    }
 )
 _UNPLANNED_SOCIAL_LABEL = "social_need_contact"
 _UNPLANNED_SOCIAL_SHAPE = (8, 18, 35, 0.30)
@@ -206,6 +244,10 @@ class TimelineEntry:
     duration: tuple[int, int, int] | None = None
     # A (minimum, median, maximum, logSigma) shape to draw from, overriding the intent's category.
     duration_shape: tuple[int, int, int, float] | None = None
+    # What has to be true at execution for this occurrence to happen at all. The compiler places it
+    # either way; the engine reads these against live state and drops the ones the day did not turn
+    # out to need.
+    preconditions: tuple[Condition, ...] = ()
 
 
 def plan_from_entries(
@@ -237,6 +279,7 @@ def plan_from_entries(
             label=entry.label,
             duration=entry.duration,
             duration_shape=entry.duration_shape,
+            preconditions=entry.preconditions,
             seed=seed,
         )
         for index, entry in enumerate(entries)
@@ -332,6 +375,9 @@ def build_day_plan(
                     duration_shape=_UNPLANNED_SOCIAL_SHAPE,
                 )
             )
+    entries.extend(
+        _toilet_candidates(entries, wake_time, sleep_time, seed, date.fromisoformat(day.date))
+    )
     if rhythm is None or not rhythm.sleep_starts_next_day:
         entries.append(
             TimelineEntry(
@@ -350,6 +396,63 @@ def build_day_plan(
         actor_id=actor_id,
         seed=seed,
     )
+
+
+def _toilet_candidates(
+    entries: list[TimelineEntry],
+    wake_time: str,
+    sleep_time: str,
+    seed: int | None,
+    day_date: date,
+) -> list[TimelineEntry]:
+    """Chances for a bathroom trip, spread through the waking day.
+
+    Placed rather than scheduled: the compiler will find room for the ones that fit and the engine
+    will keep the ones the day turned out to need. Both halves are deliberate — a candidate the
+    solver could not place and a candidate the drive turned down are the same thing, an occurrence
+    that did not happen, and neither is an error.
+
+    They are spread evenly with a jitter rather than dropped into the widest gaps, because a
+    bladder does not wait for the diary to be free. Where one lands on top of something else the
+    overlap pass moves it, and where it cannot be moved the compiler leaves it out.
+    """
+    opens = _to_minutes(wake_time) + _TOILET_WAKE_MARGIN_MINUTES
+    closes = _to_minutes(sleep_time) - _TOILET_NIGHT_MARGIN_MINUTES
+    if closes - opens < 60:
+        return []
+    step = (closes - opens) / _TOILET_CANDIDATES_PER_DAY
+    precondition = (Condition(fact="bladder_is_full", operator=ConditionOperator.truthy),)
+    declared = [
+        _to_minutes(entry.hhmm)
+        for entry in entries
+        if entry.intent_id in _TOILET_RELIEVING_INTENTS
+    ]
+    candidates: list[TimelineEntry] = []
+    for index in range(_TOILET_CANDIDATES_PER_DAY):
+        centre = opens + step * (index + 0.5)
+        if seed is not None:
+            rng = _rng(seed, "bladder", day_date.isoformat(), index)
+            centre += rng.uniform(-step / 3, step / 3)
+        if any(abs(centre - moment) < _TOILET_SPACING_MINUTES for moment in declared):
+            continue
+        declared.append(centre)
+        candidates.append(
+            TimelineEntry(
+                _TOILET_INTENT,
+                _to_hhmm(int(round(max(opens, min(centre, closes))))),
+                label=_TOILET_LABEL,
+                truncatable=True,
+                # Nested, for the same reason the nocturnal trip is: a bathroom break interrupts
+                # the block it happens in rather than competing with it for the hour, and the
+                # activity model has no way to say "interrupted" other than this. It is also what
+                # makes the candidates cheap to place — eight optional intervals a day fighting
+                # every other activity for the resident took the solver from fifty seconds to more
+                # than twenty minutes on a single month.
+                nested=True,
+                preconditions=precondition,
+            )
+        )
+    return candidates
 
 
 def _free_slot(
@@ -502,6 +605,7 @@ def _activity(
     label: str | None = None,
     duration: tuple[int, int, int] | None = None,
     duration_shape: tuple[int, int, int, float] | None = None,
+    preconditions: tuple[Condition, ...] = (),
     seed: int | None = None,
 ) -> Activity:
     spec = intent_spec(intent_id)
@@ -548,7 +652,44 @@ def _activity(
         mandatory=not truncatable,
         allow_boundary_truncation=truncatable,
         can_overlap_for_actor=nested,
+        preconditions=list(preconditions),
         labels=labels,
+    )
+
+
+def activity_from_intent(
+    intent_id: str,
+    day_date: date,
+    moment: datetime,
+    actor_id: str,
+    *,
+    index: int,
+    label: str | None = None,
+    nested: bool = False,
+    duration_shape: tuple[int, int, int, float] | None = None,
+    preconditions: tuple[Condition, ...] = (),
+    seed: int | None = None,
+) -> Activity:
+    """One optional occurrence of an intent, at a moment already decided.
+
+    The public door onto `_activity` for a caller that works in absolute times rather than in the
+    day's HH:MM — the expander, placing an occurrence into a gap it can only see once the wobble
+    and the bands are done. Optional and boundary-truncatable, because nothing that fills an empty
+    afternoon should be able to make a day infeasible.
+    """
+    return _activity(
+        intent_id,
+        day_date,
+        f"{moment.hour:02d}:{moment.minute:02d}",
+        moment.tzinfo,  # type: ignore[arg-type]
+        actor_id,
+        index=index,
+        truncatable=True,
+        nested=nested,
+        label=label,
+        duration_shape=duration_shape,
+        preconditions=preconditions,
+        seed=seed,
     )
 
 

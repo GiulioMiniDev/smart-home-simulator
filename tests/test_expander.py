@@ -415,10 +415,14 @@ def test_a_phase_moves_the_window_it_placed_the_habit_in(
         for day in expand_outline(_outline(phases=[phase]), package, seed=1).bundle.scenario.days
     }
 
+    # The declared occurrence, not one the filler seeded: an unclaimed stretch of the same day may
+    # be offered the same intent, and it answers to no band.
     inside = next(
         item
         for item in days[date(2026, 8, 12)].activities
-        if item.intent == "watch_television" and item.start_window is not None
+        if item.intent == "watch_television"
+        and item.start_window is not None
+        and "unclaimed_hours" not in item.labels
     )
 
     assert inside.start_window is not None
@@ -534,7 +538,13 @@ def test_the_waking_day_never_asks_to_be_in_two_places_at_once(
             (
                 item
                 for item in day.activities
-                if item.start_window and item.duration and item.intent != "sleep"
+                # Nested occurrences are exempt by construction: `can_overlap_for_actor` is how
+                # the model says "this interrupts whatever is running", and a bathroom break the
+                # bladder drive seeded is meant to land inside a block, not beside it.
+                if item.start_window
+                and item.duration
+                and item.intent != "sleep"
+                and not item.can_overlap_for_actor
             ),
             key=lambda item: item.start_window.preferred,  # type: ignore[union-attr]
         )

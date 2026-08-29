@@ -44,6 +44,8 @@ from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.models import (
     Activity,
     AuthorType,
+    Condition,
+    ConditionOperator,
     DateTimeWindow,
     DayPlan,
     DurationRange,
@@ -64,6 +66,7 @@ from smart_home_sim.hybrid_planning.day_generation import (
     EVENING_CLEARANCE_MINUTES,
     RHYTHM_EMITTED_INTENTS,
     WAKE_CLEARANCE_MINUTES,
+    activity_from_intent,
     at_offset,
     build_day_plan,
     label_to_intent,
@@ -648,6 +651,92 @@ def _wake(plan: DayPlan) -> datetime | None:
     return None
 
 
+# A stretch of the waking day this long with nothing in it is not a person, it is a pause button.
+# Read off the replay: three hours and forty minutes lying motionless on a sofa, one dot that does
+# not move for an afternoon.
+#
+# The gaps themselves are not the defect — the real reference log leaves a third of its time
+# unannotated, more than a generated year does. What differs is what is *in* them: Aruba's
+# unannotated hours are a person moving about doing things nobody wrote down, and ours were empty.
+# Under this contract liveliness needs an activity, and an activity carries a label, so the filler
+# is annotated. That is the right way round: a sparse annotation scheme is an evaluation choice and
+# can be applied afterwards by hiding classes. Labels can be taken away; they cannot be invented.
+FILL_CANDIDATES_PER_DAY = 9
+# Clear of the wake and of lights-out, like the bathroom candidates.
+FILL_WAKE_MARGIN_MINUTES = 60
+FILL_NIGHT_MARGIN_MINUTES = 45
+# What she does with an afternoon nobody claimed, most-preferred first. Only those the package
+# actually implements are used, so no horizon is refused for a filler it never asked for.
+# `read_and_rest` is deliberately absent. It is already the most frequent intent of a generated
+# year and one of the two the recogniser confuses most — filling with it would double the class
+# whose confusion the dataset exists to measure.
+FILL_INTENTS = (
+    "watch_television",
+    "tidy_living_room_and_hallway",
+    "prepare_and_drink_hot_drink",
+    "phone_call",
+)
+FILL_LABEL = "unclaimed_hours"
+# Short, because a filler is what happens in a gap and not what the gap is for. Left to its own
+# category a television block drew seventy-one minutes and became the evening.
+# (minimumMinutes, medianMinutes, maximumMinutes, logSigma)
+FILL_SHAPE = (8, 22, 55, 0.40)
+
+
+def _seed_filler_candidates(
+    activities: list[Activity],
+    available: tuple[str, ...],
+    wake: datetime | None,
+    lights_out: datetime | None,
+    day_date: date,
+    actor_id: str,
+    seed: int,
+) -> list[Activity]:
+    """Chances to do something with a stretch of day the plan left empty.
+
+    Seeded on a grid and turned down by the engine, for the same reason the bathroom candidates
+    are: the planner can only see the gaps in its own plan, and the ones that matter are the
+    execution's. A Saturday afternoon that reads as ninety minutes on the day plan ran to three
+    hours and forty in the trace — a dot motionless on a sofa, which is what the replay showed and
+    what no plan-time measurement could have told us.
+
+    They are annotated, and deliberately. Liveliness needs an activity under this contract and an
+    activity carries a label; a sparse annotation scheme is an evaluation choice and is applied
+    afterwards by hiding classes. Labels can be taken away, not invented.
+    """
+    if not available or wake is None or lights_out is None:
+        return activities
+    opens = wake + timedelta(minutes=FILL_WAKE_MARGIN_MINUTES)
+    closes = lights_out - timedelta(minutes=FILL_NIGHT_MARGIN_MINUTES)
+    room = (closes - opens).total_seconds() / 60
+    if room < 120:
+        return activities
+    step = room / FILL_CANDIDATES_PER_DAY
+    precondition = (
+        Condition(fact="the_hours_are_unclaimed", operator=ConditionOperator.truthy),
+    )
+    added: list[Activity] = []
+    for slot in range(FILL_CANDIDATES_PER_DAY):
+        index = len(activities) + len(added)
+        rng = _rng(seed, "filler", day_date.isoformat(), index)
+        offset = step * (slot + 0.5) + rng.uniform(-step / 3, step / 3)
+        added.append(
+            activity_from_intent(
+                available[rng.randrange(len(available))],
+                day_date,
+                opens + timedelta(minutes=offset),
+                actor_id,
+                index=index,
+                label=FILL_LABEL,
+                nested=True,
+                duration_shape=FILL_SHAPE,
+                preconditions=precondition,
+                seed=seed,
+            )
+        )
+    return activities + added
+
+
 def _lights_out(plan: DayPlan) -> datetime | None:
     """The moment this day's evening has to be over by.
 
@@ -1102,7 +1191,13 @@ def _planning_world(outline: HorizonOutline) -> PlanningWorld:
             ResidentInitialState(
                 resident_id=outline.resident_id,
                 location_id=world.start_location_id,
-                facts=world.resident_facts,
+                # A horizon opens at midnight of its first day, and the night that would have put
+                # her to bed belongs to the evening before, which is outside it. Without saying so,
+                # `awake` defaults true and the engine stands her up: the run began with six hours
+                # of a resident on her feet in a dark bedroom, every horizon, and it is the first
+                # thing anyone watching the replay sees. The persona world has always declared it;
+                # this path never did.
+                facts={"awake": False, **world.resident_facts},
             )
         ],
         resource_facts=world.resource_facts,
@@ -1259,6 +1354,10 @@ def expand_outline(
     )
 
     tz = ZoneInfo(outline.time_zone)
+    # Only what this persona's own package can perform: a filler is behaviour nobody declared, so
+    # it must not be the reason a horizon is refused.
+    implemented = {binding.intent for binding in package.bindings}
+    fillable = tuple(item for item in FILL_INTENTS if item in implemented)
     recurring_activities = _activities_by_id(outline.profile)
     days: list[DayPlan] = []
     for calendar_day in calendar.days:
@@ -1301,6 +1400,15 @@ def expand_outline(
             _commitment_activities(
                 outline, date.fromisoformat(calendar_day.date), tz, len(activities)
             )
+        )
+        activities = _seed_filler_candidates(
+            activities,
+            fillable,
+            _wake(plan),
+            _lights_out(plan),
+            date.fromisoformat(calendar_day.date),
+            outline.resident_id,
+            seed,
         )
         activities = _resolve_overlaps(activities, _lights_out(plan))
         if calendar_day is calendar.days[-1]:

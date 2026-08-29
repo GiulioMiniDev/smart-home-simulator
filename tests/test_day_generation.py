@@ -110,15 +110,21 @@ def test_build_day_plan_scaffolds_wake_and_sleep() -> None:
         [_occ("morning coffee", "07:10"), _occ("evening pill", "20:00")],
     )
     plan = build_day_plan(day, timezone="Europe/Rome", actor_id="luigi_bianchi")
-    intents = [activity.intent for activity in plan.activities]
+    # The bladder drive seeds candidate bathroom trips through the waking day, and they are not
+    # part of the scaffold this test is about: the engine decides which of them happen, and on a
+    # day with two declared occurrences they would otherwise outnumber the day.
+    declared = [
+        activity for activity in plan.activities if "bladder_drive" not in activity.labels
+    ]
+    intents = [activity.intent for activity in declared]
     assert intents[0] == "wake_up"
     assert intents[-1] == "sleep"
     assert intents[1:3] == ["eat_breakfast", "take_morning_medication"]
-    assert len(plan.activities) == 4
-    sleep = plan.activities[-1]
+    assert len(declared) == 4
+    sleep = declared[-1]
     assert sleep.allow_boundary_truncation and not sleep.mandatory
-    assert plan.activities[1].location_ids == [intent_spec("eat_breakfast").default_location]
-    assert plan.activities[1].labels == ["activity:morning_coffee"]
+    assert declared[1].location_ids == [intent_spec("eat_breakfast").default_location]
+    assert declared[1].labels == ["activity:morning_coffee"]
 
 
 def test_a_break_is_not_given_the_length_of_its_category() -> None:
