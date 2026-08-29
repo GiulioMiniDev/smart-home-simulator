@@ -62,11 +62,13 @@ def test_golden_week_executes_complete_vocabulary_and_closes_state(result) -> No
     assert result.report.semantic_digest == trace.semantic_digest
     assert result.report.summary.failed_activity_count == 0
     assert len(trace.activity_executions) == 172
-    # 769 authored actions plus the 24 walks the engine adds to leave a service room it has
-    # nothing else to do in: they belong to the activity that just ended, so the count of
-    # activities is untouched and no intent is invented.
-    assert len(trace.action_executions) == 793
-    assert len(trace.movements) == 223
+    # 769 authored actions plus the walks the engine adds to leave a service room it has nothing
+    # else to do in: they belong to the activity that just ended, so the count of activities is
+    # untouched and no intent is invented. The count moves when anything changes where a gap falls
+    # — the transition pause moved it by one — which is why the activity count above is the
+    # invariant and this is a reading.
+    assert len(trace.action_executions) == 794
+    assert len(trace.movements) == 224
     assert all(item.status != "failed" for item in trace.activity_executions)
     expected_actions = {
         item["actionType"]

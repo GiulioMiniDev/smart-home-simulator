@@ -92,6 +92,27 @@ _STANDING_POSTURE = "standing"
 _SITTING_POSTURE = "sitting"
 _RECLINING_POSTURE = "lying"
 _AMBULATORY_POSTURES = frozenset({_STANDING_POSTURE, "walking"})
+# Actions a body cannot perform lying down. Walking was the first one found and the rule turned
+# out to be wider: an activity that changes no room inherits whatever posture the last one left,
+# so a resident who had been reading on the sofa tidied the living room without getting up. These
+# are the ones that need hands, a cupboard or a floor.
+# Deliberately not here: `activate`, `deactivate`, `manage_medication`, `personal_care`. Those are
+# done wherever the body already is — a television is turned on from the sofa, and putting a
+# switch in the set stood the resident up one second after she had sat down to watch, which is the
+# same defect as the breakfast taken standing and was found the same way, in the replay frames.
+_UPRIGHT_ACTIONS = frozenset(
+    {
+        "clean",
+        "close",
+        "exercise",
+        "laundry_step",
+        "open",
+        "organize",
+        "prepare_food",
+        "put_item",
+        "take_item",
+    }
+)
 
 # What the resident does with the time the plan did not ask for.
 #
@@ -121,8 +142,22 @@ _TRANSIENT_REGIONS = frozenset(
 )
 # Where she goes instead, most-preferred first; the first one the dwelling actually has wins.
 _SETTLING_PREFERENCE = ("living_room", "lounge", "sitting_room", "kitchen", "bedroom")
-# Rooms with something to sit back on. Elsewhere she sits but does not lie down.
-_RECLINING_REGIONS = frozenset({"living_room", "lounge", "sitting_room", "bedroom"})
+# What a room offers to a body with nothing to do, best first.
+_RESTING_FURNITURE = frozenset({"sofa", "armchair", "bed", "recliner", "daybed"})
+# What can be sat on. `move_to` goes to a room, and a room's anchor is its middle, so a process
+# that says "go to the kitchen, sit down, eat" seated the resident on the floor in the centre of
+# it — and every meal of a generated year was then taken next to the refrigerator, because the
+# only action that named a fixture was the one holding the food. Sitting down is sitting down
+# *on* something, and this is the list of what.
+_SEATING_FURNITURE = frozenset(
+    {"chair", "sofa", "armchair", "stool", "bench", "bed", "recliner", "daybed"}
+)
+# The capability role of a provider that is merely holding something. Handing over an item does
+# not move the body that is already seated within reach.
+_ITEM_ROLE = "item"
+# And what may be lain on. Reclining is not a property of the room but of what she is on: lying
+# down in a sitting room is a sofa, and lying down in the middle of one is a floor.
+_RECLINING_FURNITURE = frozenset({"sofa", "bed", "recliner", "daybed"})
 # How upright each posture is. Waiting only ever moves *down* this ladder: someone who finished
 # reading on the sofa lying down does not sit up in order to wait. Without the order, the settle
 # read the schedule literally and sat a lying resident up 1,162 times over one generated year.
@@ -159,6 +194,61 @@ RETURN_NODE_ID = "engine_return_from_service_room"
 # up, and by how much is already stated per resident in the bundle, in
 # `residentKinematics.postureTransitionSeconds` — so the engine reads it from there and this number
 # is used only where the target posture is not one the kinematics name.
+# The bladder, and the first drive the engine carries rather than the planner.
+#
+# `drives.py` threads sleep debt, hunger, social need and fatigue from one day to the next and
+# turns them into the shape of a day — bedtime, night length, a nap, a nocturnal trip. It decides
+# all of that *before* the day runs, which is why the resident's toilet visits came out at 1.4 a
+# day against the six to eight a person actually makes: the plan can only place what an author
+# declared, and no author declares a bladder.
+#
+# So the planner seeds candidate visits through the waking day and the engine decides which of
+# them happen. The mechanism for that already existed and was unused: an activity that is not
+# mandatory and whose live preconditions fail is dropped with an `optional_dropped` deviation.
+# What was missing is a fact that moves during the day for those preconditions to read.
+#
+# The level is not stored and ticked; it is derived from when it was last emptied, which is exact,
+# costs nothing between checks, and stays deterministic under replay. The interval is drawn once
+# per cycle so that a year does not run on one stopwatch.
+BLADDER_FILL_MEDIAN_MINUTES = 165.0
+BLADDER_FILL_LOG_SIGMA = 0.32
+# Everything that leaves the resident relieved, however it is labelled.
+_BLADDER_RELIEVING_INTENTS = frozenset(
+    {
+        "use_toilet",
+        "morning_toilet_and_shower",
+        "morning_toilet_and_wash",
+        "night_toilet_visit",
+    }
+)
+
+# The moment between one thing and the next.
+#
+# An activity that has waited for the resident begins the instant she is free, so on a generated
+# day eleven of twenty-two activities started in the same second the previous one ended: the run
+# came home from a jog and was in the bathroom, then at the breakfast table, then at the medicine
+# cabinet, with nothing in between. Read as a replay it is a person being teleported through her
+# own morning.
+#
+# The pause is what a body spends between two things and no plan writes down — putting something
+# away, straightening up, deciding. It applies only to an activity that had to queue: one that
+# begins at its own scheduled minute was not waiting for anything and gets none.
+# It was worth checking that it pays for itself, since seventy seconds twenty times a day is
+# twenty minutes and the queue could compound it. Measured with the pause switched off on the same
+# two days: every activity kept the minute it already had, so it does not push the day along — the
+# time comes out of a gap that was empty anyway. Without it, thirteen of a weekend's activities
+# began in the same second the previous one ended.
+TRANSITION_PAUSE_MEDIAN_SECONDS = 70.0
+TRANSITION_PAUSE_LOG_SIGMA = 0.55
+TRANSITION_PAUSE_MAX_SECONDS = 240.0
+
+# How long the resident has to have been doing nothing before an unclaimed-hours filler may take
+# the stretch. The planner cannot decide this: it seeds candidates on a grid, but the gaps it can
+# see are the plan's, and the ones that matter are the execution's — a Saturday afternoon reads as
+# ninety minutes on the day plan and runs to three hours and forty in the trace. So the engine
+# decides, from how long she has actually been sitting there.
+UNCLAIMED_AFTER_SECONDS = 25 * 60
+
 PUNCTUAL_ACTION_SECONDS = {
     "activate": 3.0,
     "change_posture": 4.0,
@@ -229,6 +319,13 @@ class ResidentRuntime:
     execution_state: str = "idle"
     facts: dict[str, JsonValue] = field(default_factory=dict)
     held_resources: set[str] = field(default_factory=set)
+    # When the bladder was last emptied, and how many times: the cycle counter is what keeps each
+    # interval its own draw. See `BLADDER_FILL_MEDIAN_MINUTES`.
+    bladder_emptied_us: int = 0
+    bladder_cycles: int = 0
+    bladder_full: bool = False
+    # When the plan last stopped having anything for her, or None while it does.
+    idle_since_us: int | None = None
 
 
 @dataclass
@@ -473,6 +570,10 @@ def _known_scenario_fact(
     if fact == "heavy_rain_has_stopped" and day_facts is not None:
         weather = day_facts.get("weather")
         return True, isinstance(weather, str) and "then_dry" in weather
+    if fact == "bladder_is_full":
+        return _nested(resident.facts, "bladder_full")
+    if fact == "the_hours_are_unclaimed":
+        return _nested(resident.facts, "hours_unclaimed")
     if fact == "resident_away_from_home_with_purchases":
         carrying = resident.facts.get("carrying.purchases") is True
         return True, resident.facts.get("at_home") is False and carrying
@@ -1080,6 +1181,77 @@ class SimulationEngine:
             )
         )
 
+    def _transition_pause(
+        self,
+        actor: ResidentRuntime,
+        requested_us: int,
+        cause_id: str,
+    ) -> Generator[Any, Any, None]:
+        """The breath between two activities, for one that had to wait its turn."""
+        if int(self.env.now) <= requested_us:
+            return
+        stream = self.streams.stream(f"transition-pause:{cause_id}")
+        seconds = TRANSITION_PAUSE_MEDIAN_SECONDS * math.exp(
+            stream.gauss(0.0, TRANSITION_PAUSE_LOG_SIGMA)
+        )
+        yield self.env.timeout(int(round(min(seconds, TRANSITION_PAUSE_MAX_SECONDS) * 1_000_000)))
+
+    def _refresh_unclaimed(self, actor: ResidentRuntime, cause_id: str) -> None:
+        """Has she been left with nothing for long enough that the stretch wants filling?"""
+        idle_for = (
+            0 if actor.idle_since_us is None else int(self.env.now) - actor.idle_since_us
+        )
+        unclaimed = idle_for >= UNCLAIMED_AFTER_SECONDS * 1_000_000
+        if actor.facts.get("hours_unclaimed") == unclaimed:
+            return
+        previous = actor.facts.get("hours_unclaimed")
+        actor.facts["hours_unclaimed"] = unclaimed
+        self._state_transition(
+            "resident",
+            actor.resident_id,
+            "hours_unclaimed",
+            previous,
+            unclaimed,
+            "set",
+            "plan",
+            cause_id,
+        )
+
+    def _bladder_fill_us(self, actor: ResidentRuntime) -> int:
+        """How long this filling takes, drawn once for this cycle."""
+        stream = self.streams.stream(f"bladder:{actor.resident_id}:{actor.bladder_cycles}")
+        minutes = BLADDER_FILL_MEDIAN_MINUTES * math.exp(
+            stream.gauss(0.0, BLADDER_FILL_LOG_SIGMA)
+        )
+        return int(round(minutes * MINUTE_US))
+
+    def _refresh_bladder(self, actor: ResidentRuntime, cause_id: str) -> None:
+        """Read the level now, and say so if it has crossed."""
+        full = int(self.env.now) - actor.bladder_emptied_us >= self._bladder_fill_us(actor)
+        self._set_bladder(actor, full, cause_id)
+
+    def _empty_bladder(self, actor: ResidentRuntime, cause_id: str) -> None:
+        actor.bladder_emptied_us = int(self.env.now)
+        actor.bladder_cycles += 1
+        self._set_bladder(actor, False, cause_id)
+
+    def _set_bladder(self, actor: ResidentRuntime, full: bool, cause_id: str) -> None:
+        if actor.bladder_full == full and "bladder_full" in actor.facts:
+            return
+        previous = actor.facts.get("bladder_full")
+        actor.bladder_full = full
+        actor.facts["bladder_full"] = full
+        self._state_transition(
+            "resident",
+            actor.resident_id,
+            "bladder_full",
+            previous,
+            full,
+            "set",
+            "plan",
+            cause_id,
+        )
+
     def _set_posture(
         self,
         actor: ResidentRuntime,
@@ -1321,7 +1493,19 @@ class SimulationEngine:
         return next((item for item in _SETTLING_PREFERENCE if item in available), None)
 
     def _settling_point(self, region_id: str) -> Any | None:
-        """Somewhere to stand in that room: its generated anchor first, any fixture otherwise."""
+        """Somewhere to *be* in that room, and a sofa counts for more than a floor.
+
+        The order used to be the other way round — the generated service anchor first — and the
+        anchor is the middle of the room. So a resident with nothing to do walked into the centre
+        of her sitting room and lay down on the carpet, which is what the replay showed and what a
+        room name in a diary cannot. Real furniture first, and among it the things made for
+        sitting; the anchor is the backstop it was always meant to be.
+        """
+        entities = {
+            entity.interaction_point_id: entity
+            for entity in self.bundle.home_model.entities
+            if entity.interaction_point_id
+        }
         points = [
             item
             for item in self.bundle.home_model.interaction_points
@@ -1329,13 +1513,41 @@ class SimulationEngine:
         ]
         if not points:
             return None
-        points.sort(
-            key=lambda item: (
-                not item.interaction_point_id.startswith("point_service_"),
-                item.interaction_point_id,
-            )
-        )
+
+        def rank(item: Any) -> tuple[int, str]:
+            entity = entities.get(item.interaction_point_id)
+            kind = entity.entity_type if entity is not None else ""
+            if kind in _RESTING_FURNITURE:
+                return 0, item.interaction_point_id
+            if entity is not None and kind != "generated_environment_service":
+                return 1, item.interaction_point_id
+            return 2, item.interaction_point_id
+
+        points.sort(key=rank)
         return points[0]
+
+    def _is_on_resting_furniture(self, actor: ResidentRuntime, kinds: frozenset[str]) -> bool:
+        """Is she actually on something, or just standing in a room that happens to contain one?"""
+        for entity in self.bundle.home_model.entities:
+            if entity.entity_type not in kinds or entity.region_id != actor.region_id:
+                continue
+            point = next(
+                (
+                    item
+                    for item in self.bundle.home_model.interaction_points
+                    if item.interaction_point_id == entity.interaction_point_id
+                ),
+                None,
+            )
+            if point is None:
+                continue
+            reach = (
+                (point.position.x - actor.position.x) ** 2
+                + (point.position.y - actor.position.y) ** 2
+            ) ** 0.5
+            if reach <= point.approach_radius_meters + 0.5:
+                return True
+        return False
 
     def _next_commitment(self, actor_id: str, after_us: int) -> int | None:
         """When this resident is next due somewhere, or None if the plan is finished with her."""
@@ -1426,7 +1638,7 @@ class SimulationEngine:
         limit = horizon_us if until_us is None else min(until_us, horizon_us)
         stream = self.streams.stream(f"idle-settle:{cause_id}")
         schedule = [(IDLE_SIT_AFTER_SECONDS, _SITTING_POSTURE)]
-        if actor.region_id in _RECLINING_REGIONS:
+        if self._is_on_resting_furniture(actor, _RECLINING_FURNITURE):
             schedule.append((IDLE_RECLINE_AFTER_SECONDS, _RECLINING_POSTURE))
         for seconds, posture in schedule:
             drawn = seconds * math.exp(stream.gauss(0.0, IDLE_SETTLE_LOG_SIGMA))
@@ -1441,6 +1653,74 @@ class SimulationEngine:
             if _UPRIGHTNESS[posture] >= _UPRIGHTNESS.get(actor.posture, 2):
                 continue
             self._set_posture(actor, posture, "plan", cause_id)
+
+    def _take_a_seat(
+        self,
+        actor: ResidentRuntime,
+        posture: str,
+        action_id: str,
+    ) -> Generator[Any, Any, None]:
+        """Put her on something before she sits or lies down on it.
+
+        A room's anchor is its middle, so without this a night's sleep happened 1.7 metres from
+        the bed and an afternoon's reading in the centre of the carpet. The walk is the last two
+        metres and is charged to the posture change that needed it.
+        """
+        kinds = _RECLINING_FURNITURE if posture == _RECLINING_POSTURE else _SEATING_FURNITURE
+        if self._is_on_resting_furniture(actor, kinds):
+            return
+        point = self._furniture_point(actor.region_id, kinds)
+        if point is None:
+            return
+        kinetics = self.kinematics[actor.resident_id]
+        path = plan_path(
+            self.bundle.home_model,
+            start_region_id=actor.region_id,
+            start=actor.position,
+            end_region_id=point.region_id,
+            end=point.position,
+            walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+            body_radius_meters=kinetics.body_radius_meters,
+            mobility_profile=kinetics.mobility_profile,
+        )
+        if path is None or path.distance_meters <= 1e-9:
+            return
+        yield from self._travel(
+            actor, path, int(round(path.duration_seconds * 1_000_000)), action_id
+        )
+        self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
+
+    def _furniture_point(self, region_id: str, kinds: frozenset[str]) -> Any | None:
+        candidates = [
+            entity
+            for entity in self.bundle.home_model.entities
+            if entity.entity_type in kinds
+            and entity.region_id == region_id
+            and entity.interaction_point_id
+        ]
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: item.entity_id)
+        return next(
+            (
+                item
+                for item in self.bundle.home_model.interaction_points
+                if item.interaction_point_id == candidates[0].interaction_point_id
+            ),
+            None,
+        )
+
+    def _stand_up(
+        self,
+        actor: ResidentRuntime,
+        action_id: str,
+    ) -> Generator[Any, Any, None]:
+        """Get to her feet, on the budget of the action that needs it."""
+        stand_seconds = self.kinematics[actor.resident_id].posture_transition_seconds.get(
+            _STANDING_POSTURE, _gesture_table()["change_posture"]
+        )
+        yield self.env.timeout(int(round(stand_seconds * 1_000_000)))
+        self._set_posture(actor, _STANDING_POSTURE, "action_effect", action_id)
 
     def _travel(
         self,
@@ -1468,12 +1748,16 @@ class SimulationEngine:
         # The stand-up is charged to the action that needed it and comes out of that action's
         # own budget: `actual_duration` is unchanged, so the day does not grow by a second and
         # the schedule the compiler solved still holds.
-        if actor.posture not in _AMBULATORY_POSTURES:
-            stand_seconds = self.kinematics[actor.resident_id].posture_transition_seconds.get(
-                _STANDING_POSTURE, _gesture_table()["change_posture"]
-            )
-            yield self.env.timeout(int(round(stand_seconds * 1_000_000)))
-            self._set_posture(actor, _STANDING_POSTURE, "action_effect", action_id)
+        #
+        # Only for a walk that actually goes somewhere. Every action whose provider has an
+        # interaction point produces a path, and half of those never leave the room — two metres
+        # to the other side of the same table. Standing the resident up for those was wrong twice:
+        # a person reaches across a table without getting up, and it stood her up one second after
+        # she had sat down to eat, so a twenty-eight minute breakfast was taken on her feet. Read
+        # off the replay frames, which is where it shows.
+        leaves_the_room = path.waypoints[-1].region_id != actor.region_id
+        if leaves_the_room and actor.posture not in _AMBULATORY_POSTURES:
+            yield from self._stand_up(actor, action_id)
         self._set_execution_state(actor, "moving", "process_edge", action_id)
         # The walk begins when the walk begins, not when the action did: standing up above
         # already spent part of the action's budget, and back-dating the trajectory to the
@@ -1538,7 +1822,23 @@ class SimulationEngine:
         )
         actor = self.state.residents[activity.actor_id]
         started = self.env.now
+        if node.action_type in _UPRIGHT_ACTIONS and actor.posture not in _AMBULATORY_POSTURES:
+            yield from self._stand_up(actor, action_id)
+        if node.action_type == "change_posture":
+            target = str(binding.resolved_arguments.get("posture", ""))
+            if target in {_SITTING_POSTURE, _RECLINING_POSTURE}:
+                yield from self._take_a_seat(actor, target, action_id)
         path = self._movement(binding, action_id, actor)
+        # A seated body does not get up to reach something on the same side of the same room. The
+        # binder walks her to whichever provider answers, which for `consume` is whatever holds the
+        # food: she sat down at the table and was then taken to the refrigerator to eat.
+        if (
+            path is not None
+            and actor.posture not in _AMBULATORY_POSTURES
+            and path.waypoints[-1].region_id == actor.region_id
+            and any(item.role == _ITEM_ROLE for item in binding.capability_bindings)
+        ):
+            path = None
         movement_us = int(round((path.duration_seconds if path else 0) * 1_000_000))
         actual_duration = max(duration_us, movement_us)
         if path and path.distance_meters > 1e-9:
@@ -1629,6 +1929,9 @@ class SimulationEngine:
         lock = self.actor_locks[actor_id]
         with lock.request() as actor_request:
             yield actor_request
+            yield from self._transition_pause(
+                self.state.residents[actor_id], requested_us, activity.source_activity_id
+            )
             actual_start_us = int(self.env.now)
             start_event = self.activity_start_events.get(activity.source_activity_id)
             if start_event is not None and not start_event.triggered:
@@ -1667,6 +1970,9 @@ class SimulationEngine:
                     )
                 )
                 deviations.append(deviation_id)
+            # Read before the preconditions, because two of them are about to ask.
+            self._refresh_bladder(self.state.residents[actor_id], execution_id)
+            self._refresh_unclaimed(self.state.residents[actor_id], execution_id)
             conditions_ok = all(
                 _scenario_condition(item, self.state, actor_id, day.context.facts)
                 for item in activity.preconditions
@@ -1706,6 +2012,7 @@ class SimulationEngine:
                 )
                 return
             actor = self.state.residents[actor_id]
+            actor.idle_since_us = None
             self._set_execution_state(actor, "performing_activity", "plan", execution_id)
             requirements = {item.resource_id: item.units for item in activity.required_resources}
             allocation: ResourceAllocation | None = None
@@ -1932,12 +2239,15 @@ class SimulationEngine:
             for effect in activity.effects:
                 self._apply_effect(effect, actor_id, execution_id)
             self.state.completed_activities.add(activity.source_activity_id)
+            if activity.intent in _BLADDER_RELIEVING_INTENTS:
+                self._empty_bladder(actor, execution_id)
             next_us = self._next_commitment(actor_id, int(self.env.now))
             returned = yield from self._return_from_service_room(
                 actor, activity, execution_id, next_us
             )
             if returned is not None:
                 action_ids.append(returned)
+            actor.idle_since_us = int(self.env.now)
             self._set_execution_state(actor, "idle", "plan", execution_id)
             # Not held while it runs: the waiting owns no lock, so the next activity takes the
             # resident back the moment it is due and `_settle` simply finds her busy and stops.
