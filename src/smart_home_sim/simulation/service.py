@@ -123,6 +123,10 @@ _TRANSIENT_REGIONS = frozenset(
 _SETTLING_PREFERENCE = ("living_room", "lounge", "sitting_room", "kitchen", "bedroom")
 # Rooms with something to sit back on. Elsewhere she sits but does not lie down.
 _RECLINING_REGIONS = frozenset({"living_room", "lounge", "sitting_room", "bedroom"})
+# How upright each posture is. Waiting only ever moves *down* this ladder: someone who finished
+# reading on the sofa lying down does not sit up in order to wait. Without the order, the settle
+# read the schedule literally and sat a lying resident up 1,162 times over one generated year.
+_UPRIGHTNESS = {_STANDING_POSTURE: 2, _SITTING_POSTURE: 1, _RECLINING_POSTURE: 0}
 # Below this the walk is not worth taking: she is between two steps of the same morning.
 IDLE_RETURN_AFTER_SECONDS = 10 * 60
 # How long she stays on her feet before sitting, and before settling back on a long wait.
@@ -1434,6 +1438,8 @@ class SimulationEngine:
             # not ours to move.
             if actor.execution_state != "idle":
                 return
+            if _UPRIGHTNESS[posture] >= _UPRIGHTNESS.get(actor.posture, 2):
+                continue
             self._set_posture(actor, posture, "plan", cause_id)
 
     def _travel(
