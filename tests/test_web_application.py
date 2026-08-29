@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from smart_home_sim.application.generation_ingest import HORIZON_REVISION_KIND
 from smart_home_sim.application.workspace import WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobStatus
+from smart_home_sim.hybrid_planning.intents import intent_spec
 from smart_home_sim.web import create_app
 from smart_home_sim.web.app import _quieten_client_disconnects
 
@@ -352,7 +353,9 @@ def test_run_replay_export_sse_and_file_endpoints(tmp_path: Path) -> None:
             if item["residentId"] == activity["actorId"]
         )
         assert active_resident["activityActive"] is True
-        assert active_resident["activityLabel"] == activity["intent"]
+        # Il replay mostra l'etichetta del catalogo, non l'identificatore dell'intento: "Walk
+        # outdoors", non "evening_walk".
+        assert active_resident["activityLabel"] == intent_spec(activity["intent"]).label
         ended_oracle_frame = client.get(
             f"/api/runs/{job.job_id}/replay/frame",
             params={"at": activity["actualEnd"], "include_oracle": "true"},

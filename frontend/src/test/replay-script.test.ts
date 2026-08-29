@@ -38,6 +38,17 @@ describe("activity wording", () => {
     expect(activityTitle("evening_hygiene")).toBe("busy with evening hygiene");
   });
 
+  it("reads a catalogue label the same way it reads an intent id", () => {
+    // Il replay manda l'etichetta del catalogo, non l'identificatore: "Walk outdoors", perche'
+    // `evening_walk` annunciava come passeggiata serale una camminata delle sette di mattina.
+    expect(activityTitle("Walk outdoors")).toBe("walking outdoors");
+    expect(activityTitle("Eat breakfast")).toBe("eating breakfast");
+    expect(activityTitle("Take medication")).toBe("taking medication");
+    expect(activityTitle("Read and rest")).toBe("reading and resting");
+    expect(activityTitle("Batch cook")).toBe("batch cooking");
+    expect(activityWish("Eat breakfast")).toBe("wants to eat breakfast");
+  });
+
   it("says the same activity as the wish the trace calls an intent", () => {
     expect(activityWish("eat_breakfast")).toBe("wants to eat breakfast");
     expect(activityWish("sleep")).toBe("wants to sleep");

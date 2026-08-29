@@ -303,7 +303,7 @@ def _events(
                 end=item.actual_end,
                 kind="activity",
                 event_id=item.activity_execution_id,
-                label=item.intent,
+                label=_intent_label(item.intent),
                 status=item.status,
                 actor_id=item.actor_id,
             )
@@ -631,6 +631,26 @@ def _initial_residents(
     return residents
 
 
+# What the intent is *called*, as opposed to what it is keyed by.
+#
+# The catalogue carries both, and for two intents they already differ on purpose: `evening_walk`
+# is labelled "Walk outdoors" and `take_morning_medication` is labelled "Take medication". The
+# id names an occurrence the vocabulary happened to be written around; the label names the thing
+# the person is doing, at whatever hour she does it.
+#
+# The replay showed the id, so a resident who went running at seven in the morning was announced
+# as being busy with an evening walk. Only the *narration* changes here: `intent` stays the id
+# wherever it means the class, because that is what it is — the diary, the profile and every
+# dataset built from the trace keep naming it exactly as they did.
+def _intent_label(intent: str) -> str:
+    from smart_home_sim.hybrid_planning.intents import intent_spec
+
+    try:
+        return intent_spec(intent).label
+    except KeyError:
+        return intent.replace("_", " ")
+
+
 def _resident_frames(
     trace: ExecutionTrace,
     bundle: SimulationBundle | None,
@@ -758,7 +778,9 @@ def _resident_frames(
         elif event.operation in {"released", "preempted"}:
             held[event.actor_id].discard(event.resource_id)
     activity_by_actor = {item.actor_id: item.activity_execution_id for item in active_activities}
-    activity_label_by_actor = {item.actor_id: item.intent for item in active_activities}
+    activity_label_by_actor = {
+        item.actor_id: _intent_label(item.intent) for item in active_activities
+    }
     action_by_actor = {item.actor_id: item.action_execution_id for item in active_actions}
     active_actors = set(activity_by_actor) | set(action_by_actor)
     for resident_id, state in residents.items():
@@ -843,7 +865,9 @@ def _indexed_resident_frames(
             held[actor_id].add(resource_id)
 
     activity_by_actor = {item.actor_id: item.activity_execution_id for item in active_activities}
-    activity_label_by_actor = {item.actor_id: item.intent for item in active_activities}
+    activity_label_by_actor = {
+        item.actor_id: _intent_label(item.intent) for item in active_activities
+    }
     action_by_actor = {item.actor_id: item.action_execution_id for item in active_actions}
     active_actors = set(activity_by_actor) | set(action_by_actor)
 

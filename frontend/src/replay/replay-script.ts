@@ -48,32 +48,51 @@ const PROGRESSIVE: Record<string, string> = {
   portion: "portioning", listen: "listening", manage: "managing", organize: "organising",
   inspect: "checking", wash: "washing", shower: "showering", cook: "cooking",
   water: "watering", write: "writing", visit: "visiting", tend: "tending", store: "storing",
+  go: "going", walk: "walking", make: "making", phone: "phoning", hang: "hanging", nap: "napping",
 };
+
+/** Whole labels that open on no verb at all and read badly without one. */
+const PHRASES: Record<string, string> = { "batch cook": "batch cooking" };
 
 function words(value: string): string {
   return value.replaceAll("_", " ").trim();
 }
 
+// Two spellings arrive here and both have to work. The replay now sends the catalogue label —
+// "Walk outdoors", because the id `evening_walk` announced a seven-in-the-morning run as an
+// evening one — while everything written before it sends the id. Normalising to lower-case
+// words up front makes "eat_breakfast" and "Eat breakfast" the same sentence, so nothing has to
+// know which spelling it was handed.
+function spoken(value: string): string {
+  return words(value).toLowerCase();
+}
+
 function clauses(intent: string): string[] {
-  return intent.split("_and_").filter(Boolean);
+  return spoken(intent).split(" and ").filter(Boolean);
+}
+
+function verb(clause: string): string | undefined {
+  return PROGRESSIVE[clause.split(" ")[0] ?? ""];
 }
 
 /** An activity's title, with every clause that opens on a known verb put into the present. */
 export function activityTitle(intent: string): string {
   const parts = clauses(intent);
-  const spoken = parts.map((clause) => {
-    const [head, ...rest] = clause.split("_");
+  const said = parts.map((clause) => {
+    const phrase = PHRASES[clause];
+    if (phrase) return phrase;
+    const [head, ...rest] = clause.split(" ");
     const progressive = head ? PROGRESSIVE[head] : undefined;
-    return progressive ? [progressive, ...rest.map(words)].join(" ") : words(clause);
+    return progressive ? [progressive, ...rest].join(" ") : clause;
   });
-  const named = parts.some((clause) => PROGRESSIVE[clause.split("_")[0] ?? ""] !== undefined);
-  return named ? spoken.join(" and ") : `busy with ${spoken.join(" and ")}`;
+  const named = parts.some((clause) => verb(clause) !== undefined || PHRASES[clause] !== undefined);
+  return named ? said.join(" and ") : `busy with ${said.join(" and ")}`;
 }
 
 /** The same activity as a wish, which is what the trace calls it: an intent. */
 export function activityWish(intent: string): string {
-  const named = clauses(intent).some((clause) => PROGRESSIVE[clause.split("_")[0] ?? ""] !== undefined);
-  return named ? `wants to ${words(intent)}` : `is about to start ${words(intent)}`;
+  const named = clauses(intent).some((clause) => verb(clause) !== undefined);
+  return named ? `wants to ${spoken(intent)}` : `is about to start ${spoken(intent)}`;
 }
 
 export function residentName(actorId: string | null | undefined): string {
