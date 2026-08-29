@@ -762,8 +762,39 @@ def _build_action_bindings(
                         preferred_regions=preferred_regions,
                         action_type=node.action_type,
                     )
+                    # What the action says it is doing, offered as a role. `personal_care` names a
+                    # procedure and `manage_medication` an operation, and where an object in the
+                    # room answers to that word it is the object the action means. Tried before
+                    # the approach below because it describes the fixture, not the route.
+                    named_by_argument = False
+                    if role_value is None:
+                        for hint in sorted(
+                            str(value)
+                            for value in resolved_arguments.values()
+                            if isinstance(value, str)
+                        ):
+                            named = _entity_candidates(
+                                home,
+                                capability=requirement.capability,
+                                role_value=hint,
+                                actor_id=activity.actor_id,
+                                mobility_profile=mobility_profiles[activity.actor_id],
+                                preferred_regions=preferred_regions,
+                                action_type=node.action_type,
+                            )
+                            # Only if real furniture answers to it. The per-region service anchor
+                            # carries every role there is, so an unmatched word — `read_book`,
+                            # `copywriting` — matched the backstop and sent the resident to the
+                            # middle of the room instead of to her sofa or her desk.
+                            if any(
+                                entity.entity_type != "generated_environment_service"
+                                for entity, _ in named
+                            ):
+                                candidates = named
+                                named_by_argument = True
+                                break
                     standing = standing_roles.get(node.node_id)
-                    if role_value is None and standing is not None:
+                    if role_value is None and not named_by_argument and standing is not None:
                         # The process said nothing about which object, but it did just walk her to
                         # one. If that object can answer, it is the answer: a resident who has
                         # crossed the room to the toilet uses the toilet, not whichever fixture

@@ -454,7 +454,7 @@ these declared locations.
 - `stove` — cooking_appliance, food_preparation_area
 - `table` — consumption_area, dining_area
 - `television` — media
-- `toilet` — personal_care_fixture
+- `toilet` — personal_care_fixture, use_toilet
 - `wardrobe` — clothes, clothing_storage, laundry_collection, laundry_storage, used_clothing
 - `washbasin` — personal_care_fixture, sink, sink_faucet, washing_area
 - `washing_machine` — laundry, laundry_equipment
@@ -513,6 +513,7 @@ The drive layer places these on its own — a wake and a night every day, plus a
 - `phone_call` — phone a relative or friend
 - `rest_or_nap` — nap
 - `sleep` — sleep
+- `use_toilet` — use the toilet
 - `wake_up` — wake up
 
 

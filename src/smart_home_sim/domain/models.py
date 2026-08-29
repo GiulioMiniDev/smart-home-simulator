@@ -180,7 +180,11 @@ RESOURCE_ROLE_ALIASES: dict[str, frozenset[str]] = {
     # `food_preparation_area` and `drinking_water_source`.
     "washbasin": frozenset({"washing_area", "personal_care_fixture", "sink", "sink_faucet"}),
     "shower": frozenset({"shower", "personal_care_fixture", "shower_water"}),
-    "toilet": frozenset({"toilet", "personal_care_fixture"}),
+    # `use_toilet` is on the list for the same reason `sink` is on the washbasin's: it is the word
+    # the process models actually use. `personal_care` names a procedure, not a fixture, so with
+    # nothing matching it the binder fell back to capability alone and took the first candidate by
+    # entity id — the shower, every single time, in a bathroom that also holds a toilet.
+    "toilet": frozenset({"toilet", "use_toilet", "personal_care_fixture"}),
     "bed": frozenset({"bed", "sleeping_area"}),
     "chair": frozenset({"chair", "dining_seat", "consumption_area"}),
     "table": frozenset({"table", "dining_area", "consumption_area"}),
