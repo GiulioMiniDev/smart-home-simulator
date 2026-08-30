@@ -123,8 +123,11 @@ export function fixturePack(): VocabularyPack {
         symbolBody: null,
       },
       {
-        entityType: "bathtub",
-        displayName: "Bathtub",
+        // A kind of furniture the researcher invented, which is the whole point of the pack: it
+        // has no bundled glyph, nothing binds to it, and the editor has to say both of those
+        // things. It used to be a bathtub, and a bathtub is drawn now.
+        entityType: "aquarium",
+        displayName: "Aquarium",
         capabilities: [],
         roleAliases: [],
         contactInstrumented: false,

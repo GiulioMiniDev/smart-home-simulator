@@ -7,12 +7,12 @@ authored against this world, and the executable home is materialised from it aft
 home's entity capabilities are derived from the package's actions (so the home cannot precede it).
 ``assemble_scenario`` later combines a world with generated days and a window into a full scenario.
 
-NOTE (future extensibility): the apartment is a fixed, comprehensive standard template, with the
-persona injected as resident. Deliberate for now — distinctiveness lives in the recurring
-activities, days, and
-process package, not the ADL home. A later version may generate a per-persona world (tailoring
-locations/resources to the recurring activities) behind this same ``PlanningWorld`` contract;
-keep that swap open.
+The apartment used to be a fixed template: five rooms and seventeen objects, byte-identical for
+every persona ever generated, with a note asking for the swap to a per-persona world to be kept
+open. ``hybrid_planning/dwelling.py`` is that swap. The home is now chosen for the person — a studio
+for somebody living alone, a townhouse for a family, no staircase for somebody who should not be
+climbing one — while the five rooms the activity catalog places intents in, and the objects the
+reference process models bind by role, are guaranteed in every one of them.
 """
 
 from __future__ import annotations
@@ -39,35 +39,24 @@ from smart_home_sim.domain.models import (
     SimulationWindow,
     VersionedReference,
 )
+from smart_home_sim.hybrid_planning.dwelling import (
+    CORE_RESOURCES,
+    CORE_ROOMS,
+    Dwelling,
+    design_dwelling,
+)
 from smart_home_sim.hybrid_planning.persona import Persona
 
 GENERATOR_NAME = "smart-home-sim.hybrid_planning.world"
-GENERATOR_VERSION = "1.0.0"
+GENERATOR_VERSION = "1.1.0"
 
 HOME_COMPOSITE_ID = "home"
-STANDARD_ROOMS: tuple[str, ...] = ("bedroom", "kitchen", "bathroom", "living_room", "balcony")
+# Kept as names because tests, tools and the intent catalog all speak of "the standard rooms". They
+# are now the *guaranteed* rooms rather than the only ones: every generated dwelling has these, and
+# most have more.
+STANDARD_ROOMS: tuple[str, ...] = CORE_ROOMS
 STANDARD_EXTERNAL: tuple[str, ...] = ("outdoors",)
-
-# (resource_id, resource_type, location_id) for the fixed standard apartment.
-STANDARD_RESOURCES: tuple[tuple[str, str, str], ...] = (
-    ("bed_01", "bed", "bedroom"),
-    ("wardrobe_01", "wardrobe", "bedroom"),
-    ("stove_01", "stove", "kitchen"),
-    ("moka_01", "moka_coffee_maker", "kitchen"),
-    ("refrigerator_01", "refrigerator", "kitchen"),
-    ("sink_01", "sink", "kitchen"),
-    ("kitchen_table_01", "table", "kitchen"),
-    ("kitchen_chair_01", "chair", "kitchen"),
-    ("medication_cabinet_01", "storage_cabinet", "kitchen"),
-    ("shower_01", "shower", "bathroom"),
-    ("toilet_01", "toilet", "bathroom"),
-    ("washbasin_01", "washbasin", "bathroom"),
-    ("washing_machine_01", "washing_machine", "bathroom"),
-    ("sofa_01", "sofa", "living_room"),
-    ("television_01", "television", "living_room"),
-    ("radio_01", "radio", "living_room"),
-    ("planter_01", "garden_planter", "balcony"),
-)
+STANDARD_RESOURCES: tuple[tuple[str, str, str], ...] = CORE_RESOURCES
 
 
 class PlanningWorld(ContractModel):
@@ -117,9 +106,26 @@ def build_planning_world(
     activity_catalog_version: str = "1.0.0",
     home_model_version: str = "1.0.0",
     now: datetime | None = None,
+    dwelling: Dwelling | None = None,
 ) -> PlanningWorld:
-    """Build the deterministic standard-apartment world for one persona."""
-    locations = [Location(location_id=room, kind=LocationKind.room) for room in STANDARD_ROOMS]
+    """Build the world for one persona, in a home chosen for them.
+
+    `dwelling` is normally left to the designer, which derives it from the persona and the seed; it
+    is a parameter so a caller who wants a particular home — a fixture, a comparison against an
+    earlier run — can hand one in rather than searching for a seed that produces it.
+    """
+    home = dwelling or design_dwelling(persona, seed=seed)
+    locations = [
+        Location(
+            location_id=room.location_id,
+            kind=LocationKind.room,
+            # The storey rides in `attributes` because it is a fact about this dwelling rather than
+            # a new dimension of the location contract, and because everything written before
+            # houses had storeys means the ground floor and should keep meaning it.
+            attributes={"level": room.level} if room.level else {},
+        )
+        for room in home.rooms
+    ]
     locations.extend(
         Location(location_id=name, kind=LocationKind.external) for name in STANDARD_EXTERNAL
     )
@@ -127,12 +133,16 @@ def build_planning_world(
         Location(
             location_id=HOME_COMPOSITE_ID,
             kind=LocationKind.composite,
-            member_location_ids=list(STANDARD_ROOMS),
+            member_location_ids=list(home.room_ids),
         )
     )
     resources = [
-        Resource(resource_id=resource_id, resource_type=resource_type, location_id=location_id)
-        for resource_id, resource_type, location_id in STANDARD_RESOURCES
+        Resource(
+            resource_id=item.resource_id,
+            resource_type=item.resource_type,
+            location_id=item.location_id,
+        )
+        for item in home.resources
     ]
     resource_facts = {resource.resource_id: {"available": True} for resource in resources}
 
@@ -161,7 +171,7 @@ def build_planning_world(
         generator_name=GENERATOR_NAME,
         generator_version=GENERATOR_VERSION,
         generated_at=now or datetime.now(UTC),
-        parameters={"seed": seed},
+        parameters={"seed": seed, "dwelling": home.archetype_id},
     )
     return PlanningWorld(
         world_id=f"{persona.persona_id}_world",
@@ -182,6 +192,14 @@ def build_planning_world(
         resources=resources,
         resident_placements=[placement],
         resource_facts=resource_facts,
+        # Read back by materialization: `dwelling_scale` is how big the plan is drawn, and the rest
+        # is what the researcher sees in the report when they ask what kind of home this run is in.
+        environment_facts={
+            "dwelling_archetype": home.archetype_id,
+            "dwelling_label": home.label,
+            "dwelling_storeys": home.storeys,
+            "dwelling_scale": home.scale,
+        },
         provenance=provenance,
     )
 

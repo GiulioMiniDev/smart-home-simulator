@@ -215,3 +215,39 @@ def test_the_standard_apartment_resource_set_is_fully_furnished() -> None:
         settled = {item.entity_id for item in placed}
         refused.extend(entity_id for entity_id, _ in entities if entity_id not in settled)
     assert refused == [], f"furniture silently dropped from the plan: {refused}"
+
+
+def test_two_storeys_are_two_blocks_of_one_plane_that_do_not_touch() -> None:
+    """A house is drawn flat, storey beside storey, so every geometric rule keeps working.
+
+    Regions may not overlap and obstacles have to sit inside one region: both stay true only
+    because the second floor is somewhere else on the same page rather than on top of the first.
+    """
+    ground = ["kitchen", "living_room", "hallway", "balcony"]
+    upper = ["bedroom", "bathroom", "landing", "study"]
+    levels = {name: 0 for name in ground} | {name: 1 for name in upper}
+    rects = layout_rooms(ground + upper, levels=levels, level_spacing=4.0)
+
+    assert set(rects) == set(levels)
+    downstairs = [rects[name] for name in ground]
+    upstairs = [rects[name] for name in upper]
+    assert max(rect.max_x for rect in downstairs) + 3.9 <= min(rect.x for rect in upstairs)
+    for lower in downstairs:
+        for higher in upstairs:
+            assert not _polygon(lower).intersects(_polygon(higher))
+
+    # No wall is shared across the gap, so no doorway can be invented between the two floors.
+    across = [
+        wall
+        for wall in shared_walls(rects, minimum_overlap=0.9)
+        if levels[wall.region_a_id] != levels[wall.region_b_id]
+    ]
+    assert across == []
+
+
+def test_the_plan_scale_makes_a_studio_smaller_and_a_house_bigger() -> None:
+    rooms = list(STANDARD)
+    small = layout_rooms(rooms, scale=0.75)
+    large = layout_rooms(rooms, scale=1.4)
+    area = lambda plan: sum(rect.width * rect.height for rect in plan.values())  # noqa: E731
+    assert area(small) < area(large) * 0.6

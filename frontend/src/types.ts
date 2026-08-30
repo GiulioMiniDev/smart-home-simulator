@@ -140,15 +140,25 @@ export interface HomeRegion {
   kind: "room" | "outdoor" | "external" | "transit";
   boundary: Polygon;
   traversable: boolean;
+  /** Which storey the region is on. Absent on homes generated before houses had storeys. */
+  level?: number;
 }
 
 export interface HomeConnection {
   connectionId: string;
   regionAId: string;
   regionBId: string;
-  kind: "doorway" | "passage" | "transit";
+  kind: "doorway" | "passage" | "stairway" | "transit";
   bidirectional: boolean;
   widthMeters: number;
+  /**
+   * How far the crossing actually is, for the one kind where the plan cannot say.
+   *
+   * A stairway's two ends sit in different blocks of the coordinate plane, metres apart in numbers
+   * that describe the page rather than the house, so a flight declares its own climb. Absent on
+   * doorways, which are as long as they look.
+   */
+  distanceMeters?: number;
   portalA?: Point;
   portalB?: Point;
 }
@@ -157,6 +167,14 @@ export interface HomeObstacle {
   obstacleId: string;
   regionId: string;
   boundary: Polygon;
+  /**
+   * Which way the piece is turned: 0 looks along +x, 90 along +y, counted anticlockwise.
+   *
+   * It cannot be read off the geometry — a square hob is square whichever way it faces — and it is
+   * what keeps a bed from being drawn across its own headboard. Absent on older homes, which draw
+   * unturned, exactly as they did before.
+   */
+  orientationDegrees?: number;
 }
 
 export interface InteractionPoint {

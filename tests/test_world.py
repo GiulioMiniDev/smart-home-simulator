@@ -51,14 +51,27 @@ def _persona() -> Persona:
     )
 
 
-def test_build_world_standard_apartment() -> None:
+def test_build_world_guarantees_the_rooms_and_objects_behaviour_binds_against() -> None:
+    """The home varies per persona; what the activity catalog and the process models need does not.
+
+    `expander._check_locations` rejects a world missing any room an intent is placed in, and every
+    object in `STANDARD_RESOURCES` answers a role some reference process model names. Those are the
+    floor the dwelling designer builds on, and this is the test that says so.
+    """
     world = build_planning_world(_persona(), now=_NOW)
-    room_ids = [loc.location_id for loc in world.locations if loc.location_id in STANDARD_ROOMS]
-    assert room_ids == list(STANDARD_ROOMS)
-    assert len(world.locations) == len(STANDARD_ROOMS) + 2  # rooms + outdoors + composite home
+    room_ids = {loc.location_id for loc in world.locations}
+    assert set(STANDARD_ROOMS) <= room_ids
     composite = next(loc for loc in world.locations if loc.location_id == HOME_COMPOSITE_ID)
-    assert composite.member_location_ids == list(STANDARD_ROOMS)
-    assert len(world.resources) == len(STANDARD_RESOURCES)
+    assert set(STANDARD_ROOMS) <= set(composite.member_location_ids)
+    assert all(
+        member in room_ids and member != HOME_COMPOSITE_ID
+        for member in composite.member_location_ids
+    )
+    # Every core object is there. Which room it stands in is the dwelling's business — a home with
+    # a utility room does its laundry there — but the object itself is never dropped, because each
+    # one answers a role a reference process model names.
+    types = {resource.resource_type for resource in world.resources}
+    assert {resource_type for _, resource_type, _ in STANDARD_RESOURCES} <= types
     primitive = {loc.location_id for loc in world.locations if not loc.member_location_ids}
     assert all(resource.location_id in primitive for resource in world.resources)
     assert world.residents[0].resident_id == "luigi_bianchi"
@@ -75,6 +88,26 @@ def test_build_world_is_deterministic() -> None:
     first = build_planning_world(_persona(), now=_NOW)
     second = build_planning_world(_persona(), now=_NOW)
     assert first.model_dump_json() == second.model_dump_json()
+
+
+def test_the_dwelling_varies_with_the_seed_and_suits_the_person() -> None:
+    """Two seeds, two homes. One flat for everybody was the thing worth changing."""
+    homes = [
+        build_planning_world(_persona(), seed=seed, now=_NOW).model_dump_json()
+        for seed in (1, 2, 3, 4, 5, 6)
+    ]
+    assert len({home for home in homes}) > 1
+
+
+def test_a_resident_who_should_not_climb_stairs_is_not_given_any() -> None:
+    """A generated home is somewhere a body has to live for a simulated year."""
+    for seed in range(1, 25):
+        world = build_planning_world(
+            _persona().model_copy(update={"age": 84, "health": ["reduced mobility"]}),
+            seed=seed,
+            now=_NOW,
+        )
+        assert all(loc.attributes.get("level", 0) == 0 for loc in world.locations)
 
 
 def test_world_rejects_unknown_resource_location() -> None:

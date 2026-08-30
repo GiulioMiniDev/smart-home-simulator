@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Breadcrumbs, EmptyState, ErrorPanel, Metric, PageHeader, PlanCanvas, ProgressBar, RunLink, Shell, Skeleton, StatusBadge } from "../components";
+import { FurnitureSymbols } from "../furniture-symbols";
+import { FURNITURE_SIZES } from "../furniture";
 import type { HomeModel, SensorModel } from "../types";
 
 const home: HomeModel = {
@@ -66,6 +68,93 @@ describe("application components", () => {
     // Each family keeps its own shape, so a plan of thirty nodes still says what watches what.
     expect(view.container.querySelector(".sensor-pir .sensor-glyph")).not.toBeNull();
     expect(view.container.querySelector(".sensor-pir text")?.textContent).toBe("pir");
+  });
+
+  it("draws every symbol at the size the generator gives that piece of furniture", () => {
+    // A symbol is authored at life size, one unit to the centimetre, which is what lets the glyph
+    // fill its footprint instead of floating inside it — and what lets the palette hand you a bed
+    // that is really 1.60 by 2.00. Two tables saying the same thing drift; this is what stops them.
+    const { container } = render(<svg><FurnitureSymbols /></svg>);
+    const symbols = [...container.querySelectorAll("symbol")];
+    expect(symbols.length).toBeGreaterThan(40);
+    for (const symbol of symbols) {
+      const type = (symbol.getAttribute("id") ?? "").replace(/^furn-/, "");
+      const size = FURNITURE_SIZES[type];
+      expect(size, `no size declared for ${type}`).toBeDefined();
+      const [extent, depth] = size!;
+      expect(symbol.getAttribute("viewBox"), `${type} is drawn at the wrong size`)
+        .toBe(`0 0 ${String(Math.round(extent * 100))} ${String(Math.round(depth * 100))}`);
+    }
+  });
+
+  it("draws furniture turned the way the obstacle says it is turned", () => {
+    // The glyph is authored with the wall at the top and the front at the bottom, which is a
+    // bearing of 90. Anything else has to be rotated, and a bed drawn across its own headboard was
+    // what the plan did before the obstacle carried an orientation at all.
+    const turned: HomeModel = {
+      ...home,
+      obstacles: [
+        { obstacleId: "obstacle_bed", regionId: "kitchen", orientationDegrees: 180,
+          boundary: { vertices: [{ x: .5, y: .5 }, { x: 2.5, y: .5 }, { x: 2.5, y: 2.1 }, { x: .5, y: 2.1 }] } },
+        { obstacleId: "obstacle_stairs_kitchen", regionId: "kitchen",
+          boundary: { vertices: [{ x: 3, y: .5 }, { x: 3.8, y: .5 }, { x: 3.8, y: 3 }, { x: 3, y: 3 }] } },
+      ],
+      entities: [{ entityId: "bed", entityType: "bed", regionId: "kitchen", interactionPointId: "point", capabilities: [], initialState: {} }],
+    };
+    const view = render(<PlanCanvas home={turned} />);
+    const bed = view.container.querySelector('use[href="#furn-bed"]');
+    expect(bed).not.toBeNull();
+    // Turned a quarter about the footprint's centre, and drawn into the transposed box so it fills
+    // the obstacle instead of shrinking to fit inside it.
+    expect(bed?.parentElement?.getAttribute("transform")).toBe("rotate(90 1.5 1.3)");
+    expect(bed?.getAttribute("width")).toBe("1.6");
+    expect(bed?.getAttribute("preserveAspectRatio")).toBe("none");
+    // A staircase belongs to the building, not to its contents, so it has no entity to be named by.
+    expect(view.container.querySelector('use[href="#furn-stairs"]')).not.toBeNull();
+  });
+
+  it("draws a home written before orientation existed exactly as it did before", () => {
+    // No bearing to turn by, so nothing is turned and the glyph is fitted rather than stretched —
+    // which is what every home generated up to now says, and it must keep saying it.
+    const old: HomeModel = {
+      ...home,
+      obstacles: [{ obstacleId: "obstacle_bed", regionId: "kitchen",
+        boundary: { vertices: [{ x: .5, y: .5 }, { x: 2.5, y: .5 }, { x: 2.5, y: 2.1 }, { x: .5, y: 2.1 }] } }],
+      entities: [{ entityId: "bed", entityType: "bed", regionId: "kitchen", interactionPointId: "point", capabilities: [], initialState: {} }],
+    };
+    const view = render(<PlanCanvas home={old} />);
+    const glyph = view.container.querySelector('use[href="#furn-bed"]');
+    expect(glyph?.getAttribute("preserveAspectRatio")).toBe("xMidYMid meet");
+    expect(glyph?.parentElement?.getAttribute("transform")).toBeNull();
+  });
+
+  it("reads a house one storey at a time", () => {
+    const house: HomeModel = {
+      ...home,
+      regions: [
+        home.regions[0],
+        { regionId: "bedroom", kind: "room", traversable: true, level: 1,
+          boundary: { vertices: [{ x: 8, y: 0 }, { x: 12, y: 0 }, { x: 12, y: 4 }, { x: 8, y: 4 }] } },
+        { regionId: "cellar", kind: "room", traversable: true, level: -1,
+          boundary: { vertices: [{ x: 16, y: 0 }, { x: 19, y: 0 }, { x: 19, y: 3 }, { x: 16, y: 3 }] } },
+        { regionId: "vault", kind: "room", traversable: true, level: -2,
+          boundary: { vertices: [{ x: 22, y: 0 }, { x: 25, y: 0 }, { x: 25, y: 3 }, { x: 22, y: 3 }] } },
+      ],
+    };
+    const view = render(<PlanCanvas home={house} />);
+    expect(screen.getByLabelText("room kitchen")).toBeInTheDocument();
+    expect(screen.queryByLabelText("room bedroom")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Floor 1" }));
+    expect(screen.getByLabelText("room bedroom")).toBeInTheDocument();
+    expect(screen.queryByLabelText("room kitchen")).not.toBeInTheDocument();
+    // Down is a floor like any other, and the switcher says so in the words a house uses.
+    fireEvent.click(screen.getByRole("button", { name: "Basement" }));
+    expect(screen.getByLabelText("room cellar")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Basement 2" }));
+    expect(screen.getByLabelText("room vault")).toBeInTheDocument();
+    // A flat has one floor and nothing to choose between.
+    view.rerender(<PlanCanvas home={home} />);
+    expect(screen.queryByRole("group", { name: "Storey" })).not.toBeInTheDocument();
   });
 
   it("renders shared content and callback states", () => {
@@ -139,21 +228,111 @@ describe("application components", () => {
     expect(editing.onMove).toHaveBeenCalledTimes(1);
   });
 
-  it("moves only what is already selected, so a drag to look around cannot rebuild the flat", () => {
+  it("drags furniture in one gesture and a room only once it is chosen", () => {
+    // A chair is small and you press it because you mean it, so it moves on the first drag — which
+    // is what drag and drop means everywhere else. A room covers the canvas, and a stray drag on
+    // one is a published wall in the wrong place, so it still has to be selected first.
     const editing = { onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn() };
-    const { container } = render(<PlanCanvas home={home} sensors={sensors} selectedId="kitchen" editing={editing} />);
+    const select = vi.fn();
+    const { container } = render(<PlanCanvas home={home} sensors={sensors} onSelect={select} editing={editing} />);
     const svg = container.querySelector("svg") as SVGSVGElement;
     svg.getBoundingClientRect = () => ({ width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "" });
-    const before = svg.getAttribute("viewBox");
 
-    // The obstacle is not the selection: dragging it scrolls the plan instead of moving it.
-    const obstacle = container.querySelector('[aria-label="Obstacle table"]') as Element;
+    const obstacle = container.querySelector('[aria-label^="Obstacle table"]') as Element;
     fireEvent(obstacle, pointer("pointerdown", 100, 100));
     fireEvent(svg, pointer("pointermove", 180, 100));
     fireEvent(svg, pointer("pointerup", 180, 100));
+    expect(select).toHaveBeenCalledWith("table");
+    expect(editing.onMove).toHaveBeenCalled();
 
+    editing.onMove.mockClear();
+    const before = svg.getAttribute("viewBox");
+    const room = container.querySelector('[aria-label="room kitchen"]') as Element;
+    fireEvent(room, pointer("pointerdown", 100, 100));
+    fireEvent(svg, pointer("pointermove", 180, 100));
+    fireEvent(svg, pointer("pointerup", 180, 100));
     expect(editing.onMove).not.toHaveBeenCalled();
     expect(svg.getAttribute("viewBox")).not.toBe(before);
+  });
+
+  it("shows the line a drag lines up with, while the drag is held", () => {
+    // The magnet was arithmetic nobody could see: the piece simply arrived somewhere slightly
+    // different from where it was let go. Drawing the line it landed on is what makes that a
+    // feature rather than a drift.
+    const furnished: HomeModel = {
+      ...home,
+      obstacles: [{
+        obstacleId: "wardrobe", regionId: "kitchen",
+        boundary: { vertices: [{ x: 1, y: 1 }, { x: 1.6, y: 1 }, { x: 1.6, y: 2.2 }, { x: 1, y: 2.2 }] },
+      }],
+    };
+    const moved = { ...furnished, obstacles: [{ ...furnished.obstacles[0]!, boundary: { vertices: [{ x: .08, y: 1 }, { x: .68, y: 1 }, { x: .68, y: 2.2 }, { x: .08, y: 2.2 }] } }] };
+    const editing = { onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn() };
+    const view = render(<PlanCanvas home={furnished} selectedId="wardrobe" editing={editing} />);
+    const svg = view.container.querySelector("svg") as SVGSVGElement;
+    svg.getBoundingClientRect = () => ({ width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "" }) as DOMRect;
+
+    fireEvent(view.container.querySelector('[aria-label^="Obstacle wardrobe"]') as Element, pointer("pointerdown", 200, 200));
+    // Re-rendered with the piece where the page moved it to: eight centimetres from the wall, which
+    // is inside the magnet's reach, so the next sample reports a corrected delta and a guide.
+    view.rerender(<PlanCanvas home={moved} selectedId="wardrobe" editing={editing} />);
+    fireEvent(svg, pointer("pointermove", 199, 200));
+    expect(view.container.querySelector(".align-guide")).not.toBeNull();
+    fireEvent(svg, pointer("pointerup", 199, 200));
+    expect(view.container.querySelector(".align-guide")).toBeNull();
+  });
+
+  it("draws a room, opens a doorway and drops an object where it was pointed at", () => {
+    const editing = {
+      onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn(),
+      onDrawRoom: vi.fn(), onPlaceDoor: vi.fn(), onPlaceObject: vi.fn(), onToolUsed: vi.fn(),
+    };
+    const twoRooms: HomeModel = {
+      ...home,
+      regions: [
+        home.regions[0]!,
+        { regionId: "hall", kind: "room", traversable: true, boundary: { vertices: [{ x: 4, y: 0 }, { x: 8, y: 0 }, { x: 8, y: 4 }, { x: 4, y: 4 }] } },
+      ],
+    };
+    const measured = (svg: SVGSVGElement) => {
+      svg.getBoundingClientRect = () => ({ width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "" });
+      return svg;
+    };
+
+    const drawn = render(<PlanCanvas home={twoRooms} editing={editing} tool="room" />);
+    const drawSvg = measured(drawn.container.querySelector("svg") as SVGSVGElement);
+    fireEvent(drawSvg, pointer("pointerdown", 200, 200));
+    fireEvent(drawSvg, pointer("pointermove", 400, 400));
+    expect(drawn.container.querySelector(".draw-draft")).not.toBeNull();
+    fireEvent(drawSvg, pointer("pointerup", 400, 400));
+    expect(editing.onDrawRoom).toHaveBeenCalled();
+    expect(editing.onToolUsed).toHaveBeenCalled();
+    cleanup();
+
+    const doored = render(<PlanCanvas home={twoRooms} editing={editing} tool="door" />);
+    const doorSvg = measured(doored.container.querySelector("svg") as SVGSVGElement);
+    // The party wall runs at x = 4; the pointer is put on it in plan metres, through the viewBox.
+    const [viewX, viewY, viewW, viewH] = (doorSvg.getAttribute("viewBox") ?? "0 0 1 1").split(" ").map(Number);
+    const atPlan = (x: number, y: number) => [
+      ((x - viewX!) / viewW!) * 800, ((y - viewY!) / viewH!) * 800,
+    ] as const;
+    fireEvent(doorSvg, pointer("pointermove", ...atPlan(4, 2)));
+    expect(doored.container.querySelector(".door-preview")).not.toBeNull();
+    fireEvent(doorSvg, pointer("pointerup", ...atPlan(4, 2)));
+    expect(editing.onPlaceDoor).toHaveBeenCalledWith(expect.objectContaining({ regionAId: "hall", regionBId: "kitchen" }));
+    cleanup();
+
+    const dropped = render(<PlanCanvas home={twoRooms} editing={editing} tool="obstacle" />);
+    const dropSvg = measured(dropped.container.querySelector("svg") as SVGSVGElement);
+    const [dx, dy] = atPlan(2, 2);
+    fireEvent(dropSvg, pointer("pointermove", dx, dy));
+    expect(dropped.container.querySelector(".drop-mark")).not.toBeNull();
+    fireEvent(dropSvg, pointer("pointerup", dx, dy));
+    expect(editing.onPlaceObject).toHaveBeenCalledWith("obstacle", expect.objectContaining({ x: expect.any(Number) }), 0);
+    // Pointing at the void outside every room creates nothing rather than something nowhere.
+    editing.onPlaceObject.mockClear();
+    fireEvent(dropSvg, pointer("pointerup", 5, 5));
+    expect(editing.onPlaceObject).not.toHaveBeenCalled();
   });
 
   it("selects without moving the plan when the press barely travels", () => {

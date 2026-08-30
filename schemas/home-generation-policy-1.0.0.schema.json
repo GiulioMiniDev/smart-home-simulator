@@ -78,6 +78,20 @@
       "maximum": 1000000.0,
       "title": "Transportdistancemeters",
       "type": "number"
+    },
+    "levelSpacingMeters": {
+      "default": 4.0,
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "Levelspacingmeters",
+      "type": "number"
+    },
+    "stairRunMeters": {
+      "default": 4.5,
+      "exclusiveMinimum": 0,
+      "maximum": 50.0,
+      "title": "Stairrunmeters",
+      "type": "number"
     }
   },
   "title": "Smart Home Deterministic Home Generation Policy 1.0.0",

@@ -22,20 +22,25 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, PointerEvent as ReactPointerEvent, PropsWithChildren, ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   boxOf,
   cutDoorways,
   dwellingRegionIds,
+  magnet,
   planDoors,
   planFrontDoor,
+  planProblems,
   planWalls,
   polygonArea,
+  regionAt,
+  sharedWallAt,
 } from "./editor";
-import type { ResizeHandle } from "./editor";
-import { furnitureSymbol } from "./furniture";
+import type { PlanBox, ResizeHandle, WallCandidate } from "./editor";
+import { furnitureSymbol, structuralSymbol } from "./furniture";
+import { FurnitureGlyph } from "./furniture-glyph";
 import { FurnitureSymbols } from "./furniture-symbols";
 import { CustomFurnitureSymbols } from "./vocabulary/CustomFurnitureSymbols";
 import type { HomeModel, JobStatus, Point, Polygon, SensorModel } from "./types";
@@ -353,10 +358,34 @@ function center(points: Point[]): Point {
  * The canvas measures gestures and reports them in metres; it never owns the model. `onDragStart`
  * is what the page turns into one undo step per gesture, rather than one per pointer sample.
  */
+/**
+ * What the canvas is for at this moment.
+ *
+ * Every one of these was a button that dropped its object somewhere and left you to drag it into
+ * place — a room off the side of the plan, a sofa in the middle of the first room, a PIR in
+ * whichever room happened to be traversable first. A tool puts the object where you point.
+ */
+/** Ground floor, the floors above it, and the cellars below. */
+function storeyLabel(level: number): string {
+  if (level === 0) return "Ground floor";
+  if (level > 0) return `Floor ${String(level)}`;
+  return level === -1 ? "Basement" : `Basement ${String(-level)}`;
+}
+
+export type PlanTool = "select" | "room" | "door" | "obstacle" | "pir" | "contact" | "temperature";
+
 export interface PlanEditing {
   onDragStart: () => void;
   onMove: (id: string, dx: number, dy: number) => void;
   onResize: (id: string, handle: ResizeHandle, dx: number, dy: number) => void;
+  /** Drawn out on empty floor with the room tool. */
+  onDrawRoom?: (box: PlanBox, level: number) => void;
+  /** Clicked on the party wall the door tool was hovering. */
+  onPlaceDoor?: (wall: WallCandidate) => void;
+  /** Dropped at a point inside a room, by whichever of the object tools is held. */
+  onPlaceObject?: (tool: PlanTool, point: Point, level: number) => void;
+  /** Back to the pointer once the tool has been used, so nothing is created twice by accident. */
+  onToolUsed?: () => void;
 }
 
 /** How far a press has to travel before it counts as a drag rather than a click. */
@@ -457,6 +486,9 @@ export function PlanCanvas({
   showExternalPlaces = false,
   onViewport,
   interactionMode = "interactive",
+  tool = "select",
+  storey: storeyProp,
+  onStoreyChange,
 }: {
   home: HomeModel;
   sensors?: SensorModel;
@@ -467,13 +499,31 @@ export function PlanCanvas({
   showExternalPlaces?: boolean;
   onViewport?: (next: { zoom: number; x: number; y: number }) => void;
   interactionMode?: "interactive" | "passive";
+  tool?: PlanTool;
+  /** The storey being drawn. Owned by the page when it has tools that create on one. */
+  storey?: number;
+  onStoreyChange?: (level: number) => void;
 }) {
   // A planimetry is a drawing of the house. The supermarket and the bar are regions the simulator
   // needs, not architecture, and at 12 metres away they decide the viewport and leave the flat
   // unreadable in a corner — so the plan is the dwelling unless the researcher asks for the rest.
   const dwelling = dwellingRegionIds(home);
+  // Storeys are separate blocks of one coordinate plane, so a two-storey house drawn whole is a
+  // diptych: two half-size floors side by side with a gap down the middle. A plan is read one floor
+  // at a time, and a house with one floor has nothing to choose.
+  const storeys = [...new Set(home.regions.map((region) => region.level ?? 0))].sort((a, b) => a - b);
+  // A plan opens on the ground floor when the house has one: the lowest storey is the right
+  // fallback only for a house that starts above or below it, not for one with a cellar.
+  const ground = storeys.includes(0) ? 0 : (storeys[0] ?? 0);
+  const [ownStorey, setOwnStorey] = useState(ground);
+  const storey = storeyProp ?? ownStorey;
+  const setStorey = onStoreyChange ?? setOwnStorey;
+  const shownStorey = storeys.includes(storey) ? storey : ground;
+  const levelOf = new Map(home.regions.map((region) => [region.regionId, region.level ?? 0]));
+  const isOnStorey = (regionId: string | undefined) =>
+    storeys.length < 2 || regionId === undefined || (levelOf.get(regionId) ?? 0) === shownStorey;
   const visible = (regionId: string | undefined) =>
-    showExternalPlaces || regionId === undefined || dwelling.has(regionId);
+    (showExternalPlaces || regionId === undefined || dwelling.has(regionId)) && isOnStorey(regionId);
   const regionsShown = home.regions.filter((region) => visible(region.regionId));
   const entitiesShown = home.entities.filter((entity) => visible(entity.regionId));
   const shownEntityIds = new Set(entitiesShown.map((entity) => entity.entityId));
@@ -490,10 +540,20 @@ export function PlanCanvas({
     // A contact sensor lives on a door or a cupboard, so it is shown wherever that thing is.
     return typeof sensor.entityId !== "string" || shownEntityIds.has(sensor.entityId);
   });
-  const visibleIds = new Set(regionsShown.map((region) => region.regionId));
-  const frontDoor = planFrontDoor(home, visibleIds);
-  const doorGlyphs = [...planDoors(home, visibleIds), ...(frontDoor ? [frontDoor] : [])];
-  const wallPieces = cutDoorways(planWalls(home, visibleIds), doorGlyphs);
+  // Walls are cut against every doorway and doorways are found by comparing every pair of rooms,
+  // so this is quadratic in the plan — and it used to run on every render, which during a drag is
+  // every pointer sample. A furnished flat then dropped frames while you moved a chair.
+  const { frontDoor, doorGlyphs, wallPieces } = useMemo(() => {
+    const ids = new Set(
+      home.regions
+        .filter((region) => (showExternalPlaces || dwellingRegionIds(home).has(region.regionId))
+          && (storeys.length < 2 || (region.level ?? 0) === shownStorey))
+        .map((region) => region.regionId),
+    );
+    const front = planFrontDoor(home, ids);
+    const glyphs = [...planDoors(home, ids), ...(front ? [front] : [])];
+    return { frontDoor: front, doorGlyphs: glyphs, wallPieces: cutDoorways(planWalls(home, ids), glyphs) };
+  }, [home, showExternalPlaces, shownStorey, storeys.length]);
   const vertices = regionsShown.flatMap((region) => region.boundary.vertices);
   const minX = Math.min(...vertices.map((point) => point.x)) - 2;
   const minY = Math.min(...vertices.map((point) => point.y)) - 2;
@@ -511,8 +571,20 @@ export function PlanCanvas({
   const viewY = minY + (maxY - minY - height) / 2 + view.y;
   const regions = new Map(home.regions.map((region) => [region.regionId, region]));
   const interactionPoints = new Map(home.interactionPoints.map((point) => [point.interactionPointId, point]));
+  // What is wrong with the plan right now, so the objects at fault say so while they are being
+  // moved rather than after the publish that rejects them. Only while editing: a published plan
+  // has already passed the authoritative gate and marking it up would be noise.
+  const problems = useMemo(
+    () => new Map(editing ? planProblems(home).map((item) => [item.objectId, item.message]) : []),
+    [home, editing],
+  );
   // Obstacles carry no type of their own; the generator names them after the entity they belong to.
   const entityByObstacle = new Map(home.entities.map((entity) => [`obstacle_${entity.entityId}`, entity]));
+  // The click that finishes a tool gesture must not also select whatever was under it: placing a
+  // doorway left the room underneath selected, which is not what you just did. It is the DOM click
+  // that has to be stopped, in capture, and only the one belonging to that gesture — swallowing
+  // "the next activation" instead would eat an unrelated click that happened to come first.
+  const toolJustUsed = useRef(false);
   const activate = (id: string) => onSelect?.(id);
   const keyboard = (event: React.KeyboardEvent<SVGGElement>, id: string) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -532,13 +604,27 @@ export function PlanCanvas({
     if (!box || !box.width || !box.height) return { x: 0, y: 0 };
     return { x: width / box.width, y: height / box.height };
   };
+  // The lines the magnet last landed on, drawn while the drag is held so the snap is something you
+  // can see happening rather than a number that quietly changed.
+  const [guides, setGuides] = useState<{ x?: number; y?: number }>({});
+  /** Where a pointer event is on the plan, in metres. Everything a tool does starts here. */
+  const planPoint = (event: { clientX: number; clientY: number }): Point => {
+    const box = svgRef.current?.getBoundingClientRect();
+    if (!box || !box.width || !box.height) return { x: 0, y: 0 };
+    return {
+      x: viewX + ((event.clientX - box.left) / box.width) * width,
+      y: viewY + ((event.clientY - box.top) / box.height) * height,
+    };
+  };
   const beginDrag = (event: ReactPointerEvent, id: string, handle?: ResizeHandle) => {
-    if (!editing) return;
-    // Only what is already selected moves. On a plan whose rooms cover the whole canvas a drag is
-    // far more often an attempt to look around than to rebuild the flat, and an accidental one is
-    // a published wall in the wrong place. So the first gesture pans — the event keeps bubbling to
-    // the canvas — and the click that ends it selects; the next drag moves what you chose.
-    if (!handle && id !== selectedId) return;
+    if (!editing || tool !== "select") return;
+    // A room covers the canvas, so a press on one is far more often an attempt to look around than
+    // to rebuild the flat, and an accidental drag is a published wall in the wrong place: rooms
+    // still have to be selected before they move. A chair is small and deliberate — you press it
+    // because you mean it — so furniture, providers and sensors are dragged in one gesture, which
+    // is what "drag and drop" has always meant everywhere else.
+    if (!handle && id !== selectedId && home.regions.some((item) => item.regionId === id)) return;
+    if (!handle && id !== selectedId) onSelect?.(id);
     event.stopPropagation();
     event.preventDefault();
     drag.current = { x: event.clientX, y: event.clientY, id, handle };
@@ -560,12 +646,86 @@ export function PlanCanvas({
     if (dx === 0 && dy === 0) return;
     drag.current = { ...current, x: event.clientX, y: event.clientY };
     if (current.handle) editing.onResize(current.id, current.handle, dx, dy);
-    else editing.onMove(current.id, dx, dy);
+    else {
+      // Held near a wall or a neighbour's edge, a piece lands *on* it. Arranging a room by hand
+      // otherwise means leaving the wardrobe four centimetres off the wall and out of line with
+      // the chest of drawers beside it, and the plan reads as one somebody fought with.
+      const pulled = event.altKey ? { dx, dy } : magnet(home, current.id, dx, dy);
+      setGuides({ x: pulled.guideX, y: pulled.guideY });
+      editing.onMove(current.id, pulled.dx, pulled.dy);
+    }
   };
   const endDrag = () => {
     drag.current = undefined;
     pan.current = undefined;
+    if (guides.x !== undefined || guides.y !== undefined) setGuides({});
   };
+  // What the held tool is about to do, drawn under the pointer before it is done. A room is a
+  // rubber band; a doorway is the party wall it would open; the object tools are a mark on the
+  // floor. Nothing is created until the gesture finishes, so nothing is created by accident.
+  const [draft, setDraft] = useState<PlanBox | undefined>(undefined);
+  const [wallUnderPointer, setWallUnderPointer] = useState<WallCandidate | undefined>(undefined);
+  const [dropPoint, setDropPoint] = useState<Point | undefined>(undefined);
+  const drawing = useRef<Point | undefined>(undefined);
+  const toolActive = Boolean(editing) && tool !== "select";
+
+  // A tool gesture is not a text selection. Without this the drag that draws a room instead
+  // highlighted every label on the page, and the browser kept the pointer for itself: the room was
+  // never drawn because the move and the release never reached the canvas.
+  const beginTool = (event: ReactPointerEvent) => {
+    if (!toolActive || event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    if (typeof event.pointerId === "number") {
+      (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
+    }
+    if (tool === "room") {
+      const start = planPoint(event);
+      drawing.current = start;
+      setDraft({ minX: start.x, minY: start.y, maxX: start.x, maxY: start.y });
+    }
+  };
+  const moveTool = (event: ReactPointerEvent) => {
+    if (!toolActive) return;
+    const point = planPoint(event);
+    if (tool === "room") {
+      const start = drawing.current;
+      if (start) setDraft({ minX: start.x, minY: start.y, maxX: point.x, maxY: point.y });
+      return;
+    }
+    if (tool === "door") {
+      setWallUnderPointer(sharedWallAt(home, point, shownStorey));
+      return;
+    }
+    setDropPoint(regionAt(home, point, shownStorey) ? point : undefined);
+  };
+  const endTool = (event: ReactPointerEvent) => {
+    if (!toolActive) return;
+    const point = planPoint(event);
+    if (tool === "room") {
+      const start = drawing.current;
+      drawing.current = undefined;
+      setDraft(undefined);
+      if (!start) return;
+      editing?.onDrawRoom?.({ minX: start.x, minY: start.y, maxX: point.x, maxY: point.y }, shownStorey);
+      editing?.onToolUsed?.();
+      return;
+    }
+    if (tool === "door") {
+      const wall = sharedWallAt(home, point, shownStorey);
+      setWallUnderPointer(undefined);
+      if (!wall) return;
+      editing?.onPlaceDoor?.(wall);
+      editing?.onToolUsed?.();
+      return;
+    }
+    setDropPoint(undefined);
+    if (!regionAt(home, point, shownStorey)) return;
+    editing?.onPlaceObject?.(tool, point, shownStorey);
+    editing?.onToolUsed?.();
+  };
+  const usedTool = () => { toolJustUsed.current = true; };
+
   // Panning by dragging the background, and zooming with the wheel. The toolbar keeps its buttons
   // for keyboard and pointer-less use, but nobody should have to nudge a plan one metre at a time.
   const pan = useRef<{ x: number; y: number; live: boolean } | undefined>(undefined);
@@ -630,11 +790,26 @@ export function PlanCanvas({
   const selectedBox = editing && selectedId ? selectionBox(home, sensors, selectedId) : undefined;
   const selection = selectedBox ? { id: selectedId as string, box: selectedBox } : undefined;
   const planInteractions = interactionMode === "interactive" ? {
-    onPointerDown: beginPan,
-    onPointerMove: (event: ReactPointerEvent) => { continueDrag(event); continuePan(event); },
-    onPointerUp: endDrag,
-    onPointerCancel: endDrag,
-    onPointerLeave: endDrag,
+    onPointerDown: (event: ReactPointerEvent) => {
+      // A new gesture: whatever the last one asked to be swallowed no longer applies.
+      toolJustUsed.current = false;
+      beginTool(event);
+      if (!toolActive) beginPan(event);
+    },
+    onPointerMove: (event: ReactPointerEvent) => {
+      moveTool(event);
+      if (toolActive) return;
+      continueDrag(event);
+      continuePan(event);
+    },
+    onPointerUp: (event: ReactPointerEvent) => { if (toolActive) usedTool(); endTool(event); endDrag(); },
+    onClickCapture: (event: React.MouseEvent<SVGSVGElement>) => {
+      if (!toolJustUsed.current) return;
+      toolJustUsed.current = false;
+      event.stopPropagation();
+    },
+    onPointerCancel: () => { drawing.current = undefined; setDraft(undefined); endDrag(); },
+    onPointerLeave: () => { setDropPoint(undefined); setWallUnderPointer(undefined); endDrag(); },
     onWheel: wheelZoom,
   } : {};
   return (
@@ -642,6 +817,7 @@ export function PlanCanvas({
       <svg
         ref={svgRef}
         className={`plan-canvas ${editing ? "is-editable" : ""} ${sensors ? "shows-sensors" : ""}`}
+        data-tool={tool}
         viewBox={`${viewX} ${viewY} ${width} ${height}`}
         role="group"
         aria-label={`Plan of ${home.homeId}, ${regionsShown.length} regions and ${sensorsShown.length} sensors`}
@@ -661,11 +837,16 @@ export function PlanCanvas({
               key={region.regionId}
               role="button"
               tabIndex={0}
-              aria-label={`${region.kind} ${region.regionId}`}
+              aria-label={`${region.kind} ${region.regionId}${
+                problems.has(region.regionId) ? `, ${problems.get(region.regionId)}` : ""
+              }`}
               onClick={() => activate(region.regionId)}
               onKeyDown={(event) => keyboard(event, region.regionId)}
               data-region-id={region.regionId}
-              className={selectedId === region.regionId ? "is-selected" : undefined}
+              className={[
+                selectedId === region.regionId ? "is-selected" : "",
+                problems.has(region.regionId) ? "has-problem" : "",
+              ].filter(Boolean).join(" ") || undefined}
               {...draggable(region.regionId)}
             >
               <polygon points={polygonPoints(region.boundary.vertices)} className={`region region-${region.kind}`} />
@@ -718,29 +899,31 @@ export function PlanCanvas({
         <g role="group" aria-label="Obstacles">
           {obstaclesShown.map((obstacle) => {
             const entity = entityByObstacle.get(obstacle.obstacleId);
-            const symbol = furnitureSymbol(entity?.entityType);
+            const symbol = furnitureSymbol(entity?.entityType) ?? structuralSymbol(obstacle.obstacleId);
             const box = bounds(obstacle.boundary.vertices);
             return (
               <g
                 key={obstacle.obstacleId}
                 role="button"
                 tabIndex={0}
-                aria-label={`Obstacle ${obstacle.obstacleId}${entity ? ` (${entity.entityType})` : ""}`}
-                className={selectedId === obstacle.obstacleId ? "is-selected" : ""}
+                aria-label={`Obstacle ${obstacle.obstacleId}${entity ? ` (${entity.entityType})` : ""}${
+                  problems.has(obstacle.obstacleId) ? `, ${problems.get(obstacle.obstacleId)}` : ""
+                }`}
+                className={[
+                  selectedId === obstacle.obstacleId ? "is-selected" : "",
+                  problems.has(obstacle.obstacleId) ? "has-problem" : "",
+                ].filter(Boolean).join(" ")}
                 onClick={() => activate(obstacle.obstacleId)}
                 onKeyDown={(event) => keyboard(event, obstacle.obstacleId)}
                 {...draggable(obstacle.obstacleId)}
               >
                 <polygon points={polygonPoints(obstacle.boundary.vertices)} className="obstacle" />
                 {symbol && box && (
-                  <use
-                    href={`#furn-${symbol}`}
-                    x={box.minX}
-                    y={box.minY}
-                    width={box.maxX - box.minX}
-                    height={box.maxY - box.minY}
+                  <FurnitureGlyph
+                    symbol={symbol}
+                    box={box}
+                    orientationDegrees={obstacle.orientationDegrees}
                     className="furniture-glyph"
-                    preserveAspectRatio="xMidYMid meet"
                   />
                 )}
               </g>
@@ -837,7 +1020,56 @@ export function PlanCanvas({
             );
           })}
         </g>}
+        {/* What the pointer is about to do, and what it just lined up with. Both are drawn last so
+            they sit over the plan, and neither takes a click. */}
+        <g className="plan-overlay" aria-hidden="true">
+          {guides.x !== undefined && <line className="align-guide" x1={guides.x} y1={minY} x2={guides.x} y2={maxY} />}
+          {guides.y !== undefined && <line className="align-guide" x1={minX} y1={guides.y} x2={maxX} y2={guides.y} />}
+          {draft && (
+            <rect
+              className="draw-draft"
+              x={Math.min(draft.minX, draft.maxX)}
+              y={Math.min(draft.minY, draft.maxY)}
+              width={Math.abs(draft.maxX - draft.minX)}
+              height={Math.abs(draft.maxY - draft.minY)}
+            />
+          )}
+          {draft && (
+            <text
+              className="draw-measure"
+              x={(draft.minX + draft.maxX) / 2}
+              y={(draft.minY + draft.maxY) / 2}
+            >
+              {`${Math.abs(draft.maxX - draft.minX).toFixed(1)} × ${Math.abs(draft.maxY - draft.minY).toFixed(1)} m`}
+            </text>
+          )}
+          {wallUnderPointer && (
+            <line
+              className="door-preview"
+              x1={wallUnderPointer.vertical ? wallUnderPointer.x : wallUnderPointer.x - 0.5}
+              y1={wallUnderPointer.vertical ? wallUnderPointer.y - 0.5 : wallUnderPointer.y}
+              x2={wallUnderPointer.vertical ? wallUnderPointer.x : wallUnderPointer.x + 0.5}
+              y2={wallUnderPointer.vertical ? wallUnderPointer.y + 0.5 : wallUnderPointer.y}
+            />
+          )}
+          {dropPoint && <circle className="drop-mark" cx={dropPoint.x} cy={dropPoint.y} r=".35" />}
+        </g>
       </svg>
+      {storeys.length > 1 && (
+        <div className="plan-storeys" role="group" aria-label="Storey">
+          {storeys.map((level) => (
+            <button
+              key={level}
+              type="button"
+              className={level === shownStorey ? "is-current" : undefined}
+              aria-pressed={level === shownStorey}
+              onClick={() => setStorey(level)}
+            >
+              {storeyLabel(level)}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="plan-legend" aria-label="Plan legend">
         <span><i className="legend-room" /> Room</span>
         <span><i className="legend-obstacle" /> Obstacle</span>

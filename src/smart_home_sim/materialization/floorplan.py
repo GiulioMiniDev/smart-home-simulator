@@ -13,8 +13,9 @@ This module produces instead:
   bathroom is not the size of a living room and the plan is a block rather than a corridor;
 - doorways derived from the walls rooms *actually* share, plus a connectivity repair pass, because
   the navigation graph must stay connected for path planning to succeed;
-- furniture footprints placed along the walls and published as `HomeObstacle`, with each entity's
-  interaction point pushed into free space in front of it.
+- furniture arranged by `materialization/furnishing.py` and published as `HomeObstacle`, with each
+  entity's interaction point pushed into free space in front of it — which is also what records
+  which way the piece is turned.
 
 Everything is a pure function of the room list and the policy, so the same inputs always give the
 same plan.
@@ -23,8 +24,10 @@ same plan.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import atan2, degrees
 
 from smart_home_sim.domain.environment import Point2D, Polygon2D
+from smart_home_sim.materialization import furnishing
 
 # Target floor area and preferred aspect (width : height) per known room kind. Unknown rooms fall
 # back to _DEFAULT_PROFILE, so the generator stays generic for arbitrary scenario locations.
@@ -40,6 +43,8 @@ _ROOM_PROFILES: dict[str, tuple[float, float]] = {
     "study": (11.0, 1.10),
     "hallway": (8.0, 2.60),
     "corridor": (7.0, 3.00),
+    "landing": (7.0, 1.90),
+    "entrance": (5.5, 1.80),
     "bathroom": (8.5, 1.25),
     "second_bathroom": (5.0, 1.10),
     "balcony": (6.0, 2.60),
@@ -55,11 +60,14 @@ _SINGLE_DOOR_ROOMS = frozenset(
     {"bathroom", "second_bathroom", "balcony", "terrace", "storage", "laundry_room"}
 )
 # Spaces a flat circulates through, which legitimately carry more than one door.
-_CIRCULATION_ROOMS = frozenset({"hallway", "corridor", "living_room", "kitchen"})
+_CIRCULATION_ROOMS = frozenset(
+    {"hallway", "corridor", "landing", "entrance", "living_room", "kitchen"}
+)
 # The home validator tests clearance with `covers`, which accepts a point lying exactly on the
 # boundary; accepting at the same radius therefore emits points it then rejects. Placement clears a
-# hair more so its own predicate is strictly the stronger one.
-_CLEARANCE_EPSILON = 0.02
+# hair more so its own predicate is strictly the stronger one. Shared with the furnisher, which has
+# to agree with it exactly or the two disagree about what free space is.
+_CLEARANCE_EPSILON = furnishing.CLEARANCE_EPSILON
 
 
 @dataclass(frozen=True)
@@ -112,17 +120,49 @@ def preferred_aspect(region_id: str) -> float:
     return _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[1]
 
 
-def layout_rooms(region_ids: list[str]) -> dict[str, Rect]:
-    """Tile the flat's footprint over the rooms by recursive area-weighted bisection.
+def layout_rooms(
+    region_ids: list[str],
+    *,
+    levels: dict[str, int] | None = None,
+    level_spacing: float = 4.0,
+    scale: float = 1.0,
+) -> dict[str, Rect]:
+    """Tile the dwelling over its rooms, one storey at a time.
 
     Bisection guarantees a gap-free, overlap-free tiling of rectangles whose areas track the target
     profile, and always splits the *longer* side so rooms stay reasonably square instead of
     degenerating into the slivers a naive slice-and-dice produces.
+
+    A house with two storeys is two such tilings laid side by side in one coordinate plane, spaced
+    so nothing touches. Keeping the model flat is what lets every geometric rule in the
+    system stand unchanged — regions still may not overlap, obstacles still live inside
+    one region, routing inside a room is still a plane problem — while `HomeRegion.level`
+    carries the fact that the second block is upstairs, and that a staircase rather than
+    a corridor is what joins them.
+
+    `scale` stretches the target areas, which is how a studio and a family house come out of the
+    same profiles without either one being drawn to the wrong size.
     """
     if not region_ids:
         return {}
+    if levels:
+        placed: dict[str, Rect] = {}
+        offset = 0.0
+        for level in sorted(set(levels.get(item, 0) for item in region_ids)):
+            storey = [item for item in region_ids if levels.get(item, 0) == level]
+            tiling = _layout_storey(storey, scale)
+            for region_id, rect in tiling.items():
+                placed[region_id] = Rect(rect.x + offset, rect.y, rect.width, rect.height)
+            offset += max(rect.max_x for rect in tiling.values()) + level_spacing
+        return placed
+    return _layout_storey(region_ids, scale)
+
+
+def _layout_storey(region_ids: list[str], scale: float = 1.0) -> dict[str, Rect]:
+    if not region_ids:
+        return {}
     ordered = _order_for_layout(region_ids)
-    total_area = sum(room_area(region_id) for region_id in ordered)
+    total_area = scale * sum(room_area(region_id) for region_id in ordered)
 
     # The outer footprint's own proportions decide how square the rooms can come out, and a single
     # fixed guess leaves a big room as a corridor a bed will not fit into. Sweep candidate outer
@@ -399,39 +439,28 @@ def _centre_distance(left: Rect, right: Rect) -> float:
     return (left.center[0] - right.center[0]) ** 2 + (left.center[1] - right.center[1]) ** 2
 
 
-# Footprint per entity type as (extent along the wall, depth from the wall), in metres.
-_FURNITURE_FOOTPRINTS: dict[str, tuple[float, float]] = {
-    "bed": (1.60, 2.00),
-    "wardrobe": (1.20, 0.60),
-    "sofa": (2.00, 0.85),
-    "television": (1.10, 0.35),
-    "radio": (0.35, 0.25),
-    "table": (1.20, 0.80),
-    "chair": (0.45, 0.45),
-    "stove": (0.60, 0.60),
-    "refrigerator": (0.70, 0.70),
-    "sink": (0.60, 0.55),
-    "washbasin": (0.60, 0.45),
-    "storage_cabinet": (0.80, 0.40),
-    "moka_coffee_maker": (0.20, 0.20),
-    "shower": (0.80, 0.80),
-    "toilet": (0.45, 0.70),
-    "washing_machine": (0.60, 0.55),
-    "garden_planter": (0.50, 0.40),
-}
-_DEFAULT_FOOTPRINT = (0.60, 0.50)
-
-
 @dataclass(frozen=True)
 class PlacedFurniture:
     entity_id: str
     footprint: Rect
-    # Where the resident stands to use it: in front of the piece, inside navigable space.
+    # Where the resident stands to use it, inside navigable space. Usually in front of the piece,
+    # but not always: a dining chair is reached from behind, because its front is against the table.
     approach: Point2D
+    # Which way the piece is turned, as a unit vector in the home's own coordinates. It cannot be
+    # read back off the footprint — a 0.60 x 0.60 hob is square — nor off the approach point, which
+    # is wherever there was floor to stand on. The plan and the replay need it to draw the glyph
+    # the right way round, so it is published rather than guessed.
+    facing: tuple[float, float] = (0.0, 1.0)
+
+    @property
+    def orientation_degrees(self) -> float:
+        """`facing` as a bearing: 0 looks along +x, 90 along +y, counted anticlockwise."""
+        return round(degrees(atan2(self.facing[1], self.facing[0])) % 360.0, 1)
 
 
 def footprint_for(entity_type: str) -> tuple[float, float]:
-    return _FURNITURE_FOOTPRINTS.get(entity_type, _DEFAULT_FOOTPRINT)
+    """The piece's own dimensions as (extent along the wall, depth from the wall), in metres."""
+    return furnishing.footprint_for(entity_type)
 
 
 def place_furniture(
@@ -441,118 +470,37 @@ def place_furniture(
     *,
     body_radius: float,
     doorway_width: float,
+    region_id: str = "",
+    seed: int = 0,
+    reserved: list[Rect] | None = None,
 ) -> list[PlacedFurniture]:
-    """Lay furniture flush against the room's walls, leaving doorways and a walkway clear.
+    """Arrange a room and return the pieces that fit.
 
-    Placement walks the perimeter (bottom, right, top, left) and skips any span that would block a
-    door. A piece is only accepted if, once its footprint is added, the room still has one connected
-    navigable region that covers every door portal and every approach point placed so far — the
-    exact predicate `environment/navigation.py` will later apply. Anything that fails is dropped, so
-    the generator can never emit a home the path planner cannot route through.
+    The arrangement itself lives in `furnishing`, which places by pose — a bed on the wall furthest
+    from the door with its nightstand beside it, a table out in the floor with its chairs round it,
+    a kitchen whose fixtures form one run. This wrapper is the seam the rest of materialization
+    already calls through, and it keeps the contract the caller depends on: anything that could not
+    be placed is simply absent, and gets a free-standing interaction point instead.
     """
-    from shapely.geometry import Point as ShapelyPoint
-    from shapely.geometry import Polygon as ShapelyPolygon
-
-    def rect_polygon(rect: Rect) -> ShapelyPolygon:
-        return ShapelyPolygon(
-            [
-                (rect.x, rect.y),
-                (rect.max_x, rect.y),
-                (rect.max_x, rect.max_y),
-                (rect.x, rect.max_y),
-            ]
-        )
-
-    clearance = body_radius + _CLEARANCE_EPSILON
-    shell = rect_polygon(room)
-    walkable = shell.buffer(-clearance, join_style="mitre")
-    if walkable.is_empty or walkable.geom_type != "Polygon":
-        return []
-
-    # Keep-clear discs in front of each door, so furniture never seals a room shut.
-    door_clearance = doorway_width / 2 + clearance
-    required = [ShapelyPoint(item.x, item.y) for item in door_positions]
-    blocked = [point.buffer(door_clearance) for point in required]
-
-    placed: list[PlacedFurniture] = []
-    accepted: list[ShapelyPolygon] = []
-    margin = clearance + 0.10
-
-    # (origin, along-wall unit vector, inward unit vector, wall length)
-    walls = (
-        ((room.x, room.y), (1.0, 0.0), (0.0, 1.0), room.width),
-        ((room.max_x, room.y), (0.0, 1.0), (-1.0, 0.0), room.height),
-        ((room.max_x, room.max_y), (-1.0, 0.0), (0.0, -1.0), room.width),
-        ((room.x, room.max_y), (0.0, -1.0), (1.0, 0.0), room.height),
+    return furnishing.furnish_room(
+        room,
+        entities,
+        door_positions,
+        body_radius=body_radius,
+        doorway_width=doorway_width,
+        region_id=region_id,
+        seed=seed,
+        reserved=reserved,
     )
-    # One cursor per wall: resetting to zero on every wrap re-proposes spans already taken and
-    # burns the attempt budget re-colliding with furniture that is standing there.
-    cursors = [0.0] * len(walls)
-    wall_index = 0
-    for entity_id, entity_type in entities:
-        extent, depth = footprint_for(entity_type)
-        # Give each piece several shots around the perimeter: a rejection means "not here", not
-        # "nowhere", and dropping the item on the first clash is what emptied whole rooms.
-        settled = False
-        for _ in range(4 * len(walls)):
-            if settled:
-                break
-            origin, along, inward, length = walls[wall_index]
-            cursor = cursors[wall_index]
-            # A piece can stand either way round against a wall, which is what lets a bed fit a
-            # narrow bedroom lengthwise instead of being dropped for want of 20 cm.
-            for span, thickness in _orientations(extent, depth):
-                if cursor + span > length or thickness + margin >= _wall_depth(room, inward):
-                    continue
-                start_x = origin[0] + along[0] * cursor
-                start_y = origin[1] + along[1] * cursor
-                end_x = start_x + along[0] * span + inward[0] * thickness
-                end_y = start_y + along[1] * span + inward[1] * thickness
-                candidate = Rect(
-                    min(start_x, end_x),
-                    min(start_y, end_y),
-                    abs(end_x - start_x) or thickness,
-                    abs(end_y - start_y) or thickness,
-                )
-                middle = cursor + span / 2
-                approach = Point2D(
-                    x=round(origin[0] + along[0] * middle + inward[0] * (thickness + margin), 4),
-                    y=round(origin[1] + along[1] * middle + inward[1] * (thickness + margin), 4),
-                )
-
-                polygon = rect_polygon(candidate)
-                if any(polygon.intersects(zone) for zone in blocked):
-                    continue
-                # Two pieces on perpendicular walls meet at the corner unless this is checked, and
-                # the home validator rejects a model whose obstacles overlap.
-                if any(polygon.buffer(0.01).intersects(item) for item in accepted):
-                    continue
-
-                trial = accepted + [polygon]
-                free = walkable.difference(
-                    _union([item.buffer(clearance, join_style="mitre") for item in trial])
-                )
-                probes = [*required, ShapelyPoint(approach.x, approach.y)]
-                probes.extend(ShapelyPoint(item.approach.x, item.approach.y) for item in placed)
-                if not _is_navigable(free, probes):
-                    continue
-
-                accepted = trial
-                placed.append(PlacedFurniture(entity_id, candidate, approach))
-                cursors[wall_index] = cursor + span + 0.10
-                settled = True
-                break
-            if settled:
-                break
-            cursors[wall_index] = cursor + min(extent, depth) / 2 + 0.10
-            if cursors[wall_index] + min(extent, depth) > length:
-                cursors[wall_index] = length
-            wall_index = (wall_index + 1) % len(walls)
-    return placed
 
 
 def free_fallback_points(
-    room: Rect, placed: list[PlacedFurniture], *, body_radius: float, count: int
+    room: Rect,
+    placed: list[PlacedFurniture],
+    *,
+    body_radius: float,
+    count: int,
+    reserved: list[Rect] | None = None,
 ) -> list[Point2D]:
     """Distinct in-room points clear of every footprint, for entities the placer had to refuse.
 
@@ -561,7 +509,7 @@ def free_fallback_points(
     """
     from shapely.geometry import Point as ShapelyPoint
 
-    free = _room_free_space(room, placed, body_radius)
+    free = _room_free_space(room, placed, body_radius, reserved)
     if count <= 0 or getattr(free, "is_empty", True):
         return []
     parts = list(getattr(free, "geoms", [])) or [free]
@@ -589,7 +537,12 @@ def free_fallback_points(
     return (found * count)[:count]
 
 
-def _room_free_space(room: Rect, placed: list[PlacedFurniture], body_radius: float) -> object:
+def _room_free_space(
+    room: Rect,
+    placed: list[PlacedFurniture],
+    body_radius: float,
+    reserved: list[Rect] | None = None,
+) -> object:
     from shapely.geometry import Polygon as ShapelyPolygon
 
     def rect_polygon(rect: Rect) -> ShapelyPolygon:
@@ -604,26 +557,31 @@ def _room_free_space(room: Rect, placed: list[PlacedFurniture], body_radius: flo
 
     clearance = body_radius + _CLEARANCE_EPSILON
     free = rect_polygon(room).buffer(-clearance, join_style="mitre")
-    if placed:
+    # A staircase is floor that is taken without being furniture. Leaving it out here is how the
+    # front door of a two-storey house ended up standing on the bottom step.
+    blockers = [rect_polygon(item.footprint) for item in placed]
+    blockers.extend(rect_polygon(item) for item in reserved or [])
+    if blockers:
         free = free.difference(
-            _union(
-                [
-                    rect_polygon(item.footprint).buffer(clearance, join_style="mitre")
-                    for item in placed
-                ]
-            )
+            _union([item.buffer(clearance, join_style="mitre") for item in blockers])
         )
     return free
 
 
-def navigable_point(room: Rect, placed: list[PlacedFurniture], *, body_radius: float) -> Point2D:
+def navigable_point(
+    room: Rect,
+    placed: list[PlacedFurniture],
+    *,
+    body_radius: float,
+    reserved: list[Rect] | None = None,
+) -> Point2D:
     """A point guaranteed to sit in the room's free space, for region anchors and service entities.
 
     Those used to be the room centre, which was safe only while rooms were empty boxes; with real
     footprints the centre can fall inside the sofa and the home validator rejects the model.
     """
     centre = Point2D(x=round(room.center[0], 4), y=round(room.center[1], 4))
-    free = _room_free_space(room, placed, body_radius)
+    free = _room_free_space(room, placed, body_radius, reserved)
     if getattr(free, "is_empty", True):
         return centre
     parts = list(getattr(free, "geoms", [])) or [free]
@@ -632,28 +590,10 @@ def navigable_point(room: Rect, placed: list[PlacedFurniture], *, body_radius: f
     return Point2D(x=round(float(point.x), 4), y=round(float(point.y), 4))
 
 
-def _orientations(extent: float, depth: float) -> tuple[tuple[float, float], ...]:
-    if abs(extent - depth) < 1e-9:
-        return ((extent, depth),)
-    return ((extent, depth), (depth, extent))
-
-
-def _wall_depth(room: Rect, inward: tuple[float, float]) -> float:
-    return room.height if inward[1] else room.width
-
-
 def _union(polygons: list) -> object:
     from shapely.ops import unary_union
 
     return unary_union(polygons)
-
-
-def _is_navigable(free: object, probes: list) -> bool:
-    """Every probe must sit in one and the same connected component of the free space."""
-    if getattr(free, "is_empty", True):
-        return False
-    parts = list(getattr(free, "geoms", [])) or [free]
-    return any(all(part.covers(point) for point in probes) for part in parts)
 
 
 __all__ = [

@@ -1,20 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
-  addObstacle,
-  addRoom,
-  addSensor,
+  addDoorway,
+  addFurnitureAt,
+  addSensorAt,
+  addStoreyByStairs,
   boxOf,
+  createRoomFromBox,
   cutDoorways,
   dwellingRegionIds,
+  magnet,
   movePlanObject,
   pirRange,
   planDoors,
   planFrontDoor,
+  planProblems,
   planWalls,
   polygonArea,
+  regionAt,
   removeSelection,
   resizePlanObject,
+  rotatePlanObject,
   setPirRange,
+  setRegionLevel,
+  sharedWallAt,
   snap,
 } from "../editor";
 import type { HomeModel, SensorModel } from "../types";
@@ -33,41 +41,151 @@ const sensors = (): SensorModel => ({
 });
 
 describe("editor commands", () => {
-  it("adds a connected room with collision-free identifiers", () => {
-    const first = addRoom(home());
-    const second = addRoom(first.model);
+  it("draws a room from the two corners it was dragged between", () => {
+    // The room used to arrive as a fixed four-by-four box off the side of the plan, joined to
+    // whichever room happened to be traversable first. It is drawn where it goes now.
+    const first = createRoomFromBox(home(), { minX: 5.04, minY: 0, maxX: 8, maxY: 3.5 });
     expect(first.selectedId).toBe("room_02");
-    expect(second.selectedId).toBe("room_03");
-    expect(second.model.connections).toHaveLength(2);
-    expect(second.model.regions[2].boundary.vertices[0].x).toBeGreaterThan(4);
-    const isolated = addRoom({ ...home(), regions: home().regions.map((item) => ({ ...item, traversable: false })) });
-    expect(isolated.model.connections).toHaveLength(0);
+    expect(boxOf(first.model.regions[1]!.boundary.vertices)).toEqual({ minX: 5, minY: 0, maxX: 8, maxY: 3.5 });
+    // Corners in any order, and an upstairs room remembers it is upstairs.
+    const upstairs = createRoomFromBox(first.model, { minX: 8, minY: 3.5, maxX: 5, maxY: 0 }, 1);
+    expect(upstairs.model.regions[2]!.level).toBe(1);
+    expect(boxOf(upstairs.model.regions[2]!.boundary.vertices)).toEqual({ minX: 5, minY: 0, maxX: 8, maxY: 3.5 });
+    // A room nothing was dragged out for is a slip, not a room.
+    expect(() => createRoomFromBox(home(), { minX: 1, minY: 1, maxX: 1.1, maxY: 1.1 })).toThrow("30 cm");
   });
 
-  it("adds an obstacle to the selected or first region", () => {
-    const first = addObstacle(home(), "room_01");
-    const second = addObstacle(first.model, "missing");
-    expect(second.model.obstacles.map((item) => item.obstacleId)).toEqual(["obstacle_01", "obstacle_02"]);
-    expect(first.model.obstacles[0].regionId).toBe("room_01");
-    expect(() => addObstacle({ ...home(), regions: [] })).toThrow("Create a region");
+  it("opens a doorway on the wall two rooms actually share", () => {
+    const two = createRoomFromBox(home(), { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model;
+    const wall = sharedWallAt(two, { x: 4.1, y: 2 });
+    expect(wall).toMatchObject({ regionAId: "room_01", regionBId: "room_02", x: 4, vertical: true });
+    const opened = addDoorway(two, wall!);
+    const door = opened.model.connections[0]!;
+    expect(door).toMatchObject({ kind: "doorway", regionAId: "room_01", regionBId: "room_02" });
+    // Each portal sits inside its own room, because navigable space is the room eroded by the body
+    // radius and a point on the wall itself is never in it.
+    expect(door.portalA!.x).toBeLessThan(4);
+    expect(door.portalB!.x).toBeGreaterThan(4);
+    expect(Math.hypot(door.portalA!.x - door.portalB!.x, door.portalA!.y - door.portalB!.y))
+      .toBeLessThanOrEqual(door.widthMeters);
   });
 
-  it.each(["pir", "contact", "temperature"] as const)("adds and configures a %s sensor", (type) => {
-    const result = addSensor(sensors(), home(), type);
-    expect(result.selectedId).toBe(`${type}_01`);
-    expect(result.model.sensors[0].sensorType).toBe(type);
-    expect(result.model.sensors[0].position).toEqual({ x: 2, y: 2 });
+  it("offers no doorway where there is no party wall, or too little of one", () => {
+    const apart = createRoomFromBox(home(), { minX: 6, minY: 0, maxX: 9, maxY: 4 }).model;
+    expect(sharedWallAt(apart, { x: 5, y: 2 })).toBeUndefined();
+    // Touching, but over half a metre — not enough wall for a door to open in.
+    const slither = createRoomFromBox(home(), { minX: 4, minY: 3.5, maxX: 8, maxY: 4 }).model;
+    expect(sharedWallAt(slither, { x: 4.05, y: 3.8 })).toBeUndefined();
   });
 
-  it("rejects sensor creation without required spatial providers", () => {
+  it("drops a real piece of furniture, not a nameless box", () => {
+    // The tool used to add an untyped 0.8 by 0.8 obstacle: no drawing, and no entity, so nothing
+    // in the home could ever be done at it. A piece of furniture is three coupled things.
+    const dropped = addFurnitureAt(home(), "wardrobe", { x: 2.5, y: 1.5 });
+    expect(dropped.selectedId).toBe("obstacle_wardrobe_01");
+    const obstacle = dropped.model.obstacles[0]!;
+    expect(obstacle.regionId).toBe("room_01");
+    // Sized as a wardrobe is sized, and turned to face the room.
+    expect(boxOf(obstacle.boundary.vertices)).toEqual({ minX: 1.9, minY: 1.2, maxX: 3.1, maxY: 1.8 });
+    expect(obstacle.orientationDegrees).toBe(90);
+    const entity = dropped.model.entities.find((item) => item.entityId === "wardrobe_01")!;
+    expect(entity.entityType).toBe("wardrobe");
+    expect(entity.capabilities.length).toBeGreaterThan(0);
+    expect(entity.capabilities.every((item) => item.supportedOperations.length > 0)).toBe(true);
+    // The contract refuses a capability whose roles repeat, and several of the pack's own aliases
+    // for a type *are* the type name. The gate caught this one; the test keeps it caught.
+    for (const item of entity.capabilities) {
+      expect(new Set(item.roles).size).toBe(item.roles.length);
+    }
+    const point = dropped.model.interactionPoints.find((item) => item.interactionPointId === entity.interactionPointId)!;
+    // In front of it, which is where a body stands and which way the drawing faces.
+    expect(point.position.y).toBeGreaterThan(boxOf(obstacle.boundary.vertices).maxY);
+    expect(point.regionId).toBe("room_01");
+
+    // A second one of the same kind takes the shape of the first: it was built by the generator
+    // from this scenario's own behaviour, so it names the operations this home exercises.
+    const second = addFurnitureAt(dropped.model, "wardrobe", { x: 1, y: 3 });
+    expect(second.selectedId).toBe("obstacle_wardrobe_02");
+    expect(second.model.entities.at(-1)!.capabilities).toEqual(entity.capabilities);
+    expect(() => addFurnitureAt(home(), "wardrobe", { x: 40, y: 40 })).toThrow("inside a room");
+  });
+
+  it("moves a room's own standing point out of the way rather than refusing the furniture", () => {
+    // Every room carries an anchor, invisible and usually near the middle, which is exactly where
+    // somebody drops a chair. Refusing the chair for it is refusing it for a reason nobody can see.
+    const model = home();
+    model.interactionPoints.push({
+      interactionPointId: "anchor_room_01", regionId: "room_01",
+      position: { x: 2, y: 2 }, approachRadiusMeters: 0.25,
+    });
+    const dropped = addFurnitureAt(model, "table", { x: 2, y: 2 });
+    const anchor = dropped.model.interactionPoints.find((item) => item.interactionPointId === "anchor_room_01")!;
+    expect(anchor.position).not.toEqual({ x: 2, y: 2 });
+    expect(planProblems(dropped.model)).toEqual([]);
+
+  });
+
+  it("drops sensors where they were pointed at, and nowhere else", () => {
+    const watching = addSensorAt(sensors(), home(), "pir", { x: 1.4, y: 3.2 });
+    expect(watching.model.sensors[0]!.position).toEqual({ x: 1.4, y: 3.2 });
+    expect(watching.model.sensors[0]!.regionIds).toEqual(["room_01"]);
+    expect(addSensorAt(sensors(), home(), "temperature", { x: 1, y: 1 }).model.sensors[0]!.regionId)
+      .toBe("room_01");
+    expect(addSensorAt(sensors(), home(), "contact", { x: 1, y: 1 }).model.sensors[0]!.position)
+      .toEqual({ x: 1, y: 1 });
+    expect(() => addSensorAt(sensors(), home(), "pir", { x: 40, y: 40 })).toThrow("inside a room");
+  });
+
+  it("rejects sensor creation without the providers a sensor needs", () => {
     const empty = { ...home(), entities: [] };
-    expect(() => addSensor(sensors(), { ...empty, regions: [] }, "pir")).toThrow("Create a region");
-    expect(() => addSensor(sensors(), empty, "contact")).toThrow("contact sensor requires");
-    expect(() => addSensor(sensors(), empty, "temperature")).toThrow("temperature sensor requires");
+    expect(() => addSensorAt(sensors(), empty, "contact", { x: 1, y: 1 })).toThrow("contact sensor requires");
+    expect(() => addSensorAt(sensors(), empty, "temperature", { x: 1, y: 1 })).toThrow("temperature sensor requires");
+  });
+
+  it("adds a storey only as the far end of a staircase, beside the plan rather than on top of it", () => {
+    // A floor used to arrive on its own and the plan gate then refused the home for having a room
+    // nothing reached. The flight is what the user builds; the storey comes with it.
+    const added = addStoreyByStairs(home(), "room_01", "up");
+    expect(added.level).toBe(1);
+    const landing = added.model.regions.find((item) => item.regionId === added.selectedId)!;
+    expect(landing.level).toBe(1);
+    // Beside: two floors are two blocks of one coordinate plane, which is what keeps regions from
+    // overlapping and every geometric rule in the model working unchanged.
+    expect(boxOf(landing.boundary.vertices).minX).toBeGreaterThan(4);
+    const stairs = added.model.connections.find((item) => item.kind === "stairway")!;
+    expect(stairs).toMatchObject({ regionAId: "room_01", regionBId: landing.regionId, bidirectional: true });
+    // Real treads at both ends, standing on real floor, which the furniture has to work round.
+    expect(added.model.obstacles.filter((item) => item.obstacleId.includes("stairs"))).toHaveLength(2);
+    const moved = setRegionLevel(added.model, "room_01", 1);
+    expect(moved.regions[0]!.level).toBe(1);
+    expect(regionAt(moved, { x: 2, y: 2 }, 1)).toBe("room_01");
+    expect(regionAt(moved, { x: 2, y: 2 }, 0)).toBeUndefined();
+  });
+
+  it("digs a basement when the flight goes down, and refuses a second floor on the same side", () => {
+    const dug = addStoreyByStairs(home(), "room_01", "down");
+    expect(dug.level).toBe(-1);
+    expect(dug.model.regions.find((item) => item.regionId === dug.selectedId)!.level).toBe(-1);
+    // The climb is declared, not measured: the two ends sit metres apart in coordinates that say
+    // nothing about how far up or down they are.
+    expect(dug.model.connections[0]!.distanceMeters).toBe(4.5);
+    expect(dug.model.connections[0]!.regionAId).toBe(dug.selectedId);
+    expect(() => addStoreyByStairs(dug.model, "room_01", "down")).toThrow("already a floor below");
+    expect(() => addStoreyByStairs(home(), "nowhere", "up")).toThrow("starts in a room");
+    const outdoors = { ...home(), regions: [{ ...home().regions[0]!, traversable: false }] };
+    expect(() => addStoreyByStairs(outdoors, "room_01", "up")).toThrow("a body can stand");
+    // A cupboard is not the foot of a staircase, and the refusal costs nothing: the landing is
+    // built into a copy that never leaves the call.
+    const cupboard = {
+      ...home(),
+      regions: [{ ...home().regions[0]!, boundary: { vertices: [{ x: 0, y: 0 }, { x: 1.2, y: 0 }, { x: 1.2, y: 1.2 }, { x: 0, y: 1.2 }] } }],
+      interactionPoints: [], entities: [],
+    };
+    expect(() => addStoreyByStairs(cupboard, "room_01", "up")).toThrow("room for a flight of stairs");
   });
 
   it("removes regions, providers and sensors with their dependent objects", () => {
-    const withSensor = addSensor(sensors(), home(), "pir").model;
+    const withSensor = addSensorAt(sensors(), home(), "pir", { x: 2, y: 2 }).model;
     const noSensor = removeSelection(home(), withSensor, "pir_01");
     expect(noSensor.sensors?.sensors).toHaveLength(0);
     const noEntity = removeSelection(home(), withSensor, "door");
@@ -440,5 +558,158 @@ describe("drawing a floorplan out of a simulation model", () => {
 
   it("measures the floor area a caption reports", () => {
     expect(polygonArea(flat().regions[0]!.boundary.vertices)).toBe(12);
+  });
+});
+
+/** A four-by-four room holding a wardrobe against its left wall, and the spot you stand at to use it. */
+const furnished = (): HomeModel => ({
+  ...home(),
+  obstacles: [{
+    obstacleId: "obstacle_wardrobe",
+    regionId: "room_01",
+    orientationDegrees: 0,
+    boundary: { vertices: [{ x: 0, y: 1 }, { x: 0.6, y: 1 }, { x: 0.6, y: 2.2 }, { x: 0, y: 2.2 }] },
+  }],
+  interactionPoints: [{ interactionPointId: "point", regionId: "room_01", position: { x: 1, y: 1.6 }, approachRadiusMeters: 0.5 }],
+  entities: [{ entityId: "wardrobe", entityType: "wardrobe", regionId: "room_01", interactionPointId: "point", capabilities: [], initialState: {} }],
+});
+
+describe("turning a piece of furniture", () => {
+  it("transposes the footprint, advances the bearing and carries the use point round", () => {
+    // Moving and resizing were the only verbs the plan had, so a wardrobe generated against the
+    // wrong wall could be stretched into the other proportion but never faced round.
+    const turned = rotatePlanObject(furnished(), "obstacle_wardrobe");
+    const box = boxOf(turned.obstacles[0]!.boundary.vertices);
+    expect(box.maxX - box.minX).toBeCloseTo(1.2, 5);
+    expect(box.maxY - box.minY).toBeCloseTo(0.6, 5);
+    expect(turned.obstacles[0]!.orientationDegrees).toBe(90);
+    // A quarter turn clockwise about the centre (0.3, 1.6) puts the point below the piece, and the
+    // slide that keeps the piece inside the room carries it along.
+    expect(turned.interactionPoints[0]!.position).toEqual({ x: 0.6, y: 2.3 });
+  });
+
+  it("slides a piece that its own turn pushed through a wall back into the room", () => {
+    const turned = rotatePlanObject(furnished(), "obstacle_wardrobe");
+    const box = boxOf(turned.obstacles[0]!.boundary.vertices);
+    expect(box.minX).toBeGreaterThanOrEqual(0);
+    expect(box.maxX).toBeLessThanOrEqual(4);
+  });
+
+  it("is reached by the entity as well as by its footprint, and four turns is where it started", () => {
+    // Away from the walls, where nothing has to be slid back in, turning is its own inverse.
+    const start = furnished();
+    start.obstacles[0]!.boundary.vertices = [
+      { x: 1.7, y: 1.4 }, { x: 2.3, y: 1.4 }, { x: 2.3, y: 2.6 }, { x: 1.7, y: 2.6 },
+    ];
+    const once = rotatePlanObject(start, "wardrobe");
+    expect(once.obstacles[0]!.orientationDegrees).toBe(90);
+    const full = [1, 2, 3, 4].reduce((model) => rotatePlanObject(model, "wardrobe"), start);
+    expect(full.obstacles[0]!.orientationDegrees).toBe(0);
+    expect(boxOf(full.obstacles[0]!.boundary.vertices)).toEqual(boxOf(start.obstacles[0]!.boundary.vertices));
+  });
+
+  it("leaves alone anything that is not furniture", () => {
+    const model = furnished();
+    expect(rotatePlanObject(model, "room_01")).toBe(model);
+    expect(rotatePlanObject(model, "obstacle_wardrobe", 0)).toBe(model);
+  });
+});
+
+describe("the magnet", () => {
+  it("lines an edge up with the wall it was dropped near", () => {
+    // 0.6 wide and standing at x = 1.0: dragged 0.9 to the left it lands at 0.1, which is four
+    // centimetres of nothing between it and the wall. It should land on the wall.
+    const model = furnished();
+    model.obstacles[0]!.boundary.vertices = [
+      { x: 1, y: 1 }, { x: 1.6, y: 1 }, { x: 1.6, y: 2.2 }, { x: 1, y: 2.2 },
+    ];
+    expect(magnet(model, "obstacle_wardrobe", -0.9, 0).dx).toBeCloseTo(-1, 5);
+  });
+
+  it("lines an edge up with a neighbour in the same room", () => {
+    const model = furnished();
+    model.obstacles.push({
+      obstacleId: "obstacle_desk",
+      regionId: "room_01",
+      boundary: { vertices: [{ x: 2, y: 3 }, { x: 3, y: 3 }, { x: 3, y: 3.6 }, { x: 2, y: 3.6 }] },
+    });
+    // The wardrobe's left edge is at 0; nudged to 1.94 it should snap onto the desk's 2.
+    expect(magnet(model, "obstacle_wardrobe", 1.94, 0).dx).toBeCloseTo(2, 5);
+  });
+
+  it("leaves a drag alone when there is nothing to line it up with", () => {
+    expect(magnet(furnished(), "obstacle_wardrobe", 1.5, 1.5)).toEqual({ dx: 1.5, dy: 1.5 });
+    expect(magnet(furnished(), "nothing_here", 0.3, 0)).toEqual({ dx: 0.3, dy: 0 });
+  });
+});
+
+describe("what the gate would refuse, said now", () => {
+  it("names a piece that has been pushed out of its room", () => {
+    const model = furnished();
+    model.obstacles[0]!.boundary.vertices = [
+      { x: -0.5, y: 1 }, { x: 0.1, y: 1 }, { x: 0.1, y: 2.2 }, { x: -0.5, y: 2.2 },
+    ];
+    expect(planProblems(model)).toEqual([
+      { objectId: "obstacle_wardrobe", message: "sticks out of room 01" },
+    ]);
+  });
+
+  it("names both sides of an overlap, once each", () => {
+    const model = furnished();
+    model.obstacles.push({
+      obstacleId: "obstacle_desk",
+      regionId: "room_01",
+      boundary: { vertices: [{ x: 0.4, y: 1.4 }, { x: 1.4, y: 1.4 }, { x: 1.4, y: 2 }, { x: 0.4, y: 2 }] },
+    });
+    const problems = planProblems(model);
+    expect(problems.map((item) => item.objectId).sort()).toEqual(["obstacle_desk", "obstacle_wardrobe"]);
+    expect(problems.every((item) => item.message.startsWith("overlaps"))).toBe(true);
+  });
+
+  it("names a piece standing in a doorway", () => {
+    const model = furnished();
+    model.connections = [{
+      connectionId: "door", regionAId: "room_01", regionBId: "room_02", kind: "doorway",
+      bidirectional: true, widthMeters: 1, portalA: { x: 0.3, y: 1.5 },
+    }];
+    expect(planProblems(model)[0]).toEqual({
+      objectId: "obstacle_wardrobe", message: "stands in a doorway",
+    });
+  });
+
+  it("names the piece that is standing on somewhere a body has to be", () => {
+    const model = furnished();
+    model.obstacles.push({
+      obstacleId: "obstacle_sofa",
+      regionId: "room_01",
+      boundary: { vertices: [{ x: 0.8, y: 1.4 }, { x: 1.8, y: 1.4 }, { x: 1.8, y: 2 }, { x: 0.8, y: 2 }] },
+    });
+    // The sofa is the thing at fault, not the wardrobe it made unreachable: the sofa is what you
+    // just moved and what has to move again.
+    expect(planProblems(model).find((item) => item.objectId === "obstacle_sofa")?.message)
+      .toContain("stands on to use wardrobe");
+  });
+
+  it("names a piece dropped on a room's own anchor, which belongs to no furniture at all", () => {
+    // The two nobody thinks about: the anchor every room has and the per-region service point.
+    // Dropping a bath in the middle of a sitting room lands on both, and until this was checked
+    // here the only thing that said so was the gate, after the publish it rejected.
+    const model = furnished();
+    model.interactionPoints.push({
+      interactionPointId: "anchor_room_01", regionId: "room_01",
+      position: { x: 2.4, y: 2.3 }, approachRadiusMeters: 0.25,
+    });
+    // Clear of the wardrobe's own standing point, so the anchor is the only thing at stake.
+    model.obstacles.push({
+      obstacleId: "obstacle_bathtub",
+      regionId: "room_01",
+      boundary: { vertices: [{ x: 1.6, y: 2 }, { x: 3.3, y: 2 }, { x: 3.3, y: 2.75 }, { x: 1.6, y: 2.75 }] },
+    });
+    expect(planProblems(model).find((item) => item.objectId === "obstacle_bathtub")?.message)
+      .toContain("anchor room 01");
+  });
+
+  it("says nothing about a plan that is fine", () => {
+    expect(planProblems(furnished())).toEqual([]);
   });
 });

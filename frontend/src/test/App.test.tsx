@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
@@ -6,7 +6,7 @@ import type { BehaviourSlice, HomeModel, IntentRhythm, JobRecord, ResidentProfil
 
 const now = "2026-07-22T10:00:00Z";
 const job: JobRecord = { jobId: "run_1", homeId: "home_1", kind: "materialization", status: "completed", progress: { phase: "completed", percent: 100, completedUnits: 1, totalUnits: 1, message: "Done" }, requestedAt: now, startedAt: now, finishedAt: now, seed: 7 };
-const homeModel: HomeModel = { schemaVersion: "1.0.0", documentType: "home_model", homeId: "model_home", homeVersion: "1", coordinateSystem: {}, regions: [{ regionId: "room", kind: "room", traversable: true, boundary: { vertices: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }] } }], connections: [], obstacles: [], interactionPoints: [{ interactionPointId: "point", regionId: "room", position: { x: 1, y: 1 }, approachRadiusMeters: 1 }], entities: [{ entityId: "door", entityType: "door", regionId: "room", interactionPointId: "point", capabilities: [{ capability: "access", roles: ["door"], supportedOperations: ["open"] }], initialState: { open: false } }], locationBindings: [], resourceBindings: [], kinematicDefaults: {} };
+const homeModel: HomeModel = { schemaVersion: "1.0.0", documentType: "home_model", homeId: "model_home", homeVersion: "1", coordinateSystem: {}, regions: [{ regionId: "room", kind: "room", traversable: true, boundary: { vertices: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }] } }], connections: [], obstacles: [{ obstacleId: "obstacle_wardrobe", regionId: "room", orientationDegrees: 0, boundary: { vertices: [{ x: 0, y: 1 }, { x: 0.6, y: 1 }, { x: 0.6, y: 2.2 }, { x: 0, y: 2.2 }] } }], interactionPoints: [{ interactionPointId: "point", regionId: "room", position: { x: 1, y: 1 }, approachRadiusMeters: 1 }, { interactionPointId: "point_wardrobe", regionId: "room", position: { x: 1.2, y: 1.6 }, approachRadiusMeters: 0.3 }], entities: [{ entityId: "door", entityType: "door", regionId: "room", interactionPointId: "point", capabilities: [{ capability: "access", roles: ["door"], supportedOperations: ["open"] }], initialState: { open: false } }, { entityId: "wardrobe", entityType: "wardrobe", regionId: "room", interactionPointId: "point_wardrobe", capabilities: [{ capability: "storage_support", roles: ["clothes"], supportedOperations: ["open"] }], initialState: { open: false } }], locationBindings: [], resourceBindings: [], kinematicDefaults: {} };
 const sensorModel: SensorModel = { schemaVersion: "1.0.0", documentType: "sensor_model", sensorModelId: "s", sensorModelVersion: "1", sourceBundleId: "b", sourceBundleSha256: "a".repeat(64), seed: 7, regionIds: ["room"], entityIds: ["door"], sensors: [{ sensorId: "pir", sensorType: "pir", position: { x: 2, y: 2 }, regionIds: ["room"], coverage: homeModel.regions[0].boundary, timing: { latencyMilliseconds: 0, clockJitterMilliseconds: 0, cooldownMilliseconds: 0 }, errorModel: { dropoutProbability: 0, falseNegativeProbability: 0, falsePositiveProbabilityPerDay: 0, measurementNoiseStandardDeviation: 0 }, failureWindows: [] }] };
 const home = { homeId: "home_1", name: "Golden home", description: "Acceptance", residentCount: 1, runCount: 1, issueCount: 0, currentHomeArtifactId: "artifact_home", currentSensorArtifactId: "artifact_sensor", createdAt: now, updatedAt: now };
 const resident = { residentId: "resident_1", homeId: "home_1", sourceResidentId: "mario", displayName: "Mario", scenarioArtifactId: "scenario", behaviorArtifactId: "behavior", createdAt: now };
@@ -94,6 +94,30 @@ function installApi() {
 }
 
 function mount(path: string) { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
+
+/**
+ * Use a plan tool the way a person does: hold it, point at the plan, let go.
+ *
+ * Every object used to arrive from a button that dropped it somewhere the code chose. Reaching for
+ * it through the canvas is what the tests are for — the gesture is the feature.
+ */
+function useTool(tool: string, x: number, y: number): void {
+  fireEvent.click(screen.getByRole("button", { name: tool }));
+  const svg = document.querySelector("svg.plan-canvas") as SVGSVGElement;
+  svg.getBoundingClientRect = () => ({
+    width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "",
+  }) as DOMRect;
+  const [viewX, viewY, viewWidth, viewHeight] = (svg.getAttribute("viewBox") ?? "0 0 1 1")
+    .split(" ").map(Number) as [number, number, number, number];
+  const clientX = ((x - viewX) / viewWidth) * 800;
+  const clientY = ((y - viewY) / viewHeight) * 800;
+  fireEvent(svg, new MouseEvent("pointermove", { bubbles: true, clientX, clientY }));
+  fireEvent(svg, new MouseEvent("pointerup", { bubbles: true, clientX, clientY }));
+  // The click a browser always sends after the release. The canvas swallows exactly that one, so
+  // that placing a doorway does not also select the room underneath it; leaving it out of the
+  // gesture here would leave the canvas waiting to swallow an unrelated click later on.
+  fireEvent(svg, new MouseEvent("click", { bubbles: true, clientX, clientY }));
+}
 
 describe("complete application routes", () => {
   beforeEach(() => { sessionStorage.setItem("habitat-lab-session", "token"); localStorage.clear(); overrides = {}; installApi(); });
@@ -282,13 +306,14 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
     fireEvent.click(screen.getByRole("button", { name: "room room" }));
     fireEvent.change(screen.getByLabelText("Kind", { selector: "select" }), { target: { value: "outdoor" } });
-    fireEvent.click(screen.getByRole("button", { name: "Room" }));
+    fireEvent.change(screen.getByLabelText("Floor"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Floor"), { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: /Validate and publish plan/ }));
     await screen.findByText(/Plan validated and published/);
     fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     fireEvent.change(screen.getByLabelText("X position"), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: "temperature" }));
+    useTool("Temperature", 2, 2);
     fireEvent.click(screen.getByText("Undo"));
     fireEvent.click(screen.getByText("Redo"));
     fireEvent.click(screen.getByLabelText("Zoom in"));
@@ -887,20 +912,173 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add capability" }));
     fireEvent.click(screen.getByLabelText("Remove capability 2"));
     fireEvent.click(screen.getByRole("button", { name: "Move right" }));
-    fireEvent.click(screen.getByRole("button", { name: "Obstacle" }));
+    useTool("Furniture", 2, 2);
     fireEvent.click(screen.getByRole("button", { name: "Remove selected object" }));
     const homeFile = new File([JSON.stringify(homeModel)], "home.json"); Object.defineProperty(homeFile, "text", { value: () => Promise.resolve(JSON.stringify(homeModel)) });
     fireEvent.change(screen.getByLabelText(/Import home/), { target: { files: [homeFile] } });
     expect(await screen.findByText(/Home model loaded as a draft/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
-    fireEvent.click(screen.getByRole("button", { name: "contact" }));
+    useTool("Contact", 2, 2);
     fireEvent.click(screen.getByRole("button", { name: /contact sensor contact_01/ }));
     fireEvent.change(screen.getByLabelText("Entity"), { target: { value: "door" } });
-    fireEvent.click(screen.getByRole("button", { name: "temperature" }));
+    useTool("Temperature", 2, 2);
     fireEvent.click(screen.getByRole("button", { name: /temperature sensor temperature_01/ }));
     fireEvent.change(screen.getByLabelText("Baseline °C"), { target: { value: "21" } });
     fireEvent.change(screen.getByLabelText("Dropout 0–1"), { target: { value: "0.02" } });
     fireEvent.click(screen.getByRole("button", { name: "Move up" }));
+  });
+
+  it("draws a room, opens a doorway into it and builds the stairs a floor arrives with", async () => {
+    // Rooms used to arrive as a fixed box off the side of the plan joined to whichever room was
+    // traversable first, and a doorway could not be made at all: the only way to get one was to add
+    // a room and accept the passage that came with it.
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Room" }));
+    const svg = document.querySelector("svg.plan-canvas") as SVGSVGElement;
+    svg.getBoundingClientRect = () => ({
+      width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "",
+    }) as DOMRect;
+    const [viewX, viewY, viewWidth, viewHeight] = (svg.getAttribute("viewBox") ?? "0 0 1 1")
+      .split(" ").map(Number) as [number, number, number, number];
+    const at = (x: number, y: number) => ({
+      clientX: ((x - viewX) / viewWidth) * 800,
+      clientY: ((y - viewY) / viewHeight) * 800,
+    });
+    // The fixture room is 4 by 4, so this one is drawn against its east wall.
+    fireEvent(svg, new MouseEvent("pointerdown", { bubbles: true, ...at(4, 0) }));
+    fireEvent(svg, new MouseEvent("pointermove", { bubbles: true, ...at(8, 4) }));
+    fireEvent(svg, new MouseEvent("pointerup", { bubbles: true, ...at(8, 4) }));
+    expect(await screen.findByText(/Room drawn/)).toBeInTheDocument();
+    // Drawn and not joined: the plan says so rather than letting it reach the gate. The fixture's
+    // own room is in the same state, because a home of one room has nothing to be joined to — and
+    // the room just drawn says it again in the inspector, because it is the one selected.
+    expect(screen.getAllByText(/has no way in or out/).length).toBeGreaterThanOrEqual(2);
+
+    // One doorway joins both of them, and both complaints go.
+    useTool("Door", 4, 2);
+    await waitFor(() => expect(screen.queryAllByText(/has no way in or out/)).toHaveLength(0));
+
+    // A floor is no longer something you add and then join: the stairs are what you build, and the
+    // storey they reach comes with them — which is why the room the flight starts in has to be
+    // picked first, and the buttons say so until it is.
+    expect(screen.getByRole("button", { name: /Stairs up/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /room room_01/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Stairs up/ }));
+    expect(await screen.findByText(/A flight of stairs up/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Floor 1" })).toBeInTheDocument();
+    // And down, out of the same room, is a cellar.
+    fireEvent.click(screen.getByRole("button", { name: "Ground floor" }));
+    fireEvent.click(screen.getByRole("button", { name: /room room_01/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Stairs down/ }));
+    expect(await screen.findByText(/A flight of stairs down/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Basement" })).toBeInTheDocument();
+  });
+
+  it("drops the piece of furniture the palette is holding, not a nameless box", async () => {
+    // The tool used to add an untyped 0.8 by 0.8 obstacle. There was no way to say "a wardrobe"
+    // short of publishing the box and editing the JSON by hand.
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    fireEvent.click(screen.getByRole("button", { name: "Furniture" }));
+    const palette = screen.getByRole("group", { name: "Furniture to place" });
+    expect(within(palette).getByRole("button", { name: "Sofa" })).toBeInTheDocument();
+    fireEvent.click(within(palette).getByRole("button", { name: "Bathtub" }));
+
+    const svg = document.querySelector("svg.plan-canvas") as SVGSVGElement;
+    svg.getBoundingClientRect = () => ({
+      width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "",
+    }) as DOMRect;
+    const [viewX, viewY, viewWidth, viewHeight] = (svg.getAttribute("viewBox") ?? "0 0 1 1")
+      .split(" ").map(Number) as [number, number, number, number];
+    const clientX = ((2 - viewX) / viewWidth) * 800;
+    const clientY = ((2 - viewY) / viewHeight) * 800;
+    fireEvent(svg, new MouseEvent("pointerup", { bubbles: true, clientX, clientY }));
+    fireEvent(svg, new MouseEvent("click", { bubbles: true, clientX, clientY }));
+
+    // A bathtub, drawn as a bathtub, with an entity behind it that says what it is for.
+    expect(document.querySelector('use[href="#furn-bathtub"]')).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "obstacle_bathtub_01" })).toBeInTheDocument();
+  });
+
+  it("keeps a working copy and throws one away, neither of which is publishing", async () => {
+    // Publishing creates the immutable revision every run of this home then executes, so it is not
+    // somewhere to leave a half-finished thought — and a half-finished thought used to be lost the
+    // moment the page went away.
+    localStorage.clear();
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    fireEvent.click(screen.getByRole("button", { name: /Obstacle obstacle_wardrobe/ }));
+    const layout = document.querySelector(".editor-layout") as HTMLElement;
+    fireEvent.keyDown(layout, { key: "ArrowRight" });
+    expect(screen.getByText(/Unpublished edits, not saved/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Save working copy/ }));
+    expect(await screen.findByText(/Working copy saved on this computer/)).toBeInTheDocument();
+    expect(screen.getByText(/working copy saved at/)).toBeInTheDocument();
+    expect(localStorage.getItem("habitat-lab-plan-draft:home_1")).toContain("obstacle_wardrobe");
+
+    fireEvent.click(screen.getByRole("button", { name: /Discard changes/ }));
+    expect(await screen.findByText(/Back to the published plan/)).toBeInTheDocument();
+    expect(localStorage.getItem("habitat-lab-plan-draft:home_1")).toBeNull();
+    expect(screen.queryByText(/Unpublished edits/)).not.toBeInTheDocument();
+  });
+
+  it("reopens the working copy it was left with", async () => {
+    localStorage.setItem("habitat-lab-plan-draft:home_1", JSON.stringify({
+      home: { ...homeModel, regions: [{ ...homeModel.regions[0]!, regionId: "kept_room" }] },
+      savedAt: "2026-08-30T09:15:00Z",
+    }));
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    expect(await screen.findByText(/Reopened the working copy/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    expect(screen.getByRole("button", { name: /room kept_room/ })).toBeInTheDocument();
+    localStorage.clear();
+  });
+
+  it("arranges the plan from the keyboard: move, turn, drop and let go", async () => {
+    // The nudge grid could always move a thing with the mouse. What it could not do is let somebody
+    // keep their eyes on the plan, and there was no way at all to turn a piece of furniture round.
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    fireEvent.click(screen.getByRole("button", { name: /Obstacle obstacle_wardrobe/ }));
+    const layout = document.querySelector(".editor-layout") as HTMLElement;
+    const footprint = () =>
+      document.querySelector(".plan-canvas g.is-selected polygon.obstacle")?.getAttribute("points");
+
+    const start = footprint();
+    fireEvent.keyDown(layout, { key: "ArrowRight" });
+    expect(footprint()).not.toBe(start);
+    // Half a metre with Shift, a centimetre with Alt: the same gesture at three resolutions.
+    const nudged = footprint();
+    fireEvent.keyDown(layout, { key: "ArrowLeft", shiftKey: true });
+    fireEvent.keyDown(layout, { key: "ArrowDown", altKey: true });
+    expect(footprint()).not.toBe(nudged);
+
+    // Turning transposes a 0.6 by 1.2 wardrobe, and turns the drawing with it.
+    const upright = footprint();
+    const bearing = document.querySelector(".plan-canvas g.is-selected use")?.parentElement?.getAttribute("transform");
+    fireEvent.keyDown(layout, { key: "r" });
+    expect(footprint()).not.toBe(upright);
+    expect(document.querySelector(".plan-canvas g.is-selected use")?.parentElement?.getAttribute("transform"))
+      .not.toBe(bearing);
+
+    fireEvent.keyDown(layout, { key: "Escape" });
+    expect(screen.getByText("Nothing selected")).toBeInTheDocument();
+  });
+
+  it("says what the gate would refuse while the object is still in your hand", async () => {
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    fireEvent.click(screen.getByRole("button", { name: /Obstacle obstacle_wardrobe/ }));
+    const layout = document.querySelector(".editor-layout") as HTMLElement;
+    // Walked out of its room half a metre at a time. Learning this at publication, and having the
+    // whole edit rejected for it, is the difference between a tool and a form.
+    for (let step = 0; step < 4; step += 1) fireEvent.keyDown(layout, { key: "ArrowLeft", shiftKey: true });
+    expect((await screen.findAllByText(/sticks out of/)).length).toBeGreaterThan(0);
+    expect(document.querySelector(".plan-canvas g.has-problem")).not.toBeNull();
+    expect(screen.getByText(/object the gate will reject/)).toBeInTheDocument();
   });
 
   it("covers precise region, obstacle and PIR controls plus invalid model feedback", async () => {
@@ -910,7 +1088,7 @@ describe("complete application routes", () => {
     fireEvent.click(screen.getByLabelText("Traversable"));
     fireEvent.change(screen.getByLabelText("Vertex 1 X"), { target: { value: "0.5" } });
     fireEvent.change(screen.getByLabelText("Vertex 1 Y"), { target: { value: "0.5" } });
-    fireEvent.click(screen.getByRole("button", { name: "Obstacle" }));
+    useTool("Furniture", 2, 2);
     fireEvent.change(screen.getByLabelText("Containing region"), { target: { value: "room" } });
     fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
@@ -1182,5 +1360,102 @@ describe("complete application routes", () => {
     await screen.findByRole("heading", { name: "Golden home" });
     expect(screen.getByText(/Day 1 of 2 · 640 observations/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run simulation" })).toBeDisabled();
+  });
+
+  it("offers a corrected file over an attached one while nothing has been run yet", async () => {
+    // The reported issues are about the document, and the only way out of them used to be
+    // deleting the home and rebuilding it around the same file.
+    overrides["/homes/home_1"] = {
+      home,
+      residents: [resident],
+      models: {},
+      jobs: [],
+      issues: [{ code: "HABIT_BAND_HOLDS_NO_STABLE_STRETCH", severity: "warning", stage: "scenario", path: "$.outline.habits[5]", message: "The band 'Home leisure' holds no stable stretch." }],
+    };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: true, issues: [], expansion: { dayCount: 365, activityCount: 6633, habitBandCount: 6 } };
+    mount("/homes/home_1");
+    await screen.findByText("1 associated resident");
+
+    const picker = screen.getByLabelText("Corrected horizon outline and processes");
+    const text = JSON.stringify({
+      documentType: "horizon_authoring_bundle",
+      outline: {
+        documentType: "horizon_outline", title: "Miriam, corrected", residentId: "miriam",
+        timeZone: "Europe/Rome", startDate: "2026-08-27", months: 12,
+        world: { locations: [{ locationId: "bedroom", kind: "room" }], startLocationId: "bedroom" },
+        profile: { recurringActivities: [{ recurringActivityId: "sleep", label: "Sleep", kind: "anchor", cadence: { period: "day", timesPerPeriod: 1, windowStart: "22:30", windowEnd: "06:30" } }] },
+        habits: [{ habitId: "night", label: "Night", windowStart: "21:00", windowEnd: "06:30" }],
+        provenance: { authorType: "external_llm", humanReviewed: false },
+      },
+      personalProcessPackage: { processModels: [{ processModelId: "pm" }], bindings: [] },
+    });
+    const corrected = new File([text], "miriam-corrected.json", { type: "application/json" });
+    Object.defineProperty(corrected, "text", { value: () => Promise.resolve(text) });
+    fireEvent.change(picker, { target: { files: [corrected] } });
+
+    // The same preview the first import gets: what is about to replace the attached context.
+    expect(await screen.findByRole("heading", { name: "Miriam, corrected" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Replace the resident context/ }));
+    expect(await screen.findAllByText(/365 days, 6633 activities and 6 habit bands/)).not.toHaveLength(0);
+  });
+
+  it("withholds the corrected-file picker once a run exists to point at the context", async () => {
+    overrides["/homes/home_1"] = {
+      home,
+      residents: [resident],
+      models: {},
+      jobs: [job],
+      issues: [{ code: "HABIT_BAND_HOLDS_NO_STABLE_STRETCH", severity: "warning", stage: "scenario", path: "$.outline.habits[5]", message: "The band 'Home leisure' holds no stable stretch." }],
+    };
+    mount("/homes/home_1");
+    await screen.findByText("1 associated resident");
+
+    expect(screen.queryByLabelText("Corrected horizon outline and processes")).not.toBeInTheDocument();
+  });
+
+  it("withholds it again once the file it was correcting has nothing left to report", async () => {
+    overrides["/homes/home_1"] = { home, residents: [resident], models: {}, jobs: [], issues: [] };
+    mount("/homes/home_1");
+    await screen.findByText("1 associated resident");
+
+    expect(screen.queryByLabelText("Corrected horizon outline and processes")).not.toBeInTheDocument();
+  });
+
+  it("keeps one subscription across a progress refresh instead of tearing it down and rebuilding", async () => {
+    // The loop this guards against: reloading dropped the data while the request was in flight, so
+    // the active job list momentarily emptied, the subscription was torn down, and rebuilding it
+    // replayed the stream from its start — which reloaded again. The page flashed its skeleton and
+    // the backend log filled with alternating home and events requests.
+    const sources: FakeEventSource[] = [];
+    class FakeEventSource {
+      listeners: Record<string, () => void> = {};
+      closed = false;
+      constructor(public url: string) { sources.push(this); }
+      addEventListener(type: string, cb: () => void) { this.listeners[type] = cb; }
+      close() { this.closed = true; }
+    }
+    vi.stubGlobal("EventSource", FakeEventSource);
+    const running = { ...job, jobId: "job_env", kind: "environment" as const, status: "running" as const, progress: { phase: "materialization", percent: 20, completedUnits: 0, totalUnits: 1, message: "building" } };
+    // A real round trip is a macrotask, so the in-flight render commits. Resolving instantly, as a
+    // plain override does, batches it away and hides the very state the loop came from.
+    overrides["/homes/home_1"] = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return new Response(JSON.stringify({ home, residents: [resident], models: {}, jobs: [running], issues: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+    mount("/homes/home_1");
+    await screen.findByText("1 associated resident");
+    await waitFor(() => expect(sources).toHaveLength(1));
+
+    const homeCalls = () => (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .filter((call) => String(call[0]).endsWith("/homes/home_1")).length;
+    const before = homeCalls();
+    sources[0].listeners.progress?.();
+
+    // One event, one refresh, and the same subscription still open.
+    await waitFor(() => expect(homeCalls()).toBe(before + 1));
+    expect(sources).toHaveLength(1);
+    expect(sources[0].closed).toBe(false);
+    // The page keeps showing what it already had rather than blanking to a skeleton.
+    expect(screen.getByText("1 associated resident")).toBeInTheDocument();
   });
 });

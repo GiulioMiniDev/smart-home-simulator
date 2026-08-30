@@ -25,7 +25,12 @@ export function useResource<T>(path?: string): ResourceState<T> {
     }
     const controller = new AbortController();
     request.current = controller;
-    setState({ path, loading: true });
+    // What is already on screen survives the request. Dropping it here emptied every list derived
+    // from the resource for as long as the round trip lasted, and one of those lists is the set of
+    // running jobs a live subscription is keyed on: it tore the subscription down, rebuilt it when
+    // the data came back, and the rebuilt stream replayed from its start and asked for another
+    // reload. The page flashed its skeleton between every frame of that loop.
+    setState((previous) => (previous.path === path ? { ...previous, loading: true } : { path, loading: true }));
     try {
       const data = await api<T>(path, { signal: controller.signal });
       if (!controller.signal.aborted && currentGeneration === generation.current) {
@@ -48,7 +53,10 @@ export function useResource<T>(path?: string): ResourceState<T> {
   return {
     data: current ? state.data : undefined,
     error: current ? state.error : undefined,
-    loading: Boolean(path) && (!current || state.loading),
+    // Loading means "there is nothing to show yet", not "a request is in flight". Every caller
+    // uses it to swap the content for a skeleton, and doing that to a refresh is what made the
+    // flashing visible.
+    loading: Boolean(path) && (!current || (state.loading && state.data === undefined)),
     reload,
   };
 }

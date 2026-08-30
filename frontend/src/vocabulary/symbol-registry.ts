@@ -16,6 +16,14 @@ import { api } from "../api";
 import type { VocabularyView } from "./types";
 
 let registry: Record<string, string> = {};
+/**
+ * What the workspace says each kind of furniture is for.
+ *
+ * Loaded from the same request as the drawings, because it answers the other half of the same
+ * question: adding a wardrobe to a plan means giving it a footprint *and* saying what a wardrobe
+ * does, and inventing the second half in the editor would be inventing vocabulary.
+ */
+let declared: Record<string, { capabilities: string[]; roleAliases: string[]; displayName: string }> = {};
 const listeners = new Set<() => void>();
 
 export function setCustomSymbols(bodies: Record<string, string>): void {
@@ -25,6 +33,20 @@ export function setCustomSymbols(bodies: Record<string, string>): void {
 
 export function customSymbols(): Record<string, string> {
   return registry;
+}
+
+export function declaredEntityTypes(): Record<
+  string,
+  { capabilities: string[]; roleAliases: string[]; displayName: string }
+> {
+  return declared;
+}
+
+export function setDeclaredEntityTypes(
+  types: Record<string, { capabilities: string[]; roleAliases: string[]; displayName: string }>,
+): void {
+  declared = types;
+  for (const listener of listeners) listener();
 }
 
 /** The symbol id for a type the pack draws, or `undefined` if the bundled glyphs must answer. */
@@ -65,6 +87,15 @@ export function useCustomSymbols(): void {
             view.pack.entityTypes
               .filter((item) => item.symbolBody)
               .map((item) => [item.entityType, item.symbolBody as string]),
+          ),
+        );
+        setDeclaredEntityTypes(
+          Object.fromEntries(
+            view.pack.entityTypes.map((item) => [item.entityType, {
+              capabilities: item.capabilities,
+              roleAliases: item.roleAliases,
+              displayName: item.displayName,
+            }]),
           ),
         );
       } catch {

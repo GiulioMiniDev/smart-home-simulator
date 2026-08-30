@@ -248,6 +248,9 @@ def validate_home_model(home: HomeModel) -> EnvironmentValidationReport:
         right = polygons.get(connection.region_b_id)
         portal_a = Point(connection.portal_a.x, connection.portal_a.y)
         portal_b = Point(connection.portal_b.x, connection.portal_b.y)
+        # A stairway is deliberately exempt: its two ends are on different storeys, which are
+        # different blocks of the plan, so demanding that the regions touch would reject every
+        # staircase there is.
         local_connection_invalid = (
             connection.kind in {ConnectionKind.doorway, ConnectionKind.passage}
             and left is not None

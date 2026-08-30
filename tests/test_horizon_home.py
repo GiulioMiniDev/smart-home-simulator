@@ -413,6 +413,10 @@ def test_a_generated_horizon_runs_on_the_plan_the_researcher_approved(tmp_path) 
     )
     assert plan_approval(workspace, home_id)["approved"] is False
     moved = recommended.obstacles[0]
+    # Five centimetres, not twenty. A generated room is now arranged rather than lined up along the
+    # skirting board, so there is no longer half a metre of slack beside the first object, and a
+    # twenty-centimetre shove lands it inside its neighbour — which the M4 gate rejects, correctly.
+    # What is under test is that an approved edit reaches every day, and a nudge is a nudge.
     approved = recommended.model_copy(
         update={
             "obstacles": [
@@ -420,7 +424,7 @@ def test_a_generated_horizon_runs_on_the_plan_the_researcher_approved(tmp_path) 
                     update={
                         "boundary": Polygon2D(
                             vertices=[
-                                Point2D(x=point.x, y=point.y + 0.2)
+                                Point2D(x=point.x, y=point.y + 0.05)
                                 for point in moved.boundary.vertices
                             ]
                         )

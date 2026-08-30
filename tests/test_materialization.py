@@ -30,7 +30,7 @@ from smart_home_sim.domain.materialization import (
     SyntheticWorkspaceManifest,
     WorkspaceArtifact,
 )
-from smart_home_sim.domain.models import Location, LocationKind, Scenario
+from smart_home_sim.domain.models import Location, LocationKind, Resource, Scenario
 from smart_home_sim.domain.sensors import (
     ContactSensor,
     ObservableSensorLog,
@@ -41,6 +41,7 @@ from smart_home_sim.domain.sensors import (
 )
 from smart_home_sim.environment import service as environment_service
 from smart_home_sim.environment import validate_home_model
+from smart_home_sim.environment.navigation import plan_path
 from smart_home_sim.materialization import (
     bind_sensor_model,
     deploy_sensors,
@@ -677,6 +678,11 @@ def test_a_run_executes_the_plan_the_researcher_approved(tmp_path: Path) -> None
     scenario, package = source_models()
     recommended = generate_home(scenario, package).home
     assert recommended is not None
+    # Five centimetres, not twenty. The generator no longer leaves half a metre of slack beside
+    # every object — a bathroom is now arranged as a bathroom, with the shower, the toilet and the
+    # basin in one run — so a twenty-centimetre shove lands the first obstacle inside its neighbour
+    # and the M4 gate rejects it, which is the gate working. What is under test here is that an
+    # approved edit is carried through instead of being regenerated over, and a nudge is a nudge.
     approved = recommended.model_copy(
         update={
             "obstacles": [
@@ -684,7 +690,7 @@ def test_a_run_executes_the_plan_the_researcher_approved(tmp_path: Path) -> None
                     update={
                         "boundary": Polygon2D(
                             vertices=[
-                                Point2D(x=point.x + 0.2, y=point.y)
+                                Point2D(x=point.x + 0.05, y=point.y)
                                 for point in recommended.obstacles[0].boundary.vertices
                             ]
                         )
@@ -976,3 +982,149 @@ def test_a_compilation_without_a_plan_is_refused(tmp_path: Path) -> None:
             precompiled=failed,
         )
     assert not (tmp_path / "planless").exists()
+
+
+UPSTAIRS = ("bedroom", "bathroom", "landing", "study")
+
+
+def _two_storey_scenario() -> tuple[Scenario, PersonalProcessPackage]:
+    """The fixture flat, rewritten as a house: half its rooms upstairs, plus a landing and a study.
+
+    A storey is declared in the location's own `attributes`, which is why this needs no new fixture
+    on disk and why every scenario written before houses had storeys still means the ground floor.
+    """
+    scenario, package = source_models()
+    rooms = [item for item in scenario.locations if item.kind is LocationKind.room]
+    rooms = [
+        item.model_copy(update={"attributes": {"level": 1}})
+        if item.location_id in UPSTAIRS
+        else item
+        for item in rooms
+    ] + [
+        Location(location_id="landing", kind=LocationKind.room, attributes={"level": 1}),
+        Location(location_id="study", kind=LocationKind.room, attributes={"level": 1}),
+    ]
+    others = [item for item in scenario.locations if item.kind is not LocationKind.room]
+    locations = rooms + [item for item in others if item.kind is not LocationKind.composite]
+    locations.extend(
+        item.model_copy(update={"member_location_ids": [room.location_id for room in rooms]})
+        for item in others
+        if item.kind is LocationKind.composite
+    )
+    resources = list(scenario.resources) + [
+        Resource(resource_id="desk_study_01", resource_type="desk", location_id="study"),
+        Resource(resource_id="chair_study_01", resource_type="chair", location_id="study"),
+        Resource(
+            resource_id="bookshelf_landing_01", resource_type="bookshelf", location_id="landing"
+        ),
+    ]
+    facts = dict(scenario.initial_state.resource_facts)
+    for resource in resources:
+        facts.setdefault(resource.resource_id, {"available": True})
+    return (
+        scenario.model_copy(
+            update={
+                "locations": locations,
+                "resources": resources,
+                "initial_state": scenario.initial_state.model_copy(
+                    update={
+                        "resource_facts": facts,
+                        "environment_facts": {
+                            **scenario.initial_state.environment_facts,
+                            "dwelling_scale": 1.3,
+                        },
+                    }
+                ),
+            }
+        ),
+        package,
+    )
+
+
+def test_a_house_with_two_storeys_is_one_valid_plan_joined_by_a_staircase() -> None:
+    """Two floors are two blocks of one coordinate plane, and a stairway is what crosses between.
+
+    Keeping the model flat is the whole point: nothing about regions not overlapping, obstacles
+    living inside one region, or routing inside a room had to change to draw a house.
+    """
+    scenario, package = _two_storey_scenario()
+    result = generate_home(scenario, package)
+    assert result.report.success, [issue.message for issue in result.report.issues]
+    home = result.home
+    assert home is not None
+
+    upstairs = {region.region_id for region in home.regions if region.level == 1}
+    assert upstairs == set(UPSTAIRS)
+    rooms = [region for region in home.regions if region.kind.value == "room"]
+    # Side by side, not on top of one another: the geometry rules stay the ones for a flat.
+    assert max(
+        point.x for region in rooms if region.level == 0 for point in region.boundary.vertices
+    ) < min(point.x for region in rooms if region.level == 1 for point in region.boundary.vertices)
+
+    stairways = [item for item in home.connections if item.kind is ConnectionKind.stairway]
+    assert len(stairways) == 1
+    flight = stairways[0]
+    # The climb is declared, because the gap between the blocks on the page is not a distance.
+    assert flight.distance_meters == load_home_policy(None).stair_run_meters
+    assert {flight.region_a_id, flight.region_b_id} & upstairs
+
+    # A flight is a real object at both ends, standing on floor the furniture has to work round.
+    treads = [item for item in home.obstacles if item.obstacle_id.startswith("obstacle_stairs_")]
+    assert {item.region_id for item in treads} == {flight.region_a_id, flight.region_b_id}
+    assert all(item.orientation_degrees in {0.0, 90.0, 180.0, 270.0} for item in treads)
+
+    # And the resident can actually walk upstairs.
+    kitchen = next(
+        item for item in home.interaction_points if item.interaction_point_id == "anchor_kitchen"
+    )
+    bedroom = next(
+        item for item in home.interaction_points if item.interaction_point_id == "anchor_bedroom"
+    )
+    route = plan_path(
+        home,
+        start_region_id="kitchen",
+        start=kitchen.position,
+        end_region_id="bedroom",
+        end=bedroom.position,
+        walking_speed_meters_per_second=1.2,
+        body_radius_meters=home.kinematic_defaults.body_radius_meters,
+        mobility_profile="default",
+    )
+    crossed = list(dict.fromkeys(point.region_id for point in route.waypoints))
+    assert crossed[0] == "kitchen" and crossed[-1] == "bedroom"
+    assert flight.region_a_id in crossed and flight.region_b_id in crossed
+    # One flight, not the ten metres of blank page between the two blocks.
+    assert route.distance_meters < 40.0
+
+
+def test_the_dwelling_scale_is_read_from_the_scenario_and_bounded() -> None:
+    """A studio and a family house come off the same room profiles, sized differently."""
+    scenario, package = source_models()
+
+    def plan_area(scale: object) -> float:
+        subject = scenario.model_copy(
+            update={
+                "initial_state": scenario.initial_state.model_copy(
+                    update={"environment_facts": {"dwelling_scale": scale}}
+                )
+            }
+        )
+        home = generate_home(subject, package).home
+        assert home is not None
+        return sum(
+            _polygon_area(region.boundary.vertices)
+            for region in home.regions
+            if region.kind.value == "room"
+        )
+
+    assert plan_area(0.7) < plan_area(1.0) < plan_area(1.4)
+    # Nonsense is ignored rather than obeyed: a plan is not drawn at a hundred times life size.
+    assert plan_area(99.0) == plan_area("not a number") == plan_area(1.0)
+
+
+def _polygon_area(vertices: list[Point2D]) -> float:
+    total = 0.0
+    for index, point in enumerate(vertices):
+        following = vertices[(index + 1) % len(vertices)]
+        total += point.x * following.y - following.x * point.y
+    return abs(total) / 2

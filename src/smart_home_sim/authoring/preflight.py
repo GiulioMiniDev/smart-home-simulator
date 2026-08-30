@@ -30,6 +30,7 @@ from smart_home_sim.domain.models import (
 )
 from smart_home_sim.domain.plan import CanonicalActivity, CanonicalPlan
 from smart_home_sim.domain.sensors import contact_instrumented_types
+from smart_home_sim.hybrid_planning.outline import HabitGroundTruth, HabitObservation
 
 _UNKNOWN = object()
 _ABSENT = object()
@@ -837,6 +838,144 @@ def validate_instrumented_objects_are_opened(
                     "resources": resources,
                     "openedTypes": sorted(opened),
                 },
+            )
+        )
+    return findings
+
+
+# Past this, the authoring guidance's own words for it are "a window with things scattered in it
+# rather than a stretch of the day with a shape". The number is its, not this module's: the bands
+# it measured as sound came out between 0.10 and 0.29, and the one it holds up as abandoned came
+# out 0.68.
+#
+# Checking it against the horizons to hand agreed — 28 bands fell either under 0.23 or over 0.32,
+# with the threshold in the only gap, and twelve of the nineteen it catches past 0.50 — but that
+# corpus is thinner than the count suggests. Six documents, only one of them authored against the
+# current template, three needing their rhythm processes padded in before they would expand at
+# all, and every one of them from a single model family. It corroborates the guidance's figure;
+# it does not independently establish it. Widen the corpus before moving the number.
+UNACCOUNTED_BAND_LIMIT = 1 / 3
+
+
+def _thin_bands(ground_truth: HabitGroundTruth) -> list[tuple[int, HabitObservation]]:
+    return [
+        (index, habit)
+        for index, habit in enumerate(ground_truth.habits)
+        if habit.unaccounted_share > UNACCOUNTED_BAND_LIMIT
+    ]
+
+
+def _largest(habit: HabitObservation) -> str:
+    if not habit.composition:
+        return "nothing at all was measured inside it"
+    dominant = habit.composition[0]
+    return f"its largest single activity is {dominant.intent!r} at {dominant.share:.0%}"
+
+
+def _band_details(habit: HabitObservation) -> dict[str, JsonValue]:
+    dominant = habit.composition[0] if habit.composition else None
+    return {
+        "habitId": habit.habit_id,
+        "windowStart": habit.window_start,
+        "windowEnd": habit.window_end,
+        "dayCount": habit.day_count,
+        "unaccountedShare": habit.unaccounted_share,
+        "dominantIntent": habit.dominant_intent,
+        "dominantShare": dominant.share if dominant is not None else None,
+        "effectiveStart": habit.effective_start,
+        "effectiveEnd": habit.effective_end,
+        "effectiveShare": habit.effective_share,
+        "limit": round(UNACCOUNTED_BAND_LIMIT, 4),
+    }
+
+
+def validate_habit_bands_are_inhabited(
+    ground_truth: HabitGroundTruth,
+) -> list[PreflightFinding]:
+    """A band with a shape and holes in it: something holds it, and the rest says nothing.
+
+    The expander already measures this. Every band comes out of the expansion with the mix that
+    landed inside it, the share of minutes in which nothing declared was running, and the stretch
+    its dominant activity really holds — and until now nothing read those numbers back. The
+    authoring guidance spends two pages on the failure they detect, gives the thresholds, and ends
+    with "you are asked to write bands that would survive them"; a model that had read all of it
+    still produced two bands at 0.64 and 0.56 in the same document. Saying it a third time in the
+    prompt is betting again on the mechanism that already lost. Measuring is not.
+
+    It is a warning and not a gate, for the reason the guidance itself gives: a band with no single
+    dominant activity "is possible and sometimes right" — a slow morning of four comparable
+    routines is a real thing. What is reported is the number, and what it means; whether the
+    horizon is wrong is the researcher's call.
+
+    The sibling below takes the sharper half of the same threshold. Splitting them is what the
+    measurements asked for: over the corpus described above, fifteen of the nineteen thin bands
+    held no part of themselves on most days, while four still had a stretch their dominant activity
+    owned — one of those at an `effective_share` of 0.83 with 46% of its minutes empty. Those are
+    two different defects, and reporting them in one voice left the smaller four unreadable among
+    the rest.
+
+    Sleep and waking count here like any other activity, which is why a night band is not exempt
+    and passes anyway: every night in that corpus came out between 0.035 and 0.148, the healthiest
+    band in its own document. Whether that holds for horizons written by other models is exactly
+    what the corpus is too narrow to say.
+    """
+    findings: list[PreflightFinding] = []
+    for index, habit in _thin_bands(ground_truth):
+        if habit.effective_start is None:
+            continue
+        findings.append(
+            PreflightFinding(
+                path=f"$.habits[{index}]",
+                message=(
+                    f"The band {habit.label!r} ({habit.window_start}-{habit.window_end}) spends "
+                    f"{habit.unaccounted_share:.0%} of its minutes with no declared activity "
+                    f"running, measured over {habit.day_count} day(s). It does have a shape - "
+                    f"{habit.dominant_intent!r} holds {habit.effective_start}-"
+                    f"{habit.effective_end} on most of those days - and the rest of it says "
+                    "nothing. Either give the gaps an activity of their own, or narrow the band "
+                    "to the stretch it can describe."
+                ),
+                details=_band_details(habit),
+            )
+        )
+    return findings
+
+
+def validate_habit_bands_hold_a_stable_stretch(
+    ground_truth: HabitGroundTruth,
+) -> list[PreflightFinding]:
+    """A band nothing holds: mostly empty, and empty throughout rather than in places.
+
+    `effective_start` is null when the band's own dominant activity does not own a single minute of
+    it on most of the days it applies to. Paired with a band that is already mostly unaccounted,
+    that is the difference between a stretch of the day with gaps in it and a window somebody drew
+    around nothing — and it is the one to read first when several bands are reported at once.
+
+    Both conditions are required. A band can hold no stable stretch and still be a good band: four
+    comparable routines through a slow morning take turns, none of them owns the hours, and the
+    guidance says as much. It is only when nothing owns the band *and* a third of it is empty that
+    the band has stopped describing anything. Over the corpus behind `UNACCOUNTED_BAND_LIMIT` no
+    band was ever in one of those two states without the other, which is why the pairing costs
+    nothing to require.
+    """
+    findings: list[PreflightFinding] = []
+    for index, habit in _thin_bands(ground_truth):
+        if habit.effective_start is not None:
+            continue
+        findings.append(
+            PreflightFinding(
+                path=f"$.habits[{index}]",
+                message=(
+                    f"The band {habit.label!r} ({habit.window_start}-{habit.window_end}) spends "
+                    f"{habit.unaccounted_share:.0%} of its minutes with no declared activity "
+                    f"running, and no activity holds any part of it on most of its "
+                    f"{habit.day_count} day(s): {_largest(habit)}, and nothing owns the band. "
+                    "This is the window with things scattered in it rather than a stretch of the "
+                    "day with a shape. It wants an activity that occupies it in blocks - a handful "
+                    "of short errands cannot fill it, and declaring them as though they could is "
+                    "what produces exactly this measurement."
+                ),
+                details=_band_details(habit),
             )
         )
     return findings

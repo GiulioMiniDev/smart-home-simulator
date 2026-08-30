@@ -145,3 +145,7 @@
 .horizon-mismatch svg { flex: none; margin-top: .15rem; }
 .horizon-mismatch p { margin: 0; font-size: .83rem; line-height: 1.5; color: var(--text); }
 .horizon-mismatch small { display: block; margin-top: .25rem; color: var(--text-faint); font-size: .74rem; }
+
+/* A file name is one unbreakable token and the researcher's are long: `miriam_ferrari_12_mesi_
+   corretto.json` overflowed the card by 47px and pushed the whole page sideways on a phone. */
+.horizon-headline .eyebrow { overflow-wrap: anywhere; }

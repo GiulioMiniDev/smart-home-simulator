@@ -23,6 +23,11 @@ class RegionKind(StrEnum):
 class ConnectionKind(StrEnum):
     doorway = "doorway"
     passage = "passage"
+    # A flight of stairs between two storeys. It is walked, like a doorway, but the two ends do not
+    # touch: each storey is tiled in its own block of the plan, so the portals sit metres apart in
+    # coordinates that say nothing about how far the climb is. A stairway therefore declares its own
+    # length, which is the one thing that separates it from a doorway.
+    stairway = "stairway"
     transit = "transit"
 
 
@@ -57,6 +62,14 @@ class HomeRegion(ContractModel):
     kind: RegionKind
     boundary: Polygon2D
     traversable: bool = True
+    # Which storey the region is on. The model stays flat — two storeys are two blocks of one
+    # coordinate plane, which is what keeps every geometric rule in the system (no overlapping
+    # regions, obstacles inside their region, visibility routing inside a room) working unchanged.
+    # This is what says the blocks are floors rather than a very long bungalow, so a plan can draw
+    # one storey at a time instead of drawing a house as a diptych. Zero is the ground floor and
+    # negative is a cellar, because a basement is a storey like any other and the only thing that
+    # distinguishes it is which way you walk to reach it.
+    level: int = 0
 
 
 class HomeConnection(ContractModel):
@@ -78,13 +91,19 @@ class HomeConnection(ContractModel):
             raise ValueError("a connection must join two different regions")
         if self.traversal_mode is TraversalMode.transport and self.distance_meters is None:
             raise ValueError("transport connections require distanceMeters")
-        if self.traversal_mode is TraversalMode.walking and self.distance_meters is not None:
+        if self.kind is ConnectionKind.stairway and self.distance_meters is None:
+            raise ValueError("stairways require distanceMeters")
+        if (
+            self.traversal_mode is TraversalMode.walking
+            and self.kind is not ConnectionKind.stairway
+            and self.distance_meters is not None
+        ):
             raise ValueError("walking connections derive distance from their portals")
         if (
-            self.kind in {ConnectionKind.doorway, ConnectionKind.passage}
+            self.kind in {ConnectionKind.doorway, ConnectionKind.passage, ConnectionKind.stairway}
             and self.traversal_mode is not TraversalMode.walking
         ):
-            raise ValueError("doorways and passages use walking traversal")
+            raise ValueError("doorways, passages and stairways use walking traversal")
         if (
             self.kind is ConnectionKind.transit
             and self.traversal_mode is not TraversalMode.transport
@@ -99,6 +118,13 @@ class HomeObstacle(ContractModel):
     obstacle_id: str = Field(min_length=1)
     region_id: str = Field(min_length=1)
     boundary: Polygon2D
+    # Which way the piece is turned, as a bearing in the home's own frame: 0 looks along +x, 90
+    # along +y, counted anticlockwise. Routing does not care — an obstacle is its footprint — but
+    # drawing does, and nothing else in the model records it. A square hob is square whichever way
+    # it faces, and the interaction point is wherever a body could stand rather than reliably in
+    # front, so orientation cannot be recovered from the geometry and has to be stated. Zero is the
+    # default so a home written before this field stays valid and simply draws unturned.
+    orientation_degrees: float = Field(default=0.0, ge=0.0, lt=360.0)
 
 
 class InteractionPoint(ContractModel):
@@ -155,17 +181,40 @@ class AccessConstraint(ContractModel):
 _CONTAINER = frozenset(
     {"openable", "inspectable", "storage_support", "storable", "graspable", "cleanable"}
 )
+# The dwelling generator furnishes a home with more than the seventeen objects the standard flat
+# had, and every one of those additions has to say what it is for. A type absent from this table is
+# permissive — it offers every capability there is — so an unlisted bookcase would answer to
+# `food_preparation` and `personal_care_support`, sort before the sofa on the letter b, and quietly
+# become the object the resident does everything at. Which is precisely the bug the note above
+# describes, and it is not a bug that gets better when the flats get fuller.
 ENTITY_TYPE_CAPABILITIES: dict[str, frozenset[str]] = {
+    "armchair": frozenset({"leisure_support", "cleanable"}),
     "bathtub": frozenset({"personal_care_support", "cleanable", "openable"}),
     "bed": frozenset({"leisure_support", "cleanable"}),
+    "bench": frozenset({"leisure_support", "consumable", "cleanable"}),
+    "bidet": frozenset({"personal_care_support", "cleanable"}),
+    # Shelves hold things and are looked at; they do not open, so no reed switch and no `openable`.
+    "bookshelf": frozenset(
+        {"inspectable", "storage_support", "storable", "graspable", "cleanable"}
+    ),
+    "chest_of_drawers": _CONTAINER | frozenset({"wearable"}),
+    "coat_rack": frozenset({"storable", "graspable", "wearable", "cleanable"}),
+    "coffee_table": frozenset({"storable", "graspable", "cleanable"}),
     "chair": frozenset({"leisure_support", "consumable", "cleanable"}),
     "coffee_machine": frozenset(
         {"food_preparation", "consumable", "switchable", "inspectable", "cleanable"}
     ),
     "desk": frozenset({"work_support", "storable", "graspable", "cleanable"}),
+    "dishwasher": frozenset({"openable", "switchable", "inspectable", "cleanable"}),
     "drying_rack": frozenset({"laundry_support", "cleanable"}),
+    "floor_lamp": frozenset({"switchable"}),
+    "garden_chair": frozenset({"leisure_support", "cleanable"}),
+    "houseplant": frozenset({"cleanable"}),
     "kettle": frozenset({"food_preparation", "switchable", "inspectable", "cleanable"}),
+    # A worktop is where food is prepared; it is not an appliance, so nothing switches on.
+    "kitchen_counter": frozenset({"food_preparation", "storable", "graspable", "cleanable"}),
     "lamp": frozenset({"switchable"}),
+    "mirror": frozenset({"cleanable"}),
     # `RESOURCE_ROLE_ALIASES` routes every medication role to a cabinet, so a cabinet must be able
     # to hold medicine even when the scenario never names a dedicated one.
     "medicine_cabinet": _CONTAINER | frozenset({"medication_support"}),
@@ -175,13 +224,21 @@ ENTITY_TYPE_CAPABILITIES: dict[str, frozenset[str]] = {
     "moka_coffee_maker": frozenset(
         {"food_preparation", "consumable", "switchable", "graspable", "inspectable", "cleanable"}
     ),
+    # A bedside drawer holds a book and a glass of water. Medicine lives in the cabinet the
+    # medication roles are routed to, and giving a second piece of furniture `medication_support`
+    # would put the resident's tablets in whichever of the two sorts first.
+    "nightstand": _CONTAINER,
     "oven": frozenset({"food_preparation", "openable", "switchable", "inspectable", "cleanable"}),
     "radio": frozenset({"switchable", "communication", "leisure_support"}),
     "refrigerator": _CONTAINER | frozenset({"consumable"}),
+    "shoe_rack": frozenset({"storable", "graspable", "wearable", "cleanable"}),
     "shower": frozenset({"personal_care_support", "switchable", "cleanable"}),
+    "sideboard": _CONTAINER,
+    "single_bed": frozenset({"leisure_support", "cleanable"}),
     # A tap is where drinking water comes from, which is why it pours; it is not a hob.
     "sink": frozenset({"consumable", "switchable", "cleanable"}),
     "sofa": frozenset({"leisure_support", "consumable", "communication", "cleanable"}),
+    "stool": frozenset({"leisure_support", "consumable", "cleanable"}),
     "storage_cabinet": _CONTAINER | frozenset({"medication_support"}),
     "stove": frozenset({"food_preparation", "switchable", "inspectable", "cleanable"}),
     # You eat and work at a table; you cook on a hob. Leaving `food_preparation` here made the table
@@ -190,6 +247,7 @@ ENTITY_TYPE_CAPABILITIES: dict[str, frozenset[str]] = {
     "table": frozenset({"work_support", "consumable", "storable", "graspable", "cleanable"}),
     "television": frozenset({"switchable", "leisure_support", "communication"}),
     "toilet": frozenset({"personal_care_support", "cleanable"}),
+    "tv_stand": frozenset({"storable", "graspable", "cleanable"}),
     # The wardrobe is also where worn clothes wait for the wash: `laundry_collection` is its role.
     "wardrobe": _CONTAINER | frozenset({"wearable", "laundry_support"}),
     "washbasin": frozenset({"personal_care_support", "switchable", "cleanable"}),

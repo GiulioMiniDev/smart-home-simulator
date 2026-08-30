@@ -256,7 +256,7 @@ dd { margin: 0; }
 .file-picker { position: relative; display: flex; align-items: center; gap: .75rem; min-height: 62px; padding: .7rem; border: 1px dashed var(--line-strong); border-radius: 6px; background: var(--surface-raised); cursor: pointer; }
 .file-picker:hover { border-color: var(--teal); }
 .file-picker > span { display: flex; flex-direction: column; }
-.file-picker small { color: var(--text-faint); }
+.file-picker small { color: var(--text-faint); overflow-wrap: anywhere; }
 /* A document type named in this line is there to be compared against the file on disk, and the
    global code size is a fraction of a size that is already a fraction — it landed at 8px. */
 .file-picker small code { font-size: 1em; color: var(--text-soft); }
@@ -281,7 +281,13 @@ dd { margin: 0; }
    column, that made the canvas taller, and an SVG re-fits its viewBox when its box changes — so a
    click on a piece of furniture silently rescaled and recentred the plan under the pointer. */
 .editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; height: min(78vh, 820px); min-height: 560px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-.editor-stage { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); border-inline-end: 1px solid var(--line); }
+/* Toolbar, an optional palette, and the plan. A column rather than two grid rows: the palette
+   comes and goes with the tool, and as an implicit grid row it shared the plan's track and was
+   crushed to half its height. Here the two chrome rows keep their own size and the plan takes the
+   rest, whether there are two of them or three. */
+.editor-stage { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-inline-end: 1px solid var(--line); }
+.editor-stage > .editor-toolbar, .editor-stage > .furniture-palette { flex: none; }
+.editor-stage > .plan-canvas-wrap { min-height: 0; flex: 1 1 auto; }
 .editor-toolbar { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: .8rem; padding: .35rem .6rem; border-bottom: 1px solid var(--line); background: var(--surface-cool); }
 .editor-toolbar > div { display: flex; flex-wrap: wrap; gap: .25rem; }
 .viewport-tools { align-items: center; justify-content: flex-end; }
@@ -328,15 +334,24 @@ g[role="button"]:hover .region, g.is-selected .region { stroke: var(--teal); str
 .entity-node:hover text, .entity-node:focus-within text, .entity-node.is-selected text,
 .sensor-node:hover text, .sensor-node:focus-within text, .sensor-node.is-selected text { opacity: 1; }
 .entity-node.is-service circle { opacity: .35; }
-/* CSS lengths inside an SVG viewBox are user units, and here one unit is one metre: the global
-   focus ring above therefore drew a 3-metre outline around whatever was focused, swallowing the
-   plan. Focus is shown with a stroke instead, kept at screen scale by non-scaling-stroke. */
-.plan-canvas [tabindex="0"]:focus-visible { outline: none; }
+/* CSS lengths inside an SVG viewBox are user units, and here one unit is one metre: an outline of
+   a few pixels is therefore an outline of a few *metres*, and it swallows the plan. That is true of
+   the app's own focus ring above and equally of the browser's default one — `outline: auto 5px`,
+   which Chrome paints on :focus for an SVG group whether or not :focus-visible matches. Clicking a
+   bed put a five-metre amber blob over the flat. So every focusable thing on the canvas has its
+   outline removed on both states, and focus is shown with a stroke instead, kept at screen scale by
+   non-scaling-stroke. */
+.plan-canvas [tabindex]:focus, .plan-canvas [tabindex]:focus-visible { outline: none; }
 .plan-canvas .entity-node:focus-visible circle,
 .plan-canvas .sensor-node:focus-visible circle { stroke: var(--indigo); stroke-width: 3.5px; }
 .plan-canvas g[role="button"]:focus-visible .region,
 .plan-canvas g[role="button"]:focus-visible .obstacle { stroke: var(--indigo); stroke-width: 3px; }
 g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
+/* Something the authoritative gate would refuse, said on the object rather than in a rejection
+   after the fact. Dashed so it cannot be mistaken for selection, which is a solid red. */
+g.has-problem .obstacle { stroke: var(--red); stroke-width: 2px; stroke-dasharray: 5 3; }
+g.has-problem .region { stroke: var(--red); stroke-width: 2.4px; stroke-dasharray: 6 4; }
+g.has-problem .furniture-glyph { color: var(--red); }
 .interaction-point { fill: var(--teal); vector-effect: non-scaling-stroke; stroke: var(--surface-raised); stroke-width: 1px; }
 .entity-node circle { fill: var(--indigo-soft); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; }
 /* The reach the model gives that spot: it is a place to stand, not the object itself. */
@@ -377,6 +392,42 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .handle-e, .handle-w { cursor: ew-resize; }
 .handle-nw, .handle-se { cursor: nwse-resize; }
 .handle-ne, .handle-sw { cursor: nesw-resize; }
+/* Storey switch. A house is read one floor at a time; the control only exists when there is more
+   than one, so a flat is exactly as it was. */
+.plan-storeys { position: absolute; inset: .7rem .7rem auto auto; display: flex; gap: .25rem; padding: .25rem; border: 1px solid var(--line); border-radius: 6px; background: color-mix(in oklch, var(--surface-raised) 92%, transparent); }
+.plan-storeys button { padding: .28rem .55rem; border: 0; border-radius: 4px; background: transparent; color: var(--text-soft); font-size: .68rem; cursor: pointer; }
+.plan-storeys button:hover { color: var(--text); }
+.plan-storeys button.is-current { background: var(--surface-cool); color: var(--text); font-weight: 600; }
+/* The furniture the tool is about to drop. Grouped by the room somebody is furnishing, and drawn
+   with the same glyphs the plan uses, so a bed reads as a bed before it is dropped. */
+.furniture-palette { display: flex; flex: none; gap: 1rem; overflow-x: auto; padding: .55rem .7rem; border-bottom: 1px solid var(--line); background: var(--surface-cool); }
+.furniture-palette section { min-width: max-content; }
+.furniture-palette h4 { margin: 0 0 .3rem; color: var(--text-faint); font-size: .62rem; font-weight: 640; letter-spacing: .07em; text-transform: uppercase; }
+.furniture-choices { display: flex; gap: .3rem; }
+.furniture-choice { display: grid; width: 62px; justify-items: center; gap: .15rem; padding: .3rem .15rem; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-soft); font-size: .6rem; line-height: 1.15; text-align: center; cursor: pointer; }
+.furniture-choice svg { width: 34px; height: 34px; color: var(--amber); }
+.furniture-choice span { overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+.furniture-choice:hover { border-color: var(--line); background: var(--surface); color: var(--text); }
+.furniture-choice[aria-pressed="true"] { border-color: var(--indigo); background: var(--surface); color: var(--text); font-weight: 620; }
+/* Keeping a working copy, and throwing one away: neither of them is publishing. */
+.draft-actions { display: flex; gap: .3rem; margin-bottom: .55rem; }
+.draft-actions .tool-button { flex: 1; justify-content: center; }
+/* Tools. One of them is always held, so they are toggles in a set rather than buttons that fire. */
+.tool-palette { display: flex; gap: .15rem; padding: .1rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.tool-palette .tool-button[aria-pressed="true"] { border-color: transparent; background: var(--indigo); color: var(--surface); }
+.tool-palette .tool-button[aria-pressed="true"] svg { color: inherit; }
+/* The canvas says what it is for. A tool is a thing you point with, so it never shows a grab hand. */
+.plan-canvas:not([data-tool="select"]) { user-select: none; }
+.plan-canvas[data-tool="room"] { cursor: crosshair; }
+.plan-canvas[data-tool="door"], .plan-canvas[data-tool="obstacle"],
+.plan-canvas[data-tool="pir"], .plan-canvas[data-tool="contact"], .plan-canvas[data-tool="temperature"] { cursor: copy; }
+/* What the pointer is about to do, and what the drag just lined up with. */
+.plan-overlay { pointer-events: none; }
+.align-guide { vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1px; stroke-dasharray: 6 4; opacity: .75; }
+.draw-draft { fill: color-mix(in oklch, var(--indigo) 12%, transparent); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.6px; stroke-dasharray: 5 4; }
+.draw-measure { fill: var(--indigo); font-size: .34px; font-weight: 640; text-anchor: middle; }
+.door-preview { vector-effect: non-scaling-stroke; stroke: var(--teal); stroke-width: 7px; stroke-linecap: round; opacity: .8; }
+.drop-mark { fill: color-mix(in oklch, var(--indigo) 18%, transparent); vector-effect: non-scaling-stroke; stroke: var(--indigo); stroke-width: 1.5px; stroke-dasharray: 3 3; }
 .plan-legend { position: absolute; inset: auto auto .7rem .7rem; display: flex; gap: .7rem; padding: .42rem .55rem; border: 1px solid var(--line); border-radius: 5px; background: color-mix(in oklch, var(--surface-raised) 92%, transparent); color: var(--text-soft); font-size: .65rem; }
 .plan-legend span { display: inline-flex; align-items: center; gap: .3rem; }
 .plan-legend i { width: 10px; height: 10px; border: 1px solid var(--line-strong); }
@@ -396,6 +447,16 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
 .inspector-section { padding: 1rem; border-top: 1px solid var(--line); }
 .inspector-section code { display: block; overflow-wrap: anywhere; }
 .inspector-section p { font-size: .77rem; }
+/* The turn control sits with the nudge grid because it is the same kind of edit: small, precise,
+   and about where a thing is rather than what it is. */
+.turn-button { width: 100%; margin-top: .55rem; justify-content: center; }
+.inspector kbd { padding: .05rem .3rem; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-cool); font-family: "Cascadia Code", monospace; font-size: .72em; }
+.plan-problem { display: flex; align-items: center; gap: .4rem; margin: 0 1rem 1rem; padding: .45rem .6rem; border: 1px solid color-mix(in oklch, var(--red) 35%, var(--line)); border-radius: 5px; background: color-mix(in oklch, var(--red) 8%, transparent); color: var(--red); font-size: .78rem; }
+.plan-faults { margin-bottom: .6rem; border: 1px solid color-mix(in oklch, var(--red) 30%, var(--line)); border-radius: 5px; background: color-mix(in oklch, var(--red) 6%, transparent); font-size: .76rem; }
+.plan-faults summary { display: flex; align-items: center; gap: .4rem; padding: .45rem .6rem; color: var(--red); cursor: pointer; }
+.plan-faults ul { margin: 0; padding: 0 .7rem .55rem 1.4rem; color: var(--text-soft); }
+.plan-faults li { margin-bottom: .2rem; }
+.plan-faults .row-link { display: inline; padding: 0; border: 0; background: none; color: var(--text); font-family: "Cascadia Code", monospace; font-size: .95em; text-decoration: underline; cursor: pointer; }
 .inspector-footer { margin-top: auto; padding: .8rem; border-top: 1px solid var(--line); background: var(--surface); }
 .unsaved-note { display: flex; align-items: flex-start; gap: .35rem; margin: 0 0 .5rem; color: var(--text-soft); font-size: .7rem; line-height: 1.35; }
 .unsaved-note svg { flex: none; margin-top: .1rem; color: var(--amber); }
@@ -691,3 +752,8 @@ g.is-selected .obstacle { stroke: var(--red); stroke-width: 2.3px; }
   .storage-row .storage-share { grid-column: 1 / -1; }
   .storage-row > small { grid-column: 1 / -1; }
 }
+
+/* Loading a corrected file over one already attached. Set apart from the resident it will replace,
+   because the two are a step apart in the same card. */
+.reimport-flow { margin-top: .9rem; padding: .9rem 0 0; border-top: 1px solid var(--line); }
+.reimport-flow > p:first-child { font-size: .85rem; }

@@ -318,3 +318,53 @@ def test_editing_the_plan_approves_it_and_a_home_without_one_cannot_be_approved(
     assert [point.x for point in model.obstacles[0].boundary.vertices] == [
         vertex["x"] for vertex in edited["obstacles"][0]["boundary"]["vertices"]
     ]
+
+
+def test_a_band_the_days_never_filled_is_reported_beside_the_report_it_cannot_decide(
+    tmp_path: Path,
+) -> None:
+    """The one finding that needs the expansion, carried back to the document it belongs to.
+
+    `unaccountedShare` is measured by the expander and was, until this check, written to the
+    ground truth and read by nobody. It travels beside the ingestion report rather than inside
+    it: the authoring guidance says a band with no dominant activity is sometimes right, so this
+    is a warning the researcher weighs and never a verdict on the bundle.
+    """
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Outline")
+    home = workspace.create_home("Outline home")
+    service = ApplicationService(workspace)
+
+    payload = _outline_bundle()
+    outline = payload["outline"]
+    assert isinstance(outline, dict)
+    habits = outline["habits"]
+    assert isinstance(habits, list)
+    # A band stretched over hours nothing was declared to fill: the failure the check exists for.
+    # The fixture leaves 09:00-17:00 unclaimed and Sunday has no work shift in it, so this
+    # neither overlaps a sibling band nor lands on hours something else already fills.
+    hollow = dict(habits[-1])
+    hollow["habitId"] = "hollow_band"
+    hollow["label"] = "A window with nothing in it"
+    hollow["windowStart"] = "09:30"
+    hollow["windowEnd"] = "17:00"
+    hollow["weekdays"] = ["sunday"]
+    hollow["recurringActivityIds"] = []
+    outline["habits"] = [*habits, hollow]
+
+    result = service.import_horizon_outline(home.home_id, payload, seed=1)
+
+    issues = workspace.list_validation_issues(home.home_id)
+    # A band with nothing declared in it holds no stretch of itself either, so it is the sharper
+    # of the two codes that reports it.
+    band_issues = [item for item in issues if item.code == "HABIT_BAND_HOLDS_NO_STABLE_STRETCH"]
+    assert band_issues, "the hollow band should have been reported"
+    reported = next(item for item in band_issues if "A window with nothing in it" in item.message)
+    assert reported.severity == "warning"
+    # The path points into the document the researcher actually holds, not into the expansion.
+    assert reported.path.startswith("$.outline.habits[")
+    # It reaches the researcher without ever entering the verdict the ingestor reached.
+    reported_codes = {item["code"] for item in result["report"]["issues"]}
+    assert not reported_codes & {
+        "HABIT_BAND_HOLDS_NO_STABLE_STRETCH",
+        "HABIT_BAND_IS_MOSTLY_UNACCOUNTED",
+    }

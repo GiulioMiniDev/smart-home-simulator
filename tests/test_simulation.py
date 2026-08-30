@@ -66,9 +66,13 @@ def test_golden_week_executes_complete_vocabulary_and_closes_state(result) -> No
     # else to do in: they belong to the activity that just ended, so the count of activities is
     # untouched and no intent is invented. The count moves when anything changes where a gap falls
     # — the transition pause moved it by one — which is why the activity count above is the
-    # invariant and this is a reading.
-    assert len(trace.action_executions) == 794
-    assert len(trace.movements) == 224
+    # invariant and this is a reading. It moved from 794 to 796 when the committed bundle was
+    # rebuilt: the one in the repository predated the change that stopped a carried item counting
+    # as somewhere to walk to, so two of the walks it recorded were not walks the code still plans.
+    # The movement count below fell from 224 for the same reason, and both readings are what the
+    # code at that commit already produced once the bundle was rebuilt from its own inputs.
+    assert len(trace.action_executions) == 796
+    assert len(trace.movements) == 205
     assert all(item.status != "failed" for item in trace.activity_executions)
     expected_actions = {
         item["actionType"]

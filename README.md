@@ -687,6 +687,7 @@ simulazione si avvia come qualsiasi altra run.
 - [Planimetria rivista come input della run](docs/decisions/ADR-020-researcher-approved-plan-as-run-input.md)
 - [Profilo del residente come evidenza pubblicata](docs/decisions/ADR-022-resident-profile-as-published-evidence.md)
 - [Posizione del workspace configurabile](docs/decisions/ADR-023-configurable-workspace-location.md)
+- [La casa in cui vive la persona](docs/decisions/ADR-025-the-house-a-persona-lives-in.md)
 - [Design: pianificazione ibrida locale](docs/plans/2026-07-22-hybrid-local-planning-design.md)
 - [Design: ground truth delle abitudini](docs/plans/2026-07-22-behavioral-profile-habit-ground-truth-design.md)
 - [Design: da persona locale a dataset simulabile](docs/plans/2026-07-24-local-persona-to-simulatable-dataset-design.md)

@@ -541,7 +541,7 @@ describe("the furniture tab", () => {
     expect((await screen.findAllByText("food_storage")).length).toBeGreaterThan(0);
     // The activity list under "which activities use it" names the one that binds to the fridge.
     expect(screen.getAllByText("Eat breakfast").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByText("Bathtub")[0]!);
+    fireEvent.click(screen.getAllByText("Aquarium")[0]!);
     expect(await screen.findByText(/Nothing binds to it/)).toBeInTheDocument();
     expect(screen.getByText(/it appears on the plan and in the replay as a dashed box/)).toBeInTheDocument();
   });
@@ -551,14 +551,14 @@ describe("the furniture tab", () => {
     const { saved } = mockApi();
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Furniture" }));
-    fireEvent.click((await screen.findAllByText("Bathtub"))[0]!);
+    fireEvent.click((await screen.findAllByText("Aquarium"))[0]!);
     fireEvent.change(screen.getByLabelText(/^Shape/), {
       target: { value: '<ellipse cx="0" cy="0" rx="18" ry="11" fill="none" stroke="currentColor" />' },
     });
     await vi.advanceTimersByTimeAsync(900);
     await waitFor(() => expect(saved).toHaveLength(1));
     const body = saved[0] as { pack: VocabularyPack };
-    expect(body.pack.entityTypes.find((item) => item.entityType === "bathtub")!.symbolBody).toContain("ellipse");
+    expect(body.pack.entityTypes.find((item) => item.entityType === "aquarium")!.symbolBody).toContain("ellipse");
     expect(await screen.findByText("Drawn with the shape below.")).toBeInTheDocument();
   });
 
@@ -567,14 +567,14 @@ describe("the furniture tab", () => {
     const { saved } = mockApi();
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Furniture" }));
-    fireEvent.click((await screen.findAllByText("Bathtub"))[0]!);
+    fireEvent.click((await screen.findAllByText("Aquarium"))[0]!);
     const entry = screen.getByPlaceholderText("food_preparation");
     fireEvent.change(entry, { target: { value: "personal_care_support" } });
     fireEvent.keyDown(entry, { key: "Enter" });
     await vi.advanceTimersByTimeAsync(900);
     await waitFor(() => expect(saved.length).toBeGreaterThan(0));
     const body = saved[saved.length - 1] as { pack: VocabularyPack };
-    expect(body.pack.entityTypes.find((item) => item.entityType === "bathtub")!.capabilities).toEqual([
+    expect(body.pack.entityTypes.find((item) => item.entityType === "aquarium")!.capabilities).toEqual([
       "personal_care_support",
     ]);
   });
@@ -865,11 +865,13 @@ describe("a drawing the researcher authored", () => {
     // Without a pack drawing, a known type uses the glyph that ships with the app and an unknown
     // one gets nothing — which is what makes it a dashed box.
     expect(furnitureSymbol("refrigerator")).toBe("refrigerator");
-    expect(furnitureSymbol("bookcase")).toBeUndefined();
+    // `bookcase` is a spelling of a type the app *does* draw, so the interesting case is one it
+    // has never heard of.
+    expect(furnitureSymbol("aquarium")).toBeUndefined();
     expect(furnitureSymbol(undefined)).toBeUndefined();
 
-    setCustomSymbols({ bookcase: "<rect />", refrigerator: "<circle />" });
-    expect(furnitureSymbol("bookcase")).toBe("custom-bookcase");
+    setCustomSymbols({ aquarium: "<rect />", refrigerator: "<circle />" });
+    expect(furnitureSymbol("aquarium")).toBe("custom-aquarium");
     expect(furnitureSymbol("refrigerator")).toBe("custom-refrigerator");
     expect(customSymbolId("sofa")).toBeUndefined();
   });

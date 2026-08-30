@@ -8,6 +8,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
 from smart_home_sim.domain.environment import (
+    ConnectionKind,
     HomeConnection,
     HomeModel,
     Point2D,
@@ -175,6 +176,11 @@ def plan_path(
         waypoints.append(NavigationWaypoint(target_region, *target_portal, mode))
         if connection.traversal_mode is TraversalMode.transport:
             transport_distance += connection.distance_meters or 0.0
+        elif connection.kind is ConnectionKind.stairway:
+            # The two landings are metres apart on the page and one flight apart in the house. The
+            # declared length is the climb; the gap between the blocks is a drawing convention and
+            # must not be charged to the resident as walking.
+            walking_distance += connection.distance_meters or 0.0
         else:
             walking_distance += hypot(
                 target_portal[0] - source_portal[0], target_portal[1] - source_portal[1]

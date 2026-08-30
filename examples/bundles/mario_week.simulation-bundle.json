@@ -29999,7 +29999,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "bathroom",
@@ -30024,7 +30025,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "hallway",
@@ -30049,7 +30051,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "entrance",
@@ -30074,7 +30077,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "kitchen",
@@ -30099,7 +30103,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "living_room",
@@ -30124,7 +30129,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "balcony",
@@ -30149,7 +30155,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "market",
@@ -30174,7 +30181,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "mothers_home",
@@ -30199,7 +30207,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "neighborhood_bar",
@@ -30224,7 +30233,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "outside",
@@ -30249,7 +30259,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "pharmacy",
@@ -30274,7 +30285,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "supermarket",
@@ -30299,7 +30311,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "workplace",
@@ -30324,7 +30337,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       }
     ],
     "connections": [
@@ -30599,7 +30613,8 @@
               "y": 11.0
             }
           ]
-        }
+        },
+        "orientationDegrees": 0.0
       },
       {
         "obstacleId": "bathroom_cabinet",
@@ -30623,7 +30638,8 @@
               "y": 1.5
             }
           ]
-        }
+        },
+        "orientationDegrees": 0.0
       },
       {
         "obstacleId": "kitchen_island",
@@ -30647,7 +30663,8 @@
               "y": 4.0
             }
           ]
-        }
+        },
+        "orientationDegrees": 0.0
       },
       {
         "obstacleId": "living_room_table",
@@ -30671,7 +30688,8 @@
               "y": 9.5
             }
           ]
-        }
+        },
+        "orientationDegrees": 0.0
       }
     ],
     "interactionPoints": [
@@ -33505,7 +33523,7 @@
     {
       "artifactId": "home_mario_monteverde",
       "version": "mario-apartment-0.1-example",
-      "sha256": "2e8b3257fe1c760c3b820443ff62d1824395ec40ce09e1fb5c65f616d3239ca6"
+      "sha256": "588af564d5ff06fc3c0d15827c58ecd6cc8d4adf921a3491b0756cfd4d6fa2ea"
     }
   ],
   "residentKinematics": [

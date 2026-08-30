@@ -697,6 +697,7 @@
       "enum": [
         "doorway",
         "passage",
+        "stairway",
         "transit"
       ],
       "title": "ConnectionKind",
@@ -1286,6 +1287,13 @@
         },
         "boundary": {
           "$ref": "#/$defs/Polygon2D"
+        },
+        "orientationDegrees": {
+          "default": 0.0,
+          "exclusiveMaximum": 360.0,
+          "minimum": 0.0,
+          "title": "Orientationdegrees",
+          "type": "number"
         }
       },
       "required": [
@@ -1314,6 +1322,11 @@
           "default": true,
           "title": "Traversable",
           "type": "boolean"
+        },
+        "level": {
+          "default": 0,
+          "title": "Level",
+          "type": "integer"
         }
       },
       "required": [

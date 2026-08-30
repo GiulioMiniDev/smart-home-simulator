@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { cutDoorways, dwellingRegionIds, planDoors, planWalls } from "../editor";
-import { furnitureSymbol } from "../furniture";
+import { furnitureSymbol, structuralSymbol } from "../furniture";
+import { FurnitureGlyph } from "../furniture-glyph";
 import { FurnitureSymbols } from "../furniture-symbols";
 import { CustomFurnitureSymbols } from "../vocabulary/CustomFurnitureSymbols";
 import type { HomeModel, Point } from "../types";
@@ -31,10 +32,19 @@ function words(value: string): string {
  * everything else -- no grid, no measurements, no device glyphs -- because this picture is for
  * watching somebody live in the place rather than for checking where a wall is.
  */
-function useSet(home: HomeModel | undefined) {
+function useSet(home: HomeModel | undefined, storey: number) {
   return useMemo(() => {
     if (!home) return undefined;
-    const dwelling = dwellingRegionIds(home);
+    // One storey at a time. Two floors live in one coordinate plane, side by side and metres apart,
+    // so a house drawn whole is two half-size floors with a gulf between them and a resident who
+    // teleports across it on the stairs. The camera follows her up instead.
+    const dwelling = new Set(
+      [...dwellingRegionIds(home)].filter((regionId) =>
+        home.regions.some(
+          (region) => region.regionId === regionId && (region.level ?? 0) === storey,
+        ),
+      ),
+    );
     const regions = home.regions.filter((region) => dwelling.has(region.regionId));
     if (regions.length === 0) return undefined;
     const walls = cutDoorways(planWalls(home, dwelling), planDoors(home, dwelling));
@@ -48,7 +58,8 @@ function useSet(home: HomeModel | undefined) {
           obstacleId: obstacle.obstacleId,
           entityId: entity?.entityId,
           entityType: entity?.entityType,
-          symbol: furnitureSymbol(entity?.entityType),
+          symbol: furnitureSymbol(entity?.entityType) ?? structuralSymbol(obstacle.obstacleId),
+          orientationDegrees: obstacle.orientationDegrees,
           vertices: obstacle.boundary.vertices,
           box: bounds(obstacle.boundary.vertices),
         };
@@ -63,7 +74,17 @@ function useSet(home: HomeModel | undefined) {
         height: extent.maxY - extent.minY + MARGIN * 2,
       },
     };
-  }, [home]);
+  }, [home, storey]);
+}
+
+/** The storey to draw: the one somebody is standing on, and the ground floor when nobody is. */
+function occupiedStorey(home: HomeModel | undefined, regionIds: (string | undefined)[]): number {
+  if (!home) return 0;
+  for (const regionId of regionIds) {
+    const region = home.regions.find((item) => item.regionId === regionId);
+    if (region) return region.level ?? 0;
+  }
+  return 0;
 }
 
 function Avatar({ resident }: { resident: WorldResident }) {
@@ -109,7 +130,11 @@ export function SceneStage({
   activeRegionId?: string;
   usingEntityId?: string;
 }) {
-  const set = useSet(home);
+  const storey = occupiedStorey(home, [
+    activeRegionId,
+    ...world.residents.map((resident) => resident.regionId),
+  ]);
+  const set = useSet(home, storey);
   const markers = useRef(new Map<string, SVGGElement | null>());
   const trails = useRef(new Map<string, SVGPolylineElement | null>());
   const sample = useRef(motion?.sample);
@@ -200,12 +225,10 @@ export function SceneStage({
                   rx=".18"
                 />}
                 {item.symbol
-                  ? <use
-                    href={`#furn-${item.symbol}`}
-                    x={item.box.minX} y={item.box.minY}
-                    width={item.box.maxX - item.box.minX}
-                    height={item.box.maxY - item.box.minY}
-                    preserveAspectRatio="xMidYMid meet"
+                  ? <FurnitureGlyph
+                    symbol={item.symbol}
+                    box={item.box}
+                    orientationDegrees={item.orientationDegrees}
                   />
                   : <polygon className="scene-block" points={polygonPoints(item.vertices)} />}
               </g>

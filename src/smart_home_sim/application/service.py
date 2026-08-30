@@ -13,8 +13,13 @@ from smart_home_sim.application.plan_approval import (
     plan_approval,
 )
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
+from smart_home_sim.authoring.preflight import (
+    validate_habit_bands_are_inhabited,
+    validate_habit_bands_hold_a_stable_stretch,
+)
 from smart_home_sim.authoring.service import validate_authoring_payload
 from smart_home_sim.domain.application import ApplicationIssue, GraphicalReference
+from smart_home_sim.domain.authoring import AuthoringIngestionIssue
 from smart_home_sim.domain.environment import HomeModel
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.sensors import SensorModel
@@ -142,6 +147,27 @@ class ApplicationService:
             # defect produces once the days exist.
             return {"valid": False, "stage": "expansion", "message": str(error)}
 
+        # The one check that needs the expansion rather than the bundle: how much of each declared
+        # band the days actually filled. It is measured here and nowhere else, because a bundle
+        # imported directly carries no bands to measure.
+        # Two codes rather than two severities: both are warnings, and the wire format has no
+        # third level, but a band nothing holds and a band with holes in it are different findings
+        # and a researcher reading a list of them needs to tell which is which.
+        band_issues = [
+            AuthoringIngestionIssue(
+                code=code,
+                severity="warning",
+                stage="scenario",
+                path=f"$.outline{finding.path[1:]}",
+                message=finding.message,
+                details=finding.details,
+            )
+            for code, check in (
+                ("HABIT_BAND_HOLDS_NO_STABLE_STRETCH", validate_habit_bands_hold_a_stable_stretch),
+                ("HABIT_BAND_IS_MOSTLY_UNACCOUNTED", validate_habit_bands_are_inhabited),
+            )
+            for finding in check(expansion.habit_ground_truth)
+        ]
         stage(f"validating and compiling {expansion.day_count} days")
         imported = self.import_authoring_bundle(
             home_id,
@@ -149,6 +175,7 @@ class ApplicationService:
             on_progress=lambda done, total: stage(
                 f"compiling {expansion.day_count} days: {done} of {total} activities placed"
             ),
+            extra_issues=band_issues,
         )
         return {
             **imported,
@@ -168,12 +195,18 @@ class ApplicationService:
         home_id: str,
         payload: dict[str, Any],
         on_progress: Callable[[int, int], None] | None = None,
+        extra_issues: list[AuthoringIngestionIssue] | None = None,
     ) -> dict[str, Any]:
-        """Validate and publish one researcher-facing authoring bundle."""
+        """Validate and publish one researcher-facing authoring bundle.
+
+        ``extra_issues`` are findings the caller established about a document this stage never
+        sees — the horizon outline the bundle was expanded from. They are persisted and returned
+        beside the report's own, and being warnings they do not decide whether the import stands.
+        """
         self.workspace.ensure_writable()
         self.workspace.get_home(home_id)
         result = validate_authoring_payload(payload, on_progress)
-        issues = _issues(result.report.issues)
+        issues = _issues([*result.report.issues, *(extra_issues or [])])
         self.workspace.replace_validation_issues(home_id, issues)
         if not result.report.valid:
             return {

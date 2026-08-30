@@ -36,6 +36,12 @@ class HomeGenerationPolicy(ContractModel):
     external_spacing_meters: float = Field(default=12.0, ge=8.0, le=1000.0)
     doorway_width_meters: float = Field(default=1.0, ge=0.8, le=3.0)
     transport_distance_meters: float = Field(default=500.0, gt=0, le=1_000_000.0)
+    # A storey is tiled in its own block of the plan, so the gap between blocks is a drawing
+    # convention rather than a distance. These two say how far apart the blocks are drawn and how
+    # far it actually is between them, and nothing infers one from the other.
+    level_spacing_meters: float = Field(default=4.0, ge=1.0, le=50.0)
+    # One flight: about three metres of tread over about three metres of rise.
+    stair_run_meters: float = Field(default=4.5, gt=0, le=50.0)
 
 
 class SensorDeploymentPolicy(ContractModel):

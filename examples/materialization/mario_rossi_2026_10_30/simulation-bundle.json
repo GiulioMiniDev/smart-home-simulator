@@ -12761,7 +12761,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "bathroom",
@@ -12786,7 +12787,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "kitchen",
@@ -12811,7 +12813,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "living_room",
@@ -12836,7 +12839,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "hallway",
@@ -12861,7 +12865,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "balcony",
@@ -12886,7 +12891,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "outside",
@@ -12911,7 +12917,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "supermarket",
@@ -12936,7 +12943,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       },
       {
         "regionId": "neighborhood_bar",
@@ -12961,7 +12969,8 @@
             }
           ]
         },
-        "traversable": true
+        "traversable": true,
+        "level": 0
       }
     ],
     "connections": [
@@ -13066,8 +13075,8 @@
         "regionAId": "hallway",
         "regionBId": "outside",
         "portalA": {
-          "x": 9.6938,
-          "y": 4.7672
+          "x": 9.4938,
+          "y": 4.8472
         },
         "portalB": {
           "x": 3.0,
@@ -13085,8 +13094,8 @@
         "regionAId": "hallway",
         "regionBId": "supermarket",
         "portalA": {
-          "x": 9.6938,
-          "y": 4.7672
+          "x": 9.4938,
+          "y": 4.8472
         },
         "portalB": {
           "x": 9.0,
@@ -13104,8 +13113,8 @@
         "regionAId": "hallway",
         "regionBId": "neighborhood_bar",
         "portalA": {
-          "x": 9.6938,
-          "y": 4.7672
+          "x": 9.4938,
+          "y": 4.8472
         },
         "portalB": {
           "x": 15.0,
@@ -13126,22 +13135,23 @@
           "vertices": [
             {
               "x": 6.0091,
-              "y": 3.3653
+              "y": 6.7719
             },
             {
               "x": 6.8091,
-              "y": 3.3653
+              "y": 6.7719
             },
             {
               "x": 6.8091,
-              "y": 4.1653
+              "y": 7.5719
             },
             {
               "x": 6.0091,
-              "y": 4.1653
+              "y": 7.5719
             }
           ]
-        }
+        },
+        "orientationDegrees": 270.0
       },
       {
         "obstacleId": "obstacle_toilet",
@@ -13149,23 +13159,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 7.3297,
-              "y": 7.1219
+              "x": 6.9091,
+              "y": 6.8719
             },
             {
-              "x": 8.0297,
-              "y": 7.1219
+              "x": 7.3591,
+              "y": 6.8719
             },
             {
-              "x": 8.0297,
+              "x": 7.3591,
               "y": 7.5719
             },
             {
-              "x": 7.3297,
+              "x": 6.9091,
               "y": 7.5719
             }
           ]
-        }
+        },
+        "orientationDegrees": 270.0
       },
       {
         "obstacleId": "obstacle_washbasin",
@@ -13173,23 +13184,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 6.6297,
+              "x": 7.4091,
               "y": 7.1219
             },
             {
-              "x": 7.2297,
+              "x": 8.0091,
               "y": 7.1219
             },
             {
-              "x": 7.2297,
+              "x": 8.0091,
               "y": 7.5719
             },
             {
-              "x": 6.6297,
+              "x": 7.4091,
               "y": 7.5719
             }
           ]
-        }
+        },
+        "orientationDegrees": 270.0
       },
       {
         "obstacleId": "obstacle_washing_machine",
@@ -13197,23 +13209,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 6.0091,
-              "y": 6.2219
+              "x": 6.2091,
+              "y": 3.3653
             },
             {
-              "x": 6.5591,
-              "y": 6.2219
+              "x": 6.8091,
+              "y": 3.3653
             },
             {
-              "x": 6.5591,
-              "y": 6.8219
+              "x": 6.8091,
+              "y": 3.9153
             },
             {
-              "x": 6.0091,
-              "y": 6.8219
+              "x": 6.2091,
+              "y": 3.9153
             }
           ]
-        }
+        },
+        "orientationDegrees": 90.0
       },
       {
         "obstacleId": "obstacle_bed",
@@ -13221,23 +13234,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 0.0,
-              "y": 4.3268
+              "x": 4.0091,
+              "y": 5.7268
             },
             {
-              "x": 1.6,
-              "y": 4.3268
+              "x": 6.0091,
+              "y": 5.7268
             },
             {
-              "x": 1.6,
-              "y": 6.3268
+              "x": 6.0091,
+              "y": 7.3268
             },
             {
-              "x": 0.0,
-              "y": 6.3268
+              "x": 4.0091,
+              "y": 7.3268
             }
           ]
-        }
+        },
+        "orientationDegrees": 180.0
       },
       {
         "obstacleId": "obstacle_bedside_table",
@@ -13245,23 +13259,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 1.7,
-              "y": 4.3268
+              "x": 5.6091,
+              "y": 5.2168
             },
             {
-              "x": 2.2,
-              "y": 4.3268
+              "x": 6.0091,
+              "y": 5.2168
             },
             {
-              "x": 2.2,
-              "y": 4.9268
+              "x": 6.0091,
+              "y": 5.6668
             },
             {
-              "x": 1.7,
-              "y": 4.9268
+              "x": 5.6091,
+              "y": 5.6668
             }
           ]
-        }
+        },
+        "orientationDegrees": 180.0
       },
       {
         "obstacleId": "obstacle_wardrobe",
@@ -13269,23 +13284,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 5.4091,
-              "y": 4.3268
+              "x": 0.0,
+              "y": 5.6268
             },
             {
-              "x": 6.0091,
-              "y": 4.3268
+              "x": 0.6,
+              "y": 5.6268
             },
             {
-              "x": 6.0091,
-              "y": 5.5268
+              "x": 0.6,
+              "y": 6.8268
             },
             {
-              "x": 5.4091,
-              "y": 5.5268
+              "x": 0.0,
+              "y": 6.8268
             }
           ]
-        }
+        },
+        "orientationDegrees": 0.0
       },
       {
         "obstacleId": "obstacle_medication_cleaning_cabinet",
@@ -13293,143 +13309,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 8.0297,
-              "y": 3.3653
+              "x": 10.9578,
+              "y": 4.4653
             },
             {
-              "x": 8.8297,
-              "y": 3.3653
+              "x": 11.3578,
+              "y": 4.4653
             },
             {
-              "x": 8.8297,
-              "y": 3.7653
+              "x": 11.3578,
+              "y": 5.2653
             },
             {
-              "x": 8.0297,
-              "y": 3.7653
+              "x": 10.9578,
+              "y": 5.2653
             }
           ]
-        }
-      },
-      {
-        "obstacleId": "obstacle_dining_table",
-        "regionId": "kitchen",
-        "boundary": {
-          "vertices": [
-            {
-              "x": 6.0091,
-              "y": 0.0
-            },
-            {
-              "x": 7.2091,
-              "y": 0.0
-            },
-            {
-              "x": 7.2091,
-              "y": 0.8
-            },
-            {
-              "x": 6.0091,
-              "y": 0.8
-            }
-          ]
-        }
-      },
-      {
-        "obstacleId": "obstacle_kitchen_chair",
-        "regionId": "kitchen",
-        "boundary": {
-          "vertices": [
-            {
-              "x": 7.3091,
-              "y": 0.0
-            },
-            {
-              "x": 7.7591,
-              "y": 0.0
-            },
-            {
-              "x": 7.7591,
-              "y": 0.45
-            },
-            {
-              "x": 7.3091,
-              "y": 0.45
-            }
-          ]
-        }
-      },
-      {
-        "obstacleId": "obstacle_kitchen_sink",
-        "regionId": "kitchen",
-        "boundary": {
-          "vertices": [
-            {
-              "x": 7.8591,
-              "y": 0.0
-            },
-            {
-              "x": 8.4591,
-              "y": 0.0
-            },
-            {
-              "x": 8.4591,
-              "y": 0.55
-            },
-            {
-              "x": 7.8591,
-              "y": 0.55
-            }
-          ]
-        }
-      },
-      {
-        "obstacleId": "obstacle_moka",
-        "regionId": "kitchen",
-        "boundary": {
-          "vertices": [
-            {
-              "x": 8.7591,
-              "y": 0.0
-            },
-            {
-              "x": 8.9591,
-              "y": 0.0
-            },
-            {
-              "x": 8.9591,
-              "y": 0.2
-            },
-            {
-              "x": 8.7591,
-              "y": 0.2
-            }
-          ]
-        }
-      },
-      {
-        "obstacleId": "obstacle_radio",
-        "regionId": "kitchen",
-        "boundary": {
-          "vertices": [
-            {
-              "x": 9.0591,
-              "y": 0.0
-            },
-            {
-              "x": 9.4091,
-              "y": 0.0
-            },
-            {
-              "x": 9.4091,
-              "y": 0.25
-            },
-            {
-              "x": 9.0591,
-              "y": 0.25
-            }
-          ]
-        }
+        },
+        "orientationDegrees": 180.0
       },
       {
         "obstacleId": "obstacle_refrigerator",
@@ -13437,23 +13334,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 9.5091,
+              "x": 10.6091,
               "y": 0.0
             },
             {
-              "x": 10.2091,
+              "x": 11.3091,
               "y": 0.0
             },
             {
-              "x": 10.2091,
+              "x": 11.3091,
               "y": 0.7
             },
             {
-              "x": 9.5091,
+              "x": 10.6091,
               "y": 0.7
             }
           ]
-        }
+        },
+        "orientationDegrees": 90.0
       },
       {
         "obstacleId": "obstacle_stove",
@@ -13461,23 +13359,149 @@
         "boundary": {
           "vertices": [
             {
-              "x": 10.3091,
+              "x": 9.9091,
               "y": 0.0
             },
             {
-              "x": 10.9091,
+              "x": 10.5091,
               "y": 0.0
             },
             {
-              "x": 10.9091,
+              "x": 10.5091,
               "y": 0.6
             },
             {
-              "x": 10.3091,
+              "x": 9.9091,
               "y": 0.6
             }
           ]
-        }
+        },
+        "orientationDegrees": 90.0
+      },
+      {
+        "obstacleId": "obstacle_kitchen_sink",
+        "regionId": "kitchen",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 9.2091,
+              "y": 0.0
+            },
+            {
+              "x": 9.8091,
+              "y": 0.0
+            },
+            {
+              "x": 9.8091,
+              "y": 0.55
+            },
+            {
+              "x": 9.2091,
+              "y": 0.55
+            }
+          ]
+        },
+        "orientationDegrees": 90.0
+      },
+      {
+        "obstacleId": "obstacle_radio",
+        "regionId": "kitchen",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 8.7091,
+              "y": 0.0
+            },
+            {
+              "x": 9.0591,
+              "y": 0.0
+            },
+            {
+              "x": 9.0591,
+              "y": 0.25
+            },
+            {
+              "x": 8.7091,
+              "y": 0.25
+            }
+          ]
+        },
+        "orientationDegrees": 90.0
+      },
+      {
+        "obstacleId": "obstacle_moka",
+        "regionId": "kitchen",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 8.4091,
+              "y": 0.0
+            },
+            {
+              "x": 8.6091,
+              "y": 0.0
+            },
+            {
+              "x": 8.6091,
+              "y": 0.2
+            },
+            {
+              "x": 8.4091,
+              "y": 0.2
+            }
+          ]
+        },
+        "orientationDegrees": 90.0
+      },
+      {
+        "obstacleId": "obstacle_dining_table",
+        "regionId": "kitchen",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 8.1569,
+              "y": 0.9542
+            },
+            {
+              "x": 8.9569,
+              "y": 0.9542
+            },
+            {
+              "x": 8.9569,
+              "y": 2.1542
+            },
+            {
+              "x": 8.1569,
+              "y": 2.1542
+            }
+          ]
+        },
+        "orientationDegrees": 0.0
+      },
+      {
+        "obstacleId": "obstacle_kitchen_chair",
+        "regionId": "kitchen",
+        "boundary": {
+          "vertices": [
+            {
+              "x": 7.6669,
+              "y": 1.3292
+            },
+            {
+              "x": 8.1169,
+              "y": 1.3292
+            },
+            {
+              "x": 8.1169,
+              "y": 1.7792
+            },
+            {
+              "x": 7.6669,
+              "y": 1.7792
+            }
+          ]
+        },
+        "orientationDegrees": 0.0
       },
       {
         "obstacleId": "obstacle_sofa",
@@ -13485,23 +13509,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 0.0,
+              "x": 0.2,
               "y": 0.0
             },
             {
-              "x": 2.0,
+              "x": 2.2,
               "y": 0.0
             },
             {
-              "x": 2.0,
+              "x": 2.2,
               "y": 0.85
             },
             {
-              "x": 0.0,
+              "x": 0.2,
               "y": 0.85
             }
           ]
-        }
+        },
+        "orientationDegrees": 90.0
       },
       {
         "obstacleId": "obstacle_television",
@@ -13509,23 +13534,24 @@
         "boundary": {
           "vertices": [
             {
-              "x": 2.1,
-              "y": 0.0
+              "x": 0.0545,
+              "y": 3.9768
             },
             {
-              "x": 3.2,
-              "y": 0.0
+              "x": 1.1545,
+              "y": 3.9768
             },
             {
-              "x": 3.2,
-              "y": 0.35
+              "x": 1.1545,
+              "y": 4.3268
             },
             {
-              "x": 2.1,
-              "y": 0.35
+              "x": 0.0545,
+              "y": 4.3268
             }
           ]
-        }
+        },
+        "orientationDegrees": 270.0
       }
     ],
     "interactionPoints": [
@@ -13533,8 +13559,8 @@
         "interactionPointId": "anchor_bedroom",
         "regionId": "bedroom",
         "position": {
-          "x": 3.8045,
-          "y": 6.1968
+          "x": 2.3045,
+          "y": 6.2768
         },
         "approachRadiusMeters": 0.25
       },
@@ -13543,7 +13569,7 @@
         "regionId": "bathroom",
         "position": {
           "x": 7.0194,
-          "y": 5.1936
+          "y": 5.3436
         },
         "approachRadiusMeters": 0.25
       },
@@ -13551,8 +13577,8 @@
         "interactionPointId": "anchor_kitchen",
         "regionId": "kitchen",
         "position": {
-          "x": 8.6834,
-          "y": 2.0826
+          "x": 10.1574,
+          "y": 1.5542
         },
         "approachRadiusMeters": 0.25
       },
@@ -13561,7 +13587,7 @@
         "regionId": "living_room",
         "position": {
           "x": 3.0045,
-          "y": 2.5884
+          "y": 2.4134
         },
         "approachRadiusMeters": 0.25
       },
@@ -13569,8 +13595,8 @@
         "interactionPointId": "anchor_hallway",
         "regionId": "hallway",
         "position": {
-          "x": 9.6938,
-          "y": 4.7672
+          "x": 9.4938,
+          "y": 4.8472
         },
         "approachRadiusMeters": 0.25
       },
@@ -13614,8 +13640,8 @@
         "interactionPointId": "point_bed",
         "regionId": "bedroom",
         "position": {
-          "x": 0.8,
-          "y": 6.6968
+          "x": 3.6391,
+          "y": 6.5268
         },
         "approachRadiusMeters": 0.25
       },
@@ -13623,8 +13649,8 @@
         "interactionPointId": "point_bedside_table",
         "regionId": "bedroom",
         "position": {
-          "x": 1.95,
-          "y": 5.2968
+          "x": 5.2391,
+          "y": 5.4418
         },
         "approachRadiusMeters": 0.25
       },
@@ -13632,8 +13658,8 @@
         "interactionPointId": "point_wardrobe",
         "regionId": "bedroom",
         "position": {
-          "x": 5.0391,
-          "y": 4.9268
+          "x": 0.97,
+          "y": 6.2268
         },
         "approachRadiusMeters": 0.25
       },
@@ -13641,8 +13667,8 @@
         "interactionPointId": "point_toilet",
         "regionId": "bathroom",
         "position": {
-          "x": 7.6797,
-          "y": 6.7519
+          "x": 7.1341,
+          "y": 6.5019
         },
         "approachRadiusMeters": 0.25
       },
@@ -13650,7 +13676,7 @@
         "interactionPointId": "point_washbasin",
         "regionId": "bathroom",
         "position": {
-          "x": 6.9297,
+          "x": 7.7091,
           "y": 6.7519
         },
         "approachRadiusMeters": 0.25
@@ -13660,7 +13686,7 @@
         "regionId": "bathroom",
         "position": {
           "x": 6.4091,
-          "y": 4.5353
+          "y": 6.4019
         },
         "approachRadiusMeters": 0.25
       },
@@ -13668,8 +13694,8 @@
         "interactionPointId": "point_washing_machine",
         "regionId": "bathroom",
         "position": {
-          "x": 6.9291,
-          "y": 6.5219
+          "x": 6.5091,
+          "y": 4.2853
         },
         "approachRadiusMeters": 0.25
       },
@@ -13677,7 +13703,7 @@
         "interactionPointId": "point_refrigerator",
         "regionId": "kitchen",
         "position": {
-          "x": 9.8591,
+          "x": 10.9591,
           "y": 1.07
         },
         "approachRadiusMeters": 0.25
@@ -13686,7 +13712,7 @@
         "interactionPointId": "point_stove",
         "regionId": "kitchen",
         "position": {
-          "x": 10.6091,
+          "x": 10.2091,
           "y": 0.97
         },
         "approachRadiusMeters": 0.25
@@ -13695,7 +13721,7 @@
         "interactionPointId": "point_moka",
         "regionId": "kitchen",
         "position": {
-          "x": 8.8591,
+          "x": 8.5091,
           "y": 0.57
         },
         "approachRadiusMeters": 0.25
@@ -13704,7 +13730,7 @@
         "interactionPointId": "point_kitchen_sink",
         "regionId": "kitchen",
         "position": {
-          "x": 8.1591,
+          "x": 9.5091,
           "y": 0.92
         },
         "approachRadiusMeters": 0.25
@@ -13713,8 +13739,8 @@
         "interactionPointId": "point_dining_table",
         "regionId": "kitchen",
         "position": {
-          "x": 6.6091,
-          "y": 1.17
+          "x": 9.3269,
+          "y": 1.5542
         },
         "approachRadiusMeters": 0.25
       },
@@ -13722,8 +13748,8 @@
         "interactionPointId": "point_kitchen_chair",
         "regionId": "kitchen",
         "position": {
-          "x": 7.5341,
-          "y": 0.82
+          "x": 7.2969,
+          "y": 1.5542
         },
         "approachRadiusMeters": 0.25
       },
@@ -13731,7 +13757,7 @@
         "interactionPointId": "point_radio",
         "regionId": "kitchen",
         "position": {
-          "x": 9.2341,
+          "x": 8.8841,
           "y": 0.62
         },
         "approachRadiusMeters": 0.25
@@ -13740,7 +13766,7 @@
         "interactionPointId": "point_sofa",
         "regionId": "living_room",
         "position": {
-          "x": 1.0,
+          "x": 1.2,
           "y": 1.22
         },
         "approachRadiusMeters": 0.25
@@ -13749,8 +13775,8 @@
         "interactionPointId": "point_television",
         "regionId": "living_room",
         "position": {
-          "x": 2.65,
-          "y": 0.72
+          "x": 0.6045,
+          "y": 3.6068
         },
         "approachRadiusMeters": 0.25
       },
@@ -13758,8 +13784,8 @@
         "interactionPointId": "point_medication_cleaning_cabinet",
         "regionId": "hallway",
         "position": {
-          "x": 8.4297,
-          "y": 4.1353
+          "x": 10.5878,
+          "y": 4.8653
         },
         "approachRadiusMeters": 0.25
       },
@@ -13767,8 +13793,8 @@
         "interactionPointId": "point_entrance_door",
         "regionId": "hallway",
         "position": {
-          "x": 9.6938,
-          "y": 4.7672
+          "x": 9.4938,
+          "y": 4.8472
         },
         "approachRadiusMeters": 0.25
       },
@@ -13776,8 +13802,8 @@
         "interactionPointId": "point_service_bedroom",
         "regionId": "bedroom",
         "position": {
-          "x": 3.8045,
-          "y": 6.1968
+          "x": 2.3045,
+          "y": 6.2768
         },
         "approachRadiusMeters": 0.25
       },
@@ -13786,7 +13812,7 @@
         "regionId": "bathroom",
         "position": {
           "x": 7.0194,
-          "y": 5.1936
+          "y": 5.3436
         },
         "approachRadiusMeters": 0.25
       },
@@ -13794,8 +13820,8 @@
         "interactionPointId": "point_service_kitchen",
         "regionId": "kitchen",
         "position": {
-          "x": 8.6834,
-          "y": 2.0826
+          "x": 10.1574,
+          "y": 1.5542
         },
         "approachRadiusMeters": 0.25
       },
@@ -13804,7 +13830,7 @@
         "regionId": "living_room",
         "position": {
           "x": 3.0045,
-          "y": 2.5884
+          "y": 2.4134
         },
         "approachRadiusMeters": 0.25
       },
@@ -13812,8 +13838,8 @@
         "interactionPointId": "point_service_hallway",
         "regionId": "hallway",
         "position": {
-          "x": 9.6938,
-          "y": 4.7672
+          "x": 9.4938,
+          "y": 4.8472
         },
         "approachRadiusMeters": 0.25
       },
@@ -32697,7 +32723,7 @@
     {
       "artifactId": "synthetic_mario_rome_apartment_logical_v1",
       "version": "1.0.0",
-      "sha256": "6d2010246f90f5b1b3b34ccbf32ccfb68d033226fd983d279541fca335b1daaf"
+      "sha256": "d64e73565fd7adfa5c6478fa76b811e1ad02d7e0ed885891b6522312169d979a"
     }
   ],
   "residentKinematics": [

@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from math import ceil, sqrt
+from math import atan2, ceil, degrees, sqrt
 from pathlib import Path
 from typing import Any
 
@@ -125,6 +125,161 @@ def _entrance_region(local: list[Any], regions: list[HomeRegion]) -> str:
     return local[0].location_id if local else regions[0].region_id
 
 
+def _level_of(location: Any) -> int:
+    """Which storey a scenario location declares itself to be on.
+
+    Carried in `attributes` rather than as a field of its own: a storey is a property of this
+    particular dwelling, every scenario written before houses had storeys means the ground floor,
+    and the location contract does not have to change for either of those to be true.
+    """
+    value = location.attributes.get("level", 0)
+    return int(value) if isinstance(value, int | float) and int(value) >= 0 else 0
+
+
+def _plan_scale(scenario: Any) -> float:
+    """How much bigger or smaller than the reference flat this dwelling is drawn.
+
+    A studio and a family house are furnished from the same room profiles, and without this they
+    would also be *sized* from them — every generated home came out the same 60 square metres
+    whatever it claimed to be.
+    """
+    value = scenario.initial_state.environment_facts.get("dwelling_scale", 1.0)
+    if isinstance(value, int | float) and 0.4 <= float(value) <= 3.0:
+        return float(value)
+    return 1.0
+
+
+_STAIR_ROOM_PREFERENCE = ("landing", "hallway", "corridor", "entrance", "living_room")
+# The four walls a flight can run up, as the direction somebody stepping off it is facing.
+_STAIR_FACINGS: tuple[tuple[float, float], ...] = (
+    (0.0, 1.0),
+    (0.0, -1.0),
+    (1.0, 0.0),
+    (-1.0, 0.0),
+)
+# Flight lengths, longest first: a straight run, then progressively shorter ones, down to the
+# quarter-turn a small landing can actually hold.
+_STAIR_LENGTHS: tuple[float, ...] = (2.6, 2.2, 1.8, 1.4, 1.1)
+_STAIR_WIDTH = 1.0
+
+
+def _stair_region(
+    local: list[Any],
+    levels: dict[str, int],
+    level: int,
+    rects: dict[str, floorplan.Rect],
+) -> str | None:
+    """Which room on this storey the stairs come up in: a circulation space, or the largest room."""
+    on_level = [item.location_id for item in local if levels[item.location_id] == level]
+    for candidate in _STAIR_ROOM_PREFERENCE:
+        for region_id in on_level:
+            if candidate in region_id:
+                return region_id
+    if not on_level:
+        return None
+    return max(on_level, key=lambda region_id: rects[region_id].width * rects[region_id].height)
+
+
+def _distance_to_rect(point: tuple[float, float], rect: floorplan.Rect) -> float:
+    dx = max(rect.x - point[0], 0.0, point[0] - rect.max_x)
+    dy = max(rect.y - point[1], 0.0, point[1] - rect.max_y)
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def _stair_pose(
+    room: floorplan.Rect, doors: list[Point2D], policy: HomeGenerationPolicy
+) -> tuple[floorplan.Rect, Point2D, float]:
+    """Where the flight of stairs stands in this room, and the point at its foot.
+
+    A staircase is the one piece of furniture the plan cannot do without: everything upstairs is
+    unreachable without it, so it is placed before anything else and the arrangement works round it.
+    That also makes it the piece with the least freedom, and stamping a fixed 1.0 x 2.6 flight in
+    the middle of a wall does not survive contact with a real landing. Two full-length flights along
+    facing walls leave twenty centimetres of floor between them; one along the wall a doorway is on
+    buries the portal, and the router then reports a hallway with no way out.
+
+    So the flight is searched for rather than assumed: every wall, a range of lengths from a full
+    flight down to a short one, and every position along the wall. Length is given up before
+    landing space and before the doorways, in that order.
+    """
+    clearance = _placement_clearance(policy) + 0.02
+    step = clearance + 0.10
+    keep_clear = policy.doorway_width_meters / 2 + clearance
+
+    def clear_of_doors(rect: floorplan.Rect) -> float:
+        return min((_distance_to_rect((door.x, door.y), rect) for door in doors), default=99.0)
+
+    options: list[tuple[float, float, floorplan.Rect, Point2D, float]] = []
+    for facing in _STAIR_FACINGS:
+        vertical = facing[0] == 0.0
+        along = room.width if vertical else room.height
+        low = room.x if vertical else room.y
+        across = room.height if vertical else room.width
+        for depth in _STAIR_LENGTHS:
+            if depth > across - step - clearance - 0.05:
+                continue
+            width = min(_STAIR_WIDTH, along - 2 * clearance)
+            if width < 0.7:
+                continue
+            positions = max(int((along - width) / 0.20), 0)
+            for index in range(positions + 1):
+                offset = min(index * 0.20, along - width)
+                centre_along = low + offset + width / 2
+                if vertical:
+                    y = room.y if facing[1] > 0 else room.max_y - depth
+                    rect = floorplan.Rect(centre_along - width / 2, y, width, depth)
+                else:
+                    x = room.x if facing[0] > 0 else room.max_x - depth
+                    rect = floorplan.Rect(x, centre_along - width / 2, depth, width)
+                reach = (abs(facing[0]) * rect.width + abs(facing[1]) * rect.height) / 2
+                centre = (rect.x + rect.width / 2, rect.y + rect.height / 2)
+                foot = Point2D(
+                    x=round(centre[0] + facing[0] * (reach + step), 4),
+                    y=round(centre[1] + facing[1] * (reach + step), 4),
+                )
+                # The foot has to be floor a body fits on, which is the room eroded by the same
+                # clearance the navigator routes with. Anything else plans a route nobody can walk.
+                if not (
+                    room.x + clearance <= foot.x <= room.max_x - clearance
+                    and room.y + clearance <= foot.y <= room.max_y - clearance
+                ):
+                    continue
+                margin = min(clear_of_doors(rect), _distance_to_doors(foot, doors))
+                if margin < keep_clear:
+                    continue
+                # A long flight beats a short one, and among equals the one furthest from the
+                # doorways wins: stairs belong at the quiet end of a hall.
+                options.append((depth, margin, rect, foot, _bearing(facing)))
+    if options:
+        _, _, rect, foot, bearing = max(options, key=lambda item: (item[0], item[1]))
+        return rect, foot, bearing
+
+    # Nothing fits with the doorways clear. An unreachable storey is worse than a tight staircase,
+    # so take the least bad pose instead of giving up.
+    fallback = min(2.0, max(room.width, room.height) / 2)
+    rect = floorplan.Rect(room.center[0] - 0.45, room.y, 0.9, max(fallback, 0.8))
+    return (
+        rect,
+        Point2D(
+            x=round(room.center[0], 4),
+            y=round(min(rect.max_y + step, room.max_y - clearance), 4),
+        ),
+        90.0,
+    )
+
+
+def _distance_to_doors(point: Point2D, doors: list[Point2D]) -> float:
+    return min(
+        (((point.x - door.x) ** 2 + (point.y - door.y) ** 2) ** 0.5 for door in doors),
+        default=99.0,
+    )
+
+
+def _bearing(facing: tuple[float, float]) -> float:
+    """A unit direction as a bearing: 0 along +x, 90 along +y, counted anticlockwise."""
+    return round(degrees(atan2(facing[1], facing[0])) % 360.0, 1)
+
+
 def _placement_clearance(policy: HomeGenerationPolicy) -> float:
     """Clearance every generated point must keep: the wider of the body and approach radii."""
     return max(policy.body_radius_meters, policy.approach_radius_meters)
@@ -146,6 +301,7 @@ def _free_anchor(
     room_rects: dict[str, floorplan.Rect],
     furniture_by_region: dict[str, list[floorplan.PlacedFurniture]],
     policy: HomeGenerationPolicy,
+    reserved: dict[str, list[floorplan.Rect]] | None = None,
 ) -> Point2D:
     rect = room_rects.get(region.region_id)
     if rect is None:
@@ -154,6 +310,7 @@ def _free_anchor(
         rect,
         furniture_by_region.get(region.region_id, []),
         body_radius=_placement_clearance(policy),
+        reserved=(reserved or {}).get(region.region_id),
     )
 
 
@@ -376,14 +533,23 @@ def generate_home(
     remote = [item for item in primitive if item.kind is not LocationKind.room]
     regions: list[HomeRegion] = []
     room_rects: dict[str, floorplan.Rect] = {}
+    # Which storey each room is on. The scenario says so through the location's own attributes, so
+    # a one-storey flat is unchanged and needs no migration: everything defaults to the ground.
+    levels = {item.location_id: _level_of(item) for item in local}
     if policy.policy_id == "apartment-plan" and local:
-        room_rects = floorplan.layout_rooms([item.location_id for item in local])
+        room_rects = floorplan.layout_rooms(
+            [item.location_id for item in local],
+            levels=levels,
+            level_spacing=policy.level_spacing_meters,
+            scale=_plan_scale(scenario),
+        )
         for location in local:
             regions.append(
                 HomeRegion(
                     region_id=location.location_id,
                     kind=RegionKind.room,
                     boundary=room_rects[location.location_id].to_polygon(),
+                    level=levels[location.location_id],
                 )
             )
     else:
@@ -422,13 +588,26 @@ def generate_home(
     connections: list[HomeConnection] = []
     portal_offset = min(0.4, policy.doorway_width_meters / 2)
     room_portals: dict[str, list[Point2D]] = defaultdict(list)
+    obstacles_from_structure: list[HomeObstacle] = []
+    reserved: dict[str, list[floorplan.Rect]] = defaultdict(list)
     if room_rects:
         # Doors follow the walls the tiling actually produced, chosen so private rooms stay leaves.
-        walls = floorplan.select_doors(
-            [item.location_id for item in local],
-            room_rects,
-            floorplan.shared_walls(room_rects, minimum_overlap=policy.doorway_width_meters + 0.2),
-        )
+        # Storeys are tiled independently and must be doored independently: run over all of them at
+        # once and the connectivity repair happily invents a doorway between the ground-floor
+        # kitchen and an upstairs bedroom, because on the page they are only four metres apart.
+        walls = []
+        for level in sorted(set(levels.values())):
+            storey_ids = [item.location_id for item in local if levels[item.location_id] == level]
+            storey_rects = {region_id: room_rects[region_id] for region_id in storey_ids}
+            walls.extend(
+                floorplan.select_doors(
+                    storey_ids,
+                    storey_rects,
+                    floorplan.shared_walls(
+                        storey_rects, minimum_overlap=policy.doorway_width_meters + 0.2
+                    ),
+                )
+            )
         for wall in walls:
             portal_a = _inset_portal(room_rects[wall.region_a_id], wall, portal_offset)
             portal_b = _inset_portal(room_rects[wall.region_b_id], wall, portal_offset)
@@ -465,6 +644,50 @@ def generate_home(
                     width_meters=policy.doorway_width_meters,
                 )
             )
+    # Staircases. A storey that is not the ground one has to be reachable, and the only thing that
+    # reaches it is a flight of stairs: a real object standing on real floor at both ends, which is
+    # why it is an obstacle here and not merely an edge in the graph.
+    for lower, upper in zip(
+        sorted(set(levels.values())), sorted(set(levels.values()))[1:], strict=False
+    ):
+        bottom = _stair_region(local, levels, lower, room_rects)
+        top = _stair_region(local, levels, upper, room_rects)
+        if bottom is None or top is None:
+            continue
+        # Named after the flight rather than the room it lands in: a middle storey of a three-floor
+        # house has two flights in the same landing, and one id between them is a home model that
+        # refuses to be built at all.
+        feet: dict[str, Point2D] = {}
+        for region_id in (bottom, top):
+            footprint, portal, bearing = _stair_pose(
+                room_rects[region_id], room_portals[region_id], policy
+            )
+            reserved[region_id].append(footprint)
+            # The foot of the stairs joins the doorways as floor no arrangement may take: a
+            # staircase you have to move the sofa to reach is a staircase nobody can use.
+            room_portals[region_id].append(portal)
+            obstacles_from_structure.append(
+                HomeObstacle(
+                    obstacle_id=f"obstacle_stairs_{bottom}_{top}_{region_id}",
+                    region_id=region_id,
+                    boundary=footprint.to_polygon(),
+                    orientation_degrees=bearing,
+                )
+            )
+            feet[region_id] = portal
+        connections.append(
+            HomeConnection(
+                connection_id=f"stairs_{bottom}_{top}",
+                kind=ConnectionKind.stairway,
+                region_a_id=bottom,
+                region_b_id=top,
+                portal_a=feet[bottom],
+                portal_b=feet[top],
+                width_meters=policy.doorway_width_meters,
+                distance_meters=policy.stair_run_meters,
+            )
+        )
+
     resources_by_region: dict[str, list[Any]] = defaultdict(list)
     for resource in scenario.resources:
         resources_by_region[_expanded_regions(scenario, resource.location_id)[0]].append(resource)
@@ -474,7 +697,7 @@ def generate_home(
     # Furniture footprints: entities stop being bare points and become obstacles the visibility
     # planner has to walk around, which is what `environment/navigation.py` was always written for.
     # This runs before any interaction point is placed, because every point now has to dodge them.
-    obstacles: list[HomeObstacle] = []
+    obstacles: list[HomeObstacle] = list(obstacles_from_structure)
     furniture: dict[str, floorplan.PlacedFurniture] = {}
     furniture_by_region: dict[str, list[floorplan.PlacedFurniture]] = defaultdict(list)
     for region_id, region_resources in sorted(resources_by_region.items()):
@@ -487,12 +710,18 @@ def generate_home(
             room_portals[region_id],
             body_radius=_placement_clearance(policy),
             doorway_width=policy.doorway_width_meters,
+            # The arrangement is a function of the room and the scenario's own seed: the same
+            # scenario always furnishes the same way, and two scenarios do not have to.
+            region_id=region_id,
+            seed=scenario.seed,
+            reserved=reserved.get(region_id),
         ):
             furniture[item.entity_id] = item
             furniture_by_region[region_id].append(item)
             obstacles.append(
                 HomeObstacle(
                     obstacle_id=f"obstacle_{item.entity_id}",
+                    orientation_degrees=item.orientation_degrees,
                     region_id=region_id,
                     boundary=item.footprint.to_polygon(),
                 )
@@ -503,7 +732,7 @@ def generate_home(
     # walks out through the bedroom while the entrance sits in the hall, untouched by any path.
     anchor_id = _entrance_region(local, regions) if local else remote[0].region_id
     anchor_portal = (
-        _free_anchor(regions_by_id[anchor_id], room_rects, furniture_by_region, policy)
+        _free_anchor(regions_by_id[anchor_id], room_rects, furniture_by_region, policy, reserved)
         if anchor_id in regions_by_id
         else _center(regions_by_id[anchor_id].boundary)
     )
@@ -528,7 +757,7 @@ def generate_home(
         InteractionPoint(
             interaction_point_id=f"anchor_{region.region_id}",
             region_id=region.region_id,
-            position=_free_anchor(region, room_rects, furniture_by_region, policy),
+            position=_free_anchor(region, room_rects, furniture_by_region, policy, reserved),
             approach_radius_meters=policy.approach_radius_meters,
         )
         for region in regions
@@ -568,6 +797,7 @@ def generate_home(
             furniture_by_region.get(region_id, []),
             body_radius=_placement_clearance(policy),
             count=len(refused),
+            reserved=reserved.get(region_id),
         )
         for resource, point in zip(refused, points, strict=False):
             fallbacks[resource.resource_id] = point
@@ -628,6 +858,7 @@ def generate_home(
             entrance_rect,
             furniture_by_region.get(entrance_region, []),
             body_radius=_placement_clearance(policy),
+            reserved=reserved.get(entrance_region),
         )
     else:
         entrance_x = min(point.x for point in entrance_boundary.vertices) + 0.75
@@ -672,7 +903,7 @@ def generate_home(
             InteractionPoint(
                 interaction_point_id=interaction_id,
                 region_id=region.region_id,
-                position=_free_anchor(region, room_rects, furniture_by_region, policy),
+                position=_free_anchor(region, room_rects, furniture_by_region, policy, reserved),
                 approach_radius_meters=policy.approach_radius_meters,
             )
         )

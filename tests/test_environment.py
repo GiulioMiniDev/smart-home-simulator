@@ -65,6 +65,48 @@ def issue_codes(report: EnvironmentValidationReport) -> set[str]:
     return {issue.code for issue in report.issues}
 
 
+def test_a_cellar_is_a_storey_like_any_other() -> None:
+    """A basement is a negative level, and the plan gate has nothing to say about the sign.
+
+    `level` was non-negative for as long as the only floors anybody generated went up. Down is the
+    same construction — another block of the same coordinate plane, reached by a flight that
+    declares its own climb — so the contract had no business refusing it.
+    """
+    payload = load(HOME)
+    payload["regions"].append(
+        {
+            "regionId": "cellar",
+            "kind": "room",
+            "traversable": True,
+            "level": -1,
+            "boundary": {
+                "vertices": [
+                    {"x": 58.0, "y": 0.0},
+                    {"x": 62.0, "y": 0.0},
+                    {"x": 62.0, "y": 4.0},
+                    {"x": 58.0, "y": 4.0},
+                ]
+            },
+        }
+    )
+    payload["connections"].append(
+        {
+            "connectionId": "stairs_hallway_cellar",
+            "kind": "stairway",
+            "regionAId": "hallway",
+            "regionBId": "cellar",
+            "portalA": {"x": 9.0, "y": 5.0},
+            "portalB": {"x": 60.0, "y": 2.0},
+            "widthMeters": 1.0,
+            "distanceMeters": 4.5,
+            "bidirectional": True,
+        }
+    )
+    report = validate_home_model(parsed_home(payload))
+    assert report.valid, [issue.message for issue in report.issues]
+    assert parsed_home(payload).regions[-1].level == -1
+
+
 def test_golden_home_and_bundle_are_fully_resolved_and_deterministic() -> None:
     home_report = validate_home_file(HOME)
     first = build_bundle_files(SCENARIO, PLAN, PACKAGE, HOME)

@@ -9,5 +9,7 @@
   "roomHeightMeters": 6.0,
   "externalSpacingMeters": 12.0,
   "doorwayWidthMeters": 1.0,
-  "transportDistanceMeters": 500.0
+  "transportDistanceMeters": 500.0,
+  "levelSpacingMeters": 4.0,
+  "stairRunMeters": 4.5
 }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 from smart_home_sim.authoring.preflight import (
@@ -14,6 +15,8 @@ from smart_home_sim.authoring.preflight import (
     validate_activities_do_not_park_the_resident,
     validate_away_round_trips,
     validate_declared_objects_are_reachable,
+    validate_habit_bands_are_inhabited,
+    validate_habit_bands_hold_a_stable_stretch,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
     validate_rooms_are_furnished,
@@ -27,9 +30,14 @@ from smart_home_sim.domain.behavior import (
     PersonalProcessPackage,
     ProcessNode,
 )
-from smart_home_sim.domain.models import Scenario
+from smart_home_sim.domain.models import AuthorType, Provenance, Scenario
 from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
 from smart_home_sim.hybrid_planning.intents import load_reference_models
+from smart_home_sim.hybrid_planning.outline import (
+    HabitComposition,
+    HabitGroundTruth,
+    HabitObservation,
+)
 
 ROOT = Path(__file__).parents[1]
 
@@ -586,3 +594,146 @@ def test_a_resource_type_the_table_does_not_know_answers_any_request_without_a_r
         unknown, _package_opening("food_storage"), catalog
     )
     assert [finding.details["resourceType"] for finding in named] == ["aquarium"]
+
+
+def _observation(
+    habit_id: str,
+    unaccounted: float,
+    *,
+    dominant: str | None = "sleep",
+    dominant_share: float = 0.7,
+    effective: tuple[str, str] | None = ("23:28", "06:30"),
+) -> HabitObservation:
+    return HabitObservation(
+        habitId=habit_id,
+        label=habit_id.replace("_", " "),
+        windowStart="21:00",
+        windowEnd="06:30",
+        crossesMidnight=True,
+        dayCount=365,
+        totalMinutes=208050.0,
+        composition=(
+            [HabitComposition(intent=dominant, minutes=1.0, share=dominant_share)]
+            if dominant is not None
+            else []
+        ),
+        unaccountedMinutes=unaccounted * 208050.0,
+        unaccountedShare=unaccounted,
+        dominantIntent=dominant,
+        effectiveStart=effective[0] if effective else None,
+        effectiveEnd=effective[1] if effective else None,
+        effectiveShare=0.74 if effective else 0.0,
+    )
+
+
+def _ground_truth(*habits: HabitObservation) -> HabitGroundTruth:
+    return HabitGroundTruth(
+        outlineId="outline_1",
+        residentId="resident_1",
+        timeZone="Europe/Rome",
+        startDate=date(2026, 8, 27),
+        endDate=date(2027, 8, 27),
+        seed=1,
+        habits=list(habits),
+        provenance=Provenance(authorType=AuthorType.rule_generator),
+    )
+
+
+def test_a_band_nothing_holds_is_reported_with_what_it_measured() -> None:
+    findings = validate_habit_bands_hold_a_stable_stretch(
+        _ground_truth(
+            _observation(
+                "domestic_day",
+                0.636,
+                dominant="read_and_rest",
+                dominant_share=0.18,
+                effective=None,
+            )
+        )
+    )
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.path == "$.habits[0]"
+    # The numbers are the finding; nobody should have to open the ground truth to see them.
+    assert "64%" in finding.message
+    assert "'read_and_rest' at 18%" in finding.message
+    assert "nothing owns the band" in finding.message
+    assert finding.details["habitId"] == "domestic_day"
+    assert finding.details["unaccountedShare"] == 0.636
+    assert finding.details["effectiveShare"] == 0.0
+
+
+def test_a_band_with_a_shape_and_holes_is_reported_as_the_smaller_defect() -> None:
+    """The four bands in five horizons that were thin and still owned a stretch of themselves.
+
+    One of them held 83% of its window while 46% of its minutes were empty. Read in the same voice
+    as a band nothing holds at all, it says the wrong thing about what needs fixing.
+    """
+    thin_but_shaped = _observation(
+        "home_workday",
+        0.386,
+        dominant="work_from_home",
+        dominant_share=0.48,
+        effective=("14:08", "17:42"),
+    )
+
+    assert validate_habit_bands_hold_a_stable_stretch(_ground_truth(thin_but_shaped)) == []
+    findings = validate_habit_bands_are_inhabited(_ground_truth(thin_but_shaped))
+    assert len(findings) == 1
+    assert "It does have a shape" in findings[0].message
+    assert "'work_from_home' holds 14:08-17:42" in findings[0].message
+
+
+def test_the_two_checks_never_report_the_same_band() -> None:
+    truth = _ground_truth(
+        _observation("night", 0.093),
+        _observation("workday", 0.386, dominant="work_from_home", dominant_share=0.48),
+        _observation("evening", 0.562, dominant="eat_dinner", dominant_share=0.10, effective=None),
+    )
+
+    shaped = {finding.path for finding in validate_habit_bands_are_inhabited(truth)}
+    hollow = {finding.path for finding in validate_habit_bands_hold_a_stable_stretch(truth)}
+
+    assert shaped == {"$.habits[1]"}
+    assert hollow == {"$.habits[2]"}
+    assert shaped & hollow == set()
+
+
+def test_a_band_its_dominant_activity_holds_is_left_alone() -> None:
+    # The night this was written against: three quarters sleep, and sleep counts like anything
+    # else, so the band a researcher would most suspect is the one that passes most easily. Over
+    # the five horizons the threshold was calibrated on, all six nights did.
+    healthy = _ground_truth(_observation("night", 0.093))
+
+    assert validate_habit_bands_are_inhabited(healthy) == []
+    assert validate_habit_bands_hold_a_stable_stretch(healthy) == []
+
+
+def test_a_band_nothing_holds_but_that_is_full_is_left_to_the_researcher() -> None:
+    """Four comparable routines taking turns through a slow morning: no owner, and no defect.
+
+    Both conditions are required for the same reason the guidance gives for not making any of this
+    a gate — a band with no single dominant activity is sometimes exactly right.
+    """
+    full_but_unowned = _ground_truth(_observation("slow_morning", 0.12, effective=None))
+
+    assert validate_habit_bands_hold_a_stable_stretch(full_but_unowned) == []
+    assert validate_habit_bands_are_inhabited(full_but_unowned) == []
+
+
+def test_the_threshold_is_the_one_the_authoring_guidance_publishes() -> None:
+    below = validate_habit_bands_are_inhabited(_ground_truth(_observation("band", 0.33)))
+    above = validate_habit_bands_are_inhabited(_ground_truth(_observation("band", 0.34)))
+
+    assert below == []
+    assert len(above) == 1
+
+
+def test_a_band_that_measured_nothing_at_all_still_reads_as_a_sentence() -> None:
+    findings = validate_habit_bands_hold_a_stable_stretch(
+        _ground_truth(_observation("empty", 1.0, dominant=None, effective=None))
+    )
+
+    assert "nothing at all was measured inside it" in findings[0].message
+    assert findings[0].details["dominantShare"] is None

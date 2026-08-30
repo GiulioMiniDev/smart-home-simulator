@@ -1,13 +1,16 @@
 import {
   Activity,
   AlertCircle,
+  ArrowDownFromLine,
   ArrowLeft,
+  ArrowUpFromLine,
   BookOpen,
   Check,
   ChevronDown,
   CircleDot,
   Clock3,
   Copy,
+  DoorOpen,
   Download,
   Eye,
   FileJson,
@@ -18,9 +21,13 @@ import {
   HardDrive,
   Home as HomeIcon,
   ListTree,
+  Maximize2,
+  MousePointer2,
+  Package,
   Play,
   Plus,
   Radar,
+  RefreshCw,
   RotateCcw,
   RotateCw,
   Route as RouteIcon,
@@ -29,7 +36,10 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
+  SquareDashed,
+  Thermometer,
   Trash2,
+  Undo2,
   Trees,
   Upload,
   UserRound,
@@ -38,9 +48,8 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-  Maximize2,
 } from "lucide-react";
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { HorizonPreview } from "./horizon/HorizonPreview";
 import { readOutlineFile } from "./horizon/reading";
@@ -62,18 +71,25 @@ import {
   Skeleton,
   StatusBadge,
 } from "./components";
+import type { PlanTool } from "./components";
 import { useResource, useStoredState, type ResourceState } from "./hooks";
+import { FURNITURE_GROUPS, furnitureLabel, furnitureSize, furnitureSymbol } from "./furniture";
 import {
-  addObstacle,
-  addRoom,
-  addSensor,
+  addDoorway,
+  addFurnitureAt,
+  addSensorAt,
+  addStoreyByStairs,
+  createRoomFromBox,
   movePlanObject,
   pirRange,
+  planProblems,
   removeSelection,
   resizePlanObject,
+  rotatePlanObject,
   setPirRange,
+  setRegionLevel,
 } from "./editor";
-import type { ResizeHandle } from "./editor";
+import type { PlanBox, ResizeHandle, WallCandidate } from "./editor";
 import { authoringPrompts } from "./prompts";
 import { ReplayScene } from "./replay/ReplayScene";
 import type {
@@ -779,6 +795,17 @@ function HomePage() {
   const [history, setHistory] = useState<Array<{ home?: HomeModel; sensor?: SensorModel }>>([]);
   const [future, setFuture] = useState<Array<{ home?: HomeModel; sensor?: SensorModel }>>([]);
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
+  // Which tool the canvas is holding, and which storey it is drawing on. Both belong to the page:
+  // the toolbar shows them and the creation commands need them.
+  const [tool, setTool] = useState<PlanTool>("select");
+  const [storey, setStorey] = useState(0);
+  // Which piece the furniture tool is holding. Sofas are what people reach for first.
+  const [furnitureType, setFurnitureType] = useState("sofa");
+  // Where the unpublished working copy lives between visits. Publishing is what makes a revision;
+  // this is the drawer you leave the drawing in overnight, and it is local to this computer.
+  const draftKey = `habitat-lab-plan-draft:${homeId ?? ""}`;
+  const [draftSavedAt, setDraftSavedAt] = useState<string>();
+
   // Every edit passes through `snapshot`, so it is also where the drafts start diverging from what
   // the workspace holds. Publishing is what makes them agree again.
   const [unsaved, setUnsaved] = useState(false);
@@ -793,9 +820,30 @@ function HomePage() {
     // reloads it on every progress event. Reseeding over unpublished edits threw away the wall
     // somebody had just moved, silently, while they were still looking at it.
     if (unsaved) return;
+    // A working copy saved on this computer outranks the published models: it is what the person
+    // was in the middle of, and reseeding over it is the thing this guard exists to prevent.
+    const stored = readStoredDraft(draftKey);
+    if (stored) {
+      if (stored.home) setHomeDraft(stored.home);
+      if (stored.sensor) setSensorDraft(stored.sensor);
+      setDraftSavedAt(stored.savedAt);
+      setUnsaved(true);
+      setNotice({
+        kind: "success",
+        text: "Reopened the working copy saved on this computer. Publish it to make it authoritative, or discard it to go back to the published plan.",
+      });
+      return;
+    }
     if (sourceHome) setHomeDraft(structuredClone(sourceHome));
     if (sourceSensor) setSensorDraft(structuredClone(sourceSensor));
-  }, [sourceHome, sourceSensor, unsaved]);
+  }, [sourceHome, sourceSensor, unsaved, draftKey]);
+  // Closing the tab on unpublished work should cost a keystroke, not a shrug.
+  useEffect(() => {
+    if (!unsaved) return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener("beforeunload", guard);
+    return () => { window.removeEventListener("beforeunload", guard); };
+  }, [unsaved]);
   if (resource.loading) return <div className="page"><Skeleton lines={8} /></div>;
   if (resource.error || !resource.data) return <div className="page"><ErrorPanel message={resource.error?.message ?? "Home not found"} onRetry={() => void resource.reload()} /></div>;
   const detail = resource.data;
@@ -860,6 +908,10 @@ function HomePage() {
   const startRun = () => start("runs", "The run was queued in an isolated local worker.");
   // Building the environment on its own is what makes the plan reviewable before it is executed.
   const startEnvironment = () => start("environment", "Building the home and its sensor field. Nothing is executed until you start a run.");
+  // What the M4 gate would refuse, worked out here so the researcher sees it while they still have
+  // the object in their hand rather than after a publish that throws the whole edit away.
+  const planFaults = homeDraft ? planProblems(homeDraft) : [];
+  const selectedProblem = planFaults.find((item) => item.objectId === selectedId)?.message;
   const currentSnapshot = () => ({ home: homeDraft ? structuredClone(homeDraft) : undefined, sensor: sensorDraft ? structuredClone(sensorDraft) : undefined });
   const snapshot = () => { setHistory((items) => [...items.slice(-49), currentSnapshot()]); setFuture([]); setUnsaved(true); };
   // Pointer and keyboard move the same objects through the same geometry: dragging the bed and
@@ -874,11 +926,45 @@ function HomePage() {
     snapshot();
     moveSelected(selectedId, dx, dy);
   };
+  // Turning a piece is the edit a furnished room needs most and the one the plan could not do:
+  // the wardrobe generated against the wrong wall could be moved and stretched, never faced round.
+  const rotateSelected = (id: string | undefined) => {
+    if (!homeDraft || !id) return;
+    const next = rotatePlanObject(homeDraft, id);
+    if (next === homeDraft) return;
+    snapshot();
+    setHomeDraft(next);
+  };
   const resizeSelected = (id: string, handle: ResizeHandle, dx: number, dy: number) => {
     if (!homeDraft) return;
     const result = resizePlanObject(homeDraft, sensorDraft, id, handle, dx, dy);
     setHomeDraft(result.home);
     if (result.sensors) setSensorDraft(result.sensors);
+  };
+  /**
+   * Keep the working copy, and throw it away: the two things an editor owes you that publishing
+   * cannot do. Publishing creates an immutable revision every run of this home then executes, so
+   * it is not somewhere to leave a half-finished thought — and until now a half-finished thought
+   * was lost the moment the page went away.
+   */
+  const saveDraft = () => {
+    const savedAt = new Date().toISOString();
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ home: homeDraft, sensor: sensorDraft, savedAt }));
+    } catch (reason) {
+      setNotice({ kind: "error", text: `The working copy could not be stored: ${reason instanceof Error ? reason.message : String(reason)}` });
+      return;
+    }
+    setDraftSavedAt(savedAt);
+    setNotice({ kind: "success", text: "Working copy saved on this computer. It is not a revision: nothing runs on it until you publish." });
+  };
+  const discardChanges = () => {
+    localStorage.removeItem(draftKey);
+    setDraftSavedAt(undefined);
+    if (sourceHome) setHomeDraft(structuredClone(sourceHome));
+    if (sourceSensor) setSensorDraft(structuredClone(sourceSensor));
+    setHistory([]); setFuture([]); setUnsaved(false); setSelectedId(undefined); setTool("select");
+    setNotice({ kind: "success", text: "Back to the published plan. Every unpublished edit is gone." });
   };
   const undo = () => {
     const previous = history.at(-1); if (!previous) return;
@@ -903,16 +989,100 @@ function HomePage() {
       setNotice({ kind: "success", text: `${kind === "home" ? "Home" : "Sensor"} model loaded as a draft. Validate and publish to make it authoritative.` });
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
   };
-  const addEditorObject = (kind: "room" | "obstacle" | "pir" | "contact" | "temperature") => {
+  /**
+   * The plan edited with the hands on the keys.
+   *
+   * On the whole editor rather than on the canvas, because that is where the work happens: you
+   * click the wardrobe, glance at the inspector, and press R. Bound to the canvas alone it would
+   * have stopped working the moment focus moved to a button, which is the moment after selecting
+   * anything. Typing in a field is left alone.
+   */
+  const editorKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("input, textarea, select") || event.ctrlKey || event.metaKey) return;
+    // Escape lets go of the tool even when nothing is selected, which is the state you are in
+    // right after picking one up and thinking better of it.
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setTool("select");
+      setSelectedId(undefined);
+      return;
+    }
+    if (!selectedId || !homeDraft) return;
+    const step = event.shiftKey ? 0.5 : event.altKey ? 0.01 : 0.1;
+    const moves: Record<string, [number, number]> = {
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+    };
+    const move = moves[event.key];
+    if (move) {
+      event.preventDefault();
+      nudgeSelected(move[0], move[1]);
+    } else if (event.key === "r" || event.key === "R") {
+      event.preventDefault();
+      rotateSelected(selectedId);
+    } else if (event.key === "Delete") {
+      event.preventDefault();
+      removeEditorObject();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setTool("select");
+      setSelectedId(undefined);
+    }
+  };
+  /**
+   * The tools, which put a thing where it was pointed at instead of where the code guessed.
+   *
+   * Each one reports its own failure rather than throwing it away: dropping a sofa outside every
+   * room and having nothing happen is worse than being told to drop it inside one.
+   */
+  const drawRoom = (box: PlanBox, level: number) => {
+    if (!homeDraft) return;
     try {
       snapshot();
-      if (kind === "room" && homeDraft) {
-        const result = addRoom(homeDraft); setHomeDraft(result.model); setSelectedId(result.selectedId);
-      } else if (kind === "obstacle" && homeDraft) {
-        const result = addObstacle(homeDraft, selectedId); setHomeDraft(result.model); setSelectedId(result.selectedId);
-      } else if (sensorDraft && homeDraft) {
-        const result = addSensor(sensorDraft, homeDraft, kind as "pir" | "contact" | "temperature"); setSensorDraft(result.model); setSelectedId(result.selectedId);
+      const result = createRoomFromBox(homeDraft, box, level);
+      setHomeDraft(result.model);
+      setSelectedId(result.selectedId);
+      setNotice({ kind: "success", text: "Room drawn. Give it a doorway with the door tool, or it has no way in." });
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
+  };
+  const placeDoor = (wall: WallCandidate) => {
+    if (!homeDraft) return;
+    snapshot();
+    const result = addDoorway(homeDraft, wall);
+    setHomeDraft(result.model);
+    setSelectedId(result.selectedId);
+  };
+  const placeObject = (kind: PlanTool, point: { x: number; y: number }, level: number) => {
+    if (!homeDraft) return;
+    try {
+      snapshot();
+      if (kind === "obstacle") {
+        const result = addFurnitureAt(homeDraft, furnitureType, point, level);
+        setHomeDraft(result.model); setSelectedId(result.selectedId);
+      } else if (sensorDraft) {
+        const result = addSensorAt(sensorDraft, homeDraft, kind as "pir" | "contact" | "temperature", point, level);
+        setSensorDraft(result.model); setSelectedId(result.selectedId);
       }
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
+  };
+  // A floor is not something you add and then connect: you build the stairs, and the storey they
+  // reach comes with them. So the room the flight starts in has to be picked first, which is what
+  // `stairsFrom` is — the selected room, on the storey being drawn.
+  const stairsFrom = homeDraft?.regions.find((item) =>
+    item.regionId === selectedId && item.kind === "room" && item.traversable
+    && (item.level ?? 0) === storey);
+  const buildStairs = (direction: "up" | "down") => {
+    if (!homeDraft || !stairsFrom) return;
+    try {
+      snapshot();
+      const result = addStoreyByStairs(homeDraft, stairsFrom.regionId, direction);
+      setHomeDraft(result.model);
+      setSelectedId(result.selectedId);
+      setStorey(result.level);
+      setNotice({ kind: "success", text: `A flight of stairs ${direction === "up" ? "up" : "down"}, and the ${direction === "up" ? "storey" : "basement"} it reaches: a landing to arrive on, joined to the room you started from. Draw the rest of the floor from there.` });
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
   };
   const removeEditorObject = () => {
@@ -950,6 +1120,11 @@ function HomePage() {
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); setWorking(false); }
   };
   const recommended = !!homeDraft && detail.planApproval?.approved === false;
+  // Loading a corrected file over an attached one is offered only while it is free: no run has
+  // been started, so no evidence points at the context about to be replaced, and there is
+  // something the file is being corrected for. Without this the only way out of a reported issue
+  // was to delete the home and build it again around the same file.
+  const correctable = !activeJob && !detail.jobs.length && !!detail.issues?.length;
   return (
     <div className="page home-page">
       <Breadcrumbs items={[{ label: "Homes", to: "/homes" }, { label: detail.home.name }]} />
@@ -985,7 +1160,15 @@ function HomePage() {
       {tab === "overview" && <div className="home-overview-grid">
         <section className="surface context-sheet">
           <div className="section-heading"><div><p className="eyebrow">Resident context</p><h2>{detail.residents.length ? `${detail.residents.length} associated resident${detail.residents.length === 1 ? "" : "s"}` : "Attach accepted authoring"}</h2></div><Users size={21} /></div>
-          {detail.residents.length ? <div className="resident-list">{detail.residents.map((resident) => <div key={resident.residentId}><span className="avatar"><UserRound size={17} /></span><span><strong>{resident.displayName}</strong><code>{resident.sourceResidentId}</code></span><StatusBadge status="valid" /></div>)}</div> : <div className="import-flow">
+          {detail.residents.length ? <><div className="resident-list">{detail.residents.map((resident) => <div key={resident.residentId}><span className="avatar"><UserRound size={17} /></span><span><strong>{resident.displayName}</strong><code>{resident.sourceResidentId}</code></span><StatusBadge status="valid" /></div>)}</div>
+            {correctable && <div className="import-flow reimport-flow">
+              <p><strong>Correct the file and load it again.</strong> The reported issues are about the document, not about anything this home has done: nothing has been run yet, so replacing the resident context costs nothing. The new file goes through the same gates and the issues are recomputed from it.</p>
+              <label className="file-picker bundle-picker"><FileJson size={22} /><span><strong>Corrected horizon outline and processes</strong><small>{outlineFile?.name ?? "The same file with the reported issues addressed"}</small></span><input type="file" accept="application/json,.json" aria-label="Corrected horizon outline and processes" onChange={(event) => void chooseOutline(event.target.files?.[0])} /></label>
+              {outlineReading?.kind === "outline" && <p className="hint"><Eye size={15} /> Drawn below — read it before replacing what is attached.</p>}
+              {outlineReading?.kind === "other" && <div className="horizon-mismatch"><AlertCircle size={17} /><p>{outlineReading.message}<small>Importing it anyway is still allowed: the server gives the authoritative verdict.</small></p></div>}
+              <button className="button secondary" disabled={!outlineFile || working} onClick={() => void importOutline()}><RotateCcw size={16} /> Replace the resident context</button>
+            </div>}
+          </> : <div className="import-flow">
             <p>Import the single pure-JSON response generated by your external LLM. Nothing is published unless the whole bundle passes every authoritative gate.</p>
             <Link className="import-guide-link" to="/help#authoring"><BookOpen size={18} /><span><strong>Need to generate the file?</strong><small>Open the integrated guide and copy the horizon outline prompt.</small></span></Link>
             <label className="file-picker bundle-picker"><FileJson size={22} /><span><strong>Simulation authoring bundle</strong><small>{bundleFile?.name ?? "Choose the complete authoring-bundle.json"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBundleFile(event.target.files?.[0])} /></label>
@@ -1018,18 +1201,21 @@ function HomePage() {
           </>}
         </section>
       </div>}
-      {tab === "overview" && !detail.residents.length && outlineReading?.kind === "outline" && outlineFile && (
+      {tab === "overview" && (!detail.residents.length || correctable) && outlineReading?.kind === "outline" && outlineFile && (
         <HorizonPreview reading={outlineReading.reading} fileName={outlineFile.name} sourceFile={outlineFile} busy={working} onImport={() => void importOutline()} />
       )}
-      {(tab === "home" || tab === "sensors") && <div className="editor-layout">
+      {(tab === "home" || tab === "sensors") && <div className="editor-layout" onKeyDown={editorKeys}>
         <section className="editor-stage">
-          <div className="editor-toolbar"><div><button className="tool-button" disabled={!history.length} onClick={undo}><RotateCcw size={16} /> Undo</button><button className="tool-button" disabled={!future.length} onClick={redo}><RotateCw size={16} /> Redo</button><button className="tool-button" aria-pressed="true"><Square size={15} /> Select</button>{tab === "home" ? <><button className="tool-button" disabled={!homeDraft} onClick={() => addEditorObject("room")}><Plus size={15} /> Room</button><button className="tool-button" disabled={!homeDraft} onClick={() => addEditorObject("obstacle")}><Plus size={15} /> Obstacle</button></> : <>{(["pir", "contact", "temperature"] as const).map((kind) => <button key={kind} className="tool-button" disabled={!homeDraft || !sensorDraft} onClick={() => addEditorObject(kind)}><Plus size={15} /> {kind}</button>)}</>}<label className="tool-button file-tool"><Upload size={15} /> Import {tab === "home" ? "home" : "sensors"}<input type="file" accept="application/json,.json" onChange={(event) => void importModel(tab === "home" ? "home" : "sensor", event.target.files?.[0])} /></label></div><div className="viewport-tools" aria-label="Plan viewport"><button className="tool-button" aria-pressed={showExternalPlaces} onClick={() => setShowExternalPlaces(!showExternalPlaces)} title="The places the resident travels to are regions of the model, not rooms of the house."><Trees size={15} /> External places</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.4, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button><button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(12, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">←</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">↑</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">↓</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">→</button><span>{Math.round(viewport.zoom * 100)}%</span></div></div>
-          {homeDraft ? <PlanCanvas home={homeDraft} sensors={tab === "sensors" ? sensorDraft : undefined} selectedId={selectedId} onSelect={setSelectedId} viewport={viewport} editing={{ onDragStart: snapshot, onMove: moveSelected, onResize: resizeSelected }} showExternalPlaces={showExternalPlaces} onViewport={setViewport} /> : <EmptyState title="No spatial model yet" icon={<RouteIcon size={25} />}><p>Run scenario-first materialization or import a valid home model to open the editor.</p></EmptyState>}
+          <div className="editor-toolbar"><div><button className="tool-button" disabled={!history.length} onClick={undo}><RotateCcw size={16} /> Undo</button><button className="tool-button" disabled={!future.length} onClick={redo}><RotateCw size={16} /> Redo</button><PlanTools tab={tab} tool={tool} onTool={setTool} disabled={!homeDraft || (tab === "sensors" && !sensorDraft)} /><button className="tool-button" disabled={!homeDraft || !selectedId} onClick={() => rotateSelected(selectedId)} title="Turn the selected furniture a quarter of the way round (R)."><RefreshCw size={15} /> Turn</button><label className="tool-button file-tool"><Upload size={15} /> Import {tab === "home" ? "home" : "sensors"}<input type="file" accept="application/json,.json" onChange={(event) => void importModel(tab === "home" ? "home" : "sensor", event.target.files?.[0])} /></label></div><div className="viewport-tools" aria-label="Plan viewport">{tab === "home" && <><button className="tool-button" disabled={!stairsFrom} onClick={() => buildStairs("up")} title={stairsFrom ? "Build a flight up out of the selected room. The storey it reaches is drawn beside the plan, not on top of it: two floors are two blocks of one coordinate plane." : "Select the room the stairs start in. A floor arrives with the flight that reaches it."}><ArrowUpFromLine size={15} /> Stairs up</button><button className="tool-button" disabled={!stairsFrom} onClick={() => buildStairs("down")} title={stairsFrom ? "Build a flight down out of the selected room, into a basement." : "Select the room the stairs start in. A floor arrives with the flight that reaches it."}><ArrowDownFromLine size={15} /> Stairs down</button></>}<button className="tool-button" aria-pressed={showExternalPlaces} onClick={() => setShowExternalPlaces(!showExternalPlaces)} title="The places the resident travels to are regions of the model, not rooms of the house."><Trees size={15} /> External places</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.4, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button><button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(12, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">←</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">↑</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">↓</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">→</button><span>{Math.round(viewport.zoom * 100)}%</span></div></div>
+          {tab === "home" && tool === "obstacle" && (
+            <FurniturePalette chosen={furnitureType} onChoose={setFurnitureType} />
+          )}
+          {homeDraft ? <PlanCanvas home={homeDraft} sensors={tab === "sensors" ? sensorDraft : undefined} selectedId={selectedId} onSelect={setSelectedId} viewport={viewport} editing={{ onDragStart: snapshot, onMove: moveSelected, onResize: resizeSelected, onDrawRoom: drawRoom, onPlaceDoor: placeDoor, onPlaceObject: placeObject, onToolUsed: () => setTool("select") }} tool={tool} storey={storey} onStoreyChange={setStorey} showExternalPlaces={showExternalPlaces} onViewport={setViewport} /> : <EmptyState title="No spatial model yet" icon={<RouteIcon size={25} />}><p>Run scenario-first materialization or import a valid home model to open the editor.</p></EmptyState>}
         </section>
         <aside className="inspector" aria-label="Selection inspector">
           <div className="inspector-heading"><div><p className="eyebrow">Inspector</p><h2>{selectedId ?? "Nothing selected"}</h2></div>{selectedId && <button className="icon-button" onClick={() => setSelectedId(undefined)} aria-label="Clear selection"><X size={16} /></button>}</div>
-          {selectedId ? <><p className="inspector-help">Use precise keyboard-compatible controls. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div></fieldset><EditorFields tab={tab} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); setHomeDraft(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
-          <div className="inspector-footer">{unsaved && <p className="unsaved-note"><AlertCircle size={14} /> Unpublished edits. Publishing covers this tab only — the plan and the sensor field are separate revisions.</p>}<button className="button primary" disabled={working || !(tab === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(tab === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish {tab === "home" ? "plan" : "sensors"}{unsaved ? " •" : ""}</button></div>
+          {selectedId ? <><p className="inspector-help">Drag on the plan, or keep your hands on the keys: <kbd>↑↓←→</kbd> move, <kbd>Shift</kbd> by half a metre, <kbd>Alt</kbd> by a centimetre and past the magnets, <kbd>R</kbd> turns, <kbd>Del</kbd> removes. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div><button className="tool-button turn-button" onClick={() => rotateSelected(selectedId)}><RefreshCw size={15} /> Turn a quarter</button></fieldset>{selectedProblem && <p className="plan-problem" role="status"><AlertCircle size={14} /> This {selectedProblem}.</p>}<EditorFields tab={tab} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); setHomeDraft(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
+          <div className="inspector-footer">{tab === "home" && <div className="draft-actions"><button className="tool-button" disabled={!homeDraft} onClick={saveDraft} title="Keep this working copy on this computer without publishing a revision."><HardDrive size={15} /> Save working copy</button><button className="tool-button" disabled={!unsaved} onClick={discardChanges} title="Throw away every unpublished edit and go back to the published plan."><Undo2 size={15} /> Discard changes</button></div>}{planFaults.length > 0 && <details className="plan-faults"><summary><AlertCircle size={14} /> {planFaults.length} object{planFaults.length === 1 ? "" : "s"} the gate will reject</summary><ul>{planFaults.map((fault) => <li key={fault.objectId}><button className="row-link" onClick={() => setSelectedId(fault.objectId)}>{fault.objectId}</button> {fault.message}</li>)}</ul></details>}{unsaved && <p className="unsaved-note"><AlertCircle size={14} /> Unpublished edits{draftSavedAt ? `, working copy saved at ${formatTime(draftSavedAt)}` : ", not saved"}. Publishing covers this tab only — the plan and the sensor field are separate revisions.</p>}<button className="button primary" disabled={working || !(tab === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(tab === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish {tab === "home" ? "plan" : "sensors"}{unsaved ? " •" : ""}</button></div>
         </aside>
       </div>}
       {tab === "runs" && <RunTable jobs={detail.jobs} empty="No run has been started for this home." />}
@@ -1037,8 +1223,123 @@ function HomePage() {
   );
 }
 
+/**
+ * The tools, as a set of one-of-many toggles rather than buttons that each drop something.
+ *
+ * Every one of these used to add its object somewhere the code chose and leave you to drag it into
+ * place: a room off the side of the plan, a sofa in the middle of the first room, a PIR in
+ * whichever room happened to be traversable first. Holding a tool and pointing is the same number
+ * of clicks and puts the thing where you meant it.
+ */
+interface StoredDraft {
+  home?: HomeModel;
+  sensor?: SensorModel;
+  savedAt: string;
+}
+
+/** The working copy for one home, or nothing if there is none or it is no longer readable. */
+function readStoredDraft(key: string): StoredDraft | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as StoredDraft;
+    return parsed.home || parsed.sensor ? parsed : undefined;
+  } catch {
+    // A draft written by an older build, or storage the browser will not read. Losing it is
+    // better than failing to open the page it belongs to.
+    localStorage.removeItem(key);
+    return undefined;
+  }
+}
+
+/**
+ * Which piece of furniture the tool is about to drop.
+ *
+ * The tool used to add a nameless box, and the only way to say "a wardrobe" was to publish the box
+ * and edit the JSON. The palette is grouped the way somebody looks for furniture — by the room they
+ * are furnishing — and each item is its own glyph at its own proportions, so a bed reads as a bed
+ * and you can see it is two metres long before you drop it.
+ */
+function FurniturePalette({ chosen, onChoose }: { chosen: string; onChoose: (type: string) => void }) {
+  return (
+    <div className="furniture-palette" role="group" aria-label="Furniture to place">
+      {FURNITURE_GROUPS.map((group) => (
+        <section key={group.label}>
+          <h4>{group.label}</h4>
+          <div className="furniture-choices">
+            {group.types.map((type) => {
+              const [extent, depth] = furnitureSize(type);
+              const symbol = furnitureSymbol(type);
+              return (
+                <button
+                  key={type}
+                  className="furniture-choice"
+                  aria-pressed={chosen === type}
+                  aria-label={furnitureLabel(type)}
+                  title={`${furnitureLabel(type)} — ${extent.toFixed(2)} × ${depth.toFixed(2)} m`}
+                  onClick={() => onChoose(type)}
+                >
+                  <svg viewBox="0 0 40 40" aria-hidden="true">
+                    {symbol && <use href={`#furn-${symbol}`} x="3" y="3" width="34" height="34" preserveAspectRatio="xMidYMid meet" />}
+                  </svg>
+                  <span>{furnitureLabel(type)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function PlanTools({
+  tab,
+  tool,
+  onTool,
+  disabled,
+}: {
+  tab: "home" | "sensors";
+  tool: PlanTool;
+  onTool: (next: PlanTool) => void;
+  disabled: boolean;
+}) {
+  const tools: Array<{ id: PlanTool; label: string; icon: ReactNode; hint: string }> = tab === "home"
+    ? [
+        { id: "select", label: "Select", icon: <MousePointer2 size={15} />, hint: "Drag furniture straight off the plan. Rooms move once selected." },
+        { id: "room", label: "Room", icon: <SquareDashed size={15} />, hint: "Drag out the two corners of a new room." },
+        { id: "door", label: "Door", icon: <DoorOpen size={15} />, hint: "Click the wall two rooms share to open a doorway in it." },
+        { id: "obstacle", label: "Furniture", icon: <Package size={15} />, hint: "Click inside a room to drop a piece of furniture there." },
+      ]
+    : [
+        { id: "select", label: "Select", icon: <MousePointer2 size={15} />, hint: "Drag a sensor straight off the plan." },
+        { id: "pir", label: "PIR", icon: <Radar size={15} />, hint: "Click a room to watch it with a motion sensor." },
+        { id: "contact", label: "Contact", icon: <Square size={15} />, hint: "Click to add a reed switch on a door or a cupboard." },
+        { id: "temperature", label: "Temperature", icon: <Thermometer size={15} />, hint: "Click a room to measure its temperature." },
+      ];
+  return (
+    <div className="tool-palette" role="group" aria-label="Plan tools">
+      {tools.map((item) => (
+        <button
+          key={item.id}
+          className="tool-button"
+          aria-pressed={tool === item.id}
+          disabled={disabled && item.id !== "select"}
+          title={item.hint}
+          onClick={() => onTool(item.id)}
+        >
+          {item.icon} {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function EditorFields({ tab, selectedId, home, sensors, onHome, onSensors }: { tab: "home" | "sensors"; selectedId: string; home?: HomeModel; sensors?: SensorModel; onHome: (model: HomeModel) => void; onSensors: (model: SensorModel) => void }) {
   if (!home) return null;
+  // The storeys the house actually has. A room can be moved between them, but not onto a floor
+  // that no staircase reaches: those only come into being with the flight that climbs to them.
+  const storeys = [...new Set(home.regions.map((item) => item.level ?? 0))].sort((a, b) => a - b);
   const sensor = sensors?.sensors.find((item) => item.sensorId === selectedId);
   if (tab === "sensors" && sensor && sensors) {
     const update = (next: Partial<typeof sensor>) => onSensors({ ...sensors, sensors: sensors.sensors.map((item) => item.sensorId === selectedId ? { ...item, ...next } : item) });
@@ -1053,7 +1354,7 @@ function EditorFields({ tab, selectedId, home, sensors, onHome, onSensors }: { t
     return <div className="inspector-section editor-fields"><h3>Sensor configuration</h3><div className="field-grid"><label><span>X position</span><input type="number" step="0.1" value={sensor.position.x} onChange={(event) => update({ position: { ...sensor.position, x: event.target.valueAsNumber } })} /></label><label><span>Y position</span><input type="number" step="0.1" value={sensor.position.y} onChange={(event) => update({ position: { ...sensor.position, y: event.target.valueAsNumber } })} /></label><label><span>Latency ms</span><input type="number" min="0" value={sensor.timing.latencyMilliseconds} onChange={(event) => timing("latencyMilliseconds", event.target.valueAsNumber)} /></label><label><span>Jitter ms</span><input type="number" min="0" value={sensor.timing.clockJitterMilliseconds} onChange={(event) => timing("clockJitterMilliseconds", event.target.valueAsNumber)} /></label><label><span>Cooldown ms</span><input type="number" min="0" value={sensor.timing.cooldownMilliseconds} onChange={(event) => timing("cooldownMilliseconds", event.target.valueAsNumber)} /></label><label><span>Dropout 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.dropoutProbability} onChange={(event) => error("dropoutProbability", event.target.valueAsNumber)} /></label><label><span>False negative 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falseNegativeProbability} onChange={(event) => error("falseNegativeProbability", event.target.valueAsNumber)} /></label><label><span>False positives/day</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falsePositiveProbabilityPerDay} onChange={(event) => error("falsePositiveProbabilityPerDay", event.target.valueAsNumber)} /></label><label><span>Noise σ</span><input type="number" min="0" step="0.01" value={sensor.errorModel.measurementNoiseStandardDeviation} onChange={(event) => error("measurementNoiseStandardDeviation", event.target.valueAsNumber)} /></label>{sensor.sensorType === "pir" && <><label><span>Range m</span><input type="number" min="0.2" max="12" step="0.1" value={pirRange(sensor)} onChange={(event) => onSensors(setPirRange(sensors, home, sensor.sensorId, event.target.valueAsNumber))} /></label><label><span>Hold ms</span><input type="number" min="1" step="100" value={Number(sensor.holdMilliseconds ?? 30000)} onChange={(event) => update({ holdMilliseconds: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "temperature" && <><label><span>Region</span><select value={String(sensor.regionId)} onChange={(event) => update({ regionId: event.target.value })}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label><label><span>Baseline °C</span><input type="number" step="0.1" value={Number(sensor.baselineCelsius)} onChange={(event) => update({ baselineCelsius: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "contact" && <label><span>Entity</span><select value={String(sensor.entityId)} onChange={(event) => update({ entityId: event.target.value })}>{home.entities.map((item) => <option key={item.entityId}>{item.entityId}</option>)}</select></label>}</div><div className="failure-editor"><div><h4>Failure windows</h4><button className="button secondary" onClick={addFailure}><Plus size={14} /> Add window</button></div>{sensor.failureWindows.length ? sensor.failureWindows.map((window, index) => <div className="failure-window" key={`${window.startsAt}-${index}`}><label><span>Starts</span><input type="datetime-local" value={window.startsAt.slice(0, 16)} onChange={(event) => setFailure(index, "startsAt", event.target.value)} /></label><label><span>Ends</span><input type="datetime-local" value={window.endsAt.slice(0, 16)} onChange={(event) => setFailure(index, "endsAt", event.target.value)} /></label><button className="icon-button" aria-label={`Remove failure window ${index + 1}`} onClick={() => update({ failureWindows: sensor.failureWindows.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>) : <p>No planned dropout interval. Random dropout remains controlled by the probability above.</p>}</div></div>;
   }
   const region = home.regions.find((item) => item.regionId === selectedId);
-  if (region) return <div className="inspector-section editor-fields"><h3>Region geometry</h3><label><span>Kind</span><select value={region.kind} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, kind: event.target.value as typeof item.kind } : item) })}>{["room", "outdoor", "external", "transit"].map((kind) => <option key={kind}>{kind}</option>)}</select></label><label className="check-field"><input type="checkbox" checked={region.traversable} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, traversable: event.target.checked } : item) })} /><span>Traversable</span></label><div className="vertex-list">{region.boundary.vertices.map((point, index) => <div key={index}><span>Vertex {index + 1}</span><input aria-label={`Vertex ${index + 1} X`} type="number" step="0.1" value={point.x} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, x: event.target.valueAsNumber } : vertex) } } : item) })} /><input aria-label={`Vertex ${index + 1} Y`} type="number" step="0.1" value={point.y} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, y: event.target.valueAsNumber } : vertex) } } : item) })} /></div>)}</div></div>;
+  if (region) return <div className="inspector-section editor-fields"><h3>Region geometry</h3><label><span>Kind</span><select value={region.kind} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, kind: event.target.value as typeof item.kind } : item) })}>{["room", "outdoor", "external", "transit"].map((kind) => <option key={kind}>{kind}</option>)}</select></label><label><span>Floor</span><input aria-label="Floor" type="number" min={storeys[0]} max={storeys[storeys.length - 1]} step={1} value={region.level ?? 0} onChange={(event) => onHome(setRegionLevel(home, selectedId, Math.min(storeys[storeys.length - 1]!, Math.max(storeys[0]!, Math.round(event.target.valueAsNumber || 0)))))} /></label><label className="check-field"><input type="checkbox" checked={region.traversable} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, traversable: event.target.checked } : item) })} /><span>Traversable</span></label><div className="vertex-list">{region.boundary.vertices.map((point, index) => <div key={index}><span>Vertex {index + 1}</span><input aria-label={`Vertex ${index + 1} X`} type="number" step="0.1" value={point.x} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, x: event.target.valueAsNumber } : vertex) } } : item) })} /><input aria-label={`Vertex ${index + 1} Y`} type="number" step="0.1" value={point.y} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, y: event.target.valueAsNumber } : vertex) } } : item) })} /></div>)}</div></div>;
   const obstacle = home.obstacles.find((item) => item.obstacleId === selectedId);
   const entity = home.entities.find((item) => item.entityId === selectedId);
   if (entity) {
