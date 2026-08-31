@@ -39,6 +39,125 @@ function world(part: Partial<SceneWorld> = {}): SceneWorld {
 describe("SceneStage", () => {
   afterEach(cleanup);
 
+  it("shows a running thing doing the thing it does, not all of them glowing alike", () => {
+    // `active` is one bit in the trace and it used to be one halo, which made a kettle and a
+    // television the same event. A kettle steams and a screen flickers, and the difference is
+    // what makes "making coffee" legible without reading the caption under the picture.
+    const kitchen = {
+      ...home,
+      obstacles: [
+        ...home.obstacles,
+        { obstacleId: "obstacle_moka", regionId: "kitchen", boundary: { vertices: [{ x: 1, y: 1 }, { x: 1.3, y: 1 }, { x: 1.3, y: 1.3 }, { x: 1, y: 1.3 }] } },
+        { obstacleId: "obstacle_shower", regionId: "kitchen", boundary: { vertices: [{ x: 3, y: 1 }, { x: 3.8, y: 1 }, { x: 3.8, y: 1.8 }, { x: 3, y: 1.8 }] } },
+        { obstacleId: "obstacle_television", regionId: "kitchen", boundary: { vertices: [{ x: 1, y: 3 }, { x: 2, y: 3 }, { x: 2, y: 3.3 }, { x: 1, y: 3.3 }] } },
+      ],
+      entities: [
+        ...home.entities,
+        { entityId: "moka", entityType: "moka_coffee_maker", regionId: "kitchen" },
+        { entityId: "shower", entityType: "shower", regionId: "kitchen" },
+        { entityId: "television", entityType: "television", regionId: "kitchen" },
+      ],
+    } as unknown as HomeModel;
+    const running = world({
+      entities: {
+        moka: { open: false, active: true },
+        shower: { open: false, active: true },
+        television: { open: false, active: true },
+        crate: { open: false, active: true },
+      },
+    });
+    const { container } = render(<SceneStage home={kitchen} world={running} activeRegionId="kitchen" />);
+
+    expect(container.querySelectorAll(".scene-emit-steam")).toHaveLength(1);
+    expect(container.querySelectorAll(".scene-emit-water")).toHaveLength(1);
+    expect(container.querySelectorAll(".scene-emit-screen")).toHaveLength(1);
+    // A thing with nothing particular to show still gets the halo: the halo is the general case.
+    expect(container.querySelectorAll(".scene-thing-glow")).toHaveLength(4);
+    expect(container.querySelectorAll("[class^=scene-emit]")).toHaveLength(3);
+  });
+
+  it("puts a body onto the furniture it is recorded as using, not beside it", () => {
+    // An interaction point is by construction a patch of free floor, because that is the only
+    // place the router may stand a body. So the trace drew her lying rigidly on the carpet next
+    // to the bed and standing beside the chair she is recorded as sitting on. The evidence was
+    // never wrong: what it names is where you stand to use a thing, not where you end up.
+    const furnished = {
+      ...home,
+      obstacles: [
+        ...home.obstacles,
+        { obstacleId: "obstacle_bed", regionId: "kitchen", boundary: { vertices: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2.4 }, { x: 1, y: 2.4 }] } },
+        { obstacleId: "obstacle_chair", regionId: "kitchen", boundary: { vertices: [{ x: .2, y: 3 }, { x: .7, y: 3 }, { x: .7, y: 3.5 }, { x: .2, y: 3.5 }] } },
+      ],
+      entities: [...home.entities,
+        { entityId: "bed", entityType: "bed", regionId: "kitchen" },
+        { entityId: "chair", entityType: "chair", regionId: "kitchen" },
+      ],
+    } as unknown as HomeModel;
+    const at = (part: Record<string, unknown>) => world({
+      residents: [{
+        residentId: "resident_mario_rossi", name: "Mario Rossi", carrying: [],
+        regionId: "kitchen", moving: false, away: false, routes: [],
+        posture: "standing", position: { x: .5, y: 1.7 }, anchorPosition: { x: .5, y: 1.7 },
+        ...part,
+      }],
+    } as unknown as Partial<SceneWorld>);
+    const marker = (element: HTMLElement) => element.querySelector(".scene-people > g") as SVGGElement;
+
+    // Standing at the fridge is exactly where the trace says, and stays there.
+    const standing = render(<SceneStage home={furnished} world={at({ using: { entityId: "refrigerator", label: "refrigerator" } })} />);
+    expect(marker(standing.container).style.getPropertyValue("--scene-seat-x")).toBe("0px");
+    cleanup();
+
+    // In bed: onto the middle of it, and turned along its long side rather than along whichever
+    // way she happened to be walking when she got there.
+    const abed = render(<SceneStage home={furnished} world={at({ posture: "lying", using: { entityId: "bed", label: "bed" } })} />);
+    expect(marker(abed.container).style.getPropertyValue("--scene-seat-x")).toBe("1.5px");
+    expect(marker(abed.container).style.getPropertyValue("--scene-seat-y")).toBe("0px");
+    expect(marker(abed.container).style.getPropertyValue("--scene-recline")).toBe("0deg");
+    cleanup();
+
+    // On the chair: most of the way, not all of it, so a seat reads as taken and a double bed
+    // does not read as swallowing her.
+    const seated = render(<SceneStage home={furnished} world={at({ posture: "sitting", position: { x: .45, y: 2.6 }, using: { entityId: "chair", label: "chair" } })} />);
+    expect(Number.parseFloat(marker(seated.container).style.getPropertyValue("--scene-seat-y"))).toBeCloseTo(.507);
+    expect(marker(seated.container).style.getPropertyValue("--scene-recline")).toBe("");
+    cleanup();
+
+    // A thing you operate rather than get onto is left alone, whatever the posture says.
+    const perched = render(<SceneStage home={furnished} world={at({ posture: "sitting", using: { entityId: "refrigerator", label: "refrigerator" } })} />);
+    expect(marker(perched.container).style.getPropertyValue("--scene-seat-x")).toBe("0px");
+  });
+
+  it("draws the front door and swings it on the state the trace gives it", () => {
+    const withDoor = {
+      ...home,
+      connections: [{
+        connectionId: "transit_kitchen_supermarket", kind: "transit",
+        regionAId: "kitchen", regionBId: "supermarket", bidirectional: true, widthMeters: 1,
+        portalA: { x: 2, y: 0 }, portalB: { x: 22, y: 22 },
+      }],
+      interactionPoints: [{ interactionPointId: "point_door", regionId: "kitchen", position: { x: 2, y: .4 }, approachRadiusMeters: .3 }],
+      entities: [
+        ...home.entities,
+        {
+          entityId: "entrance_door", entityType: "entrance_door", regionId: "kitchen",
+          interactionPointId: "point_door",
+          capabilities: [{ capability: "portal", roles: [], supportedOperations: ["leave_home", "enter_home"] }],
+        },
+      ],
+    } as unknown as HomeModel;
+
+    const shut = render(<SceneStage home={withDoor} world={world()} />);
+    expect(shut.container.querySelector(".scene-door-leaf")).toHaveAttribute("data-open", "false");
+    cleanup();
+
+    const open = render(<SceneStage
+      home={withDoor}
+      world={world({ entities: { entrance_door: { open: true, active: false } } })}
+    />);
+    expect(open.container.querySelector(".scene-door-leaf")).toHaveAttribute("data-open", "true");
+  });
+
   it("draws the dwelling and leaves the places that are not part of it out of frame", () => {
     const { container } = render(<SceneStage home={home} world={world()} activeRegionId="kitchen" />);
 
@@ -98,13 +217,18 @@ describe("SceneStage", () => {
       world={world()}
       motion={{
         subscribe: (listener) => { emit = listener; return () => { emit = undefined; }; },
-        sample: (atMs) => ({ resident_mario_rossi: { position: { x: atMs, y: 2 }, heading: Math.PI / 2, travelled: [{ x: 0, y: 0 }, { x: atMs, y: 2 }] } }),
+        sample: (atMs) => ({ resident_mario_rossi: { position: { x: atMs, y: 2 }, heading: Math.PI / 2, travelled: [{ x: 0, y: 0 }, { x: atMs, y: 2 }], climbing: 0, level: 0 } }),
       }}
     />);
 
     emit?.(3);
 
-    expect(container.querySelector(".scene-people > g")).toHaveAttribute("transform", "translate(3 2) rotate(90)");
+    // The marker carries the position only. Facing rides as a custom property on an inner group,
+    // so the body turns with its own easing and the name above her head stays upright.
+    const marker = container.querySelector(".scene-people > g") as SVGGElement;
+    expect(marker).toHaveAttribute("transform", "translate(3 2)");
+    expect(marker.style.getPropertyValue("--scene-facing")).toBe("90deg");
+    expect(marker.style.getPropertyValue("--scene-climbing")).toBe("0");
     expect(container.querySelector(".scene-trail")).toHaveAttribute("points", "0,0 3,2");
   });
 

@@ -142,11 +142,95 @@ export function waypointAtOrBefore(movement: ReplayEvent, at: number): ReplayEve
   return movement.waypoints.filter((waypoint) => (replayTimestamp(waypoint.at) ?? Number.POSITIVE_INFINITY) <= at).at(-1);
 }
 
-/** The route split at an instant: where the resident has walked, and where it is still going. */
-export function movementPath(movement: ReplayEvent, atMs: number): { travelled: Point[]; remaining: Point[] } {
-  const here = movementPositionAt(movement, atMs);
-  const behind = movement.waypoints.filter((waypoint) => (replayTimestamp(waypoint.at) ?? Number.POSITIVE_INFINITY) <= atMs);
-  const ahead = movement.waypoints.filter((waypoint) => (replayTimestamp(waypoint.at) ?? Number.NEGATIVE_INFINITY) > atMs);
+/**
+ * Where a route puts someone, on which storey, and how far up the stairs they are.
+ *
+ * Every leg of a route is a walk across a floor except one: the step between two storeys. Those
+ * two waypoints are metres apart on the page and one flight apart in the house, so interpolating
+ * between them slides the body across rooms it is not in and through the walls between — the same
+ * lie `interiorRun` refuses for the leg that leaves the flat, told inside it.
+ *
+ * So a climb is not walked. The body waits at the foot of the flight, the stairs take it, and it
+ * arrives at the head: `climbing` rises to 1 as it goes and falls back to 0 as it lands, and the
+ * storey changes at the halfway point, which is the moment the scene has to change floors too.
+ * That is also the honest reading of the evidence, which says only that she left the bottom at one
+ * instant and reached the top at another.
+ */
+export interface RoutePose {
+  position: Point;
+  /** The region the body counts as being in: the one it left until halfway, then the one it reaches. */
+  regionId: string;
+  level: number;
+  /** 0 on a floor; 1 at the instant the flight hands the body to the other storey. */
+  climbing: number;
+}
+
+export function routePoseAt(
+  movement: ReplayEvent,
+  atMs: number,
+  levelOf: (regionId: string) => number,
+): RoutePose | undefined {
+  const points = movement.waypoints
+    .map((waypoint) => ({ waypoint, at: replayTimestamp(waypoint.at) }))
+    .filter((item): item is { waypoint: ReplayEvent["waypoints"][number]; at: number } => item.at !== undefined);
+  const before = points.filter((item) => item.at <= atMs).at(-1);
+  const after = points.find((item) => item.at > atMs);
+  const settled = (item: typeof before) => item && {
+    position: item.waypoint.position,
+    regionId: item.waypoint.regionId,
+    level: levelOf(item.waypoint.regionId),
+    climbing: 0,
+  };
+  if (!before) return settled(after) ?? undefined;
+  if (!after || after.at === before.at) return settled(before) ?? undefined;
+
+  const ratio = (atMs - before.at) / (after.at - before.at);
+  const from = levelOf(before.waypoint.regionId);
+  const to = levelOf(after.waypoint.regionId);
+  if (from !== to) {
+    const landed = ratio >= .5;
+    const end = landed ? after : before;
+    return {
+      position: end.waypoint.position,
+      regionId: end.waypoint.regionId,
+      level: landed ? to : from,
+      climbing: landed ? (1 - ratio) * 2 : ratio * 2,
+    };
+  }
+  return {
+    position: {
+      x: before.waypoint.position.x + (after.waypoint.position.x - before.waypoint.position.x) * ratio,
+      y: before.waypoint.position.y + (after.waypoint.position.y - before.waypoint.position.y) * ratio,
+    },
+    regionId: before.waypoint.regionId,
+    level: from,
+    climbing: 0,
+  };
+}
+
+/**
+ * The route split at an instant: where the resident has walked, and where it is still going.
+ *
+ * Given a storey, only the part of the route on it — a trail drawn straight through the flight
+ * would cross the whole plan, which is the picture the climb exists to avoid.
+ */
+export function movementPath(
+  movement: ReplayEvent,
+  atMs: number,
+  on?: { level: number; levelOf: (regionId: string) => number },
+): { travelled: Point[]; remaining: Point[] } {
+  const here = on
+    ? (() => {
+        const pose = routePoseAt(movement, atMs, on.levelOf);
+        return pose && pose.level === on.level ? pose.position : undefined;
+      })()
+    : movementPositionAt(movement, atMs);
+  const drawn = (waypoint: ReplayEvent["waypoints"][number]) =>
+    !on || on.levelOf(waypoint.regionId) === on.level;
+  const behind = movement.waypoints.filter((waypoint) =>
+    (replayTimestamp(waypoint.at) ?? Number.POSITIVE_INFINITY) <= atMs && drawn(waypoint));
+  const ahead = movement.waypoints.filter((waypoint) =>
+    (replayTimestamp(waypoint.at) ?? Number.NEGATIVE_INFINITY) > atMs && drawn(waypoint));
   return {
     travelled: [...behind.map((waypoint) => waypoint.position), ...(here ? [here] : [])],
     remaining: [...(here ? [here] : []), ...ahead.map((waypoint) => waypoint.position)],

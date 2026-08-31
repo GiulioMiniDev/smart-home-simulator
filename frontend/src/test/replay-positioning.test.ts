@@ -11,6 +11,7 @@ import {
   movementProgress,
   replayTimestamp,
   routeAt,
+  routePoseAt,
   waypointAtOrBefore,
 } from "../replay/replay-positioning";
 import type { ReplayEvent } from "../types";
@@ -156,5 +157,60 @@ describe("routes", () => {
     const half = movementPath(walk, at("2026-10-30T08:00:20+01:00"));
     expect(half.travelled).toEqual([{ x: 0, y: 0 }, { x: 2, y: 0 }]);
     expect(half.remaining).toEqual([{ x: 2, y: 0 }, { x: 4, y: 0 }]);
+  });
+});
+
+describe("routePoseAt", () => {
+  const flat = (regionId: string) => (regionId === "landing" || regionId === "bedroom" ? 1 : 0);
+  const climb = route({
+    eventId: "climb",
+    at: "2026-10-30T08:00:00+01:00", end: "2026-10-30T08:00:10+01:00",
+    waypoints: [
+      { at: "2026-10-30T08:00:00+01:00", regionId: "hallway", traversalMode: "walking", position: { x: 1, y: 1 } },
+      { at: "2026-10-30T08:00:04+01:00", regionId: "landing", traversalMode: "walking", position: { x: 21, y: 1 } },
+      { at: "2026-10-30T08:00:10+01:00", regionId: "bedroom", traversalMode: "walking", position: { x: 23, y: 4 } },
+    ],
+  });
+
+  it("walks a leg on one floor and interpolates it", () => {
+    expect(routePoseAt(walk, at("2026-10-30T08:00:20+01:00"), () => 0))
+      .toEqual({ position: { x: 2, y: 0 }, regionId: "hallway", level: 0, climbing: 0 });
+  });
+
+  it("does not walk the body across the page between two storeys", () => {
+    // The two ends of a flight are metres apart on the plan and one floor apart in the house.
+    // Interpolating between them slid the body through every room in between, which is the one
+    // move in a route that never happened.
+    const foot = routePoseAt(climb, at("2026-10-30T08:00:01+01:00"), flat)!;
+    expect(foot.position).toEqual({ x: 1, y: 1 });
+    expect(foot.regionId).toBe("hallway");
+    expect(foot.level).toBe(0);
+    expect(foot.climbing).toBeCloseTo(.5);
+
+    // Past halfway she belongs to the storey she is arriving on, which is the instant the scene
+    // has to change floors: before it the climb is a departure, after it an arrival.
+    const head = routePoseAt(climb, at("2026-10-30T08:00:03+01:00"), flat)!;
+    expect(head.position).toEqual({ x: 21, y: 1 });
+    expect(head.regionId).toBe("landing");
+    expect(head.level).toBe(1);
+    expect(head.climbing).toBeCloseTo(.5);
+  });
+
+  it("settles on a waypoint outside the route's own span", () => {
+    expect(routePoseAt(climb, at("2026-10-30T07:59:00+01:00"), flat)?.regionId).toBe("hallway");
+    expect(routePoseAt(climb, at("2026-10-30T09:00:00+01:00"), flat))
+      .toEqual({ position: { x: 23, y: 4 }, regionId: "bedroom", level: 1, climbing: 0 });
+    expect(routePoseAt(route({ eventId: "empty", waypoints: [] }), at("2026-10-30T08:00:20+01:00"), flat))
+      .toBeUndefined();
+  });
+
+  it("draws a trail on one storey only, never the line between two", () => {
+    const whole = movementPath(climb, at("2026-10-30T08:00:08+01:00"));
+    expect(whole.travelled).toHaveLength(3);
+    // On the upper floor the ground-floor leg is not part of the picture at all.
+    const upstairs = movementPath(climb, at("2026-10-30T08:00:08+01:00"), { level: 1, levelOf: flat });
+    expect(upstairs.travelled).toEqual([{ x: 21, y: 1 }, { x: 22 + 1 / 3, y: 3 }]);
+    const downstairs = movementPath(climb, at("2026-10-30T08:00:08+01:00"), { level: 0, levelOf: flat });
+    expect(downstairs.travelled).toEqual([{ x: 1, y: 1 }]);
   });
 });

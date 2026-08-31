@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { cutDoorways, dwellingRegionIds, planDoors, planWalls } from "../editor";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
+import { cutDoorways, dwellingRegionIds, planDoors, planFrontDoor, planWalls } from "../editor";
 import { furnitureSymbol, structuralSymbol } from "../furniture";
 import { FurnitureGlyph } from "../furniture-glyph";
 import { FurnitureSymbols } from "../furniture-symbols";
@@ -48,7 +48,10 @@ function useSet(home: HomeModel | undefined, storey: number) {
     const regions = home.regions.filter((region) => dwelling.has(region.regionId));
     if (regions.length === 0) return undefined;
     const walls = cutDoorways(planWalls(home, dwelling), planDoors(home, dwelling));
-    const doors = planDoors(home, dwelling);
+    // The way out is a transit connection, not a doorway, so it is not among the holes in the
+    // walls — and the one door in the flat that opens and shuts was the one the scene never drew.
+    const front = planFrontDoor(home, dwelling);
+    const doors = [...planDoors(home, dwelling), ...(front ? [front] : [])];
     const entityByObstacle = new Map(home.entities.map((entity) => [`obstacle_${entity.entityId}`, entity]));
     const furniture = home.obstacles
       .filter((obstacle) => obstacle.regionId === undefined || dwelling.has(obstacle.regionId))
@@ -77,6 +80,107 @@ function useSet(home: HomeModel | undefined, storey: number) {
   }, [home, storey]);
 }
 
+/**
+ * What a thing does while it is running, for the things whose whole point is that they do it.
+ *
+ * `active` is one bit in the trace and it used to be one static halo, which said a kettle and a
+ * television were the same event. They are not: one of them steams and the other one flickers, and
+ * a scene that shows the difference is a scene where "making coffee" is legible without the caption
+ * underneath it. Anything not named here still gets the halo — the halo is the general case.
+ */
+const EMITTERS: Record<string, "steam" | "water" | "screen" | "sound"> = {
+  stove: "steam", oven: "steam", kettle: "steam", coffee_machine: "steam", moka_coffee_maker: "steam",
+  microwave: "steam",
+  shower: "water", sink: "water", bathtub: "water", washing_machine: "water", dishwasher: "water",
+  toilet: "water", bidet: "water",
+  television: "screen",
+  radio: "sound",
+};
+
+/** The moving part of a running thing, drawn over its own footprint. */
+function Emission({ kind, box }: { kind: "steam" | "water" | "screen" | "sound"; box: ReturnType<typeof bounds> }) {
+  const x = (box.minX + box.maxX) / 2;
+  const y = (box.minY + box.maxY) / 2;
+  if (kind === "screen") {
+    return <rect
+      className="scene-emit-screen"
+      x={box.minX} y={box.minY}
+      width={box.maxX - box.minX} height={box.maxY - box.minY}
+    />;
+  }
+  if (kind === "sound") {
+    return <g className="scene-emit-sound">
+      {[.28, .42, .56].map((radius, index) => (
+        <circle key={radius} cx={x} cy={y} r={radius} style={{ animationDelay: `${String(index * .45)}s` }} />
+      ))}
+    </g>;
+  }
+  // Steam rises off the top of the thing; water falls through it. Three of each, offset in time,
+  // because two read as a pair and four is a fountain.
+  return <g className={kind === "steam" ? "scene-emit-steam" : "scene-emit-water"}>
+    {[-.13, 0, .13].map((offset, index) => (
+      <circle
+        key={offset}
+        cx={x + offset}
+        cy={kind === "steam" ? box.minY : y}
+        r={kind === "steam" ? .05 : .028}
+        style={{ animationDelay: `${String(index * .38)}s` }}
+      />
+    ))}
+  </g>;
+}
+
+/**
+ * Furniture you get onto, rather than stand at and operate.
+ *
+ * A trace puts a resident on the interaction point of the thing they are using, and an interaction
+ * point is by construction a patch of *free floor* — it is where a body stands, which is the only
+ * place the router can legally put one. For a fridge that is exactly right. For a bed it drew her
+ * lying rigidly on the carpet beside it, and for a chair and a sofa it drew her standing next to
+ * the furniture she is recorded as sitting on. The trace was never wrong; the picture was.
+ */
+const OCCUPIED = new Set([
+  "bed", "single_bed", "sofa", "armchair", "chair", "stool", "bench", "toilet", "bathtub",
+]);
+
+/**
+ * How far onto the furniture the body goes, and which way it lies once it is there.
+ *
+ * Not all the way for sitting: perching towards the near edge reads as sat down, where the middle
+ * of a double bed reads as swallowed by it. Lying goes to the centre and turns along the long axis
+ * of the piece, taken from its own footprint — `orientationDegrees` means a different thing for a
+ * bed than for a hob, and a body is not worth guessing wrong about.
+ */
+function seatPose(
+  furniture: { entityId?: string; box: ReturnType<typeof bounds> }[],
+  resident: WorldResident,
+): { x: number; y: number; recline?: number } | undefined {
+  const seated = resident.posture === "sitting";
+  const lying = resident.posture === "lying";
+  if ((!seated && !lying) || !resident.position || !resident.using) return undefined;
+  if (!OCCUPIED.has(resident.using.label.replaceAll(" ", "_"))) return undefined;
+  const piece = furniture.find((item) => item.entityId === resident.using?.entityId);
+  if (!piece) return undefined;
+
+  const centreX = (piece.box.minX + piece.box.maxX) / 2;
+  const centreY = (piece.box.minY + piece.box.maxY) / 2;
+  const reach = lying ? 1 : .78;
+  const pose = {
+    x: (centreX - resident.position.x) * reach,
+    y: (centreY - resident.position.y) * reach,
+  };
+  if (!lying) return pose;
+
+  // Along the piece, head away from the side she got in from. Approached square on, the two ends
+  // are equally good and it takes the first.
+  const along = piece.box.maxX - piece.box.minX >= piece.box.maxY - piece.box.minY
+    ? { x: 1, y: 0 }
+    : { x: 0, y: 1 };
+  const away = along.x * (centreX - resident.position.x) + along.y * (centreY - resident.position.y);
+  const heading = Math.atan2(along.y, along.x) + (away < 0 ? Math.PI : 0);
+  return { ...pose, recline: (heading * 180) / Math.PI };
+}
+
 /** The storey to draw: the one somebody is standing on, and the ground floor when nobody is. */
 function occupiedStorey(home: HomeModel | undefined, regionIds: (string | undefined)[]): number {
   if (!home) return 0;
@@ -91,30 +195,42 @@ function Avatar({ resident }: { resident: WorldResident }) {
   const carrying = resident.carrying.length > 0;
   return (
     <g className="scene-avatar" data-posture={resident.posture} data-moving={resident.moving ? "true" : "false"}>
-      <ellipse className="scene-avatar-shadow" cx="0" cy=".2" rx=".22" ry=".08" />
-      <g className="scene-avatar-body">
-        {resident.posture === "lying" ? (
-          <>
-            <rect x="-.34" y="-.12" width=".62" height=".24" rx=".12" className="scene-avatar-torso" />
-            <circle cx="-.36" cy="0" r=".12" className="scene-avatar-head" />
-          </>
-        ) : (
-          <>
-            <rect
-              x="-.15"
-              y={resident.posture === "sitting" ? "-.02" : "-.08"}
-              width=".3"
-              height={resident.posture === "sitting" ? ".22" : ".3"}
-              rx=".14"
-              className="scene-avatar-torso"
-            />
-            <circle cx="0" cy={resident.posture === "sitting" ? "-.14" : "-.2"} r=".13" className="scene-avatar-head" />
-          </>
-        )}
+      <ellipse className="scene-avatar-shadow" cx="0" cy=".04" rx=".145" ry=".075" />
+      {/* Facing turns the body, never the name: a label that rotates with the walk is read
+          sideways and then upside down, which is the one thing on screen nobody can follow. */}
+      <g className="scene-avatar-facing">
+        <g className="scene-avatar-climb">
+          <g className="scene-avatar-posture">
+            <g className="scene-avatar-body">
+              {/* Feet first, so they read as swinging out from under her rather than on top of
+                  her. Seen from overhead that alternation is most of what a walk looks like. */}
+              <ellipse className="scene-avatar-foot is-left" cx="0" cy="-.105" rx=".038" ry=".028" />
+              <ellipse className="scene-avatar-foot is-right" cx="0" cy=".105" rx=".038" ry=".028" />
+              {/* Shoulders: from above a body is wider across than it is deep. */}
+              <ellipse className="scene-avatar-torso" cx="0" cy="0" rx=".105" ry=".155" />
+              <circle className="scene-avatar-head" cx=".028" cy="0" r=".068" />
+              {/* Which way she is looking, so a body standing at the sink is not just a blob. */}
+              <path className="scene-avatar-face" d="M.062-.026L.128 0 .062.026Z" />
+              {carrying && <rect className="scene-avatar-load" x=".02" y="-.235" width=".115" height=".115" rx=".028" />}
+            </g>
+          </g>
+        </g>
       </g>
-      {carrying && <rect className="scene-avatar-load" x=".13" y="-.06" width=".16" height=".16" rx=".03" />}
     </g>
   );
+}
+
+/**
+ * The seat as custom properties, so React owns getting onto the furniture and the clock owns
+ * getting across the floor. They never write the same property, which is what keeps a re-render
+ * from stamping on a position the animation frame has just set.
+ */
+function seatStyle(seat: ReturnType<typeof seatPose>): CSSProperties {
+  return {
+    "--scene-seat-x": `${String(seat?.x ?? 0)}px`,
+    "--scene-seat-y": `${String(seat?.y ?? 0)}px`,
+    ...(seat?.recline === undefined ? {} : { "--scene-recline": `${String(seat.recline)}deg` }),
+  } as CSSProperties;
 }
 
 export function SceneStage({
@@ -135,6 +251,10 @@ export function SceneStage({
     ...world.residents.map((resident) => resident.regionId),
   ]);
   const set = useSet(home, storey);
+  // The front door is an entity, the doorway is a connection, and only the entity has a state. The
+  // home names the one that is the way out; everything else in the flat is a hole in a wall.
+  const frontDoorId = home?.entities.find((entity) => entity.entityType === "entrance_door")?.entityId;
+  const frontDoorOpen = frontDoorId ? world.entities[frontDoorId]?.open === true : false;
   const markers = useRef(new Map<string, SVGGElement | null>());
   const trails = useRef(new Map<string, SVGPolylineElement | null>());
   const sample = useRef(motion?.sample);
@@ -148,8 +268,14 @@ export function SceneStage({
     for (const [residentId, item] of Object.entries(poses)) {
       const marker = markers.current.get(residentId);
       if (marker && item.position) {
-        const facing = item.heading === undefined ? "" : ` rotate(${String((item.heading * 180) / Math.PI)})`;
-        marker.setAttribute("transform", `translate(${String(item.position.x)} ${String(item.position.y)})${facing}`);
+        marker.setAttribute("transform", `translate(${String(item.position.x)} ${String(item.position.y)})`);
+        // Facing and the climb ride as custom properties rather than as part of the transform, so
+        // the body can turn on its own easing while the position keeps up with the clock exactly,
+        // and so the name above her head stays the right way up.
+        if (item.heading !== undefined) {
+          marker.style.setProperty("--scene-facing", `${String((item.heading * 180) / Math.PI)}deg`);
+        }
+        marker.style.setProperty("--scene-climbing", String(item.climbing));
       }
       trails.current.get(residentId)?.setAttribute("points", polygonPoints(item.travelled));
     }
@@ -174,6 +300,7 @@ export function SceneStage({
       >
         <defs><FurnitureSymbols /><CustomFurnitureSymbols /></defs>
 
+        <g className="scene-set" key={storey}>
         <g className="scene-rooms">
           {set.regions.map((region) => (
             <g key={region.regionId} data-region-id={region.regionId} className={region.regionId === activeRegionId ? "is-occupied" : undefined}>
@@ -194,13 +321,27 @@ export function SceneStage({
 
         <g className="scene-doors">
           {set.doors.map((door) => (
-            <line key={door.connectionId} className={`scene-door scene-door-${door.kind}`} x1={door.x1} y1={door.y1} x2={door.x2} y2={door.y2} />
+            <g key={door.connectionId}>
+              <line className={`scene-door scene-door-${door.kind}`} x1={door.x1} y1={door.y1} x2={door.x2} y2={door.y2} />
+              {/* The one door in the model that has a state worth drawing. She leaves through it
+                  and comes back through it, and a front door that never moves makes both of those
+                  the same nothing. It swings on its own hinge, which is the end it is drawn from. */}
+              {door.kind === "entrance" && (
+                <line
+                  className="scene-door-leaf"
+                  data-open={frontDoorOpen ? "true" : "false"}
+                  x1={door.x1} y1={door.y1} x2={door.x2} y2={door.y2}
+                  style={{ transformOrigin: `${String(door.x1)}px ${String(door.y1)}px` }}
+                />
+              )}
+            </g>
           ))}
         </g>
 
         <g className="scene-furniture">
           {set.furniture.map((item) => {
             const state = item.entityId ? world.entities[item.entityId] : undefined;
+            const emission = state?.active && item.entityType ? EMITTERS[item.entityType] : undefined;
             const classes = [
               "scene-thing",
               state?.active ? "is-active" : "",
@@ -224,6 +365,7 @@ export function SceneStage({
                   height={item.box.maxY - item.box.minY + .24}
                   rx=".18"
                 />}
+                {emission && <Emission kind={emission} box={item.box} />}
                 {item.symbol
                   ? <FurnitureGlyph
                     symbol={item.symbol}
@@ -248,6 +390,7 @@ export function SceneStage({
           })}
         </g>
 
+        </g>
         <g className="scene-trails">
           {world.residents.map((resident) => (
             <polyline
@@ -265,6 +408,7 @@ export function SceneStage({
               key={resident.residentId}
               ref={(node) => { markers.current.set(resident.residentId, node); }}
               transform={`translate(${String(resident.position.x)} ${String(resident.position.y)})`}
+              style={seatStyle(seatPose(set.furniture, resident))}
             >
               <Avatar resident={resident} />
               <text className="scene-avatar-name" y="-.36">{resident.name}</text>

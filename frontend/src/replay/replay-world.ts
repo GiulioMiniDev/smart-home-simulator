@@ -1,5 +1,5 @@
 import type { Point, ReplayEvent, ReplayFrame } from "../types";
-import { currentRoute, interiorRoute, movementAt, movementPositionAt, replayTimestamp, waypointAtOrBefore } from "./replay-positioning";
+import { currentRoute, interiorRoute, movementAt, replayTimestamp, routePoseAt } from "./replay-positioning";
 import type { ScenePlace, SceneThing } from "./replay-place";
 import { residentName, type SceneScript } from "./replay-script";
 
@@ -60,12 +60,13 @@ function baseCarrying(facts: Record<string, unknown>): Set<string> {
 }
 
 /** Which way a walker is facing, from the step of route they are on. */
-function heading(route: ReplayEvent, atMs: number): number | undefined {
-  const here = movementPositionAt(route, atMs);
+function heading(route: ReplayEvent, atMs: number, levelOf: (regionId: string) => number): number | undefined {
+  const pose = routePoseAt(route, atMs, levelOf);
   const next = route.waypoints.find((waypoint) => (replayTimestamp(waypoint.at) ?? -Infinity) > atMs);
-  if (!here || !next) return undefined;
-  const dx = next.position.x - here.x;
-  const dy = next.position.y - here.y;
+  // A body on the stairs is not crossing a floor, so it has no bearing on this one.
+  if (!pose || !next || pose.climbing > 0) return undefined;
+  const dx = next.position.x - pose.position.x;
+  const dy = next.position.y - pose.position.y;
   return dx === 0 && dy === 0 ? undefined : Math.atan2(dy, dx);
 }
 
@@ -116,15 +117,18 @@ export function foldWorld(
     // Where they are now is the last step of the route they are on. The day's anchor frame is a
     // single instant -- midnight -- and a resident who was out for the evening is still out in
     // it twenty hours later, so it can only answer this before the day's first route.
-    const stepped = walked ? waypointAtOrBefore(walked, atMs) : undefined;
-    const regionId = stepped?.regionId ?? resident.regionId ?? undefined;
+    // Where they are now is the pose the route puts them in. On a flight of stairs that is the
+    // storey they left until halfway and the one they reach after, because the scene has to change
+    // floors at some instant and the middle of the climb is the only one that is not a lurch.
+    const pose = walked ? routePoseAt(walked, atMs, place.levelOf) : undefined;
+    const regionId = pose?.regionId ?? resident.regionId ?? undefined;
     const away = !place.inside(regionId);
     // Only the part of a route that stays in the flat can put anybody anywhere on this plan.
     const route = walked ? interiorRoute(walked, place.inside) : undefined;
     const anchorPosition = resident.position ?? undefined;
     const routed = route !== undefined && anchorPosition !== undefined;
     const moving = !away && routed && movementAt(route, atMs) !== undefined;
-    const position = (routed ? movementPositionAt(route, atMs) : undefined) ?? anchorPosition;
+    const position = (routed ? routePoseAt(route, atMs, place.levelOf)?.position : undefined) ?? anchorPosition;
     return {
       residentId,
       name: residentName(residentId),
@@ -132,7 +136,7 @@ export function foldWorld(
       carrying: [...(carrying.get(residentId) ?? new Set<string>())],
       regionId,
       position: away ? undefined : position,
-      heading: moving ? heading(route, atMs) : undefined,
+      heading: moving ? heading(route, atMs, place.levelOf) : undefined,
       moving,
       away,
       using: away || moving ? undefined : place.thingAt(position),

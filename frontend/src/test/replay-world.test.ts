@@ -232,7 +232,7 @@ describe("foldWorld", () => {
 
 describe("sceneMotion", () => {
   const world = foldWorld(script, frame, at("2026-10-30T07:42:20+01:00"), place);
-  const motion = sceneMotion(world, replayTimestamp(frame.at), () => () => undefined, place.inside);
+  const motion = sceneMotion(world, replayTimestamp(frame.at), () => () => undefined, place);
 
   it("samples a pose from one route rather than from the whole day", () => {
     const early = motion.sample(at("2026-10-30T07:42:10+01:00")).resident_mario_rossi;
@@ -266,7 +266,7 @@ describe("sceneMotion", () => {
     }, home);
     const world = foldWorld(still, frame, at("2026-10-30T07:42:10+01:00"), place);
 
-    expect(sceneMotion(world, replayTimestamp(frame.at), () => () => undefined, place.inside)
+    expect(sceneMotion(world, replayTimestamp(frame.at), () => () => undefined, place)
       .sample(at("2026-10-30T07:42:10+01:00")).resident_mario_rossi?.heading).toBeUndefined();
   });
 
@@ -277,9 +277,9 @@ describe("sceneMotion", () => {
     }, home);
     const world = foldWorld(unusable, frame, at("2026-10-30T07:42:20+01:00"), place);
 
-    expect(sceneMotion(world, replayTimestamp(frame.at), () => () => undefined, place.inside)
+    expect(sceneMotion(world, replayTimestamp(frame.at), () => () => undefined, place)
       .sample(at("2026-10-30T07:42:20+01:00")).resident_mario_rossi)
-      .toEqual({ position: { x: 0, y: 0 }, travelled: [] });
+      .toEqual({ position: { x: 0, y: 0 }, travelled: [], climbing: 0, level: 0 });
   });
 
   it("leaves someone the frame gives no position exactly where the frame left them", () => {
@@ -287,7 +287,7 @@ describe("sceneMotion", () => {
       ...frame,
       residents: [{ ...frame.residents[0]!, position: null }],
     }, at("2026-10-30T07:42:20+01:00"), place);
-    const sampled = sceneMotion(placeless, replayTimestamp(frame.at), () => () => undefined, place.inside)
+    const sampled = sceneMotion(placeless, replayTimestamp(frame.at), () => () => undefined, place)
       .sample(at("2026-10-30T07:42:20+01:00")).resident_mario_rossi;
 
     expect(sampled?.position).toBeUndefined();

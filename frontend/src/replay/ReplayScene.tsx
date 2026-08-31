@@ -130,7 +130,7 @@ export function ReplayScene({ runId }: { runId: string }) {
   );
   const anchorMs = replayTimestamp(controller.frame?.at);
   const motion = useMemo(
-    () => sceneMotion(world, anchorMs, controller.subscribeToClock, place.inside),
+    () => sceneMotion(world, anchorMs, controller.subscribeToClock, place),
     [anchorMs, controller.subscribeToClock, place, world],
   );
 

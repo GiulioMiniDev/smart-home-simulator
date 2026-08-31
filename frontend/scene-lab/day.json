@@ -1,0 +1,935 @@
+{
+ "events": {
+  "total": 33,
+  "traceStart": "2026-10-30T00:00:00.000+01:00",
+  "traceEnd": "2026-10-31T00:00:00.000+01:00",
+  "windowStart": "2026-10-30T00:00:00.000+01:00",
+  "windowEnd": "2026-10-31T00:00:00.000+01:00",
+  "items": [
+   {
+    "at": "2026-10-30T07:00:00.000+01:00",
+    "end": "2026-10-30T07:14:00.000+01:00",
+    "kind": "activity",
+    "eventId": "act_wake",
+    "label": "wake up and shower",
+    "actorId": "resident_mario_rossi",
+    "status": "executed",
+    "details": {},
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:00:20.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_wake",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "standing",
+     "previousValue": "lying"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:00:40.000+01:00",
+    "end": "2026-10-30T07:00:52.418+01:00",
+    "kind": "movement",
+    "eventId": "m_bed_shower",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T07:00:40.000+01:00",
+      "regionId": "bedroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 16.074,
+       "y": 5.856
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:40.880+01:00",
+      "regionId": "bedroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 16.194,
+       "y": 4.806
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:44.124+01:00",
+      "regionId": "bedroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 18.044,
+       "y": 1.381
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:44.790+01:00",
+      "regionId": "study",
+      "traversalMode": "walking",
+      "position": {
+       "x": 18.844,
+       "y": 1.381
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:47.906+01:00",
+      "regionId": "study",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.451,
+       "y": 2.363
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:48.572+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.451,
+       "y": 3.163
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:50.011+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 21.682,
+       "y": 4.709
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:50.678+01:00",
+      "regionId": "bathroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 20.882,
+       "y": 4.709
+      }
+     },
+     {
+      "at": "2026-10-30T07:00:52.418+01:00",
+      "regionId": "bathroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 18.944,
+       "y": 5.486
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T07:01:30.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_shower_on",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": true,
+     "subjectId": "shower"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:09:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_shower_off",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": false,
+     "subjectId": "shower"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:10:00.000+01:00",
+    "end": "2026-10-30T07:45:00.000+01:00",
+    "kind": "activity",
+    "eventId": "act_breakfast",
+    "label": "prepare breakfast and listen to the radio",
+    "actorId": "resident_mario_rossi",
+    "status": "executed",
+    "details": {},
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:10:00.000+01:00",
+    "end": "2026-10-30T07:10:12.176+01:00",
+    "kind": "movement",
+    "eventId": "m_shower_moka",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T07:10:00.000+01:00",
+      "regionId": "bathroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 18.944,
+       "y": 5.486
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:01.740+01:00",
+      "regionId": "bathroom",
+      "traversalMode": "walking",
+      "position": {
+       "x": 20.882,
+       "y": 4.709
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:02.406+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 21.682,
+       "y": 4.709
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:03.028+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.232,
+       "y": 4.205
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:03.661+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.982,
+       "y": 4.085
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:07.411+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.467,
+       "y": 5.62
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:08.437+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.444,
+       "y": 4.388
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:09.104+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.444,
+       "y": 3.588
+      }
+     },
+     {
+      "at": "2026-10-30T07:10:12.176+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 10.065,
+       "y": 2.9
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T07:11:30.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_moka_on",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": true,
+     "subjectId": "moka"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:12:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_fridge_open",
+    "label": "entity.open",
+    "actorId": null,
+    "details": {
+     "value": true,
+     "subjectId": "refrigerator"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:12:10.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_carry_on",
+    "label": "resident.carrying.ingredients",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": true
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:12:20.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_fridge_shut",
+    "label": "entity.open",
+    "actorId": null,
+    "details": {
+     "value": false,
+     "subjectId": "refrigerator"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:13:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_radio_on",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": true,
+     "subjectId": "radio"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:15:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_moka_off",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": false,
+     "subjectId": "moka"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:15:20.000+01:00",
+    "end": "2026-10-30T07:15:22.879+01:00",
+    "kind": "movement",
+    "eventId": "m_moka_chair",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T07:15:20.000+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 10.065,
+       "y": 2.9
+      }
+     },
+     {
+      "at": "2026-10-30T07:15:20.196+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 9.835,
+       "y": 2.85
+      }
+     },
+     {
+      "at": "2026-10-30T07:15:21.957+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 7.939,
+       "y": 1.916
+      }
+     },
+     {
+      "at": "2026-10-30T07:15:22.471+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 7.449,
+       "y": 1.541
+      }
+     },
+     {
+      "at": "2026-10-30T07:15:22.879+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 7.329,
+       "y": 1.066
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T07:16:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_sit",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "sitting",
+     "previousValue": "standing"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:16:10.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_carry_off",
+    "label": "resident.carrying.ingredients",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": false
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:45:00.000+01:00",
+    "end": "2026-10-30T08:10:00.000+01:00",
+    "kind": "activity",
+    "eventId": "act_television",
+    "label": "rest and watch television",
+    "actorId": "resident_mario_rossi",
+    "status": "executed",
+    "details": {},
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:45:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_stand",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "standing",
+     "previousValue": "sitting"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:45:10.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_radio_off",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": false,
+     "subjectId": "radio"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:45:20.000+01:00",
+    "end": "2026-10-30T07:45:26.851+01:00",
+    "kind": "movement",
+    "eventId": "m_chair_sofa",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T07:45:20.000+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 7.329,
+       "y": 1.066
+      }
+     },
+     {
+      "at": "2026-10-30T07:45:21.960+01:00",
+      "regionId": "kitchen",
+      "traversalMode": "walking",
+      "position": {
+       "x": 5.167,
+       "y": 1.994
+      }
+     },
+     {
+      "at": "2026-10-30T07:45:22.627+01:00",
+      "regionId": "living_room",
+      "traversalMode": "walking",
+      "position": {
+       "x": 4.367,
+       "y": 1.994
+      }
+     },
+     {
+      "at": "2026-10-30T07:45:26.851+01:00",
+      "regionId": "living_room",
+      "traversalMode": "walking",
+      "position": {
+       "x": 1.1,
+       "y": 5.87
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T07:46:30.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_tv_on",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": true,
+     "subjectId": "television"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T07:46:40.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_sit_sofa",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "sitting",
+     "previousValue": "standing"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:10:00.000+01:00",
+    "end": "2026-10-30T08:30:00.000+01:00",
+    "kind": "activity",
+    "eventId": "act_study",
+    "label": "work at the desk",
+    "actorId": "resident_mario_rossi",
+    "status": "deviated",
+    "details": {},
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:10:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_stand_2",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "standing",
+     "previousValue": "sitting"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:10:10.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_tv_off",
+    "label": "entity.active",
+    "actorId": null,
+    "details": {
+     "value": false,
+     "subjectId": "television"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:10:20.000+01:00",
+    "end": "2026-10-30T08:10:31.120+01:00",
+    "kind": "movement",
+    "eventId": "m_sofa_desk",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T08:10:20.000+01:00",
+      "regionId": "living_room",
+      "traversalMode": "walking",
+      "position": {
+       "x": 1.1,
+       "y": 5.87
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:22.736+01:00",
+      "regionId": "living_room",
+      "traversalMode": "walking",
+      "position": {
+       "x": 4.367,
+       "y": 5.539
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:23.403+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 5.167,
+       "y": 5.539
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:24.488+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.467,
+       "y": 5.62
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:28.238+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.982,
+       "y": 4.085
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:29.126+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.451,
+       "y": 3.163
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:29.792+01:00",
+      "regionId": "study",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.451,
+       "y": 2.363
+      }
+     },
+     {
+      "at": "2026-10-30T08:10:31.120+01:00",
+      "regionId": "study",
+      "traversalMode": "walking",
+      "position": {
+       "x": 21.594,
+       "y": 1.02
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T08:12:30.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_sit_desk",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "sitting",
+     "previousValue": "standing"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:40:00.000+01:00",
+    "end": "2026-10-30T09:10:00.000+01:00",
+    "kind": "activity",
+    "eventId": "act_out",
+    "label": "go to the supermarket",
+    "actorId": "resident_mario_rossi",
+    "status": "executed",
+    "details": {},
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:40:00.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_stand_3",
+    "label": "resident.posture",
+    "actorId": "resident_mario_rossi",
+    "details": {
+     "value": "standing",
+     "previousValue": "sitting"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:40:10.000+01:00",
+    "end": "2026-10-30T08:40:17.157+01:00",
+    "kind": "movement",
+    "eventId": "m_desk_door",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T08:40:10.000+01:00",
+      "regionId": "study",
+      "traversalMode": "walking",
+      "position": {
+       "x": 21.594,
+       "y": 1.02
+      }
+     },
+     {
+      "at": "2026-10-30T08:40:11.327+01:00",
+      "regionId": "study",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.451,
+       "y": 2.363
+      }
+     },
+     {
+      "at": "2026-10-30T08:40:11.994+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.451,
+       "y": 3.163
+      }
+     },
+     {
+      "at": "2026-10-30T08:40:12.881+01:00",
+      "regionId": "landing",
+      "traversalMode": "walking",
+      "position": {
+       "x": 22.982,
+       "y": 4.085
+      }
+     },
+     {
+      "at": "2026-10-30T08:40:16.631+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.467,
+       "y": 5.62
+      }
+     },
+     {
+      "at": "2026-10-30T08:40:17.157+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.444,
+       "y": 4.989
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T08:42:30.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_door_open",
+    "label": "entity.open",
+    "actorId": null,
+    "details": {
+     "value": true,
+     "subjectId": "entrance_door"
+    },
+    "waypoints": []
+   },
+   {
+    "at": "2026-10-30T08:42:40.000+01:00",
+    "end": "2026-10-30T08:42:54.409+01:00",
+    "kind": "movement",
+    "eventId": "m_door_out",
+    "label": "",
+    "actorId": "resident_mario_rossi",
+    "details": {},
+    "waypoints": [
+     {
+      "at": "2026-10-30T08:42:40.000+01:00",
+      "regionId": "hallway",
+      "traversalMode": "walking",
+      "position": {
+       "x": 6.444,
+       "y": 4.989
+      }
+     },
+     {
+      "at": "2026-10-30T08:42:54.409+01:00",
+      "regionId": "supermarket",
+      "traversalMode": "transport",
+      "position": {
+       "x": 9.0,
+       "y": 22.09
+      }
+     }
+    ]
+   },
+   {
+    "at": "2026-10-30T08:42:55.000+01:00",
+    "kind": "state_transition",
+    "eventId": "t_door_shut",
+    "label": "entity.open",
+    "actorId": null,
+    "details": {
+     "value": false,
+     "subjectId": "entrance_door"
+    },
+    "waypoints": []
+   }
+  ]
+ },
+ "frame": {
+  "runId": "scene-lab",
+  "at": "2026-10-30T00:00:00.000+01:00",
+  "traceStart": "2026-10-30T00:00:00.000+01:00",
+  "traceEnd": "2026-10-31T00:00:00.000+01:00",
+  "residents": [
+   {
+    "residentId": "resident_mario_rossi",
+    "regionId": "bedroom",
+    "position": {
+     "x": 16.074,
+     "y": 5.856
+    },
+    "posture": "lying",
+    "executionState": "idle",
+    "heldResourceIds": [],
+    "facts": {
+     "awake": false
+    }
+   }
+  ],
+  "sensorStates": [],
+  "entityStates": {
+   "bed": {
+    "open": false,
+    "active": false
+   },
+   "bedside_table": {
+    "open": false,
+    "active": false
+   },
+   "wardrobe": {
+    "open": false,
+    "active": false
+   },
+   "toilet": {
+    "open": false,
+    "active": false
+   },
+   "washbasin": {
+    "open": false,
+    "active": false
+   },
+   "shower": {
+    "open": false,
+    "active": false
+   },
+   "washing_machine": {
+    "open": false,
+    "active": false
+   },
+   "refrigerator": {
+    "open": false,
+    "active": false
+   },
+   "stove": {
+    "open": false,
+    "active": false
+   },
+   "moka": {
+    "open": false,
+    "active": false
+   },
+   "kitchen_sink": {
+    "open": false,
+    "active": false
+   },
+   "dining_table": {
+    "open": false,
+    "active": false
+   },
+   "kitchen_chair": {
+    "open": false,
+    "active": false
+   },
+   "radio": {
+    "open": false,
+    "active": false
+   },
+   "sofa": {
+    "open": false,
+    "active": false
+   },
+   "television": {
+    "open": false,
+    "active": false
+   },
+   "medication_cleaning_cabinet": {
+    "open": false,
+    "active": false
+   },
+   "desk_study_01": {
+    "open": false,
+    "active": false
+   },
+   "chair_study_01": {
+    "open": false,
+    "active": false
+   },
+   "bookshelf_landing_01": {
+    "open": false,
+    "active": false
+   },
+   "entrance_door": {
+    "open": false,
+    "active": false
+   },
+   "service_bedroom": {
+    "open": false,
+    "active": false
+   },
+   "service_bathroom": {
+    "open": false,
+    "active": false
+   },
+   "service_kitchen": {
+    "open": false,
+    "active": false
+   },
+   "service_living_room": {
+    "open": false,
+    "active": false
+   },
+   "service_hallway": {
+    "open": false,
+    "active": false
+   },
+   "service_balcony": {
+    "open": false,
+    "active": false
+   },
+   "service_landing": {
+    "open": false,
+    "active": false
+   },
+   "service_study": {
+    "open": false,
+    "active": false
+   },
+   "service_outside": {
+    "open": false,
+    "active": false
+   },
+   "service_supermarket": {
+    "open": false,
+    "active": false
+   },
+   "service_neighborhood_bar": {
+    "open": false,
+    "active": false
+   }
+  },
+  "environmentFacts": {},
+  "resourceAvailableUnits": {}
+ }
+}

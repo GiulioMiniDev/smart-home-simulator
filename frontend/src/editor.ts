@@ -702,9 +702,11 @@ export function planFrontDoor(
   home: HomeModel,
   visibleRegionIds: Set<string>,
 ): DoorGlyph | undefined {
+  // Tolerant of an entity with no capabilities at all: the scene draws whatever home it is handed,
+  // and a model that is missing them is one to render plainly rather than one to crash on.
   const entrance = home.entities.find((entity) =>
-    entity.capabilities.some((capability) =>
-      capability.supportedOperations.some((item) => item === "leave_home" || item === "enter_home"),
+    (entity.capabilities ?? []).some((capability) =>
+      (capability.supportedOperations ?? []).some((item) => item === "leave_home" || item === "enter_home"),
     ),
   );
   if (!entrance || !visibleRegionIds.has(entrance.regionId)) return undefined;

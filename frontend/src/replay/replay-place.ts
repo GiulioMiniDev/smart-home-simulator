@@ -18,6 +18,13 @@ export interface SceneThing {
 export interface ScenePlace {
   inside(regionId: string | null | undefined): boolean;
   thingAt(position: Point | undefined): SceneThing | undefined;
+  /**
+   * Which storey a region is on.
+   *
+   * The scene draws one storey at a time, and the step between two of them is the one move in a
+   * route that is not a walk across the floor. Both facts start here.
+   */
+  levelOf(regionId: string | null | undefined): number;
 }
 
 /** Positions are compared at millimetre resolution, which is finer than the trace records. */
@@ -54,8 +61,11 @@ export function scenePlace(home: HomeModel | undefined): ScenePlace {
     things.set(at, { entityId: real[0]!.entityId, label: words(real[0]!.entityType) });
   }
 
+  const levels = new Map((home?.regions ?? []).map((region) => [region.regionId, region.level ?? 0]));
+
   return {
     inside: (regionId) => Boolean(regionId && dwelling.has(regionId)),
     thingAt: (position) => position ? things.get(key(position)) : undefined,
+    levelOf: (regionId) => (regionId === null || regionId === undefined ? 0 : levels.get(regionId) ?? 0),
   };
 }

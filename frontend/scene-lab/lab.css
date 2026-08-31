@@ -1,0 +1,17 @@
+/* Chrome for the lab itself. Nothing here belongs to the scene; the scene is the thing under test. */
+body { margin: 0; background: #14161c; color: #e7e3da; font-family: "Source Sans 3 Variable", system-ui, sans-serif; }
+.lab { display: grid; gap: .6rem; padding: .8rem; }
+.lab-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; font-size: .85rem; }
+.lab-bar strong { font-size: .95rem; letter-spacing: .04em; text-transform: uppercase; opacity: .6; }
+.lab-bar button, .lab-marks button, .lab-bar select {
+  padding: .3rem .7rem; border: 1px solid #3a3f4b; border-radius: 6px;
+  background: #1e222b; color: inherit; font: inherit; font-size: .82rem; cursor: pointer;
+}
+.lab-bar button:hover, .lab-marks button:hover { border-color: #8ea2ff; }
+.lab-clock { font: 700 1.1rem/1 "Cascadia Code", monospace; font-variant-numeric: tabular-nums; }
+.lab-where { opacity: .7; text-transform: capitalize; }
+.lab-marks { display: flex; flex-wrap: wrap; gap: .35rem; }
+.lab-marks button { display: grid; gap: .1rem; text-align: left; }
+.lab-marks small { opacity: .5; font-family: "Cascadia Code", monospace; font-size: .66rem; }
+.lab-stage { display: block !important; min-height: 0 !important; }
+.lab-scrub { width: 100%; accent-color: #8ea2ff; }
