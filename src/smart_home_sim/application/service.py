@@ -410,6 +410,12 @@ class ApplicationService:
         entity_ids = {item.entity_id for item in home.entities}
         unknown_regions = sorted(set(sensor.region_ids) - region_ids)
         unknown_entities = sorted(set(sensor.entity_ids) - entity_ids)
+        # The bundle demands the two registers match exactly, in both directions. Only one of them
+        # was ever checked here, so a room drawn in the editor after the field was deployed passed
+        # publication and was refused as HOME_SENSOR_MISMATCH when a run was built — long after the
+        # edit that caused it, and with nothing on the plan left to point at.
+        missing_regions = sorted(region_ids - set(sensor.region_ids))
+        missing_entities = sorted(entity_ids - set(sensor.entity_ids))
         issues: list[ApplicationIssue] = []
         if unknown_regions:
             issues.append(
@@ -434,6 +440,39 @@ class ApplicationService:
                     path="$.entityIds",
                     message=f"Unknown home entities: {', '.join(unknown_entities)}",
                     details={"entityIds": unknown_entities},
+                    graphical_reference=GraphicalReference(
+                        surface="sensor", element_id="entityIds"
+                    ),
+                )
+            )
+        if missing_regions:
+            issues.append(
+                ApplicationIssue(
+                    code="SENSOR_REGION_MISSING",
+                    severity="error",
+                    stage="compatibility",
+                    path="$.regionIds",
+                    message=(
+                        f"Home regions missing from the sensor field: {', '.join(missing_regions)}"
+                    ),
+                    details={"regionIds": missing_regions},
+                    graphical_reference=GraphicalReference(
+                        surface="sensor", element_id="regionIds"
+                    ),
+                )
+            )
+        if missing_entities:
+            issues.append(
+                ApplicationIssue(
+                    code="SENSOR_ENTITY_MISSING",
+                    severity="error",
+                    stage="compatibility",
+                    path="$.entityIds",
+                    message=(
+                        "Home entities missing from the sensor field: "
+                        f"{', '.join(missing_entities)}"
+                    ),
+                    details={"entityIds": missing_entities},
                     graphical_reference=GraphicalReference(
                         surface="sensor", element_id="entityIds"
                     ),

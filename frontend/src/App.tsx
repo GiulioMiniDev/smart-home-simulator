@@ -79,6 +79,7 @@ import {
   addFurnitureAt,
   addSensorAt,
   addStoreyByStairs,
+  alignSensorModel,
   createRoomFromBox,
   movePlanObject,
   pirRange,
@@ -914,13 +915,24 @@ function HomePage() {
   const selectedProblem = planFaults.find((item) => item.objectId === selectedId)?.message;
   const currentSnapshot = () => ({ home: homeDraft ? structuredClone(homeDraft) : undefined, sensor: sensorDraft ? structuredClone(sensorDraft) : undefined });
   const snapshot = () => { setHistory((items) => [...items.slice(-49), currentSnapshot()]); setFuture([]); setUnsaved(true); };
+  /**
+   * Take an edit to the plan, and keep the sensor field's register of the home in step with it.
+   *
+   * Every command that changes the house goes through here. Loading one deliberately does not —
+   * import, undo, discard — because a sensor field naming rooms this home never had is a mismatch
+   * the researcher has to be told about, not one to tidy away behind their back.
+   */
+  const commitHome = (model: HomeModel, sensors?: SensorModel) => {
+    setHomeDraft(model);
+    const field = sensors ?? sensorDraft;
+    if (field) setSensorDraft(alignSensorModel(field, model));
+  };
   // Pointer and keyboard move the same objects through the same geometry: dragging the bed and
   // nudging it with the arrows must not leave the plan in two different shapes.
   const moveSelected = (id: string | undefined, dx: number, dy: number) => {
     if (!homeDraft || !id) return;
     const result = movePlanObject(homeDraft, sensorDraft, id, dx, dy);
-    setHomeDraft(result.home);
-    if (result.sensors) setSensorDraft(result.sensors);
+    commitHome(result.home, result.sensors);
   };
   const nudgeSelected = (dx: number, dy: number) => {
     snapshot();
@@ -933,13 +945,12 @@ function HomePage() {
     const next = rotatePlanObject(homeDraft, id);
     if (next === homeDraft) return;
     snapshot();
-    setHomeDraft(next);
+    commitHome(next);
   };
   const resizeSelected = (id: string, handle: ResizeHandle, dx: number, dy: number) => {
     if (!homeDraft) return;
     const result = resizePlanObject(homeDraft, sensorDraft, id, handle, dx, dy);
-    setHomeDraft(result.home);
-    if (result.sensors) setSensorDraft(result.sensors);
+    commitHome(result.home, result.sensors);
   };
   /**
    * Keep the working copy, and throw it away: the two things an editor owes you that publishing
@@ -1043,7 +1054,7 @@ function HomePage() {
     try {
       snapshot();
       const result = createRoomFromBox(homeDraft, box, level);
-      setHomeDraft(result.model);
+      commitHome(result.model);
       setSelectedId(result.selectedId);
       setNotice({ kind: "success", text: "Room drawn. Give it a doorway with the door tool, or it has no way in." });
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
@@ -1052,7 +1063,7 @@ function HomePage() {
     if (!homeDraft) return;
     snapshot();
     const result = addDoorway(homeDraft, wall);
-    setHomeDraft(result.model);
+    commitHome(result.model);
     setSelectedId(result.selectedId);
   };
   const placeObject = (kind: PlanTool, point: { x: number; y: number }, level: number) => {
@@ -1061,7 +1072,7 @@ function HomePage() {
       snapshot();
       if (kind === "obstacle") {
         const result = addFurnitureAt(homeDraft, furnitureType, point, level);
-        setHomeDraft(result.model); setSelectedId(result.selectedId);
+        commitHome(result.model); setSelectedId(result.selectedId);
       } else if (sensorDraft) {
         const result = addSensorAt(sensorDraft, homeDraft, kind as "pir" | "contact" | "temperature", point, level);
         setSensorDraft(result.model); setSelectedId(result.selectedId);
@@ -1079,7 +1090,7 @@ function HomePage() {
     try {
       snapshot();
       const result = addStoreyByStairs(homeDraft, stairsFrom.regionId, direction);
-      setHomeDraft(result.model);
+      commitHome(result.model);
       setSelectedId(result.selectedId);
       setStorey(result.level);
       setNotice({ kind: "success", text: `A flight of stairs ${direction === "up" ? "up" : "down"}, and the ${direction === "up" ? "storey" : "basement"} it reaches: a landing to arrive on, joined to the room you started from. Draw the rest of the floor from there.` });
@@ -1089,7 +1100,7 @@ function HomePage() {
     if (!selectedId || !homeDraft) return;
     snapshot();
     const result = removeSelection(homeDraft, sensorDraft, selectedId);
-    setHomeDraft(result.home); if (result.sensors) setSensorDraft(result.sensors); setSelectedId(undefined);
+    commitHome(result.home, result.sensors); setSelectedId(undefined);
   };
   const publish = async (kind: "home" | "sensor") => {
     const model = kind === "home" ? homeDraft : sensorDraft; if (!model) return;
@@ -1214,7 +1225,7 @@ function HomePage() {
         </section>
         <aside className="inspector" aria-label="Selection inspector">
           <div className="inspector-heading"><div><p className="eyebrow">Inspector</p><h2>{selectedId ?? "Nothing selected"}</h2></div>{selectedId && <button className="icon-button" onClick={() => setSelectedId(undefined)} aria-label="Clear selection"><X size={16} /></button>}</div>
-          {selectedId ? <><p className="inspector-help">Drag on the plan, or keep your hands on the keys: <kbd>↑↓←→</kbd> move, <kbd>Shift</kbd> by half a metre, <kbd>Alt</kbd> by a centimetre and past the magnets, <kbd>R</kbd> turns, <kbd>Del</kbd> removes. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div><button className="tool-button turn-button" onClick={() => rotateSelected(selectedId)}><RefreshCw size={15} /> Turn a quarter</button></fieldset>{selectedProblem && <p className="plan-problem" role="status"><AlertCircle size={14} /> This {selectedProblem}.</p>}<EditorFields tab={tab} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); setHomeDraft(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
+          {selectedId ? <><p className="inspector-help">Drag on the plan, or keep your hands on the keys: <kbd>↑↓←→</kbd> move, <kbd>Shift</kbd> by half a metre, <kbd>Alt</kbd> by a centimetre and past the magnets, <kbd>R</kbd> turns, <kbd>Del</kbd> removes. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div><button className="tool-button turn-button" onClick={() => rotateSelected(selectedId)}><RefreshCw size={15} /> Turn a quarter</button></fieldset>{selectedProblem && <p className="plan-problem" role="status"><AlertCircle size={14} /> This {selectedProblem}.</p>}<EditorFields tab={tab} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); commitHome(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
           <div className="inspector-footer">{tab === "home" && <div className="draft-actions"><button className="tool-button" disabled={!homeDraft} onClick={saveDraft} title="Keep this working copy on this computer without publishing a revision."><HardDrive size={15} /> Save working copy</button><button className="tool-button" disabled={!unsaved} onClick={discardChanges} title="Throw away every unpublished edit and go back to the published plan."><Undo2 size={15} /> Discard changes</button></div>}{planFaults.length > 0 && <details className="plan-faults"><summary><AlertCircle size={14} /> {planFaults.length} object{planFaults.length === 1 ? "" : "s"} the gate will reject</summary><ul>{planFaults.map((fault) => <li key={fault.objectId}><button className="row-link" onClick={() => setSelectedId(fault.objectId)}>{fault.objectId}</button> {fault.message}</li>)}</ul></details>}{unsaved && <p className="unsaved-note"><AlertCircle size={14} /> Unpublished edits{draftSavedAt ? `, working copy saved at ${formatTime(draftSavedAt)}` : ", not saved"}. Publishing covers this tab only — the plan and the sensor field are separate revisions.</p>}<button className="button primary" disabled={working || !(tab === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(tab === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish {tab === "home" ? "plan" : "sensors"}{unsaved ? " •" : ""}</button></div>
         </aside>
       </div>}

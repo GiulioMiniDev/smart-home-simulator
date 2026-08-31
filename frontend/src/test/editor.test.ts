@@ -4,6 +4,7 @@ import {
   addFurnitureAt,
   addSensorAt,
   addStoreyByStairs,
+  alignSensorModel,
   boxOf,
   createRoomFromBox,
   cutDoorways,
@@ -194,7 +195,82 @@ describe("editor commands", () => {
     const noRoom = removeSelection(home(), withSensor, "room_01");
     expect(noRoom.home.regions).toHaveLength(0);
     expect(noRoom.home.obstacles).toHaveLength(0);
+    // The PIR watched that room and nothing else. An instrument reporting on a room nobody can
+    // enter is not a record to keep tidy, it is a sensor the bundle will refuse later.
+    expect(noRoom.sensors?.sensors).toHaveLength(0);
     expect(removeSelection(home(), undefined, "missing").sensors).toBeUndefined();
+  });
+
+  it("takes a piece of furniture away whole, whichever of its three parts was selected", () => {
+    // The footprint, the provider and the spot the body stands on are one wardrobe. Deleting used
+    // to work on whichever one the click landed on: by its box it left the use point behind, by
+    // its provider it left the box blocking the floor, and the gate had nothing to say to either.
+    const dropped = addFurnitureAt(home(), "wardrobe", { x: 2, y: 2 });
+    expect(dropped.selectedId).toBe("obstacle_wardrobe_01");
+    for (const handle of ["obstacle_wardrobe_01", "wardrobe_01"]) {
+      const gone = removeSelection(dropped.model, undefined, handle).home;
+      expect(gone.obstacles.map((item) => item.obstacleId)).not.toContain("obstacle_wardrobe_01");
+      expect(gone.entities.map((item) => item.entityId)).not.toContain("wardrobe_01");
+      expect(gone.interactionPoints.map((item) => item.interactionPointId)).not.toContain("point_wardrobe_01");
+      // And nothing else goes with it: the room's own door is not part of the wardrobe.
+      expect(gone.entities.map((item) => item.entityId)).toContain("door");
+    }
+  });
+
+  it("takes a staircase away whole: both flights and the climb between them", () => {
+    const added = addStoreyByStairs(home(), "room_01", "up");
+    const stairs = added.model.connections.find((item) => item.kind === "stairway")!;
+    const treads = added.model.obstacles.filter((item) => item.obstacleId.startsWith(`obstacle_${stairs.connectionId}_`));
+    // Named after the flight they belong to, as the generator names its own: the treads are the
+    // one kind of obstacle with no entity to own them.
+    expect(treads).toHaveLength(2);
+    for (const handle of [stairs.connectionId, treads[0]!.obstacleId, treads[1]!.obstacleId]) {
+      const gone = removeSelection(added.model, undefined, handle).home;
+      expect(gone.connections.filter((item) => item.kind === "stairway")).toHaveLength(0);
+      expect(gone.obstacles).toHaveLength(0);
+      // The storey itself stays. Pulling the stairs down does not demolish the floor above.
+      expect(gone.regions).toHaveLength(2);
+    }
+    // And removing the storey takes the flight standing in the room below with it, rather than
+    // leaving treads climbing to nowhere.
+    const noUpstairs = removeSelection(added.model, undefined, added.selectedId).home;
+    expect(noUpstairs.obstacles).toHaveLength(0);
+    expect(noUpstairs.connections).toHaveLength(0);
+  });
+
+  it("keeps the sensor field's register of the home in step with the home", () => {
+    // The sensor model carries its own list of the rooms and devices it was deployed against, and
+    // the bundle demands the two match exactly. Drawing a room used to leave the list behind, and
+    // publishing did not catch it: the server only looked for rooms the field names and the house
+    // does not. The pair drifted in silence and the run refused it hours later.
+    const field = sensors();
+    expect(alignSensorModel(field, home())).toBe(field);
+
+    const drawn = createRoomFromBox(home(), { minX: 5, minY: 0, maxX: 8, maxY: 3 }).model;
+    expect(alignSensorModel(field, drawn).regionIds).toEqual(["room_01", "room_02"]);
+
+    const furnished = addFurnitureAt(home(), "wardrobe", { x: 2, y: 2 }).model;
+    expect(alignSensorModel(field, furnished).entityIds).toEqual(["door", "wardrobe_01"]);
+
+    // A storey arrives with its landing, and the register gains it in the same breath.
+    const upstairs = addStoreyByStairs(home(), "room_01", "up").model;
+    expect(alignSensorModel(field, upstairs).regionIds).toEqual(["room_01", "landing_01"]);
+
+    // And it shrinks again: a room deleted is a room the field must stop claiming, or publishing
+    // refuses the model for naming a region the home has not got.
+    const razed = removeSelection(furnished, field, "wardrobe_01").home;
+    expect(alignSensorModel(field, razed).entityIds).toEqual(["door"]);
+  });
+
+  it("removes a doorway that is selected the moment it is placed", () => {
+    // `addDoorway` hands back the connection as the selection, so Delete straight after placing one
+    // aimed at an id that removal did not recognise and quietly did nothing at all.
+    const two = createRoomFromBox(home(), { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model;
+    const opened = addDoorway(two, sharedWallAt(two, { x: 4.1, y: 2 })!);
+    expect(opened.model.connections).toHaveLength(1);
+    const gone = removeSelection(opened.model, undefined, opened.selectedId).home;
+    expect(gone.connections).toHaveLength(0);
+    expect(gone.regions).toHaveLength(2);
   });
 });
 

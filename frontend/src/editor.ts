@@ -1,6 +1,6 @@
 import { furnitureSize } from "./furniture";
 import { declaredEntityTypes } from "./vocabulary/symbol-registry";
-import type { HomeEntity, HomeModel, Point, SensorBase, SensorModel } from "./types";
+import type { HomeConnection, HomeEntity, HomeModel, Point, SensorBase, SensorModel } from "./types";
 
 function centre(vertices: Point[]): Point {
   return {
@@ -45,20 +45,127 @@ function addSensor(model: SensorModel, home: HomeModel, type: SensorBase["sensor
   return { model: { ...model, sensors: [...model.sensors, sensor] }, selectedId: id };
 }
 
-export function removeSelection(home: HomeModel, sensorModel: SensorModel | undefined, selectedId: string): { home: HomeModel; sensors?: SensorModel } {
-  const entity = home.entities.find((item) => item.entityId === selectedId);
+/**
+ * Bring the sensor field's register of the home back in line with the home itself.
+ *
+ * A sensor model carries its own list of the rooms and devices it was deployed against, and the
+ * bundle demands the two agree exactly — `HOME_SENSOR_MISMATCH`, raised when a run is built. The
+ * editor could draw rooms all afternoon without the register hearing about it, and publishing did
+ * not catch it either: the server only looked for rooms the sensor field names and the home does
+ * not, never the other way round. So the pair drifted in silence and the run refused it later,
+ * with nothing on the plan to say why.
+ *
+ * Returned unchanged when nothing moved, so a redraw costs nothing.
+ */
+export function alignSensorModel(sensors: SensorModel, home: HomeModel): SensorModel {
+  const regionIds = home.regions.map((item) => item.regionId);
+  const entityIds = home.entities.map((item) => item.entityId);
+  const same = (left: string[], right: string[]) =>
+    left.length === right.length && left.every((item, index) => item === right[index]);
+  if (same(sensors.regionIds, regionIds) && same(sensors.entityIds, entityIds)) return sensors;
+  return { ...sensors, regionIds, entityIds };
+}
+
+/** Everything the plan holds that is one object under different ids. */
+interface Removal {
+  regions: Set<string>;
+  connections: Set<string>;
+  obstacles: Set<string>;
+  entities: Set<string>;
+  points: Set<string>;
+}
+
+/**
+ * Resolve a selection to the whole object it is part of.
+ *
+ * Almost nothing you can point at in the plan is one record. A piece of furniture is three — the
+ * footprint, the provider and the spot the body stands on — and a staircase is three of another
+ * kind: a flight of treads at each end and the connection between them. Deletion used to work on
+ * whichever of them the click happened to land on, so removing a wardrobe by its box left its use
+ * point standing in the room, removing it by its provider left the box blocking the floor, and
+ * neither state was anything the gate would complain about. A house with a ghost in it published
+ * perfectly happily.
+ *
+ * The one thing deliberately left dangling is a binding: `resourceBindings` is what says this home
+ * can host that scenario, so deleting the shower has to break it loudly at the gate rather than
+ * quietly unbind a scenario the researcher still means to run.
+ */
+function coupledWith(home: HomeModel, selectedId: string): Removal {
+  const removal: Removal = {
+    regions: new Set(), connections: new Set(), obstacles: new Set(), entities: new Set(), points: new Set(),
+  };
+  const takeConnection = (connection: HomeConnection) => {
+    removal.connections.add(connection.connectionId);
+    // A flight stands on real floor at both ends. Its treads are the only obstacles with no entity
+    // to own them, and they are named after the connection precisely so this can find them.
+    if (connection.kind !== "stairway") return;
+    for (const obstacle of home.obstacles) {
+      if (obstacle.obstacleId.startsWith(`obstacle_${connection.connectionId}_`)) removal.obstacles.add(obstacle.obstacleId);
+    }
+  };
+  const takeEntity = (entity: HomeEntity) => {
+    removal.entities.add(entity.entityId);
+    removal.points.add(entity.interactionPointId);
+    removal.obstacles.add(`obstacle_${entity.entityId}`);
+  };
+
   const region = home.regions.find((item) => item.regionId === selectedId);
-  const interactionPointId = entity?.interactionPointId;
+  if (region) {
+    removal.regions.add(region.regionId);
+    // A staircase is not in a room, it is between two, so taking one end takes the flight at the
+    // other: otherwise the storey left behind keeps a set of treads climbing to nowhere.
+    for (const connection of home.connections) {
+      if (connection.regionAId === selectedId || connection.regionBId === selectedId) takeConnection(connection);
+    }
+    return removal;
+  }
+  const entity = home.entities.find((item) => item.entityId === selectedId);
+  if (entity) {
+    takeEntity(entity);
+    return removal;
+  }
+  const connection = home.connections.find((item) => item.connectionId === selectedId);
+  if (connection) {
+    takeConnection(connection);
+    return removal;
+  }
+  const obstacle = home.obstacles.find((item) => item.obstacleId === selectedId);
+  if (obstacle) {
+    const flight = home.connections.find((item) =>
+      item.kind === "stairway" && obstacle.obstacleId.startsWith(`obstacle_${item.connectionId}_`));
+    if (flight) takeConnection(flight);
+    else {
+      removal.obstacles.add(obstacle.obstacleId);
+      const owner = home.entities.find((item) => `obstacle_${item.entityId}` === obstacle.obstacleId);
+      if (owner) takeEntity(owner);
+    }
+  }
+  return removal;
+}
+
+/** Remove what was selected, and everything that was only ever part of it. */
+export function removeSelection(home: HomeModel, sensorModel: SensorModel | undefined, selectedId: string): { home: HomeModel; sensors?: SensorModel } {
+  const gone = coupledWith(home, selectedId);
+  const inGoneRegion = (regionId: string | undefined) => regionId !== undefined && gone.regions.has(regionId);
+  // A sensor watches a place or a thing. When that is gone the sensor is not an orphan record but
+  // an instrument reporting on a room nobody can enter, and the bundle refuses the pair later.
+  const stranded = (sensor: SensorBase): boolean => {
+    if (sensor.sensorId === selectedId) return true;
+    if (typeof sensor.entityId === "string" && gone.entities.has(sensor.entityId)) return true;
+    if (typeof sensor.regionId === "string" && inGoneRegion(sensor.regionId)) return true;
+    const watched = sensor.regionIds;
+    return Array.isArray(watched) && watched.length > 0 && watched.every((item) => inGoneRegion(String(item)));
+  };
   return {
     home: {
       ...home,
-      regions: home.regions.filter((item) => item.regionId !== selectedId),
-      connections: region ? home.connections.filter((item) => item.regionAId !== selectedId && item.regionBId !== selectedId) : home.connections,
-      obstacles: home.obstacles.filter((item) => item.obstacleId !== selectedId && item.regionId !== selectedId),
-      interactionPoints: home.interactionPoints.filter((item) => item.interactionPointId !== selectedId && item.interactionPointId !== interactionPointId && item.regionId !== selectedId),
-      entities: home.entities.filter((item) => item.entityId !== selectedId && item.regionId !== selectedId),
+      regions: home.regions.filter((item) => !gone.regions.has(item.regionId)),
+      connections: home.connections.filter((item) => !gone.connections.has(item.connectionId)),
+      obstacles: home.obstacles.filter((item) => !gone.obstacles.has(item.obstacleId) && !inGoneRegion(item.regionId)),
+      interactionPoints: home.interactionPoints.filter((item) => !gone.points.has(item.interactionPointId) && !inGoneRegion(item.regionId)),
+      entities: home.entities.filter((item) => !gone.entities.has(item.entityId) && !inGoneRegion(item.regionId)),
     },
-    sensors: sensorModel ? { ...sensorModel, sensors: sensorModel.sensors.filter((item) => item.sensorId !== selectedId) } : undefined,
+    sensors: sensorModel ? { ...sensorModel, sensors: sensorModel.sensors.filter((item) => !stranded(item)) } : undefined,
   };
 }
 
@@ -1473,11 +1580,13 @@ function addStairway(
   const connectionId = nextId("stairs", home.connections.map((item) => item.connectionId));
   let model: HomeModel = { ...home };
   for (const flight of flights) {
-    const obstacleId = nextId(`stairs_${flight.region.regionId}`, model.obstacles.map((item) => item.obstacleId.replace(/^obstacle_/, "")));
+    // Named after the flight it belongs to, exactly as the generator names its own
+    // (`obstacle_stairs_<bottom>_<top>_<region>`): the treads are the only obstacles with no entity
+    // to own them, so the id is the one thing that says which staircase they are the foot of.
     model = {
       ...model,
       obstacles: [...model.obstacles, {
-        obstacleId: `obstacle_${obstacleId}`,
+        obstacleId: `obstacle_${connectionId}_${flight.region.regionId}`,
         regionId: flight.region.regionId,
         orientationDegrees: flight.bearing,
         boundary: { vertices: rectangle(flight.pose.box) },

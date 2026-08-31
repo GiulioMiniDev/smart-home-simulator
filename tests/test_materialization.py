@@ -1072,6 +1072,10 @@ def test_a_house_with_two_storeys_is_one_valid_plan_joined_by_a_staircase() -> N
     treads = [item for item in home.obstacles if item.obstacle_id.startswith("obstacle_stairs_")]
     assert {item.region_id for item in treads} == {flight.region_a_id, flight.region_b_id}
     assert all(item.orientation_degrees in {0.0, 90.0, 180.0, 270.0} for item in treads)
+    # A tread is named after the flight it belongs to. It is the only obstacle with no entity to
+    # own it, so the id is the one thing that says which staircase it is the foot of — and the
+    # editor deletes a whole staircase by reading exactly this, on generated homes as on its own.
+    assert all(item.obstacle_id.startswith(f"obstacle_{flight.connection_id}_") for item in treads)
 
     # And the resident can actually walk upstairs.
     kitchen = next(

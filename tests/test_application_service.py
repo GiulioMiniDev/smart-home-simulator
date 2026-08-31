@@ -124,6 +124,32 @@ def test_home_and_sensor_publication_uses_authoritative_validation(tmp_path: Pat
         "SENSOR_REGION_UNKNOWN",
     }
 
+    # And the other direction, which publication used to wave through: a field that has fallen
+    # behind the home. The bundle demands the two registers match exactly, so this was refused as
+    # HOME_SENSOR_MISMATCH when a run was built — long after the edit that caused it, and with
+    # nothing on the plan left to point at.
+    behind = copy.deepcopy(sensor)
+    behind["regionIds"] = [
+        item for item in behind["regionIds"] if item != home["regions"][0]["regionId"]
+    ]
+    behind["entityIds"] = [
+        item for item in behind["entityIds"] if item != home["entities"][0]["entityId"]
+    ]
+    behind["sensors"] = [
+        item
+        for item in behind["sensors"]
+        if home["regions"][0]["regionId"] not in item.get("regionIds", [])
+        and item.get("regionId") != home["regions"][0]["regionId"]
+        and item.get("entityId") != home["entities"][0]["entityId"]
+    ]
+    stale_sensor = service.publish_sensor(home_summary.home_id, behind)
+    assert stale_sensor["valid"] is False
+    assert {item["code"] for item in stale_sensor["issues"]} == {
+        "SENSOR_ENTITY_MISSING",
+        "SENSOR_REGION_MISSING",
+    }
+    assert home["regions"][0]["regionId"] in stale_sensor["issues"][0]["message"]
+
 
 def test_sensor_publication_rejects_structure_and_requires_home(tmp_path: Path) -> None:
     workspace = WorkspaceService.create(tmp_path / "workspace", "Sensor guards")
