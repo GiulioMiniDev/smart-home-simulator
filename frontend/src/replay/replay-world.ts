@@ -23,7 +23,17 @@ export interface WorldResident {
   posture: string;
   carrying: string[];
   regionId?: string;
+  /** The free floor she walked to: what routes are planned from, and what names the thing in use. */
   position?: Point;
+  /**
+   * Where the body has come to rest, when the trace says it has.
+   *
+   * An interaction point is where you *stand* to use a thing, so on its own it draws a resident
+   * asleep on the carpet beside her bed. The engine records the berth she is actually on as a
+   * fact about her, and this is that fact. Absent on traces written before it existed, and on a
+   * body that is on its feet.
+   */
+  restingAt?: Point;
   heading?: number;
   moving: boolean;
   /** Out of the flat: nothing the scene draws can show where, so it does not pretend to. */
@@ -42,6 +52,32 @@ export interface SceneWorld {
 }
 
 const CARRYING = "resident.carrying.";
+const RESTING = "resident.resting_at";
+
+/** A berth only speaks for the room it is in, and only for a body that is still in that room. */
+function restingHere(
+  place: { at: Point; regionId: string } | undefined,
+  regionId: string | undefined,
+): Point | undefined {
+  if (!place || regionId === undefined) return undefined;
+  return place.regionId === "" || place.regionId === regionId ? place.at : undefined;
+}
+
+/**
+ * The `{x, y}` a resting fact carries, with the room it belongs to, or nothing when it says she is
+ * back on her feet.
+ *
+ * The room comes along because a berth means nothing outside it. The engine releases one as soon
+ * as the posture holding it ends, so a fresh trace never carries a stale berth — but a trace
+ * written before that did, and a body drawn on a sofa two rooms away is worse than no answer.
+ */
+function restingPoint(value: unknown): { at: Point; regionId: string } | undefined {
+  if (value === null || typeof value !== "object") return undefined;
+  const { x, y, regionId } = value as { x?: unknown; y?: unknown; regionId?: unknown };
+  return typeof x === "number" && typeof y === "number"
+    ? { at: { x, y }, regionId: typeof regionId === "string" ? regionId : "" }
+    : undefined;
+}
 
 function baseEntities(frame: ReplayFrame | undefined): Record<string, WorldEntity> {
   const entities: Record<string, WorldEntity> = {};
@@ -80,10 +116,15 @@ export function foldWorld(
   const entities = baseEntities(frame);
   const postures = new Map<string, string>();
   const carrying = new Map<string, Set<string>>();
+  const resting = new Map<string, { at: Point; regionId: string } | undefined>();
   for (const resident of frame?.residents ?? []) {
     const residentId = resident.residentId ?? "resident";
     postures.set(residentId, resident.posture ?? "standing");
     carrying.set(residentId, baseCarrying(resident.facts));
+    // Seeded from the frame like the other two, and for a reason the other two never show: a day
+    // opens at midnight with the resident asleep, so the very first thing the scene draws is a
+    // body on a berth no transition in this day has got round to announcing yet.
+    resting.set(residentId, restingPoint(resident.facts.resting_at));
   }
 
   for (const transition of script.transitions) {
@@ -94,6 +135,10 @@ export function foldWorld(
     const value = transition.details.value;
     if (transition.label === "resident.posture" && typeof value === "string" && transition.actorId) {
       postures.set(transition.actorId, value);
+      continue;
+    }
+    if (transition.label === RESTING && transition.actorId) {
+      resting.set(transition.actorId, restingPoint(value));
       continue;
     }
     if (transition.label.startsWith(CARRYING) && transition.actorId) {
@@ -133,6 +178,7 @@ export function foldWorld(
       residentId,
       name: residentName(residentId),
       posture: postures.get(residentId) ?? resident.posture ?? "standing",
+      restingAt: restingHere(resting.get(residentId), away ? undefined : regionId),
       carrying: [...(carrying.get(residentId) ?? new Set<string>())],
       regionId,
       position: away ? undefined : position,

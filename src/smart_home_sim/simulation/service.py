@@ -62,6 +62,7 @@ from smart_home_sim.domain.models import (
 )
 from smart_home_sim.domain.plan import CanonicalActivity
 from smart_home_sim.environment.navigation import NavigationPath, plan_path
+from smart_home_sim.environment.occupancy import berth_for
 from smart_home_sim.validation.service import (
     MAX_SCENARIO_BYTES,
     DuplicateJsonKeyError,
@@ -316,6 +317,10 @@ class ResidentRuntime:
     region_id: str
     position: Point2D
     posture: str = "standing"
+    # Where the body is resting when it is not on the floor: a berth inside the furniture it is on.
+    # `position` stays the free-floor anchor it walked to, because that is what routes are planned
+    # from and what the router is allowed to hand back.
+    resting_at: Point2D | None = None
     execution_state: str = "idle"
     facts: dict[str, JsonValue] = field(default_factory=dict)
     held_resources: set[str] = field(default_factory=set)
@@ -1198,9 +1203,7 @@ class SimulationEngine:
 
     def _refresh_unclaimed(self, actor: ResidentRuntime, cause_id: str) -> None:
         """Has she been left with nothing for long enough that the stretch wants filling?"""
-        idle_for = (
-            0 if actor.idle_since_us is None else int(self.env.now) - actor.idle_since_us
-        )
+        idle_for = 0 if actor.idle_since_us is None else int(self.env.now) - actor.idle_since_us
         unclaimed = idle_for >= UNCLAIMED_AFTER_SECONDS * 1_000_000
         if actor.facts.get("hours_unclaimed") == unclaimed:
             return
@@ -1220,9 +1223,7 @@ class SimulationEngine:
     def _bladder_fill_us(self, actor: ResidentRuntime) -> int:
         """How long this filling takes, drawn once for this cycle."""
         stream = self.streams.stream(f"bladder:{actor.resident_id}:{actor.bladder_cycles}")
-        minutes = BLADDER_FILL_MEDIAN_MINUTES * math.exp(
-            stream.gauss(0.0, BLADDER_FILL_LOG_SIGMA)
-        )
+        minutes = BLADDER_FILL_MEDIAN_MINUTES * math.exp(stream.gauss(0.0, BLADDER_FILL_LOG_SIGMA))
         return int(round(minutes * MINUTE_US))
 
     def _refresh_bladder(self, actor: ResidentRuntime, cause_id: str) -> None:
@@ -1281,6 +1282,7 @@ class SimulationEngine:
             cause_type,
             cause_id,
         )
+        self._release_berth(actor, cause_id)
 
     def _set_execution_state(
         self,
@@ -1667,7 +1669,9 @@ class SimulationEngine:
         metres and is charged to the posture change that needed it.
         """
         kinds = _RECLINING_FURNITURE if posture == _RECLINING_POSTURE else _SEATING_FURNITURE
+        lying = posture == _RECLINING_POSTURE
         if self._is_on_resting_furniture(actor, kinds):
+            self._settle_onto(actor, kinds, lying=lying, action_id=action_id)
             return
         point = self._furniture_point(actor.region_id, kinds)
         if point is None:
@@ -1688,7 +1692,137 @@ class SimulationEngine:
         yield from self._travel(
             actor, path, int(round(path.duration_seconds * 1_000_000)), action_id
         )
+        self._settle_onto(actor, kinds, lying=lying, action_id=action_id)
         self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
+
+    def _resting_entity(self, region_id: str, kinds: frozenset[str]) -> Any | None:
+        """The piece in this room she rests on, chosen the same way `_furniture_point` chooses."""
+        candidates = [
+            entity
+            for entity in self.bundle.home_model.entities
+            if entity.entity_type in kinds
+            and entity.region_id == region_id
+            and entity.interaction_point_id
+        ]
+        candidates.sort(key=lambda item: item.entity_id)
+        return candidates[0] if candidates else None
+
+    def _settle_onto(
+        self,
+        actor: ResidentRuntime,
+        kinds: frozenset[str],
+        *,
+        lying: bool,
+        action_id: str,
+    ) -> None:
+        """Move the body the last half metre, off the floor and onto the thing itself.
+
+        The walk above ends at the interaction point, which is where a body *stands* to use a
+        piece — it has to be, because it is what the router walks to and the router may only put a
+        body on free floor. So a night's sleep was still recorded on the carpet beside the bed.
+
+        The berth is inside the footprint on purpose, which is why nothing plans a path to it: this
+        is recorded as a movement so that everything reading the trace — the sensor projection's
+        dwell, the replay, a reader counting who is where — sees the body where the body is, and it
+        takes no time, because lying down is already paid for by the posture change that asked for
+        it. `_stand_up` puts her back on the floor before anything tries to route from here.
+        """
+        entity = self._resting_entity(actor.region_id, kinds)
+        if entity is None:
+            return
+        obstacle = next(
+            (
+                item
+                for item in self.bundle.home_model.obstacles
+                if item.obstacle_id == f"obstacle_{entity.entity_id}"
+            ),
+            None,
+        )
+        if obstacle is None:
+            return
+        # Which side of the bed is hers. Stable for a resident across a night, and different from
+        # the one beside her, which is the whole reason a piece has more than one berth.
+        occupant = sorted(self.state.residents).index(actor.resident_id)
+        if actor.resting_at is not None:
+            return
+        target = berth_for(obstacle.boundary, lying=lying, occupant=occupant)
+        self._record_berth(actor, target, action_id)
+
+    def _release_berth(self, actor: ResidentRuntime, action_id: str) -> None:
+        """Let go of the berth the moment the body stops being on it.
+
+        A berth belongs to a posture, not to a room and not to an activity: she is on the sofa
+        because she is sitting, and the instant she is not sitting she is not on it. Stating it
+        that way is what closes the hole — `_stand_up` used to be the only thing that cleared one,
+        and it does not run on every way a body can end up upright or elsewhere. A plan that ends
+        with `change_posture{standing}` set the posture through the catalogue effect and left the
+        berth behind, and the body then carried the sofa into the bathroom with it.
+
+        Called wherever either half of the pair can move, so the two cannot disagree.
+        """
+        if actor.resting_at is None:
+            return
+        if actor.posture in {_SITTING_POSTURE, _RECLINING_POSTURE}:
+            return
+        self._record_berth(actor, None, action_id)
+
+    def _rise_from_furniture(self, actor: ResidentRuntime, action_id: str) -> None:
+        """Put her back on the floor she is routed from, and say so in the trace.
+
+        Called wherever a body is about to be walked or stood up rather than only where a posture
+        changes: `position` is what every route is planned from, and a route that started on a
+        berth was refused outright — `route endpoint is outside navigable space in region
+        'kitchen'`, which is the invariant doing its job.
+        """
+        if actor.resting_at is None:
+            return
+        self._record_berth(actor, None, action_id)
+
+    def _record_berth(
+        self,
+        actor: ResidentRuntime,
+        target: Point2D | None,
+        action_id: str,
+    ) -> None:
+        """Say where the body has come to rest, as a fact about the resident rather than a walk.
+
+        Not a movement, deliberately. A movement's waypoints may not enter an obstacle — the trace
+        checks its own work for it, and the rule is right: it is what says a walking body does not
+        pass through the furniture. Resting *on* something is a different claim from walking
+        *through* it, and it rides on the state stream, which is already how the trace says what a
+        body is doing rather than where it is going.
+        """
+        # The room travels with the berth, so a reader can tell one still in force from one left
+        # behind. `_release_berth` is what keeps that from happening at all; this is what lets
+        # anything reading the trace check rather than trust.
+        previous = (
+            None
+            if actor.resting_at is None
+            else {
+                "x": actor.resting_at.x,
+                "y": actor.resting_at.y,
+                "regionId": actor.region_id,
+            }
+        )
+        value = (
+            None if target is None else {"x": target.x, "y": target.y, "regionId": actor.region_id}
+        )
+        actor.resting_at = target
+        # Both stores, as `_set_posture` does for the same reason. A resident fact that reaches the
+        # transition stream and not the fact store is a fact the replay can fold and the final state
+        # has never heard of, and the frame rebuilt at the end of the trace stops matching the state
+        # the run finished in — which is the check that caught this.
+        self.state.residents[actor.resident_id].facts["resting_at"] = value
+        self._state_transition(
+            "resident",
+            actor.resident_id,
+            "resting_at",
+            previous,
+            value,
+            "set",
+            "action_effect",
+            action_id,
+        )
 
     def _furniture_point(self, region_id: str, kinds: frozenset[str]) -> Any | None:
         candidates = [
@@ -1719,6 +1853,7 @@ class SimulationEngine:
         stand_seconds = self.kinematics[actor.resident_id].posture_transition_seconds.get(
             _STANDING_POSTURE, _gesture_table()["change_posture"]
         )
+        self._rise_from_furniture(actor, action_id)
         yield self.env.timeout(int(round(stand_seconds * 1_000_000)))
         self._set_posture(actor, _STANDING_POSTURE, "action_effect", action_id)
 
@@ -1790,6 +1925,10 @@ class SimulationEngine:
         yield self.env.timeout(movement_us)
         destination = path.waypoints[-1]
         origin_region = actor.region_id
+        if actor.resting_at is not None and destination.region_id != origin_region:
+            # A body cannot be on the sofa and in the bathroom. Posture is what normally lets a
+            # berth go; this is the backstop for anything that walks out of the room without it.
+            self._record_berth(actor, None, action_id)
         actor.region_id = destination.region_id
         actor.position = Point2D(x=destination.x, y=destination.y)
         self.trace.movements.append(
@@ -1885,6 +2024,7 @@ class SimulationEngine:
             # got double, and the pair disagreed about where she had been, the fact store having
             # never been told her opening posture.
             actor.posture = str(binding.resolved_arguments["posture"])
+            self._release_berth(actor, action_id)
         definition = self.action_definitions[node.action_type or ""]
         arguments = {key: str(value) for key, value in binding.resolved_arguments.items()}
         for template in definition.effects:

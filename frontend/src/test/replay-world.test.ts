@@ -68,6 +68,31 @@ const script = buildScript(events, home);
 const at = (iso: string) => Date.parse(iso);
 
 describe("foldWorld", () => {
+  it("takes the berth from the trace, from midnight and through the day's own changes", () => {
+    // An interaction point is where a body stands to use a thing, so on its own it draws a
+    // resident asleep on the carpet beside her bed. The engine records where she came to rest;
+    // this reads it back — seeded from the frame, because a day opens with her already in bed.
+    const inBed: ReplayFrame = {
+      ...frame,
+      residents: [{
+        ...frame.residents[0]!,
+        regionId: "kitchen",
+        facts: { ...frame.residents[0]!.facts, resting_at: { x: 4.2, y: 1.1, regionId: "kitchen" } },
+      }],
+    };
+    const opening = foldWorld(script, inBed, at("2026-10-30T07:00:00+01:00"), place);
+    expect(opening.residents[0]?.restingAt).toEqual({ x: 4.2, y: 1.1 });
+
+    // And a berth only speaks for its own room: she cannot be on that bed and in the hallway.
+    const elsewhere: ReplayFrame = {
+      ...inBed,
+      residents: [{ ...inBed.residents[0]!, regionId: "hallway" }],
+    };
+    expect(foldWorld(script, elsewhere, at("2026-10-30T07:00:00+01:00"), place).residents[0]?.restingAt)
+      .toBeUndefined();
+  });
+
+
   it("carries the frame forward with the day's own state changes", () => {
     const before = foldWorld(script, frame, at("2026-10-30T07:43:30+01:00"), place);
     const after = foldWorld(script, frame, at("2026-10-30T07:47:00+01:00"), place);

@@ -128,6 +128,39 @@ describe("SceneStage", () => {
     expect(marker(perched.container).style.getPropertyValue("--scene-seat-x")).toBe("0px");
   });
 
+  it("takes the berth from the trace when it has one, and guesses only when it has not", () => {
+    // Geometry alone puts a body in the middle of the piece, which is one answer. Two people
+    // asleep in one bed are two answers, and only the engine knows which side is whose — so
+    // where the trace says, the picture follows it rather than working it out again.
+    const furnished = {
+      ...home,
+      obstacles: [...home.obstacles,
+        { obstacleId: "obstacle_bed", regionId: "kitchen", boundary: { vertices: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2.6 }, { x: 1, y: 2.6 }] } }],
+      entities: [...home.entities, { entityId: "bed", entityType: "bed", regionId: "kitchen" }],
+    } as unknown as HomeModel;
+    const asleep = (part: Record<string, unknown>) => world({
+      residents: [{
+        residentId: "resident_mario_rossi", name: "Mario Rossi", carrying: [],
+        regionId: "kitchen", moving: false, away: false, routes: [], posture: "lying",
+        position: { x: .5, y: 1.8 }, anchorPosition: { x: .5, y: 1.8 },
+        using: { entityId: "bed", label: "bed" }, ...part,
+      }],
+    } as unknown as Partial<SceneWorld>);
+    const marker = (element: HTMLElement) => element.querySelector(".scene-people > g") as SVGGElement;
+
+    // Her own side of the bed, not the middle of it.
+    const told = render(<SceneStage home={furnished} world={asleep({ restingAt: { x: 2, y: 2.2 } })} />);
+    expect(marker(told.container).style.getPropertyValue("--scene-seat-x")).toBe("1.5px");
+    expect(Number.parseFloat(marker(told.container).style.getPropertyValue("--scene-seat-y"))).toBeCloseTo(.4);
+    expect(marker(told.container).style.getPropertyValue("--scene-recline")).toBe("0deg");
+    cleanup();
+
+    // A trace written before the engine recorded any of this still gets a body on the bed.
+    const guessed = render(<SceneStage home={furnished} world={asleep({})} />);
+    expect(marker(guessed.container).style.getPropertyValue("--scene-seat-x")).toBe("1.5px");
+    expect(marker(guessed.container).style.getPropertyValue("--scene-seat-y")).toBe("0px");
+  });
+
   it("draws the front door and swings it on the state the trace gives it", () => {
     const withDoor = {
       ...home,

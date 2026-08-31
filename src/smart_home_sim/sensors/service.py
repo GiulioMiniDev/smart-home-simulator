@@ -249,6 +249,7 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
     entities = {item.entity_id: item for item in bundle.home_model.entities}
     points = {item.interaction_point_id: item for item in bundle.home_model.interaction_points}
     postures_by_actor = _postures(trace)
+    resting_by_actor = _resting_places(trace)
     by_actor_actions: dict[str, list[Any]] = defaultdict(list)
     for action in trace.action_executions:
         by_actor_actions[action.actor_id].append(action)
@@ -298,6 +299,9 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
                 _MotionPulse(
                     at=at,
                     until=action.ended_at,
+                    # The thing being worked at, not the seat she is working from: this pulse is
+                    # a pair of hands at a fridge door, and it is the fridge the detector sees
+                    # move. Only being somewhere — the dwell below — is projected from the berth.
                     position=point.position,
                     region_id=point.region_id,
                     key=f"{action.action_execution_id}:pir:{index}",
@@ -347,7 +351,12 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
                 _MotionPulse(
                     at=at,
                     until=dwell.ended_at,
-                    position=dwell.position,
+                    position=_resting_at(
+                        resting_by_actor.get(dwell.actor_id, []),
+                        at,
+                        dwell.position,
+                        dwell.region_id,
+                    ),
                     region_id=dwell.region_id,
                     key=f"dwell:{dwell_index}:{index}",
                     cause_type=cause_type,
@@ -538,6 +547,55 @@ def _postures(trace: ExecutionTrace) -> dict[str, list[tuple[datetime, str]]]:
     for series in postures.values():
         series.sort()
     return postures
+
+
+def _resting_places(
+    trace: ExecutionTrace,
+) -> dict[str, list[tuple[datetime, tuple[Point2D, str] | None]]]:
+    """Each actor's berths, in order, so a moment can be looked up the way a posture is.
+
+    An interaction point is where a body *stands* to use a thing — it has to be, because it is
+    what the router walks to and the router may only put a body on free floor. So without this a
+    resident asleep for eight hours is projected from the carpet beside her own bed. The engine
+    records where she actually came to rest as a fact about her; this is that fact, read back.
+    """
+    resting: dict[str, list[tuple[datetime, tuple[Point2D, str] | None]]] = defaultdict(list)
+    for transition in trace.state_transitions:
+        if transition.subject_type != "resident" or transition.fact != "resting_at":
+            continue
+        value = transition.value
+        place = (
+            (Point2D(x=float(value["x"]), y=float(value["y"])), str(value.get("regionId", "")))
+            if isinstance(value, dict) and "x" in value and "y" in value
+            else None
+        )
+        resting[transition.subject_id].append((transition.at, place))
+    for series in resting.values():
+        series.sort(key=lambda item: item[0])
+    return resting
+
+
+def _resting_at(
+    series: list[tuple[datetime, tuple[Point2D, str] | None]],
+    moment: datetime,
+    fallback: Point2D,
+    region_id: str,
+) -> Point2D:
+    """Where the body is now: its berth when it is on one here, the floor it stands on otherwise.
+
+    The room is checked rather than assumed, though the engine no longer produces a berth that
+    outlives the room it is in: a berth is released the moment the posture that holds it ends, and
+    again if a body somehow leaves the room still on one. This is the backstop for the traces
+    written before that was true, and for anything that gets it wrong later. It is how the original
+    fault was caught — observations went missing from a bathroom, which has no seat in it, because
+    a resident there was being projected from the sofa she had been sitting on.
+    """
+    place: tuple[Point2D, str] | None = None
+    for at, value in series:
+        if at > moment:
+            break
+        place = value
+    return place[0] if place is not None and place[1] == region_id else fallback
 
 
 def _ongoing_action(actions: list[Any], starts: list[datetime], moment: datetime) -> Any | None:

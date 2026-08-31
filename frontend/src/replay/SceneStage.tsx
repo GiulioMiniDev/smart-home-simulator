@@ -157,7 +157,22 @@ function seatPose(
 ): { x: number; y: number; recline?: number } | undefined {
   const seated = resident.posture === "sitting";
   const lying = resident.posture === "lying";
-  if ((!seated && !lying) || !resident.position || !resident.using) return undefined;
+  if ((!seated && !lying) || !resident.position) return undefined;
+
+  // Evidence first. The engine records the berth she is on — which side of the bed, which end of
+  // the sofa — and that is an answer this cannot work out: two people asleep in one bed are two
+  // places, and geometry alone would put both of them in the middle of it. The guess below is the
+  // fallback for traces written before the engine said so, and for nothing else.
+  if (resident.restingAt) {
+    const pose = {
+      x: resident.restingAt.x - resident.position.x,
+      y: resident.restingAt.y - resident.position.y,
+    };
+    if (!lying) return pose;
+    const piece = furniture.find((item) => item.entityId === resident.using?.entityId);
+    return piece ? { ...pose, recline: reclineOn(piece.box, resident.position) } : pose;
+  }
+  if (!resident.using) return undefined;
   if (!OCCUPIED.has(resident.using.label.replaceAll(" ", "_"))) return undefined;
   const piece = furniture.find((item) => item.entityId === resident.using?.entityId);
   if (!piece) return undefined;
@@ -171,14 +186,22 @@ function seatPose(
   };
   if (!lying) return pose;
 
-  // Along the piece, head away from the side she got in from. Approached square on, the two ends
-  // are equally good and it takes the first.
-  const along = piece.box.maxX - piece.box.minX >= piece.box.maxY - piece.box.minY
-    ? { x: 1, y: 0 }
-    : { x: 0, y: 1 };
-  const away = along.x * (centreX - resident.position.x) + along.y * (centreY - resident.position.y);
-  const heading = Math.atan2(along.y, along.x) + (away < 0 ? Math.PI : 0);
-  return { ...pose, recline: (heading * 180) / Math.PI };
+  return { ...pose, recline: reclineOn(piece.box, resident.position) };
+}
+
+/**
+ * Which way a body lies on a piece: along it, head away from the side she got in from.
+ *
+ * Taken from the footprint rather than from `orientationDegrees`, which means a different thing
+ * for a bed than for a hob. Approached square on the two ends are equally good and it takes the
+ * first.
+ */
+function reclineOn(box: ReturnType<typeof bounds>, from: Point): number {
+  const centreX = (box.minX + box.maxX) / 2;
+  const centreY = (box.minY + box.maxY) / 2;
+  const along = box.maxX - box.minX >= box.maxY - box.minY ? { x: 1, y: 0 } : { x: 0, y: 1 };
+  const away = along.x * (centreX - from.x) + along.y * (centreY - from.y);
+  return ((Math.atan2(along.y, along.x) + (away < 0 ? Math.PI : 0)) * 180) / Math.PI;
 }
 
 /** The storey to draw: the one somebody is standing on, and the ground floor when nobody is. */
