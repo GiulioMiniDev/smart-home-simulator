@@ -30,11 +30,11 @@ from smart_home_sim.domain.environment import Point2D, Polygon2D
 from smart_home_sim.materialization import furnishing
 
 # Target floor area and preferred aspect (width : height) per known room kind. Unknown rooms fall
-# back to _DEFAULT_PROFILE, so the generator stays generic for arbitrary scenario locations.
+# back to DEFAULT_PROFILE, so the generator stays generic for arbitrary scenario locations.
 # Sized so the standard resource set actually fits with walking room around it: at the previous
 # areas a bathroom could not hold a washing machine next to a shower without sealing itself off,
 # and the placer (correctly) refused the piece.
-_ROOM_PROFILES: dict[str, tuple[float, float]] = {
+ROOM_PROFILES: dict[str, tuple[float, float]] = {
     "living_room": (26.0, 1.20),
     "bedroom": (19.5, 1.15),
     "second_bedroom": (14.0, 1.15),
@@ -52,11 +52,11 @@ _ROOM_PROFILES: dict[str, tuple[float, float]] = {
     "storage": (4.5, 1.00),
     "laundry_room": (5.5, 1.10),
 }
-_DEFAULT_PROFILE = (12.0, 1.15)
+DEFAULT_PROFILE = (12.0, 1.15)
 # Rooms that read as appendages of the flat and belong on its edge rather than in the middle.
-_EDGE_ROOMS = frozenset({"balcony", "terrace", "storage"})
+EDGE_ROOMS = frozenset({"balcony", "terrace", "storage"})
 # Rooms that in a real flat open onto exactly one other space.
-_SINGLE_DOOR_ROOMS = frozenset(
+SINGLE_DOOR_ROOMS = frozenset(
     {"bathroom", "second_bathroom", "balcony", "terrace", "storage", "laundry_room"}
 )
 # Spaces a flat circulates through, which legitimately carry more than one door.
@@ -112,12 +112,12 @@ class SharedWall:
 
 
 def room_area(region_id: str) -> float:
-    return _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[0]
+    return ROOM_PROFILES.get(region_id, DEFAULT_PROFILE)[0]
 
 
 def preferred_aspect(region_id: str) -> float:
     """The shape this kind of room wants. A balcony is meant to be a strip; a bedroom is not."""
-    return _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[1]
+    return ROOM_PROFILES.get(region_id, DEFAULT_PROFILE)[1]
 
 
 def layout_rooms(
@@ -175,7 +175,7 @@ def _layout_storey(region_ids: list[str], scale: float = 1.0) -> dict[str, Rect]
         placed: dict[str, Rect] = {}
         _bisect(ordered, Rect(0.0, 0.0, total_area / height, height), placed)
         score = max(
-            _aspect(rect) / _ROOM_PROFILES.get(region_id, _DEFAULT_PROFILE)[1]
+            _aspect(rect) / ROOM_PROFILES.get(region_id, DEFAULT_PROFILE)[1]
             for region_id, rect in placed.items()
         )
         # A plan where the only way into the balcony is through the bathroom is geometrically fine
@@ -195,7 +195,7 @@ def _stranded_private_rooms(placed: dict[str, Rect]) -> int:
     the bathroom. Door selection cannot fix it, because connectivity leaves it no other edge to
     pick, so the layout is where it has to be avoided.
     """
-    private = [region_id for region_id in placed if region_id in _SINGLE_DOOR_ROOMS]
+    private = [region_id for region_id in placed if region_id in SINGLE_DOOR_ROOMS]
     circulation = {region_id for region_id in placed if region_id in _CIRCULATION_ROOMS}
     if not private or not circulation:
         return 0
@@ -212,7 +212,7 @@ def _order_for_layout(region_ids: list[str]) -> list[str]:
     return sorted(
         region_ids,
         key=lambda region_id: (
-            region_id in _EDGE_ROOMS,
+            region_id in EDGE_ROOMS,
             -room_area(region_id),
             region_id,
         ),
@@ -346,10 +346,10 @@ def _door_priority(wall: SharedWall) -> float:
     for region_id in (wall.region_a_id, wall.region_b_id):
         if region_id in _CIRCULATION_ROOMS:
             score += 4.0
-        if region_id in _SINGLE_DOOR_ROOMS:
+        if region_id in SINGLE_DOOR_ROOMS:
             score -= 1.5
     # A door straight from the bathroom onto the balcony is worse than a longer way round.
-    if wall.region_a_id in _SINGLE_DOOR_ROOMS and wall.region_b_id in _SINGLE_DOOR_ROOMS:
+    if wall.region_a_id in SINGLE_DOOR_ROOMS and wall.region_b_id in SINGLE_DOOR_ROOMS:
         score -= 6.0
     return score
 
@@ -365,7 +365,7 @@ def prune_implausible_doors(walls: list[SharedWall]) -> list[SharedWall]:
         region_id
         for wall in walls
         for region_id in (wall.region_a_id, wall.region_b_id)
-        if region_id in _SINGLE_DOOR_ROOMS
+        if region_id in SINGLE_DOOR_ROOMS
     }
     dropped: set[int] = set()
     for region_id in sorted(limited):
@@ -387,7 +387,7 @@ def prune_implausible_doors(walls: list[SharedWall]) -> list[SharedWall]:
         best = max(
             touching,
             key=lambda index: (
-                neighbour_of(index) not in _SINGLE_DOOR_ROOMS,
+                neighbour_of(index) not in SINGLE_DOOR_ROOMS,
                 walls[index].overlap_meters,
                 -index,
             ),

@@ -33,7 +33,12 @@ from smart_home_sim.domain.behavior import (
     VariableCatalog,
     VariableCondition,
 )
-from smart_home_sim.domain.environment import Point2D, ResolvedActionBinding, SimulationBundle
+from smart_home_sim.domain.environment import (
+    ConnectionKind,
+    Point2D,
+    ResolvedActionBinding,
+    SimulationBundle,
+)
 from smart_home_sim.domain.execution import (
     ActionExecution,
     ActivityExecution,
@@ -863,6 +868,19 @@ class SimulationEngine:
         self.streams = NamedRandomStreams(bundle.seed)
         self.state = _initial_runtime(bundle)
         self.trace = TraceCollector()
+        # Flights of stairs, whose length is declared rather than drawn. `_segment_length` reads
+        # this so the engine measures a climb the way the router did.
+        #
+        # Stairways only, deliberately. A transit link also declares a distance — five hundred
+        # metres to the supermarket — but it is crossed at eight metres a second rather than
+        # walked, so its share of a movement's time is not its share of the distance. Charging it
+        # here would change every trace that leaves the house to fix a fault that never involved
+        # one, and the invariant it breaks does not care about a walk that ends early.
+        self._crossings = {
+            frozenset((item.region_a_id, item.region_b_id)): item.distance_meters
+            for item in bundle.home_model.connections
+            if item.kind is ConnectionKind.stairway and item.distance_meters is not None
+        }
         self.action_catalog = ActionCatalog.model_validate_json(
             default_action_catalog_path(
                 bundle.behavior_package.catalogs.action_catalog.version
@@ -1464,6 +1482,28 @@ class SimulationEngine:
                     f"Action node '{node.node_id}' failed its variable precondition.",
                 )
 
+    def _segment_length(self, left: Any, right: Any) -> float:
+        """How far the resident walks between two waypoints, the way the router counted it.
+
+        Measured in plain coordinates this was wrong for exactly one kind of step. A staircase
+        joins two storeys that are drawn side by side on one plane, so the gap between its ends is
+        a drawing convention: `navigation.plan_path` says so where it charges the flight its
+        declared climb instead — "must not be charged to the resident as walking". Recomputing the
+        segments here from the coordinates charged it again, eleven metres of page for a climb of
+        three, so the accumulated length ran past `path.distance_meters` and every waypoint after
+        the flight was stamped beyond the movement's own end.
+
+        The invariant check caught it and refused the whole trace: 276 movements on one authored
+        month, every one of them a walk between the two floors, and no run of that home could
+        finish. Nothing was wrong with the walk — only with measuring it twice by two rules.
+        """
+        if left.region_id == right.region_id:
+            return math.hypot(right.x - left.x, right.y - left.y)
+        crossing = self._crossings.get(frozenset((left.region_id, right.region_id)))
+        if crossing is not None:
+            return crossing
+        return math.hypot(right.x - left.x, right.y - left.y)
+
     def _movement(
         self,
         binding: ResolvedActionBinding,
@@ -1899,7 +1939,7 @@ class SimulationEngine:
         # action's start would put the first waypoint before the posture change that allowed it.
         walk_started = int(self.env.now)
         segment_lengths = [
-            ((right.x - left.x) ** 2 + (right.y - left.y) ** 2) ** 0.5
+            self._segment_length(left, right)
             for left, right in zip(path.waypoints, path.waypoints[1:], strict=False)
         ]
         accumulated = 0.0

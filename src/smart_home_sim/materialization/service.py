@@ -5,15 +5,18 @@ import json
 import math
 import shutil
 import tempfile
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from math import atan2, ceil, degrees, sqrt
+from math import atan2, ceil, degrees, hypot
 from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
+from shapely.geometry import MultiPoint, Point, Polygon
+from shapely.geometry import box as ShapelyBox
+from shapely.ops import unary_union, voronoi_diagram
 
 from smart_home_sim.behavior.service import default_action_catalog_path
 from smart_home_sim.compiler import CompilationResult, compile_scenario
@@ -113,13 +116,13 @@ def _rectangle(x: float, y: float, width: float, height: float) -> Polygon2D:
     )
 
 
-_ENTRANCE_PREFERENCE = ("hallway", "corridor", "living_room", "kitchen")
+ENTRANCE_PREFERENCE = ("hallway", "corridor", "living_room", "kitchen")
 
 
 def _entrance_region(local: list[Any], regions: list[HomeRegion]) -> str:
     """Put the front door in a circulation space when the plan has one."""
     available = {item.location_id for item in local}
-    for candidate in _ENTRANCE_PREFERENCE:
+    for candidate in ENTRANCE_PREFERENCE:
         if candidate in available:
             return candidate
     return local[0].location_id if local else regions[0].region_id
@@ -136,6 +139,13 @@ def _level_of(location: Any) -> int:
     return int(value) if isinstance(value, int | float) and int(value) >= 0 else 0
 
 
+# What `dwelling_scale` may be. Named rather than inline because the authoring prompt prints the
+# range: a bound the prompt restates by hand is a bound that drifts, and an author who reads 3.5
+# and writes it gets silently given 1.0.
+MIN_DWELLING_SCALE = 0.4
+MAX_DWELLING_SCALE = 3.0
+
+
 def _plan_scale(scenario: Any) -> float:
     """How much bigger or smaller than the reference flat this dwelling is drawn.
 
@@ -144,12 +154,12 @@ def _plan_scale(scenario: Any) -> float:
     whatever it claimed to be.
     """
     value = scenario.initial_state.environment_facts.get("dwelling_scale", 1.0)
-    if isinstance(value, int | float) and 0.4 <= float(value) <= 3.0:
+    if isinstance(value, int | float) and MIN_DWELLING_SCALE <= float(value) <= MAX_DWELLING_SCALE:
         return float(value)
     return 1.0
 
 
-_STAIR_ROOM_PREFERENCE = ("landing", "hallway", "corridor", "entrance", "living_room")
+STAIR_ROOM_PREFERENCE = ("landing", "hallway", "corridor", "entrance", "living_room")
 # The four walls a flight can run up, as the direction somebody stepping off it is facing.
 _STAIR_FACINGS: tuple[tuple[float, float], ...] = (
     (0.0, 1.0),
@@ -171,7 +181,7 @@ def _stair_region(
 ) -> str | None:
     """Which room on this storey the stairs come up in: a circulation space, or the largest room."""
     on_level = [item.location_id for item in local if levels[item.location_id] == level]
-    for candidate in _STAIR_ROOM_PREFERENCE:
+    for candidate in STAIR_ROOM_PREFERENCE:
         for region_id in on_level:
             if candidate in region_id:
                 return region_id
@@ -210,6 +220,12 @@ def _stair_pose(
         return min((_distance_to_rect((door.x, door.y), rect) for door in doors), default=99.0)
 
     options: list[tuple[float, float, floorplan.Rect, Point2D, float]] = []
+    # Every pose that stands on real floor, including the ones too close to a doorway. A small
+    # landing with three doors off it has no pose that clears them all, and the fallback below used
+    # to stop looking and stamp a flight across the middle of the room — on one generated house
+    # exactly over the bathroom door, which put twenty-two routes out of reach and failed the run.
+    # Keeping the near misses means the worst case is a tight staircase rather than a sealed room.
+    crowded: list[tuple[float, float, floorplan.Rect, Point2D, float]] = []
     for facing in _STAIR_FACINGS:
         vertical = facing[0] == 0.0
         along = room.width if vertical else room.height
@@ -245,17 +261,25 @@ def _stair_pose(
                 ):
                     continue
                 margin = min(clear_of_doors(rect), _distance_to_doors(foot, doors))
+                pose = (depth, margin, rect, foot, _bearing(facing))
                 if margin < keep_clear:
+                    crowded.append(pose)
                     continue
                 # A long flight beats a short one, and among equals the one furthest from the
                 # doorways wins: stairs belong at the quiet end of a hall.
-                options.append((depth, margin, rect, foot, _bearing(facing)))
+                options.append(pose)
     if options:
         _, _, rect, foot, bearing = max(options, key=lambda item: (item[0], item[1]))
         return rect, foot, bearing
+    if crowded:
+        # No pose clears the doorways. Length is what gets given up now, not the doors: a short
+        # flight the resident has to squeeze past still leaves every room reachable, and a long one
+        # laid over a doorway does not. Margin first, and the longest among equals.
+        _, _, rect, foot, bearing = max(crowded, key=lambda item: (item[1], item[0]))
+        return rect, foot, bearing
 
-    # Nothing fits with the doorways clear. An unreachable storey is worse than a tight staircase,
-    # so take the least bad pose instead of giving up.
+    # Not even a short flight stands on this floor. An unreachable storey is worse than a tight
+    # staircase, so take the least bad pose instead of giving up.
     fallback = min(2.0, max(room.width, room.height) / 2)
     rect = floorplan.Rect(room.center[0] - 0.45, room.y, 0.9, max(fallback, 0.8))
     return (
@@ -978,92 +1002,171 @@ def generate_home(
     return HomeGenerationResult(report=report, home=home)
 
 
-# Interaction points a single motion sensor is expected to cover. A worktop, a sink and a stove
-# standing together are one zone; the table across the room is another.
-_POINTS_PER_ZONE = 3
 _MAX_ZONES_PER_ROOM = 4
+# How wide one zone may be: a worktop, a sink and a stove standing together are one, and the table
+# across the room is another. Tightened where more happens, because the same two metres carry more
+# information in a kitchen than on a balcony.
+#
+# The widths come from CASAS Aruba's own map. It never instruments an appliance — no fridge, no
+# hob, no washing machine appears among its twenty-six detectors — but it does put one either side
+# of the bed, one at each end of the sofa and one at each end of the bookcase. The unit is the
+# place a body occupies, and two of those can be a metre and a half apart on one piece of
+# furniture, which is why the busy figure sits below that.
+_ZONE_DIAMETER_QUIET = 1.9
+_ZONE_DIAMETER_ACTIVE = 1.6
+_ZONE_DIAMETER_BUSY = 1.3
+# Activities over the whole horizon, not per day: a balcony visited for the laundry sits in the
+# tens, a bedroom in the dozens, and the kitchen and the bathroom in the hundreds.
+_ACTIVE_ROOM_ACTIVITIES = 30
+_BUSY_ROOM_ACTIVITIES = 150
+# How far past its own share of the floor a detector still sees. Neighbouring cones overlap in a
+# real home, and a partition where exactly one sensor ever fires is most of why a synthetic kitchen
+# produces a quarter of the events per hour of presence that a real one does.
+_ZONE_OVERLAP_METRES = 0.6
+# How far either side of a doorway its own detector sees. Wide enough that a crossing is caught
+# from both rooms, narrow enough that it does not become a third sensor for each of them.
+_THRESHOLD_REACH_METRES = 0.9
 # Nobody installs two motion detectors a metre apart. Counting only interaction points did exactly
 # that: a small bathroom packed with fixtures — toilet, shower, basin, machine, cabinet — hit the
 # cap of four, where CASAS Aruba covers its bathroom with one, and the room then reported 2.9 times
 # Aruba's rate per hour of occupancy. Floor the area a single zone is allowed to shrink to.
 _MINIMUM_ZONE_AREA_SQUARE_METRES = 6.0
-# Real detection cones overlap; a grid of disjoint cells means exactly one sensor ever sees the
-# resident. Measured, Aruba fires more than one sensor within two seconds 29.5% of the time
-# (1.45 distinct sensors on average) against 3.4% here (1.04) — which is most of why a synthetic
-# kitchen produces a quarter of the events per hour of presence that a real one does. Each cell is
-# grown by this fraction of its own size on every side, so neighbours share their borders.
-_ZONE_OVERLAP_FRACTION = 0.28
+
+
+def _zone_diameter(activity_count: int) -> float:
+    """How far apart two places to stand may be and still share a detector.
+
+    A busy room is worth telling apart more finely than a quiet one: the same two metres between a
+    hob and a sink matter in a kitchen that hosts ten activities a day and do not in a balcony that
+    hosts one. Three steps rather than a formula, because the evidence behind the bounds is coarse
+    and a smooth curve would imply a precision nobody measured.
+    """
+    if activity_count >= _BUSY_ROOM_ACTIVITIES:
+        return _ZONE_DIAMETER_BUSY
+    if activity_count >= _ACTIVE_ROOM_ACTIVITIES:
+        return _ZONE_DIAMETER_ACTIVE
+    return _ZONE_DIAMETER_QUIET
+
+
+def _cluster_places(
+    places: list[tuple[float, float]], diameter: float, cap: int
+) -> list[list[int]]:
+    """Group the places to stand, complete-link, then fold the nearest pairs down to the cap.
+
+    Complete-link rather than single-link: a zone is bounded by its own width, so an appliance run
+    of six units along three metres of wall becomes two zones instead of chaining into one. Single
+    link was tried and did exactly that, merging a hob, a moka, a cupboard, a chair, a fridge and a
+    sink into one zone and reporting the whole kitchen as a single place.
+    """
+    groups = [[index] for index in range(len(places))]
+
+    def spread(left: list[int], right: list[int]) -> float:
+        return max(
+            hypot(places[a][0] - places[b][0], places[a][1] - places[b][1])
+            for a in left
+            for b in right
+        )
+
+    while True:
+        nearest: tuple[float, int, int] | None = None
+        for left in range(len(groups)):
+            for right in range(left + 1, len(groups)):
+                gap = spread(groups[left], groups[right])
+                if nearest is None or gap < nearest[0]:
+                    nearest = (gap, left, right)
+        if nearest is None:
+            break
+        gap, left, right = nearest
+        # Past the cap the room cannot afford another detector, so the closest pair merges however
+        # far apart it is; below it, only pairs that fit inside one zone do.
+        if gap > diameter and len(groups) <= cap:
+            break
+        groups[left] = groups[left] + groups.pop(right)
+    return groups
 
 
 def _functional_zones(
     region: HomeRegion,
     points: list[InteractionPoint],
+    activity_count: int = 0,
 ) -> list[tuple[Point2D, Polygon2D]]:
-    """Split a room into bands across its longer axis, one motion sensor per occupied band.
+    """One motion sensor per group of places to stand, covering that group and its surroundings.
 
     One sensor per room reports every one of that room's activities as the same event, and the room
     where the resident spends her day then swallows the dataset: on one eight-month horizon the
     single kitchen sensor produced 67.3% of all observations while the balcony managed 0.3 a day.
     Adding sensors alone does not fix it — the `dense` preset gives each of them the whole room as
     coverage, so they report the same thing twice. What differentiates them is *restricted*
-    coverage, which is only meaningful once the room contains distinct places to stand: a kitchen
-    with nine interaction points has zones, a kitchen with a moka does not.
+    coverage, which is only meaningful once the room contains distinct places to stand.
 
-    A grid rather than bands across one axis. Bands were tried first and separated too little: a
-    kitchen is furnished along its walls, so the fridge and the stove fell in the same strip and one
-    sensor still carried 63% of the log. Cutting both axes puts an appliance run and the table in
-    different cells. Reproducible from the geometry alone — no seed, no iteration, no tie to break.
+    Those places are found by clustering rather than by cutting the room into equal cells. The grid
+    that did this before divided the bounding box into halves or quarters and dropped the empty
+    ones, which asks the geometry a question the furniture answers: a living room 5.3 m wide and
+    6.4 m deep, with the television at one end and the sofa at the other, was split into *columns* —
+    both pieces fell in the same one, the other stood empty, and a 33.8 m² room ended up with a
+    single detector covering 21.6 m² of it. Clustering asks instead which places are close enough
+    to be one place, so the boundaries land where the furniture puts them.
+
+    The caps do not move. `_MINIMUM_ZONE_AREA_SQUARE_METRES` is why a bathroom packed with fixtures
+    still gets one detector where CASAS Aruba has one, and lifting it is what once made that room
+    report 2.9 times Aruba's rate. This changes where the allowed detectors go, not how many a room
+    may have.
     """
     xs = [vertex.x for vertex in region.boundary.vertices]
     ys = [vertex.y for vertex in region.boundary.vertices]
     minimum_x, maximum_x = min(xs), max(xs)
     minimum_y, maximum_y = min(ys), max(ys)
 
-    # How many places there are to stand, then how many a room this size can physically hold.
+    # Two objects sharing a position are one place to stand: the room anchor and its service point
+    # always do, and counting them twice would split a zone off nothing.
+    places = sorted({(round(item.position.x, 4), round(item.position.y, 4)) for item in points})
     area = max(0.0, (maximum_x - minimum_x) * (maximum_y - minimum_y))
     affordable = max(1, int(area // _MINIMUM_ZONE_AREA_SQUARE_METRES))
-    zones = max(1, min(_MAX_ZONES_PER_ROOM, affordable, ceil(len(points) / _POINTS_PER_ZONE)))
-    columns = ceil(sqrt(zones))
-    rows = ceil(zones / columns)
-    width = (maximum_x - minimum_x) / columns
-    height = (maximum_y - minimum_y) / rows
-    # Cells stay disjoint for *assigning* points — every interaction point belongs to exactly one
-    # sensor, which is what makes the zones distinguishable — while the coverage polygon that
-    # decides detection is grown past them.
-    margin_x = width * _ZONE_OVERLAP_FRACTION
-    margin_y = height * _ZONE_OVERLAP_FRACTION
+    cap = max(1, min(_MAX_ZONES_PER_ROOM, affordable))
+    if not places:
+        return [(_center(region.boundary), region.boundary)]
 
+    centres = [
+        (
+            round(sum(places[index][0] for index in group) / len(group), 4),
+            round(sum(places[index][1] for index in group) / len(group), 4),
+        )
+        for group in _cluster_places(places, _zone_diameter(activity_count), cap)
+    ]
+    centres.sort(key=lambda item: (item[1], item[0]))
+    if len(centres) == 1:
+        return [(Point2D(x=centres[0][0], y=centres[0][1]), region.boundary)]
+
+    # The detectors share the room out between them rather than each taking a box around its own
+    # furniture. Boxes were tried first and left 60% of a living room unwatched, which is worse than
+    # the single sensor it replaced: a body crossing an unwatched floor emits nothing at all. Each
+    # zone therefore takes the floor nearest to it and then grows past that boundary, so the room is
+    # covered once and its neighbours overlap — measured, Aruba fires more than one sensor within
+    # two seconds 29.5% of the time against 3.4% here.
+    room = Polygon([(vertex.x, vertex.y) for vertex in region.boundary.vertices])
+    cells = voronoi_diagram(MultiPoint(centres), envelope=room)
     placed: list[tuple[Point2D, Polygon2D]] = []
-    for row in range(rows):
-        for column in range(columns):
-            left = minimum_x + column * width
-            bottom = minimum_y + row * height
-            members = [
-                point
-                for point in points
-                # The far edge belongs to the last cell, so every point lands in exactly one.
-                if left <= point.position.x <= left + width
-                and bottom <= point.position.y <= bottom + height
-                and (column == 0 or point.position.x > left)
-                and (row == 0 or point.position.y > bottom)
-            ]
-            if not members:
-                continue
-            placed.append(
-                (
-                    Point2D(
-                        x=round(sum(item.position.x for item in members) / len(members), 4),
-                        y=round(sum(item.position.y for item in members) / len(members), 4),
-                    ),
-                    _rectangle(
-                        max(minimum_x, left - margin_x),
-                        max(minimum_y, bottom - margin_y),
-                        min(maximum_x, left + width + margin_x) - max(minimum_x, left - margin_x),
-                        min(maximum_y, bottom + height + margin_y)
-                        - max(minimum_y, bottom - margin_y),
-                    ),
-                )
+    for centre in centres:
+        owner = next(
+            (cell for cell in cells.geoms if cell.covers(Point(centre))),
+            None,
+        )
+        shape = room if owner is None else owner.intersection(room)
+        grown = shape.buffer(_ZONE_OVERLAP_METRES, join_style=2).intersection(room)
+        winner = (
+            max(grown.geoms, key=lambda item: item.area) if grown.geom_type != "Polygon" else grown
+        )
+        placed.append(
+            (
+                Point2D(x=centre[0], y=centre[1]),
+                Polygon2D(
+                    vertices=[
+                        Point2D(x=round(x, 4), y=round(y, 4))
+                        for x, y in list(winner.exterior.coords)[:-1]
+                    ]
+                ),
             )
+        )
     return placed or [(_center(region.boundary), region.boundary)]
 
 
@@ -1135,6 +1238,79 @@ def _failure_windows(
     return [SensorFailureWindow(starts_at=opens, ends_at=closes) for opens, closes in merged]
 
 
+def _threshold_sensors(
+    home: HomeModel,
+    rooms: set[str],
+    *,
+    hold_milliseconds: float,
+    hold_log_sigma: float,
+    timing: Any,
+    error_model: SensorErrorModel,
+) -> list[PirSensor]:
+    """One detector per doorway, watching the crossing rather than either room.
+
+    Nine of Aruba's twenty-six motion sensors — 35% of the field — sit on passages and doors:
+    `front_door`, `back_door`, `garage_door` and six more watching the way between one room and the
+    next. A field with none of them, as this one had, records where the resident settles and leaves
+    the moving between almost unwitnessed, which is the half a habit-segmentation algorithm keys
+    on: a band of the day is recognised as much by the transitions that open and close it as by
+    what fills it.
+
+    The sensor belongs to *both* rooms, which the contract allows and which is what a doorway
+    detector actually is. Its coverage straddles the threshold and overlaps the zones on either
+    side, so a crossing fires it and its neighbour together — the way two real cones do.
+    """
+    shapes = {
+        region.region_id: Polygon([(vertex.x, vertex.y) for vertex in region.boundary.vertices])
+        for region in home.regions
+    }
+    placed: list[PirSensor] = []
+    for connection in sorted(home.connections, key=lambda item: item.connection_id):
+        # Doorways only. A staircase joins two storeys drawn side by side in one plane, so the gap
+        # between its ends is a drawing convention and not a place a body passes through.
+        if connection.kind is not ConnectionKind.doorway:
+            continue
+        left, right = connection.region_a_id, connection.region_b_id
+        if left not in rooms or right not in rooms:
+            continue
+        if left not in shapes or right not in shapes:
+            continue
+        centre = (
+            (connection.portal_a.x + connection.portal_b.x) / 2,
+            (connection.portal_a.y + connection.portal_b.y) / 2,
+        )
+        both = unary_union([shapes[left], shapes[right]])
+        reach = _THRESHOLD_REACH_METRES
+        area = ShapelyBox(
+            centre[0] - reach, centre[1] - reach, centre[0] + reach, centre[1] + reach
+        ).intersection(both)
+        if area.is_empty or area.area <= 0:
+            continue
+        shape = max(area.geoms, key=lambda item: item.area) if area.geom_type != "Polygon" else area
+        # The position has to lie inside the coverage, and a doorway's own midpoint sits on the
+        # wall between two rooms, which belongs to neither interior.
+        seat = shape.representative_point()
+        sensor_id = f"pir_{connection.connection_id}"
+        placed.append(
+            PirSensor(
+                sensor_id=sensor_id,
+                position=Point2D(x=round(seat.x, 4), y=round(seat.y, 4)),
+                region_ids=sorted((left, right)),
+                coverage=Polygon2D(
+                    vertices=[
+                        Point2D(x=round(x, 4), y=round(y, 4))
+                        for x, y in list(shape.exterior.coords)[:-1]
+                    ]
+                ),
+                hold_milliseconds=hold_milliseconds,
+                hold_log_sigma=hold_log_sigma,
+                timing=timing(sensor_id),
+                error_model=error_model,
+            )
+        )
+    return placed
+
+
 def deploy_sensors(
     bundle: SimulationBundle,
     policy: SensorDeploymentPolicy | None = None,
@@ -1169,9 +1345,23 @@ def deploy_sensors(
     for point in home.interaction_points:
         points_by_region[point.region_id].append(point)
 
+    # How much happens in each room over the whole horizon. The furniture says where the places to
+    # stand are; this says how much it is worth telling them apart, and the two together are what a
+    # researcher would weigh when deciding where to put a detector.
+    activities_by_region: Counter[str] = Counter()
+    for day in bundle.scenario.days:
+        for activity in day.activities:
+            for location in activity.location_ids[:1]:
+                for region_id in _expanded_regions(bundle.scenario, location):
+                    activities_by_region[region_id] += 1
+
     for region in selected:
         if policy.preset == "functional_zones":
-            zones = _functional_zones(region, points_by_region.get(region.region_id, []))
+            zones = _functional_zones(
+                region,
+                points_by_region.get(region.region_id, []),
+                activities_by_region.get(region.region_id, 0),
+            )
             for number, (position, coverage) in enumerate(zones, start=1):
                 sensor_id = (
                     f"pir_{region.region_id}_{number}"
@@ -1220,6 +1410,19 @@ def deploy_sensors(
                     error_model=pir_error,
                 )
             )
+    if policy.preset == "functional_zones":
+        sensors.extend(
+            _threshold_sensors(
+                home,
+                {item.region_id for item in selected},
+                hold_milliseconds=policy.pir_hold_milliseconds,
+                hold_log_sigma=policy.pir_hold_log_sigma,
+                timing=lambda sensor_id: sensor_timing(
+                    sensor_id, cooldown_milliseconds=policy.pir_cooldown_milliseconds
+                ),
+                error_model=pir_error,
+            )
+        )
     entities = {item.entity_id: item for item in home.entities}
     # Instrumented because they have a door, not because the script happens to open them.
     #

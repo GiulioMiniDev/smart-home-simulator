@@ -7,17 +7,33 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
+from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.ops import unary_union
 from typer.testing import CliRunner
 
+from smart_home_sim.behavior.service import (
+    default_action_catalog_path,
+    default_variable_catalog_path,
+)
 from smart_home_sim.cli import app
 from smart_home_sim.compiler import CompilationResult, compile_scenario
 from smart_home_sim.compiler.service import canonical_sha256
-from smart_home_sim.domain.behavior import PersonalProcessPackage
+from smart_home_sim.domain.behavior import (
+    ActionCatalog,
+    PersonalProcessPackage,
+    ProcessEdge,
+    ValueExpression,
+    ValueSource,
+    VariableCatalog,
+)
 from smart_home_sim.domain.environment import (
     ConnectionKind,
     HomeModel,
+    HomeRegion,
+    InteractionPoint,
     Point2D,
     Polygon2D,
+    RegionKind,
     SimulationBundle,
 )
 from smart_home_sim.domain.execution import ExecutionTrace
@@ -45,11 +61,14 @@ from smart_home_sim.environment.navigation import plan_path
 from smart_home_sim.materialization import (
     bind_sensor_model,
     deploy_sensors,
+    floorplan,
     generate_home,
     materialize_environment,
     materialize_workspace,
 )
 from smart_home_sim.materialization.service import (
+    _functional_zones,
+    _stair_pose,
     load_home_policy,
     load_sensor_policy,
     load_source_models,
@@ -1039,6 +1058,196 @@ def _two_storey_scenario() -> tuple[Scenario, PersonalProcessPackage]:
         ),
         package,
     )
+
+
+def _zone_points(positions: list[tuple[float, float]]) -> list[InteractionPoint]:
+    return [
+        InteractionPoint(
+            interaction_point_id=f"point_{index}",
+            region_id="living_room",
+            position=Point2D(x=x, y=y),
+            approach_radius_meters=0.35,
+        )
+        for index, (x, y) in enumerate(positions)
+    ]
+
+
+def test_zones_follow_the_furniture_and_still_cover_the_whole_room() -> None:
+    """A room split the way its objects are spread, not the way its bounding box divides.
+
+    The grid this replaces cut a room into columns or quarters and dropped the empty cells. A
+    living room 5.3 m wide and 6.4 m deep with the television at one end and the sofa at the other
+    was cut into *columns*: both pieces landed in the same one, the other stood empty, and 33.8 m²
+    ended up watched by a single detector covering 21.6 m² of it.
+
+    Coverage is asserted as well, because the first attempt at the fix gave each zone a box around
+    its own furniture and left 60% of that living room unwatched — worse than the one sensor it
+    replaced, since a body crossing an unwatched floor emits nothing at all.
+    """
+    region = HomeRegion(
+        region_id="living_room",
+        kind=RegionKind.room,
+        boundary=Polygon2D(
+            vertices=[
+                Point2D(x=0.0, y=0.0),
+                Point2D(x=5.28, y=0.0),
+                Point2D(x=5.28, y=6.4),
+                Point2D(x=0.0, y=6.4),
+            ]
+        ),
+    )
+    television, sofa, middle = (1.36, 0.72), (1.4, 5.18), (2.64, 2.95)
+
+    zones = _functional_zones(region, _zone_points([television, sofa, middle]), 193)
+
+    assert len(zones) == 3, "the television and the sofa are 4.5 m apart and are not one place"
+    for place in (television, sofa, middle):
+        nearest = min(
+            zones, key=lambda item: (item[0].x - place[0]) ** 2 + (item[0].y - place[1]) ** 2
+        )
+        assert (nearest[0].x, nearest[0].y) == pytest.approx(place, abs=0.01)
+
+    room = ShapelyPolygon([(v.x, v.y) for v in region.boundary.vertices])
+    covered = unary_union(
+        [ShapelyPolygon([(v.x, v.y) for v in coverage.vertices]) for _, coverage in zones]
+    ).intersection(room)
+    assert covered.area == pytest.approx(room.area, rel=1e-6)
+    # And they overlap, rather than partitioning the room between them: a real detection cone is
+    # not a tile, and a field where exactly one sensor ever fires is most of the gap against Aruba.
+    assert (
+        sum(
+            ShapelyPolygon([(v.x, v.y) for v in coverage.vertices]).intersection(room).area
+            for _, coverage in zones
+        )
+        > room.area
+    )
+
+
+def test_a_quiet_room_is_told_apart_less_finely_than_a_busy_one() -> None:
+    """The same two objects, the same room: how much happens there decides whether they differ."""
+    region = HomeRegion(
+        region_id="living_room",
+        kind=RegionKind.room,
+        boundary=Polygon2D(
+            vertices=[
+                Point2D(x=0.0, y=0.0),
+                Point2D(x=5.0, y=0.0),
+                Point2D(x=5.0, y=6.0),
+                Point2D(x=0.0, y=6.0),
+            ]
+        ),
+    )
+    # 1.7 m apart, which is about the two sides of a bed: inside a quiet room's zone, outside a
+    # busy one's. CASAS Aruba puts a detector on each side of its own bed.
+    points = _zone_points([(2.0, 2.0), (2.0, 3.7)])
+
+    assert len(_functional_zones(region, points, 4)) == 1
+    assert len(_functional_zones(region, points, 300)) == 2
+
+
+def test_a_landing_too_small_for_a_clear_flight_still_keeps_its_doorways_open() -> None:
+    """When no pose clears the doors, give up length rather than a doorway.
+
+    A 3.5 x 2.6 landing with three rooms off it — balcony, bathroom, bedroom — has no pose that
+    keeps a full flight clear of all three. The fallback used to stop searching and stamp a fixed
+    flight across the middle of the room, which on a generated house landed exactly on the bathroom
+    door: its landing-side portal fell inside the staircase, and twenty-two routes became
+    unexecutable in a home that had materialised without a single complaint.
+    """
+    policy = load_home_policy(None)
+    landing = floorplan.Rect(19.5, 3.17, 3.49, 2.61)
+    doors = [
+        Point2D(x=21.24, y=5.38),  # balcony, along the top wall
+        Point2D(x=21.24, y=3.57),  # bathroom, where the old fallback put the flight
+        Point2D(x=19.9, y=4.15),  # bedroom, on the left
+    ]
+
+    rect, foot, _ = _stair_pose(landing, doors, policy)
+
+    for door in doors:
+        inside = rect.x <= door.x <= rect.max_x and rect.y <= door.y <= rect.max_y
+        assert not inside, f"the flight covers the doorway at ({door.x}, {door.y})"
+    # And the foot is floor a body can stand on, inside the room rather than against its wall.
+    assert landing.x < foot.x < landing.max_x
+    assert landing.y < foot.y < landing.max_y
+
+
+def test_walking_to_an_object_that_cannot_answer_leaves_the_furniture_that_can() -> None:
+    """Standing at the bookshelf must not send the reading to the anchor in the middle of the room.
+
+    An action naming no role binds on capability, and the binder prefers whatever the resident was
+    last walked to — sensible for a toilet, wrong here. The per-region service anchor answers to
+    every role there is, and the one part `assigned_semantic_roles` leaves it is the *ids* of the
+    real furniture, so a process that inspected `bookshelf` by id and then asked for somewhere to
+    sit matched the anchor. Measured on an authored one-month horizon: forty-five reading blocks
+    performed standing in the middle of a living room that contains a sofa.
+
+    The argument-hint path a few lines above already refuses an anchor-only match for exactly this
+    reason. This is the same refusal on the other path.
+    """
+    scenario, package = source_models()
+    resources = [
+        *scenario.resources,
+        Resource(resource_id="bookshelf", resource_type="bookshelf", location_id="living_room"),
+    ]
+    facts = dict(scenario.initial_state.resource_facts)
+    facts.setdefault("bookshelf", {"available": True})
+    scenario = scenario.model_copy(
+        update={
+            "resources": resources,
+            "initial_state": scenario.initial_state.model_copy(update={"resource_facts": facts}),
+        }
+    )
+
+    # Walk her to the bookshelf, by id, immediately before she settles down to read.
+    model = next(
+        item for item in package.process_models if item.process_model_id.endswith("rest_and_read")
+    )
+    leisure_node = next(item for item in model.nodes if item.action_type == "leisure")
+    inspect_node = leisure_node.model_copy(
+        update={
+            "node_id": "inspect_the_shelf",
+            "action_type": "inspect",
+            "arguments": {
+                "targetRole": ValueExpression(source=ValueSource.literal, value="bookshelf")
+            },
+        }
+    )
+    incoming = next(item for item in model.edges if item.target_node_id == leisure_node.node_id)
+    edges = [item for item in model.edges if item is not incoming] + [
+        incoming.model_copy(update={"target_node_id": inspect_node.node_id}),
+        ProcessEdge(source_node_id=inspect_node.node_id, target_node_id=leisure_node.node_id),
+    ]
+    patched = model.model_copy(update={"nodes": [*model.nodes, inspect_node], "edges": edges})
+    package = package.model_copy(
+        update={
+            "process_models": [
+                patched if item.process_model_id == model.process_model_id else item
+                for item in package.process_models
+            ]
+        }
+    )
+
+    home = generate_home(scenario, package).home
+    assert home is not None
+    actions = ActionCatalog.model_validate_json(
+        default_action_catalog_path(package.catalogs.action_catalog.version).read_text()
+    )
+    variables = VariableCatalog.model_validate_json(default_variable_catalog_path().read_text())
+    bindings, _ = environment_service._build_action_bindings(
+        home, scenario, package, actions, variables
+    )
+
+    chosen = {
+        item.provider_id
+        for binding in bindings
+        if binding.node_id == leisure_node.node_id
+        and binding.process_model_id == model.process_model_id
+        for item in binding.capability_bindings
+        if item.capability == "leisure_support"
+    }
+    assert chosen, "the reading never bound to anything at all"
+    assert chosen == {"sofa"}, chosen
 
 
 def test_a_house_with_two_storeys_is_one_valid_plan_joined_by_a_staircase() -> None:

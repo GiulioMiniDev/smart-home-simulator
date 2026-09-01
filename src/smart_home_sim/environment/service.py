@@ -811,7 +811,17 @@ def _build_action_bindings(
                             preferred_regions=preferred_regions,
                             action_type=node.action_type,
                         )
-                        if at_hand:
+                        # Real furniture only, for the same reason the argument hint above says so:
+                        # the service anchor answers to every role there is, including the *ids* of
+                        # the furniture around it, which are the one part `assigned_semantic_roles`
+                        # does not take away from it. A process that walked the resident to her
+                        # bookshelf by id and then asked for somewhere to sit therefore found the
+                        # anchor rather than the sofa two metres away, and she read a month of
+                        # evenings standing in the middle of the room.
+                        if any(
+                            entity.entity_type != "generated_environment_service"
+                            for entity, _ in at_hand
+                        ):
                             candidates = at_hand
                     if not candidates:
                         failed = True
