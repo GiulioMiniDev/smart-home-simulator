@@ -12,11 +12,16 @@
     },
     "HabitComposition": {
       "additionalProperties": false,
-      "description": "How much of one habit band a single activity accounts for, measured over the horizon.",
+      "description": "How much of one habit band a single activity in one room accounts for, over the horizon.\n\nMeasured per room as well as per intent since a habit may name the room it happens in. Two\nhabits performing the same activity in different places are one label and two behaviours \u2014\nreading in the study and reading on the sofa \u2014 and keyed by intent alone they arrived here as a\nsingle row, so the distinction an author had just taken the trouble to declare was averaged\naway before any evaluation could see it. Rows stay one per (intent, room): a consumer that\nonly wants the intent sums them.",
       "properties": {
         "intent": {
           "minLength": 1,
           "title": "Intent",
+          "type": "string"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
           "type": "string"
         },
         "minutes": {
@@ -33,6 +38,7 @@
       },
       "required": [
         "intent",
+        "location",
         "minutes",
         "share"
       ],
@@ -162,6 +168,18 @@
           ],
           "default": null,
           "title": "Dominantintent"
+        },
+        "dominantLocation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dominantlocation"
         },
         "effectiveStart": {
           "anyOf": [
@@ -323,14 +341,14 @@
       "type": "string"
     }
   },
-  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.1.0",
+  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.2.0",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer: the bands the outline\ndeclared, and the activity mix the generated horizon actually produced in each. It is derived\nfrom the plan, not from an execution, so it is the *planned* truth \u2014 deviations introduced by\nthe simulator belong to the execution trace.\n\n1.1.0 adds three things a segmentation experiment could not otherwise get without re-deriving\nthem from the activity log: the days each band applies to, where the band's dominant activity\nactually runs as opposed to where the window allows it, and the same measurement split by\nclass of day.",
+  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer: the bands the outline\ndeclared, and the activity mix the generated horizon actually produced in each. It is derived\nfrom the plan, not from an execution, so it is the *planned* truth \u2014 deviations introduced by\nthe simulator belong to the execution trace.\n\n1.1.0 adds three things a segmentation experiment could not otherwise get without re-deriving\nthem from the activity log: the days each band applies to, where the band's dominant activity\nactually runs as opposed to where the window allows it, and the same measurement split by\nclass of day.\n\n1.2.0 adds the room. A recurring activity may now declare the room it happens in, so the same\nintent can be two behaviours in two places, and a composition keyed by intent alone reported\nthem as one row \u2014 averaging away exactly the distinction the author had declared. Composition\nis per (intent, room) and the band names the room its dominant activity holds it in.",
   "properties": {
     "schemaVersion": {
-      "const": "1.1.0",
-      "default": "1.1.0",
+      "const": "1.2.0",
+      "default": "1.2.0",
       "title": "Schemaversion",
       "type": "string"
     },
@@ -389,6 +407,6 @@
     "seed",
     "provenance"
   ],
-  "title": "Smart Home Habit Ground Truth 1.1.0",
+  "title": "Smart Home Habit Ground Truth 1.2.0",
   "type": "object"
 }

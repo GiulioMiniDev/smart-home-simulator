@@ -561,9 +561,18 @@ class HorizonAuthoringBundle(ContractModel):
 
 
 class HabitComposition(ContractModel):
-    """How much of one habit band a single activity accounts for, measured over the horizon."""
+    """How much of one habit band a single activity in one room accounts for, over the horizon.
+
+    Measured per room as well as per intent since a habit may name the room it happens in. Two
+    habits performing the same activity in different places are one label and two behaviours —
+    reading in the study and reading on the sofa — and keyed by intent alone they arrived here as a
+    single row, so the distinction an author had just taken the trouble to declare was averaged
+    away before any evaluation could see it. Rows stay one per (intent, room): a consumer that
+    only wants the intent sums them.
+    """
 
     intent: str = Field(min_length=1)
+    location: str = Field(min_length=1)
     minutes: float = Field(ge=0)
     share: float = Field(ge=0, le=1)
 
@@ -616,6 +625,11 @@ class HabitObservation(ContractModel):
     # The activity holding the largest share of the band, and the stretch of the band it occupies
     # on at least `EFFECTIVE_DAY_SHARE` of the applicable days.
     dominant_intent: str | None = None
+    # And the room it holds the band in. Named separately from the intent because it is the answer
+    # to a different question — "where is the resident when this band is what she is doing" — which
+    # a segmentation experiment can use as a feature or ignore, and which is not recoverable from
+    # `dominant_intent` once a habit is allowed to declare its own room.
+    dominant_location: str | None = None
     effective_start: str | None = None
     effective_end: str | None = None
     effective_minutes: float = Field(default=0.0, ge=0)
@@ -638,18 +652,23 @@ class HabitGroundTruth(ContractModel):
     them from the activity log: the days each band applies to, where the band's dominant activity
     actually runs as opposed to where the window allows it, and the same measurement split by
     class of day.
+
+    1.2.0 adds the room. A recurring activity may now declare the room it happens in, so the same
+    intent can be two behaviours in two places, and a composition keyed by intent alone reported
+    them as one row — averaging away exactly the distinction the author had declared. Composition
+    is per (intent, room) and the band names the room its dominant activity holds it in.
     """
 
     model_config = ConfigDict(
         **ContractModel.model_config,
         json_schema_extra={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.1.0",
-            "title": "Smart Home Habit Ground Truth 1.1.0",
+            "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.2.0",
+            "title": "Smart Home Habit Ground Truth 1.2.0",
         },
     )
 
-    schema_version: Literal["1.1.0"] = "1.1.0"
+    schema_version: Literal["1.2.0"] = "1.2.0"
     document_type: Literal["habit_ground_truth"] = "habit_ground_truth"
     outline_id: str = Field(min_length=1)
     resident_id: str = Field(min_length=1)

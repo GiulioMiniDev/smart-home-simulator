@@ -13,9 +13,10 @@ from __future__ import annotations
 import hashlib
 import math
 import random
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from types import MappingProxyType
 from zoneinfo import ZoneInfo
 
 from smart_home_sim.domain.models import (
@@ -248,6 +249,8 @@ class TimelineEntry:
     # either way; the engine reads these against live state and drops the ones the day did not turn
     # out to need.
     preconditions: tuple[Condition, ...] = ()
+    # The room this occurrence happens in, when the outline said one. `None` means the catalog's.
+    location: str | None = None
 
 
 def plan_from_entries(
@@ -281,6 +284,7 @@ def plan_from_entries(
             duration_shape=entry.duration_shape,
             preconditions=entry.preconditions,
             seed=seed,
+            location=entry.location,
         )
         for index, entry in enumerate(entries)
     ]
@@ -296,6 +300,7 @@ def build_day_plan(
     previous_rhythm: DayRhythm | None = None,
     seed: int | None = None,
     busy_minutes: Sequence[tuple[int, int]] = (),
+    activity_locations: Mapping[str, str] = MappingProxyType({}),
 ) -> DayPlan:
     """Deterministic DayPlan: wake, the due recurring activities mapped to intents, then a terminal
     sleep.
@@ -309,6 +314,10 @@ def build_day_plan(
     placed events — as (start, end) minutes after midnight. They are not part of this plan; the
     expander appends them afterwards. But the drive layer has to see them, or it fills an afternoon
     the resident spends at work.
+
+    ``activity_locations`` maps a recurring activity to the room the outline said it happens in,
+    where that is not the room the catalog gives its intent. Only the outline knows this: the
+    catalog holds one room per intent, and a habit is free to differ from it.
     """
     entries: list[TimelineEntry] = []
     wake_time = WAKE_TIME
@@ -355,6 +364,7 @@ def build_day_plan(
                 occurrence.intent or label_to_intent(occurrence.label, occurrence.kind.value),
                 _shift(occurrence.target_time, rhythm, morning, wake_time, sleep_time),
                 recurring_activity_id=occurrence.recurring_activity_id,
+                location=activity_locations.get(occurrence.recurring_activity_id),
             )
         )
     entries.sort(key=lambda item: item.hhmm)
@@ -423,9 +433,7 @@ def _toilet_candidates(
     step = (closes - opens) / _TOILET_CANDIDATES_PER_DAY
     precondition = (Condition(fact="bladder_is_full", operator=ConditionOperator.truthy),)
     declared = [
-        _to_minutes(entry.hhmm)
-        for entry in entries
-        if entry.intent_id in _TOILET_RELIEVING_INTENTS
+        _to_minutes(entry.hhmm) for entry in entries if entry.intent_id in _TOILET_RELIEVING_INTENTS
     ]
     candidates: list[TimelineEntry] = []
     for index in range(_TOILET_CANDIDATES_PER_DAY):
@@ -607,6 +615,7 @@ def _activity(
     duration_shape: tuple[int, int, int, float] | None = None,
     preconditions: tuple[Condition, ...] = (),
     seed: int | None = None,
+    location: str | None = None,
 ) -> Activity:
     spec = intent_spec(intent_id)
     moment = _at(day_date, hhmm, tz)
@@ -639,7 +648,11 @@ def _activity(
     # An intent that ends somewhere else declares both rooms, in the order its process model reads
     # them: `activity_location[0]` is where the activity happens, `[1]` where it leaves the
     # resident. Only the nocturnal toilet visit uses this, and it is why it can put her back to bed.
-    location_ids = [spec.default_location]
+    #
+    # `location` is the outline overriding the first of those: the room this *habit* uses, where
+    # the catalog only knows the room the intent usually uses. The return room is not overridden —
+    # it says where the body ends up, which is a property of the intent and not of the habit.
+    location_ids = [location or spec.default_location]
     if spec.return_location is not None:
         location_ids.append(spec.return_location)
     return Activity(

@@ -172,6 +172,20 @@ class RecurringActivity(ContractModel):
     # School" matched nothing and fell back to `read_and_rest`, quietly disagreeing with the
     # process model the same document declared for it.
     intent: str | None = None
+    # Which room this particular habit happens in, when it is not the one the activity catalog
+    # gives the intent.
+    #
+    # It belongs here rather than on the intent because the intent is the *label* — what a
+    # recogniser must output — and two habits can perform the same activity in different places:
+    # television on the sofa in the afternoon and television at the kitchen table over dinner are
+    # one activity and two habits. Moving the room onto the intent would have split the label
+    # space instead, which changes what the dataset claims happened.
+    #
+    # Left unset, the catalog's room stands, so every outline written before this field means what
+    # it meant. Set, the room must be one the world declares and must hold furniture answering what
+    # the intent's process model needs — `_check_activity_locations` refuses the rest, because a
+    # room that cannot answer binds to the per-region anchor and deletes the evidence silently.
+    location: str | None = None
     note: str = ""
 
 

@@ -130,6 +130,7 @@
         },
         "miningDifficulty": "easy",
         "intent": "evening_walk",
+        "location": null,
         "note": "Runs before work; the catalog has no running intent, the action kind carries it."
       },
       {
@@ -147,6 +148,7 @@
         },
         "miningDifficulty": "easy",
         "intent": "eat_breakfast",
+        "location": null,
         "note": ""
       },
       {
@@ -164,6 +166,7 @@
         },
         "miningDifficulty": "easy",
         "intent": "eat_dinner",
+        "location": null,
         "note": ""
       },
       {
@@ -184,6 +187,7 @@
         },
         "miningDifficulty": "medium",
         "intent": "buy_groceries",
+        "location": null,
         "note": ""
       },
       {
@@ -201,6 +205,7 @@
         },
         "miningDifficulty": "medium",
         "intent": "start_laundry",
+        "location": null,
         "note": ""
       },
       {
@@ -218,6 +223,7 @@
         },
         "miningDifficulty": "hard",
         "intent": "watch_television",
+        "location": null,
         "note": "Skipped on late or social evenings; the softest signal in the profile."
       },
       {
@@ -237,6 +243,7 @@
         },
         "miningDifficulty": "medium",
         "intent": "evening_walk",
+        "location": null,
         "note": ""
       },
       {
@@ -254,6 +261,7 @@
         },
         "miningDifficulty": "hard",
         "intent": "phone_call",
+        "location": null,
         "note": ""
       }
     ],

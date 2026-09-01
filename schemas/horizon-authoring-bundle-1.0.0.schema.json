@@ -1286,6 +1286,18 @@
           "default": null,
           "title": "Intent"
         },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
         "note": {
           "default": "",
           "title": "Note",

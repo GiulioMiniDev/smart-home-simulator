@@ -574,6 +574,99 @@ def test_a_world_missing_a_catalog_room_fails_once_and_clearly(
         expand_outline(outline, package, seed=1)
 
 
+def _world_with_study(furniture: str | None) -> OutlineWorld:
+    """The catalog rooms plus a study, furnished with one piece or left empty."""
+    world = _world()
+    resources = list(world.resources)
+    if furniture is not None:
+        resources.append(
+            Resource(resource_id="study_piece", resource_type=furniture, location_id="study")
+        )
+    return world.model_copy(
+        update={
+            "locations": [
+                *world.locations,
+                Location(location_id="study", kind=LocationKind.room),
+            ],
+            "resources": resources,
+        }
+    )
+
+
+def _override(profile: BehavioralProfile, activity_id: str, room: str) -> BehavioralProfile:
+    return profile.model_copy(
+        update={
+            "recurring_activities": [
+                item.model_copy(update={"location": room})
+                if item.recurring_activity_id == activity_id
+                else item
+                for item in profile.recurring_activities
+            ]
+        }
+    )
+
+
+def test_a_habit_can_declare_the_room_it_happens_in(package: PersonalProcessPackage) -> None:
+    """The catalog holds one room per intent; a habit is allowed to differ from it.
+
+    Reading in a study and watching television on the sofa are the same activity performed in two
+    places, which the label space cannot express and should not have to: `watch_television` stays
+    one intent, and the room moves with the habit. The rooms of the habits that said nothing are
+    untouched, so an outline written before this field means exactly what it meant.
+    """
+    outline = _outline(
+        world=_world_with_study("sofa"),
+        profile=_override(_profile(), "watch_television", "study"),
+    )
+
+    result = expand_outline(outline, package, seed=1)
+
+    declared: dict[str, set[str]] = {}
+    undeclared: dict[str, set[str]] = {}
+    for day in result.bundle.scenario.days:
+        for activity in day.activities:
+            # An occurrence of a declared habit carries its id; everything else on the day — the
+            # rhythm's wake and night, the filler layer's offers — carries no `activity:` label.
+            habit = next((item for item in activity.labels if item.startswith("activity:")), None)
+            target = declared if habit is not None else undeclared
+            target.setdefault(activity.intent, set()).add(activity.location_ids[0])
+    assert declared["watch_television"] == {"study"}
+    # Everything else stays where the catalog puts it, the sleeping the rhythm adds included.
+    assert declared["eat_breakfast"] == {"kitchen"}
+    assert undeclared["sleep"] == {"bedroom"}
+    # The filler layer offers the same intent as behaviour nobody declared, and that is not this
+    # habit: it keeps the catalog's room, which is what makes the override a property of the habit.
+    assert undeclared["watch_television"] == {"living_room"}
+
+
+def test_a_habit_sent_to_a_room_that_is_not_there_is_refused(
+    package: PersonalProcessPackage,
+) -> None:
+    outline = _outline(profile=_override(_profile(), "watch_television", "library"))
+
+    with pytest.raises(ExpansionError, match="does not declare as a room"):
+        expand_outline(outline, package, seed=1)
+
+
+def test_a_habit_sent_to_a_room_that_cannot_perform_it_is_refused(
+    package: PersonalProcessPackage,
+) -> None:
+    """A study with only a bookshelf in it cannot hold a meal, and saying so is the whole point.
+
+    Unrefused, the binder falls back to the room's service anchor — no footprint, no contact
+    sensor, no position — and the activity runs in the middle of an empty room, producing a month
+    of behaviour the sensor log does not record. The failure has to happen here, where an author
+    can still fix it, rather than as an absence nobody can see.
+    """
+    outline = _outline(
+        world=_world_with_study("bookshelf"),
+        profile=_override(_profile(), "watch_television", "study"),
+    )
+
+    with pytest.raises(ExpansionError, match="holds nothing offering consumable"):
+        expand_outline(outline, package, seed=1)
+
+
 def test_the_horizon_covers_every_day_exactly_once(package: PersonalProcessPackage) -> None:
     outline = _outline()
 
@@ -954,10 +1047,12 @@ def test_a_debt_nap_is_not_dropped_inside_a_shift(package: PersonalProcessPackag
 # What the habit ground truth measures
 
 
-def _planned_day(day: date, *entries: tuple[str, str, int]) -> DayPlan:
-    """A day built by hand from `(intent, HH:MM, minutes)`, so the arithmetic is checkable."""
+def _planned_day(day: date, *entries: tuple[str, str, int] | tuple[str, str, int, str]) -> DayPlan:
+    """A day built by hand from `(intent, HH:MM, minutes[, room])`, so the sums are checkable."""
     activities = []
-    for index, (intent, start, minutes) in enumerate(entries):
+    for index, entry in enumerate(entries):
+        intent, start, minutes = entry[0], entry[1], entry[2]
+        room = entry[3] if len(entry) == 4 else "bedroom"
         hour, minute = (int(part) for part in start.split(":"))
         begin = datetime.combine(day, time(hour, minute), tzinfo=UTC)
         activities.append(
@@ -965,7 +1060,7 @@ def _planned_day(day: date, *entries: tuple[str, str, int]) -> DayPlan:
                 activity_id=f"{day.isoformat()}_{index}",
                 actor_id="resident",
                 intent=intent,
-                location_ids=["bedroom"],
+                location_ids=[room],
                 start_window=DateTimeWindow(earliest=begin, preferred=begin, latest=begin),
                 duration=DurationRange(
                     minimum_minutes=minutes,
@@ -1015,6 +1110,33 @@ def test_a_weekday_scoped_band_is_measured_only_on_its_own_days() -> None:
     assert [item.intent for item in observation.composition] == ["perform_work"]
     assert observation.composition[0].share == 1.0
     assert observation.day_types == []
+
+
+def test_one_activity_in_two_rooms_is_two_rows_and_the_band_names_the_larger() -> None:
+    """The measurement a habit's own room would otherwise be averaged out of.
+
+    Reading in the study and reading on the sofa are one intent and two behaviours, which is the
+    whole reason a recurring activity may name its room. Keyed by intent alone the band reported
+    one row at 100% and an evaluation could not tell that half of it happened somewhere else.
+    """
+    band = HabitSegment(
+        habit_id="daytime", label="Daytime", window_start="09:00", window_end="17:00"
+    )
+    truth = _fortnight(
+        band,
+        [("read_and_rest", "09:00", 300, "study"), ("read_and_rest", "14:00", 180, "living_room")],
+        [("read_and_rest", "09:00", 300, "study"), ("read_and_rest", "14:00", 180, "living_room")],
+    )
+
+    (observation,) = truth.habits
+    rows = {(item.intent, item.location): item.minutes for item in observation.composition}
+    assert rows == {
+        ("read_and_rest", "study"): 14 * 300,
+        ("read_and_rest", "living_room"): 14 * 180,
+    }
+    # The band is held by the study, and says so rather than leaving it to be re-derived.
+    assert observation.dominant_intent == "read_and_rest"
+    assert observation.dominant_location == "study"
 
 
 def test_an_unscoped_band_publishes_the_split_it_is_hiding() -> None:

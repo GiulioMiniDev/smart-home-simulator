@@ -39,8 +39,10 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from smart_home_sim.behavior.service import default_action_catalog_path
 from smart_home_sim.domain.authoring import SimulationAuthoringBundle
-from smart_home_sim.domain.behavior import PersonalProcessPackage
+from smart_home_sim.domain.behavior import ActionCatalog, PersonalProcessPackage
+from smart_home_sim.domain.environment import capabilities_for_entity_type
 from smart_home_sim.domain.models import (
     Activity,
     AuthorType,
@@ -49,6 +51,7 @@ from smart_home_sim.domain.models import (
     DateTimeWindow,
     DayPlan,
     DurationRange,
+    LocationKind,
     Provenance,
     Resident,
     ResidentInitialState,
@@ -99,6 +102,12 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     RecurringActivityKind,
 )
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
+
+# Capabilities no piece of furniture provides: the resident carries them, or the floor does.
+# Requiring a room to offer `posture_control` would refuse every override ever written.
+_UNFURNISHED_CAPABILITIES = frozenset(
+    {"reachable", "transport_reachable", "posture_control", "interaction_point"}
+)
 
 GENERATOR_NAME = "smart-home-sim.hybrid_planning.expander"
 GENERATOR_VERSION = "1.0.0"
@@ -712,9 +721,7 @@ def _seed_filler_candidates(
     if room < 120:
         return activities
     step = room / FILL_CANDIDATES_PER_DAY
-    precondition = (
-        Condition(fact="the_hours_are_unclaimed", operator=ConditionOperator.truthy),
-    )
+    precondition = (Condition(fact="the_hours_are_unclaimed", operator=ConditionOperator.truthy),)
     added: list[Activity] = []
     for slot in range(FILL_CANDIDATES_PER_DAY):
         index = len(activities) + len(added)
@@ -1014,14 +1021,18 @@ def _longest_run(minutes: list[int], occupied: set[int]) -> list[int]:
     return best
 
 
-def _compose(by_intent: dict[str, float], total: float) -> list[HabitComposition]:
+def _compose(measured: dict[tuple[str, str], float], total: float) -> list[HabitComposition]:
+    """One row per activity *and room*, largest first, ties broken by name so it is reproducible."""
     return [
         HabitComposition(
             intent=intent,
+            location=location,
             minutes=round(minutes, 1),
             share=round(minutes / total, 4) if total else 0.0,
         )
-        for intent, minutes in sorted(by_intent.items(), key=lambda item: -item[1])
+        for (intent, location), minutes in sorted(
+            measured.items(), key=lambda item: (-item[1], item[0])
+        )
     ]
 
 
@@ -1055,10 +1066,12 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
         band_minutes = sum(end - start for start, end in spans)
         applicable = [day for day in days if segment.applies_on(day.date)]
 
-        by_intent: dict[str, float] = {}
-        by_class: dict[str, dict[str, float]] = {"weekday": {}, "weekend": {}}
+        # Keyed by (intent, room): the same activity in two rooms is two behaviours sharing a
+        # label, and a band that holds both has to be able to say so.
+        by_intent: dict[tuple[str, str], float] = {}
+        by_class: dict[str, dict[tuple[str, str], float]] = {"weekday": {}, "weekend": {}}
         class_days = {"weekday": 0, "weekend": 0}
-        occupancy: dict[str, Counter[int]] = defaultdict(Counter)
+        occupancy: dict[tuple[str, str], Counter[int]] = defaultdict(Counter)
 
         for day in applicable:
             day_class = "weekend" if day.date.weekday() >= 5 else "weekday"
@@ -1080,16 +1093,18 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
                         overlap = last - first
                         if overlap <= 0:
                             continue
-                        by_intent[activity.intent] = by_intent.get(activity.intent, 0.0) + overlap
+                        key = (activity.intent, activity.location_ids[0])
+                        by_intent[key] = by_intent.get(key, 0.0) + overlap
                         bucket = by_class[day_class]
-                        bucket[activity.intent] = bucket.get(activity.intent, 0.0) + overlap
-                        occupancy[activity.intent].update(range(int(first), int(last)))
+                        bucket[key] = bucket.get(key, 0.0) + overlap
+                        occupancy[key].update(range(int(first), int(last)))
 
         total = float(band_minutes * len(applicable))
         covered = sum(by_intent.values())
         unaccounted = max(0.0, total - covered)
 
-        dominant = max(by_intent, key=lambda intent: by_intent[intent]) if by_intent else None
+        # Ties broken by name, so a band split evenly between two rooms names the same one twice.
+        dominant = max(sorted(by_intent), key=lambda key: by_intent[key]) if by_intent else None
         effective: list[int] = []
         if dominant is not None and applicable:
             floor = EFFECTIVE_DAY_SHARE * len(applicable)
@@ -1145,7 +1160,8 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
                 composition=_compose(by_intent, total),
                 unaccounted_minutes=round(unaccounted, 1),
                 unaccounted_share=round(unaccounted / total, 4) if total else 0.0,
-                dominant_intent=dominant,
+                dominant_intent=dominant[0] if dominant else None,
+                dominant_location=dominant[1] if dominant else None,
                 effective_start=_clock(effective[0]) if effective else None,
                 effective_end=_clock(effective[-1] + 1) if effective else None,
                 effective_minutes=float(len(effective)),
@@ -1317,6 +1333,70 @@ def _check_locations(outline: HorizonOutline) -> None:
         )
 
 
+def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessPackage) -> None:
+    """Refuse a habit sent to a room that is not there, or that cannot perform it.
+
+    An override is the outline saying "this habit happens *here*", and the two ways of getting it
+    wrong both fail silently rather than loudly. A room that is not declared resolves to nothing,
+    and a room with no furniture answering what the process model needs resolves to the per-region
+    service anchor — which has no footprint, no contact sensor and no position of its own, so the
+    activity runs in the middle of an empty room and the sensor log simply does not record it.
+    Reading in a study with no chair in it is the case this exists for.
+
+    The capability is the right unit to check, not the role: an action naming a role binds by name
+    and an action naming none binds by capability, but every one of them needs *some* object in the
+    room offering the capability. Checked against the same tables the binder uses.
+    """
+    rooms = {item.location_id for item in outline.world.locations if item.kind is LocationKind.room}
+    by_room: dict[str, set[str]] = {}
+    for resource in outline.world.resources:
+        by_room.setdefault(resource.location_id, set()).update(
+            capabilities_for_entity_type(resource.resource_type) or ()
+        )
+    models = {item.process_model_id: item for item in package.process_models}
+    by_intent = {item.intent: models.get(item.process_model_id) for item in package.bindings}
+    actions = ActionCatalog.model_validate_json(
+        default_action_catalog_path(package.catalogs.action_catalog.version).read_text(
+            encoding="utf-8"
+        )
+    )
+    definitions = {item.action_type: item for item in actions.actions}
+
+    problems: list[str] = []
+    for activity in outline.profile.recurring_activities:
+        room = activity.location
+        if room is None:
+            continue
+        if room not in rooms:
+            problems.append(
+                f"recurring activity {activity.recurring_activity_id!r} happens in {room!r}, "
+                "which the outline world does not declare as a room"
+            )
+            continue
+        intent = activity.intent or label_to_intent(activity.label, activity.kind.value)
+        model = by_intent.get(intent)
+        if model is None:
+            continue
+        needed: set[str] = set()
+        for node in model.nodes:
+            definition = definitions.get(node.action_type or "")
+            if definition is None:
+                continue
+            needed.update(
+                item.capability
+                for item in definition.required_capabilities
+                if item.capability not in _UNFURNISHED_CAPABILITIES
+            )
+        unmet = sorted(needed - by_room.get(room, set()))
+        if unmet:
+            problems.append(
+                f"recurring activity {activity.recurring_activity_id!r} happens in {room!r}, "
+                f"which holds nothing offering {', '.join(unmet)}"
+            )
+    if problems:
+        raise ExpansionError(" | ".join(problems))
+
+
 def expand_outline(
     outline: HorizonOutline,
     package: PersonalProcessPackage,
@@ -1330,6 +1410,7 @@ def expand_outline(
     """
     _check_intents(outline)
     _check_locations(outline)
+    _check_activity_locations(outline, package)
     _check_package_covers(outline, package)
     calendar = _effective_calendar(outline, seed)
     placed = _place_events(outline, seed)
@@ -1359,6 +1440,13 @@ def expand_outline(
     implemented = {binding.intent for binding in package.bindings}
     fillable = tuple(item for item in FILL_INTENTS if item in implemented)
     recurring_activities = _activities_by_id(outline.profile)
+    # The rooms the outline overrode, by activity. Read once: a habit's room is a property of the
+    # horizon, not of the day, so it cannot change between one calendar day and the next.
+    activity_locations = {
+        item.recurring_activity_id: item.location
+        for item in outline.profile.recurring_activities
+        if item.location is not None
+    }
     days: list[DayPlan] = []
     for calendar_day in calendar.days:
         day_events = placed.get(calendar_day.date, [])
@@ -1375,6 +1463,7 @@ def expand_outline(
                 *_commitment_spans(outline, date.fromisoformat(calendar_day.date)),
                 *_event_spans(day_events, seed),
             ],
+            activity_locations=activity_locations,
         )
         effective = _effective_activities(
             outline, recurring_activities, date.fromisoformat(calendar_day.date)

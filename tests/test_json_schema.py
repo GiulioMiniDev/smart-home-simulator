@@ -93,7 +93,7 @@ AUTHORING_SCHEMAS = {
 OUTLINE_SCHEMAS = {
     "horizon-outline-1.0.0.schema.json": HorizonOutline,
     "horizon-authoring-bundle-1.0.0.schema.json": HorizonAuthoringBundle,
-    "habit-ground-truth-1.1.0.schema.json": HabitGroundTruth,
+    "habit-ground-truth-1.2.0.schema.json": HabitGroundTruth,
 }
 HISTORICAL_AUTHORING_REPORT_SCHEMA = (
     PROJECT_ROOT / "schemas/authoring-ingestion-report-1.0.0.schema.json"
