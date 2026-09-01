@@ -485,7 +485,7 @@ La chiusura terminale della milestone, requisito per iniziare la M5, è document
 nell'[audit M4](docs/audits/milestone-4-closure.md).
 
 Il flusso di authoring consigliato usa un solo file:
-`prompts/generate-horizon-outline-1.1.0.md`, ed è l'unico che la guida integrata offre. Il
+`prompts/generate-horizon-outline-1.3.0.md`, ed è l'unico che la guida integrata offre. Il
 ricercatore sostituisce il marcatore `PERSON_AND_CASE_DESCRIPTION` con una descrizione libera
 della persona, invia l'intero prompt a un LLM esterno e salva il solo JSON restituito. Non
 deve allegare separatamente schemi o cataloghi. La risposta è un *outline* — abitudini,

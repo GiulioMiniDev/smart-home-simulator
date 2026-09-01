@@ -444,6 +444,22 @@ OUTLINE_PROMPTS = (
         ROOT / "prompts/templates/generate-horizon-outline-1.1.0.template.md",
         ROOT / "prompts/generate-horizon-outline-1.1.0.md",
     ),
+    # 1.2.0 is 1.1.0 with the dwelling described rather than assumed. 1.1.0 named six rooms and
+    # sixteen furniture types and said nothing about storeys or size, so every home the external
+    # path has ever produced is a single-storey sixty-square-metre flat with no hall — including
+    # the one authored from a brief that specified a large two-storey house. 1.1.0 stays frozen:
+    # the bundles already generated against it record it in their provenance.
+    (
+        ROOT / "prompts/templates/generate-horizon-outline-1.2.0.template.md",
+        ROOT / "prompts/generate-horizon-outline-1.2.0.md",
+    ),
+    # 1.3.0 lets a habit name its own room. Until it, the room came from the intent alone, so a
+    # case that read in a library or ate in front of the kitchen television had to be folded into
+    # the catalog's room and explained in a `note` — which is what both authored bundles did.
+    (
+        ROOT / "prompts/templates/generate-horizon-outline-1.3.0.template.md",
+        ROOT / "prompts/generate-horizon-outline-1.3.0.md",
+    ),
 )
 OUTLINE_BUNDLE_SCHEMA_PATH = ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json"
 REUSED_FROM_1_3_0 = ("## Personal ADL process-model rules", "## Required final consistency checks")
@@ -481,6 +497,179 @@ def _render_catalog_rooms() -> str:
         "`world.locations` must declare every room the activity catalog places an intent in, "
         f"under exactly these identifiers: {listed}. A missing one is rejected before any day "
         "is built.\n"
+    )
+
+
+def _render_activity_location() -> str:
+    """How a habit says it happens somewhere other than the room its intent usually uses.
+
+    The catalog fixes one room per intent, which is right for the label — `watch_television` is one
+    activity wherever it happens — and wrong for the habit, because the same activity in two rooms
+    at two times of day is two habits. Every outline so far has had to fold the difference away:
+    one wrote `"library_corner": true` on the living room, an attribute nothing reads, because the
+    vocabulary gave it no other way to say the resident reads in her library.
+    """
+    from smart_home_sim.hybrid_planning.intents import intent_spec
+
+    example = intent_spec("watch_television")
+    return (
+        "### A habit may name the room it happens in\n"
+        "\n"
+        "The room beside each intent above is where that activity *usually* happens, and it is "
+        "what you get by saying nothing. A recurring activity may override it with `location`, "
+        "naming any room the world declares.\n"
+        "\n"
+        "Use it when the case puts an ordinary activity somewhere particular — reading in a "
+        "study rather than the living room, television at the kitchen table over dinner as well "
+        "as on the sofa in the afternoon. The intent does not change: those are two habits "
+        "performing one activity, and splitting the intent instead would change what the dataset "
+        "claims happened.\n"
+        "\n"
+        "```json\n"
+        '{"recurringActivityId": "ra_evening_television", "label": "Television over dinner",\n'
+        ' "kind": "optional", "intent": "' + example.intent_id + '", "location": "kitchen",\n'
+        ' "cadence": {"period": "day", "timesPerPeriod": 1, "windowStart": "19:00",\n'
+        '             "windowEnd": "21:00", "jitterMinutes": 20}}\n'
+        "```\n"
+        "\n"
+        "That habit needs a `television` declared in the kitchen, and not only the one in the "
+        f"living room: `{example.intent_id}` reaches for a piece that can play, and the room it is "
+        "sent to has to contain one.\n"
+        "\n"
+        "Two rules, and both are refusals rather than warnings. The room must be one "
+        "`world.locations` declares, and it must **hold furniture that can perform the activity** "
+        "— the objects your process model for that intent reaches for. A study with only a "
+        "bookshelf in it cannot hold a meal, and an override that sends one there is rejected "
+        "with the capability it could not find:\n"
+        "\n"
+        "> `recurring activity 'ra_afternoon_read' happens in 'study', which holds nothing "
+        "offering leisure_support`\n"
+        "\n"
+        "That refusal is the point of the field. Unchecked, the activity would bind to the room's "
+        "generated anchor — no footprint, no contact sensor, no position — and run in the middle "
+        "of an empty room for the whole horizon, leaving nothing in the sensor log. So a room you "
+        "send a habit to is a room you must furnish for it.\n"
+    )
+
+
+def _render_room_palette() -> str:
+    """The rooms the plan generator knows how to draw, not only the six it insists on.
+
+    `_render_catalog_rooms` prints the required six and leaves "declare any further rooms the case
+    needs" to stand for the other eleven. Those eleven have a target area, a shape and — for the
+    circulation ones — a structural job, and an author who cannot see them declares none: the
+    external path has never once produced a hallway, so every generated home opens its front door
+    into the living room. A name outside the table is not refused, it is drawn as a generic box,
+    which is a different and worse thing than being told so.
+    """
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+    from smart_home_sim.materialization.floorplan import (
+        DEFAULT_PROFILE,
+        EDGE_ROOMS,
+        ROOM_PROFILES,
+        SINGLE_DOOR_ROOMS,
+    )
+    from smart_home_sim.materialization.service import (
+        ENTRANCE_PREFERENCE,
+        STAIR_ROOM_PREFERENCE,
+    )
+
+    required = sorted({spec.default_location for spec in INTENT_CATALOG})
+    listed = ", ".join(f"`{room}`" for room in required)
+    optional = sorted(set(ROOM_PROFILES) - set(required))
+    lines = [
+        "`world.locations` must declare every room the activity catalog places an intent in, "
+        f"under exactly these identifiers: {listed}. A missing one is rejected before any day "
+        "is built.",
+        "",
+        "Beyond those six, the plan generator knows how to draw the rooms below. The figure is "
+        "the floor area it aims for at `dwelling_scale` 1.0; declare any of them the case calls "
+        "for, and give each one the furniture its activities touch.",
+        "",
+    ]
+    for room in optional:
+        area, aspect = ROOM_PROFILES[room]
+        notes = []
+        if aspect >= 2.0:
+            notes.append("drawn as a long strip")
+        if room in EDGE_ROOMS:
+            notes.append("placed against an outside wall")
+        if room in SINGLE_DOOR_ROOMS:
+            notes.append("one doorway only")
+        suffix = f" — {', '.join(notes)}" if notes else ""
+        lines.append(f"- `{room}` — {area:g} m²{suffix}")
+    entrance = ", ".join(f"`{room}`" for room in ENTRANCE_PREFERENCE)
+    stairs = ", ".join(f"`{room}`" for room in STAIR_ROOM_PREFERENCE)
+    area, aspect = DEFAULT_PROFILE
+    lines.extend(
+        [
+            "",
+            "Two of these do structural work rather than behavioural work, and leaving them out "
+            "is not a neutral choice. The front door is put in the first of "
+            f"{entrance} the plan has, so a home without a hall opens straight into the living "
+            "room. A staircase arrives in the first of "
+            f"{stairs} it has, so a two-storey home without a landing lands its stairs in a "
+            "habitable room.",
+            "",
+            "A room under any other name is accepted and drawn as a "
+            f"{area:g} m² room of ordinary proportions, with no special treatment: it is not held "
+            "to a single doorway, not pushed against an outside wall, and never chosen for the "
+            "front door or the stairs. Prefer a name from the lists above; invent one only when "
+            "the case genuinely has a room none of them describes.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _render_dwelling_shape() -> str:
+    """How an author says the home has two floors and is bigger than a small flat.
+
+    Both facts are read from the scenario — `attributes.level` per room, `dwelling_scale` once — and
+    neither has ever been mentioned to an external author, so every home this path has produced is
+    a single-storey 60 m² flat. One bundle described a CEO's large two-storey house, wrote
+    `"floor": 2` and `"homeSize": "large"` (neither of which is read by anything) and got the
+    reference flat, with no warning anywhere.
+    """
+    from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+    from smart_home_sim.materialization.floorplan import ROOM_PROFILES
+    from smart_home_sim.materialization.service import (
+        MAX_DWELLING_SCALE,
+        MIN_DWELLING_SCALE,
+        STAIR_ROOM_PREFERENCE,
+    )
+
+    stairs = ", ".join(f"`{room}`" for room in STAIR_ROOM_PREFERENCE)
+    # Measured rather than asserted: the code comment that introduced the scale says the reference
+    # flat is sixty square metres, and the profile table it multiplies now sums to seventy-eight.
+    # An author sizing a house against a figure the generator disagrees with is being misled.
+    # `outdoors` is required and is not floor space, so the count is of what actually has an area.
+    indoors = {spec.default_location for spec in INTENT_CATALOG} & set(ROOM_PROFILES)
+    baseline = sum(ROOM_PROFILES[room][0] for room in indoors)
+    return (
+        "Two facts decide the shape of the dwelling, and both are declared rather than described. "
+        "Nothing else you write about the home reaches the plan: `homeModel` is a synthetic "
+        "versioned reference, and a `note` or an attribute saying "
+        '"large two-storey house" changes nothing.\n'
+        "\n"
+        "**Storeys.** Each room says which one it stands on, in its own attributes: "
+        '`"attributes": {"level": 0}` is the ground floor, `1` the floor above it, and so on. '
+        "Omitting it means the ground floor, so a home whose rooms never mention `level` is one "
+        "storey however the brief describes it. Declare more than one and the generator lays each "
+        "storey out separately and puts a real staircase between them, arriving in the first of "
+        f"{stairs} that storey has.\n"
+        "\n"
+        "Put upstairs what a home puts upstairs — bedrooms, a bathroom, a study, a landing — and "
+        "leave the kitchen, the living room and the hall on the ground floor, because that is "
+        "where the front door is.\n"
+        "\n"
+        "**Size.** `world.environmentFacts.dwelling_scale` multiplies every room's target area. It "
+        f"accepts {MIN_DWELLING_SCALE} to {MAX_DWELLING_SCALE}, and a value outside that range "
+        f"is silently taken as 1.0. At 1.0 the {len(indoors)} required rooms that are floor space "
+        f"come to about {baseline:.0f} m² between them, before any room you add; a large family "
+        "house is about "
+        "1.3. Raise it for a big home and lower it for a cramped one, but remember the multiplier "
+        "is per room: a house is mostly bigger because it has more rooms, not because each one "
+        "is.\n"
     )
 
 
@@ -561,6 +750,83 @@ def _render_furniture_catalog() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_furniture_palette() -> str:
+    """Every furniture type the engine understands, not only the third of them that has aliases.
+
+    `_render_furniture_catalog` renders `RESOURCE_ROLE_ALIASES`, which is the table of *synonyms* a
+    process model may use for a piece. Twenty-eight types have declared capabilities and no
+    synonyms, so they never appeared in a prompt — no desk, no bookshelf, no oven, no armchair —
+    and an author furnishing a study had a table and a chair to do it with. They bind perfectly
+    well: `_resource_roles` puts a resource's own type among its roles, so `desk` is the role name
+    for a desk.
+
+    Both halves are printed per type, because the binder uses them differently: an action with a
+    role parameter matches the name, and an action without one matches the capability.
+    """
+    from smart_home_sim.domain.environment import ENTITY_TYPE_CAPABILITIES
+    from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES
+    from smart_home_sim.domain.sensors import CONTACT_INSTRUMENTED_TYPES
+    from smart_home_sim.vocabulary.gaps import SELF_CAPABILITIES
+
+    catalog = json.loads(
+        OUTLINE_PLACEHOLDERS["{{ACTION_CATALOG_JSON}}"].read_text(encoding="utf-8")
+    )
+    by_role: set[str] = set()
+    by_capability: set[str] = set()
+    for action in catalog["actions"]:
+        for requirement in action["requiredCapabilities"]:
+            if requirement["capability"] in SELF_CAPABILITIES:
+                continue
+            target = by_role if requirement.get("parameterName") else by_capability
+            target.add(action["actionType"])
+    named = ", ".join(f"`{item}`" for item in sorted(by_role))
+    unnamed = ", ".join(f"`{item}`" for item in sorted(by_capability))
+    instrumented = ", ".join(f"`{item}`" for item in sorted(CONTACT_INSTRUMENTED_TYPES))
+
+    lines = [
+        "`world.resources` declares the objects the home contains. Use these `resourceType` "
+        "values, spelled exactly. After the dash is what the piece can be used for; after the "
+        "semicolon, the extra role names that also bind to it.",
+        "",
+    ]
+    for resource_type in sorted(set(ENTITY_TYPE_CAPABILITIES) | set(RESOURCE_ROLE_ALIASES)):
+        capabilities = sorted(ENTITY_TYPE_CAPABILITIES.get(resource_type, ()))
+        aliases = sorted(
+            role for role in RESOURCE_ROLE_ALIASES.get(resource_type, ()) if role != resource_type
+        )
+        entry = f"- `{resource_type}` — {', '.join(capabilities) or 'no declared capability'}"
+        if aliases:
+            entry += f"; {', '.join(f'`{role}`' for role in aliases)}"
+        lines.append(entry)
+    lines.extend(
+        [
+            "",
+            f"An action that names a role — {named} — binds to a piece whose roles include that "
+            "name: its `resourceId`, its `resourceType`, or one of the aliases above. An action "
+            f"that names none — {unnamed} — binds on the capability alone, to any piece offering "
+            "it, preferring one in the room the activity happens in. So a `perform_work` reaches "
+            "whatever has `work_support`: give the resident a `desk` and it is the desk, and give "
+            "her none and it is the kitchen table.",
+            "",
+            "Where a room holds two pieces answering the same capability — an `armchair` and a "
+            "`sofa` both offer `leisure_support` — the binder takes the lower `resourceId` in "
+            "alphabetical order, having no other way to choose. That is a real choice you are "
+            "making by naming: if it matters which one the resident uses, either give the room "
+            "one of them, or name the intended piece so it sorts first.",
+            "",
+            "**Do not invent a `resourceType`.** An unknown type is not rejected and not reported: "
+            "it is treated as offering *every* capability, so it beats the right piece of "
+            "furniture on alphabetical order. That is how a storage cabinet became the place nine "
+            "hours of work a day happened.",
+            "",
+            f"Only {instrumented} carry a contact sensor. Other pieces that open — an `oven`, a "
+            "`nightstand` — open in the simulation and leave nothing in the log, so an activity "
+            "whose only evidence would be opening one is an activity the dataset does not record.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
 def _render_rhythm_intents() -> str:
     from smart_home_sim.hybrid_planning.day_generation import RHYTHM_EMITTED_INTENTS
     from smart_home_sim.hybrid_planning.intents import intent_spec
@@ -629,8 +895,12 @@ def _render_outline_prompt(template_path: Path, destination: Path) -> None:
     prompt = template_path.read_text(encoding="utf-8")
     prompt = prompt.replace("{{ACTIVITY_PORTFOLIO}}", _render_activity_portfolio())
     prompt = prompt.replace("{{CATALOG_ROOMS}}", _render_catalog_rooms())
+    prompt = prompt.replace("{{ROOM_PALETTE}}", _render_room_palette())
+    prompt = prompt.replace("{{ACTIVITY_LOCATION}}", _render_activity_location())
+    prompt = prompt.replace("{{DWELLING_SHAPE}}", _render_dwelling_shape())
     prompt = prompt.replace("{{CATALOG_INTENTS}}", _render_catalog_intents())
     prompt = prompt.replace("{{FURNITURE_CATALOG}}", _render_furniture_catalog())
+    prompt = prompt.replace("{{FURNITURE_PALETTE}}", _render_furniture_palette())
     prompt = prompt.replace("{{RHYTHM_INTENTS}}", _render_rhythm_intents())
     prompt = prompt.replace(
         "{{PROCESS_MODEL_SECTIONS}}",
@@ -642,6 +912,14 @@ def _render_outline_prompt(template_path: Path, destination: Path) -> None:
     for placeholder, path in OUTLINE_PLACEHOLDERS.items():
         prompt = prompt.replace(placeholder, _compact_json(path))
     unresolved = [item for item in OUTLINE_PLACEHOLDERS if item in prompt]
+    # Everything else the template can ask for, too: a placeholder renamed in the template and not
+    # in the renderer used to ship as literal `{{...}}` in the distributed prompt. The case brief
+    # is the one substitution the operator makes, so it is the one that legitimately survives.
+    unresolved.extend(
+        item
+        for item in sorted(set(re.findall(r"\{\{[A-Z0-9_]+\}\}", prompt)))
+        if item != "{{PERSON_AND_CASE_DESCRIPTION}}" and item not in unresolved
+    )
     if unresolved:
         raise RuntimeError(f"Unresolved outline prompt placeholders: {unresolved}")
     destination.write_text(prompt, encoding="utf-8", newline="\n")

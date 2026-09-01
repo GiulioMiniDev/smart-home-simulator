@@ -1,4 +1,4 @@
-# Horizon outline authoring prompt 1.0.0
+# Horizon outline authoring prompt 1.3.0
 
 ## Instruction to the external LLM
 
@@ -42,7 +42,7 @@ Use the following exact values in both nested provenance objects:
 - `authorType`: `external_llm`;
 - `generatorName`: `smart-home-simulator-external-llm-authoring`;
 - `generatorVersion`: `1.4.0`;
-- `promptTemplateVersion`: `generate-horizon-outline-1.0.0`;
+- `promptTemplateVersion`: `generate-horizon-outline-1.3.0`;
 - `humanReviewed`: `false`.
 
 Set `modelName` to the actual model name exposed by the current interface and `generatedAt` to the
@@ -160,6 +160,27 @@ entirely. Both are correct. Inventing an identifier is not, and neither is inven
 process package: a binding or process model for an intent the outline cannot declare is dead weight
 the import rejects.
 
+### A habit may name the room it happens in
+
+The room beside each intent above is where that activity *usually* happens, and it is what you get by saying nothing. A recurring activity may override it with `location`, naming any room the world declares.
+
+Use it when the case puts an ordinary activity somewhere particular — reading in a study rather than the living room, television at the kitchen table over dinner as well as on the sofa in the afternoon. The intent does not change: those are two habits performing one activity, and splitting the intent instead would change what the dataset claims happened.
+
+```json
+{"recurringActivityId": "ra_evening_television", "label": "Television over dinner",
+ "kind": "optional", "intent": "watch_television", "location": "kitchen",
+ "cadence": {"period": "day", "timesPerPeriod": 1, "windowStart": "19:00",
+             "windowEnd": "21:00", "jitterMinutes": 20}}
+```
+
+That habit needs a `television` declared in the kitchen, and not only the one in the living room: `watch_television` reaches for a piece that can play, and the room it is sent to has to contain one.
+
+Two rules, and both are refusals rather than warnings. The room must be one `world.locations` declares, and it must **hold furniture that can perform the activity** — the objects your process model for that intent reaches for. A study with only a bookshelf in it cannot hold a meal, and an override that sends one there is rejected with the capability it could not find:
+
+> `recurring activity 'ra_afternoon_read' happens in 'study', which holds nothing offering leisure_support`
+
+That refusal is the point of the field. Unchecked, the activity would bind to the room's generated anchor — no footprint, no contact sensor, no position — and run in the middle of an empty room for the whole horizon, leaving nothing in the sensor log. So a room you send a habit to is a room you must furnish for it.
+
 The catalog is deliberately **home-centred**: it describes what happens inside the dwelling. Time
 spent away — a shift elsewhere, school, appointments, sport, an outing — is not modelled as detailed
 activity, because none of it is observable by home sensors. What matters is only *that the resident
@@ -246,7 +267,9 @@ For each recurring activity:
   the case honestly allows;
 - `cadence.jitterMinutes` is how *irregular* this recurring activity is — how far a single occurrence wanders
   around its usual moment. A rigid anchor takes a small value, a loose optional one a large value.
-  It is not the width of the band and must not duplicate it;
+  It is not the width of the band and must not duplicate it. Read it as the *typical* wander rather
+  than the largest one: about two thirds of occurrences fall inside it, and a few land much further
+  out, the way a real routine has its off days;
 - `miningDifficulty` records how hard the activity should be to recover from sensor data: `easy` for
   a punctual daily anchor, `hard` for something sporadic or easily confused with another.
 
@@ -313,6 +336,39 @@ because their days are disjoint.
 The signal to watch for is your own label. If a band needs a name like "daytime and domestic
 weekend" to be honest, it wants to be two bands.
 
+**Splitting a band leaves you with two bands, and each of them has to stand up on its own.** This is
+where authored horizons fail most often, because the split feels like the work and the filling feels
+like bookkeeping. It is the other way round.
+
+Measured on a generated year: the weekday band 09:00-18:00 had 451 of its 540 minutes accounted for
+by declared activities, with `work_from_home` alone holding 344 of them. Its weekend twin, over the
+same hours, had 172 minutes accounted for and its largest single activity was a 31-minute lunch. The
+weekend band was not authored badly by accident — it was authored as the weekday band with the work
+removed, and nothing was put in its place. Two thirds of every Saturday and Sunday between nine and
+six, in a document whose whole purpose is to say what the resident was doing, said nothing.
+
+Two rules follow, and a band must satisfy both:
+
+- **every band names at least one recurring activity of `kind: anchor`.** The anchor is the thing
+  that makes the band that band — sleeping in the night, working on a weekday, the long lunch on a
+  Sunday. A band whose activities are all `optional` and `rare` is a list of errands, not a habit;
+- **a band wider than about three hours needs an activity that occupies it in blocks**, declared
+  with a `day` cadence and a `timesPerPeriod` above one, exactly as the working day is written
+  above. Half a dozen half-hour errands cannot fill nine hours, and declaring them as though they
+  did is what produced the weekend band above. The anchor rule alone does not catch this: that
+  weekend band *had* an anchor — lunch — and lunch is thirty minutes long.
+
+**Two bands that share a window must differ in what they contain, not only in `weekdays`.** In the
+same generated year the two 09:00-18:00 bands listed seven recurring activities each and six of them
+were the same six. If your two bands would name nearly the same activities, then either the days
+really do hold the same behaviour — in which case write one band and no `weekdays` scope — or the
+one you split off is missing its own anchor. Do not let the scope carry a difference the content
+does not have.
+
+None of this asks you to invent a life that is easy to recognise from sensors. If this person's
+Saturday genuinely is her Tuesday without the work, say so, in one band or in two honest ones. What
+is not allowed is a declared band with nothing declared inside it.
+
 **The night band must open at least two hours before `rhythm.chronotypeBedtime`.** The chronotype is
 where the resident *tends*, not where she is put: the drive layer moves each night's lights-out up
 to 45 minutes earlier as sleep debt builds, and jitters it around that by a further half-hour or so.
@@ -321,6 +377,26 @@ starting before the band that is supposed to contain it — the sleep lands in t
 the habit ground truth says the resident was reading when she was asleep. Nothing rejects this,
 which is exactly why it has to be authored correctly: give the night room on its early side, and end
 the evening band where the night begins.
+
+### How your bands will be scored
+
+The confirmed outline is expanded into a habit ground truth, and each band is then measured against
+the days it actually produced. Three of those numbers say whether you authored it well, and you can
+predict all three while writing:
+
+- **`unaccountedShare`** — the fraction of the band's minutes in which no declared activity was
+  running. The bands above came out between 0.10 and 0.29; the abandoned weekend one came out
+  **0.68**. Anything past about a third means the band is a window with things scattered in it
+  rather than a stretch of the day with a shape;
+- **`dominantIntent`** and its share — the largest single activity. `sleep` held 0.76 of the night
+  and `work_from_home` 0.64 of the weekday; the weekend band's dominant intent was `eat_lunch` at
+  **0.058**, which is not a description of a day. A band with no dominant activity is possible and
+  sometimes right — a slow morning of four comparable routines is a real thing — but a *widest*
+  component under a tenth means nothing anchors the band;
+- **`effectiveShare`** — how much of the declared window the band's activities really occupy once
+  they are placed.
+
+You are not asked to compute these. You are asked to write bands that would survive them.
 
 These bands are the answer sheet: a researcher's segmentation algorithm sees only a sensor log and
 has to recover both where the day divides and what runs in each division. Declare them as the
@@ -374,35 +450,96 @@ was rejected for that one Sunday.
 
 `world.locations` must declare every room the activity catalog places an intent in, under exactly these identifiers: `balcony`, `bathroom`, `bedroom`, `kitchen`, `living_room`, `outdoors`. A missing one is rejected before any day is built.
 
+Beyond those six, the plan generator knows how to draw the rooms below. The figure is the floor area it aims for at `dwelling_scale` 1.0; declare any of them the case calls for, and give each one the furniture its activities touch.
 
-Declare any further rooms the case needs, plus external locations, and a composite location
-grouping the indoor rooms. Every resource sits in a declared location. `startLocationId` is where
-the resident is at the first instant of the horizon and must be a primitive room, never a
-composite.
+- `corridor` — 7 m² — drawn as a long strip
+- `dining_room` — 14 m²
+- `entrance` — 5.5 m²
+- `hallway` — 8 m² — drawn as a long strip
+- `landing` — 7 m²
+- `laundry_room` — 5.5 m² — one doorway only
+- `second_bathroom` — 5 m² — one doorway only
+- `second_bedroom` — 14 m²
+- `storage` — 4.5 m² — placed against an outside wall, one doorway only
+- `study` — 11 m²
+- `terrace` — 9.5 m² — drawn as a long strip, placed against an outside wall, one doorway only
 
-`homeModel` is a synthetic versioned reference; the executable home is materialised later from
-these declared locations.
+Two of these do structural work rather than behavioural work, and leaving them out is not a neutral choice. The front door is put in the first of `hallway`, `corridor`, `living_room`, `kitchen` the plan has, so a home without a hall opens straight into the living room. A staircase arrives in the first of `landing`, `hallway`, `corridor`, `entrance`, `living_room` it has, so a two-storey home without a landing lands its stairs in a habitable room.
+
+A room under any other name is accepted and drawn as a 12 m² room of ordinary proportions, with no special treatment: it is not held to a single doorway, not pushed against an outside wall, and never chosen for the front door or the stairs. Prefer a name from the lists above; invent one only when the case genuinely has a room none of them describes.
+
+
+Declare external locations too, and a composite location grouping the indoor rooms. Every resource
+sits in a declared location. `startLocationId` is where the resident is at the first instant of the
+horizon and must be a primitive room, never a composite.
+
+### How big the home is, and how many storeys
+
+Two facts decide the shape of the dwelling, and both are declared rather than described. Nothing else you write about the home reaches the plan: `homeModel` is a synthetic versioned reference, and a `note` or an attribute saying "large two-storey house" changes nothing.
+
+**Storeys.** Each room says which one it stands on, in its own attributes: `"attributes": {"level": 0}` is the ground floor, `1` the floor above it, and so on. Omitting it means the ground floor, so a home whose rooms never mention `level` is one storey however the brief describes it. Declare more than one and the generator lays each storey out separately and puts a real staircase between them, arriving in the first of `landing`, `hallway`, `corridor`, `entrance`, `living_room` that storey has.
+
+Put upstairs what a home puts upstairs — bedrooms, a bathroom, a study, a landing — and leave the kitchen, the living room and the hall on the ground floor, because that is where the front door is.
+
+**Size.** `world.environmentFacts.dwelling_scale` multiplies every room's target area. It accepts 0.4 to 3.0, and a value outside that range is silently taken as 1.0. At 1.0 the 5 required rooms that are floor space come to about 78 m² between them, before any room you add; a large family house is about 1.3. Raise it for a big home and lower it for a cramped one, but remember the multiplier is per room: a house is mostly bigger because it has more rooms, not because each one is.
+
 
 ### Furnish every room the resident works in
 
-`world.resources` declares the objects the home contains. Use these `resourceType` values, spelled exactly: they are the only ones that bind to anything, and the roles beside each are what that piece of furniture can be used for.
+`world.resources` declares the objects the home contains. Use these `resourceType` values, spelled exactly. After the dash is what the piece can be used for; after the semicolon, the extra role names that also bind to it.
 
-- `bed` — sleeping_area
-- `chair` — consumption_area, dining_seat
-- `moka_coffee_maker` — coffee_equipment
-- `radio` — media
-- `refrigerator` — coffee_and_breakfast_storage, food_storage, ingredients, prepared_food_portions, prepared_meal
-- `shower` — personal_care_fixture, shower_water
-- `sink` — drinking_water_source, food_preparation_area, sink_faucet, washing_area
-- `sofa` — rest_area, seating
-- `storage_cabinet` — cleaning_product_storage, cleaning_products, household_storage, household_supplies, medication, medication_cabinet, medication_storage
-- `stove` — cooking_appliance, food_preparation_area
-- `table` — consumption_area, dining_area
-- `television` — media
-- `toilet` — personal_care_fixture, use_toilet
-- `wardrobe` — clothes, clothing_storage, laundry_collection, laundry_storage, used_clothing
-- `washbasin` — personal_care_fixture, sink, sink_faucet, washing_area
-- `washing_machine` — laundry, laundry_equipment
+- `armchair` — cleanable, leisure_support
+- `bathtub` — cleanable, openable, personal_care_support
+- `bed` — cleanable, leisure_support; `sleeping_area`
+- `bench` — cleanable, consumable, leisure_support
+- `bidet` — cleanable, personal_care_support
+- `bookshelf` — cleanable, graspable, inspectable, storable, storage_support
+- `chair` — cleanable, consumable, leisure_support; `consumption_area`, `dining_seat`
+- `chest_of_drawers` — cleanable, graspable, inspectable, openable, storable, storage_support, wearable
+- `coat_rack` — cleanable, graspable, storable, wearable
+- `coffee_machine` — cleanable, consumable, food_preparation, inspectable, switchable
+- `coffee_table` — cleanable, graspable, storable
+- `desk` — cleanable, graspable, storable, work_support
+- `dishwasher` — cleanable, inspectable, openable, switchable
+- `drying_rack` — cleanable, laundry_support
+- `floor_lamp` — switchable
+- `garden_chair` — cleanable, leisure_support
+- `houseplant` — cleanable
+- `kettle` — cleanable, food_preparation, inspectable, switchable
+- `kitchen_counter` — cleanable, food_preparation, graspable, storable
+- `lamp` — switchable
+- `medicine_cabinet` — cleanable, graspable, inspectable, medication_support, openable, storable, storage_support
+- `microwave` — cleanable, food_preparation, inspectable, openable, switchable
+- `mirror` — cleanable
+- `moka_coffee_maker` — cleanable, consumable, food_preparation, graspable, inspectable, switchable; `coffee_equipment`
+- `nightstand` — cleanable, graspable, inspectable, openable, storable, storage_support
+- `oven` — cleanable, food_preparation, inspectable, openable, switchable
+- `radio` — communication, leisure_support, switchable; `media`
+- `refrigerator` — cleanable, consumable, graspable, inspectable, openable, storable, storage_support; `coffee_and_breakfast_storage`, `food_storage`, `ingredients`, `prepared_food_portions`, `prepared_meal`
+- `shoe_rack` — cleanable, graspable, storable, wearable
+- `shower` — cleanable, personal_care_support, switchable; `personal_care_fixture`, `shower_water`
+- `sideboard` — cleanable, graspable, inspectable, openable, storable, storage_support
+- `single_bed` — cleanable, leisure_support
+- `sink` — cleanable, consumable, switchable; `drinking_water_source`, `food_preparation_area`, `sink_faucet`, `washing_area`
+- `sofa` — cleanable, communication, consumable, leisure_support; `rest_area`, `seating`
+- `stool` — cleanable, consumable, leisure_support
+- `storage_cabinet` — cleanable, graspable, inspectable, medication_support, openable, storable, storage_support; `cleaning_product_storage`, `cleaning_products`, `household_storage`, `household_supplies`, `medication`, `medication_cabinet`, `medication_storage`
+- `stove` — cleanable, food_preparation, inspectable, switchable; `cooking_appliance`, `food_preparation_area`
+- `table` — cleanable, consumable, graspable, storable, work_support; `consumption_area`, `dining_area`
+- `television` — communication, leisure_support, switchable; `media`
+- `toilet` — cleanable, personal_care_support; `personal_care_fixture`, `use_toilet`
+- `tv_stand` — cleanable, graspable, storable
+- `wardrobe` — cleanable, graspable, inspectable, laundry_support, openable, storable, storage_support, wearable; `clothes`, `clothing_storage`, `laundry_collection`, `laundry_storage`, `used_clothing`
+- `washbasin` — cleanable, personal_care_support, switchable; `personal_care_fixture`, `sink`, `sink_faucet`, `washing_area`
+- `washing_machine` — cleanable, inspectable, laundry_support, openable, switchable; `laundry`, `laundry_equipment`
+
+An action that names a role — `activate`, `clean`, `close`, `communicate`, `consume`, `deactivate`, `inspect`, `move_to_capability`, `open`, `organize`, `put_item`, `take_item` — binds to a piece whose roles include that name: its `resourceId`, its `resourceType`, or one of the aliases above. An action that names none — `dress`, `enter_home`, `exercise`, `laundry_step`, `leave_home`, `leisure`, `manage_medication`, `perform_work`, `personal_care`, `prepare_food`, `shop` — binds on the capability alone, to any piece offering it, preferring one in the room the activity happens in. So a `perform_work` reaches whatever has `work_support`: give the resident a `desk` and it is the desk, and give her none and it is the kitchen table.
+
+Where a room holds two pieces answering the same capability — an `armchair` and a `sofa` both offer `leisure_support` — the binder takes the lower `resourceId` in alphabetical order, having no other way to choose. That is a real choice you are making by naming: if it matters which one the resident uses, either give the room one of them, or name the intended piece so it sorts first.
+
+**Do not invent a `resourceType`.** An unknown type is not rejected and not reported: it is treated as offering *every* capability, so it beats the right piece of furniture on alphabetical order. That is how a storage cabinet became the place nine hours of work a day happened.
+
+Only `refrigerator`, `storage_cabinet`, `wardrobe`, `washing_machine` carry a contact sensor. Other pieces that open — an `oven`, a `nightstand` — open in the simulation and leave nothing in the log, so an activity whose only evidence would be opening one is an activity the dataset does not record.
 
 
 **A room is furnished when the objects its activities use are declared.** The materialiser builds
@@ -424,6 +561,24 @@ one physically touches. Cooking needs a `stove`, a `sink` and a `refrigerator`; 
 `wardrobe`; cleaning needs a `storage_cabinet`. **A kitchen with fewer than three objects is a
 mistake, not a minimalist flat.** Give each one a `resourceId` of your choosing, a `resourceType`
 from the list above, and the `locationId` of the room it stands in.
+
+**Then read the list back the other way: every object you declared must have an activity that uses
+it.** The rule above stops you furnishing too thinly; this one stops you furnishing a home nobody
+lives in, and it is the failure that actually happens once the first rule has been learned.
+
+A five-month horizon for a father of two declared a wardrobe, a washing machine and three storage
+cabinets, and then gave him no laundry, no change of clothes and no cleaning — twenty recurring
+activities, not one of which reaches into any of the five. The furniture was right and the life was
+missing, so three contact sensors spent five months publishing nothing but their own false
+positives, and the wardrobe opening at 07:00 that tells a segmentation algorithm the resident is
+awake never happened once.
+
+So for each declared object, name the recurring activity that touches it. A `wardrobe` wants
+`change_clothes` or `dress`; a `washing_machine` wants `start_laundry` and `hang_laundry`; a
+`storage_cabinet` wants `clean_kitchen`, `tidy_living_room_and_hallway` or the medication routine.
+If no activity in your profile wants the object, you have two honest options and inventing neither
+is one of them: add the activity, because a household of that description almost certainly does the
+washing — or delete the object, and let the home be a home without one.
 
 ## The rhythm
 
@@ -735,6 +890,9 @@ Before answering, verify all of the following:
   overlapping on a day they share, and at most one of them crossing midnight;
 - any band whose hours mean something different at the weekend carries a `weekdays` scope, and the
   days it does not claim are covered by another band;
+- every band names at least one recurring activity of `kind: anchor`, and every band wider than
+  three hours names one declared with a `day` cadence and a `timesPerPeriod` above one;
+- no two bands sharing a window name nearly the same `recurringActivityIds`;
 - the night band opens at least two hours before `rhythm.chronotypeBedtime`, and the evening band
   ends where it opens;
 - no two overlapping phases override the same recurring activity;
@@ -760,6 +918,8 @@ Before answering, verify all of the following:
   imply, **and** the intents the rhythm adds by itself, listed above;
 - every action reaching inside a container — `take_item`, `put_item`, `laundry_step` — opens and
   closes it, so the fridge is not the only object in the home a contact sensor ever observes;
+- every object declared in `world.resources` is reached by at least one recurring activity, and any
+  object no activity wants has been removed from the home;
 - the process package satisfies the
   action state continuity rules above.
 

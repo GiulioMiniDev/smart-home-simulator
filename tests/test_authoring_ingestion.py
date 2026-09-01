@@ -585,6 +585,49 @@ def test_repaired_full_bundle_reenters_normal_ingestion(tmp_path: Path) -> None:
     assert report.summary.error_count == 0
 
 
+def test_the_outline_prompt_describes_the_whole_dwelling_the_generator_can_build() -> None:
+    """1.2.0 offers the rooms, the furniture and the storeys the materialiser already supports.
+
+    1.1.0 offered six rooms out of sixteen and sixteen furniture types out of forty-four, and never
+    mentioned that a room declares its storey or that the plan has a scale. Every home the external
+    path produced was therefore a single-storey sixty-square-metre flat with no hall — including
+    one authored from a brief describing a large two-storey house, which wrote `"floor": 2` and
+    `"homeSize": "large"` because those were the words it had. Rendered from the tables rather than
+    retyped, so a table that gains a room or a piece of furniture cannot leave the prompt behind.
+    """
+    prompt = (ROOT / "prompts/generate-horizon-outline-1.3.0.md").read_text(encoding="utf-8")
+
+    from smart_home_sim.domain.environment import ENTITY_TYPE_CAPABILITIES
+    from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES
+    from smart_home_sim.materialization.floorplan import ROOM_PROFILES
+    from smart_home_sim.materialization.service import (
+        MAX_DWELLING_SCALE,
+        MIN_DWELLING_SCALE,
+        STAIR_ROOM_PREFERENCE,
+    )
+
+    for room in ROOM_PROFILES:
+        assert f"`{room}`" in prompt, room
+    for resource_type in set(ENTITY_TYPE_CAPABILITIES) | set(RESOURCE_ROLE_ALIASES):
+        assert f"- `{resource_type}` —" in prompt, resource_type
+
+    # The two keys that carry the shape of the home, spelled as the free-form dictionaries they
+    # live in rather than in the camelCase the rest of the contract uses.
+    assert '"attributes": {"level": 0}' in prompt
+    assert "`world.environmentFacts.dwelling_scale`" in prompt
+    assert f"accepts {MIN_DWELLING_SCALE} to {MAX_DWELLING_SCALE}" in prompt
+    assert f"`{STAIR_ROOM_PREFERENCE[0]}`" in prompt
+
+    # 1.1.0 stays exactly as the bundles that name it were authored against; so does 1.2.0, which
+    # a bundle now records. Only the embedded schema tracks the contract, because it is rendered.
+    frozen = (ROOT / "prompts/generate-horizon-outline-1.1.0.md").read_text(encoding="utf-8")
+    assert "dwelling_scale" not in frozen
+    assert "- `desk` —" not in frozen
+    previous = (ROOT / "prompts/generate-horizon-outline-1.2.0.md").read_text(encoding="utf-8")
+    assert "A habit may name the room it happens in" not in previous
+    assert "A habit may name the room it happens in" in prompt
+
+
 def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None:
     """The outline prompt embeds its schema and restates nothing it could restate wrongly.
 
@@ -593,7 +636,7 @@ def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None
     that changes its counts, is then a build failure here rather than a prompt that quietly teaches
     the old contract — which is exactly how requirement 11 survived two versions unenforced.
     """
-    prompt = (ROOT / "prompts/generate-horizon-outline-1.1.0.md").read_text(encoding="utf-8")
+    prompt = (ROOT / "prompts/generate-horizon-outline-1.3.0.md").read_text(encoding="utf-8")
     frozen = (ROOT / "prompts/generate-simulation-inputs-1.3.0.md").read_text(encoding="utf-8")
 
     assert "{{PERSON_AND_CASE_DESCRIPTION}}" in prompt
@@ -601,7 +644,7 @@ def test_distributed_outline_prompt_is_self_contained_and_cannot_drift() -> None
     assert "{{CATALOG_INTENTS}}" not in prompt
     assert "{{ACTIVITY_PORTFOLIO}}" not in prompt
     assert "Return exactly one JSON object and nothing else." in prompt
-    assert "`promptTemplateVersion`: `generate-horizon-outline-1.1.0`" in prompt
+    assert "`promptTemplateVersion`: `generate-horizon-outline-1.3.0`" in prompt
     assert "**Do not write the days of the horizon.**" in prompt
     # 1.1.0 teaches that splitting a band is only half the job. A generated year produced a weekend
     # band with 68% of its minutes undeclared and a dominant intent at 5.8%, because it was authored

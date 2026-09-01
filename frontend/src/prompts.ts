@@ -1,4 +1,4 @@
-import outlinePrompt from "../../prompts/generate-horizon-outline-1.1.0.md?raw";
+import outlinePrompt from "../../prompts/generate-horizon-outline-1.3.0.md?raw";
 
 // Only the outline prompt is offered. The two `generate-simulation-inputs` prompts asked one
 // response for every day of the horizon, which degrades as the horizon grows: the share of distinct
@@ -7,7 +7,7 @@ import outlinePrompt from "../../prompts/generate-horizon-outline-1.1.0.md?raw";
 // them, and a file that a record points at must remain readable.
 export const authoringPrompts = {
   outline: {
-    version: "generate-horizon-outline-1.1.0",
+    version: "generate-horizon-outline-1.3.0",
     text: outlinePrompt,
   },
 } as const;
