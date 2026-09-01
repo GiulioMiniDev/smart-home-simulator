@@ -57,6 +57,7 @@ const frame = {
 };
 
 let verified = true;
+let horizonEnd = end;
 let requests: string[] = [];
 
 function respond(path: string): unknown {
@@ -64,8 +65,8 @@ function respond(path: string): unknown {
   // A workspace only reports a session as playable once the trace it holds has been verified.
   if (path.includes("/replay/session")) return { runId: "run_1", verifiedDigest: verified ? digest : null, playable: verified, positionAt: null, filters: { speed: 1 } };
   if (path.includes("/models")) return { homeModel: home };
-  if (path.includes("/replay/events")) return { items: dayItems, total: dayItems.length, traceStart: start, traceEnd: end, windowStart: start, windowEnd: end };
-  if (path.includes("/replay/frame")) return frame;
+  if (path.includes("/replay/events")) return { items: dayItems, total: dayItems.length, traceStart: start, traceEnd: horizonEnd, windowStart: start, windowEnd: end };
+  if (path.includes("/replay/frame")) return { ...frame, traceEnd: horizonEnd };
   return {};
 }
 
@@ -81,6 +82,7 @@ async function settle(): Promise<void> {
 describe("ReplayScene", () => {
   beforeEach(() => {
     verified = true;
+    horizonEnd = end;
     requests = [];
     sessionStorage.setItem("habitat-lab-session", "token");
     vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
@@ -208,6 +210,45 @@ describe("ReplayScene", () => {
 
     fireEvent.change(screen.getByLabelText("Playback speed"), { target: { value: "15" } });
     await waitFor(() => expect(screen.getByLabelText("Playback speed")).toHaveDisplayValue("15×"));
+  });
+
+  it("steps fifteen seconds, and stops on the brink of a walk rather than over it", async () => {
+    render(<ReplayScene runId="run_1" />);
+    await sceneReady();
+    const scrub = screen.getByRole("slider", { name: "Replay time" });
+    const at = (clock: string) => String(Date.parse(`2026-10-30T${clock}+01:00`));
+
+    // Ten seconds before she gets up to walk to the kitchen. A plain step would land five seconds
+    // into the walk, which is most of it: the step gives up its own length and stops a second short.
+    fireEvent.change(scrub, { target: { value: at("07:41:50") } });
+    await waitFor(() => expect(scrub).toHaveValue(at("07:41:50")));
+    fireEvent.click(screen.getByRole("button", { name: /Forward 15 seconds/ }));
+    await waitFor(() => expect(scrub).toHaveValue(at("07:41:59")));
+
+    // Nothing walks between ten and eleven, so the step is its own length again.
+    fireEvent.change(scrub, { target: { value: at("10:00:00") } });
+    await waitFor(() => expect(scrub).toHaveValue(at("10:00:00")));
+    fireEvent.click(screen.getByRole("button", { name: /Forward 15 seconds/ }));
+    await waitFor(() => expect(scrub).toHaveValue(at("10:00:15")));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back 15 seconds" }));
+    await waitFor(() => expect(scrub).toHaveValue(at("10:00:00")));
+  });
+
+  it("hands the scrubber one day at a time, not the whole run", async () => {
+    horizonEnd = "2026-11-02T00:00:00+01:00";
+    render(<ReplayScene runId="run_1" />);
+    await sceneReady();
+    const scrub = screen.getByRole("slider", { name: "Replay time" });
+
+    // Three days of trace, but the slider spans the thirtieth alone: its whole width is one day,
+    // so a drag of a few pixels is a few minutes rather than a few hours.
+    expect(scrub).toHaveAttribute("min", String(Date.parse(start)));
+    expect(scrub).toHaveAttribute("max", String(Date.parse(end)));
+
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await waitFor(() => expect(scrub).toHaveAttribute("min", String(Date.parse(end))));
+    expect(scrub).toHaveAttribute("max", String(Date.parse("2026-11-01T00:00:00+01:00")));
   });
 
   it("steps whole days and clamps to the trace", async () => {

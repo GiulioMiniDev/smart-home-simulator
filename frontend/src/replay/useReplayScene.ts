@@ -19,6 +19,18 @@ const SCENE_KINDS = "activity,action,movement,state_transition";
 /** Real time first. Anything faster is for crossing a quiet stretch, not for reading one. */
 export const SCENE_SPEEDS = [1, 2, 5, 15, 60, 300];
 
+/** How far one press of the step keys moves the replay. */
+export const NUDGE_MS = 15_000;
+/**
+ * How far before a walk the forward step stops.
+ *
+ * The walk is the part worth watching -- it is where the flat is crossed, where the doorways and
+ * the stairs are, and it is over in seconds. A fixed step lands in the middle of one as often as
+ * not, and the viewer sees the arrival without the going. So the forward step gives up its own
+ * length whenever a walk begins inside it, and hands over a second of stillness first.
+ */
+const MOVEMENT_LEAD_MS = 1_000;
+
 /**
  * The offset the trace's own timestamps carry.
  *
@@ -73,6 +85,8 @@ export interface ReplaySceneController {
   setSpeed(speed: number): void;
   /** Jump past whatever is happening now: the rest of this activity, or on to the next. */
   skip(): void;
+  /** A step of a few seconds, forwards or back, that will not jump over a walk. */
+  nudge(direction: -1 | 1): void;
   stepDay(direction: -1 | 1): void;
   subscribeToClock(listener: (atMs: number) => void): () => void;
 }
@@ -250,19 +264,38 @@ export function useReplayScene(runId: string, home: HomeModel | undefined): Repl
     setDayStartMs(startOfDay(clamped, offsetRef.current));
   }, [publish]);
 
+  /** Move the playhead without stopping the clock, and follow it if it crossed into another day. */
+  const jump = useCallback((target: number) => {
+    const bounds = rangeRef.current;
+    const clamped = bounds ? Math.min(bounds.end, Math.max(bounds.start, target)) : target;
+    publish(clamped);
+    const day = startOfDay(clamped, offsetRef.current);
+    if (day !== dayStartMs) setDayStartMs(day);
+  }, [dayStartMs, publish]);
+
   const skip = useCallback(() => {
     const at = atRef.current;
     const running = script.activities.find((activity) => activity.startMs <= at && at < activity.endMs);
     const upcoming = script.activities.find((activity) => activity.startMs > at);
     // Past the end of what is happening, or on to the next thing, or simply an hour on when a
     // day has nothing else to show.
-    const target = running ? running.endMs : upcoming ? upcoming.startMs : at + 60 * 60 * 1000;
-    const bounds = rangeRef.current;
-    const clamped = bounds ? Math.min(bounds.end, Math.max(bounds.start, target)) : target;
-    publish(clamped);
-    const day = startOfDay(clamped, offsetRef.current);
-    if (day !== dayStartMs) setDayStartMs(day);
-  }, [dayStartMs, publish, script.activities]);
+    jump(running ? running.endMs : upcoming ? upcoming.startMs : at + 60 * 60 * 1000);
+  }, [jump, script.activities]);
+
+  const nudge = useCallback((direction: -1 | 1) => {
+    const at = atRef.current;
+    if (direction === -1) {
+      jump(at - NUDGE_MS);
+      return;
+    }
+    // Only a walk that has not started yet is worth stopping short of: one already under way is
+    // being watched, and holding a second before its start would be a step backwards.
+    const brink = script.movements
+      .map((movement) => Date.parse(movement.at) - MOVEMENT_LEAD_MS)
+      .filter((moment) => moment > at)
+      .reduce((soonest: number | undefined, moment) => soonest === undefined || moment < soonest ? moment : soonest, undefined);
+    jump(brink === undefined ? at + NUDGE_MS : Math.min(at + NUDGE_MS, brink));
+  }, [jump, script.movements]);
 
   const stepDay = useCallback((direction: -1 | 1) => {
     const at = atRef.current;
@@ -289,6 +322,7 @@ export function useReplayScene(runId: string, home: HomeModel | undefined): Repl
     seek,
     setSpeed: useCallback((next: number) => { setSpeedState(next); }, []),
     skip,
+    nudge,
     stepDay,
     subscribeToClock,
   };

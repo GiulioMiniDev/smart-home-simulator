@@ -361,7 +361,7 @@ def test_replay_interpolation_uses_the_midpoint_between_two_waypoints() -> None:
                 },
                 {
                     "at": start + timedelta(seconds=10),
-                    "regionId": "destination",
+                    "regionId": "origin",
                     "position": Point2D(x=8, y=10),
                     "traversalMode": "walking",
                 },
@@ -370,6 +370,61 @@ def test_replay_interpolation_uses_the_midpoint_between_two_waypoints() -> None:
     )
 
     assert replay_module._point_at(movement, start + timedelta(seconds=5)) == Point2D(x=5, y=7)
+
+
+def test_replay_holds_the_body_at_the_foot_of_a_staircase() -> None:
+    """Two storeys are drawn side by side, so the stair's two ends are metres apart on the page.
+
+    Interpolated, the eight seconds of the climb are eight seconds of a body sliding diagonally
+    across whatever the drawing has between the two blocks — through the bedroom wall and out the
+    other side. She waits at the step she left from and arrives when she arrives; the replay has no
+    third dimension to show her climbing in, and a body in the wrong room is a worse lie than a
+    body that pauses.
+    """
+    from smart_home_sim.application import replay as replay_module
+
+    start = datetime(2026, 8, 23, 8, tzinfo=UTC)
+    movement = MovementExecution.model_validate(
+        {
+            "movementId": "movement_1",
+            "actionExecutionId": "action_1",
+            "actorId": "resident_1",
+            "startedAt": start,
+            "endedAt": start + timedelta(seconds=10),
+            "originRegionId": "landing",
+            "destinationRegionId": "hallway",
+            "distanceMeters": 4.2,
+            "durationMicroseconds": 10_000_000,
+            "waypoints": [
+                {
+                    "at": start,
+                    "regionId": "landing",
+                    "position": Point2D(x=21.5, y=4.5),
+                    "traversalMode": "walking",
+                },
+                {
+                    "at": start + timedelta(seconds=10),
+                    "regionId": "hallway",
+                    "position": Point2D(x=7.0, y=5.6),
+                    "traversalMode": "walking",
+                },
+            ],
+        }
+    )
+
+    midway = replay_module._point_at(movement, start + timedelta(seconds=5))
+    assert midway == Point2D(x=21.5, y=4.5)
+    # A doorway is the other kind of crossing, and it is still walked through: its two portals sit
+    # on a shared wall, centimetres apart, and holding there would freeze every step between rooms.
+    doorway = movement.model_copy(
+        update={
+            "waypoints": [
+                movement.waypoints[0],
+                movement.waypoints[1].model_copy(update={"position": Point2D(x=21.5, y=6.5)}),
+            ]
+        }
+    )
+    assert replay_module._point_at(doorway, start + timedelta(seconds=5)) == Point2D(x=21.5, y=5.5)
 
 
 def test_replay_without_a_bundle_seeds_transition_previous_values(tmp_path: Path) -> None:

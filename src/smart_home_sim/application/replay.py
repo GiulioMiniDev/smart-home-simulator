@@ -113,6 +113,8 @@ class _FrameSources:
     active_movement_snapshots: tuple[tuple[MovementExecution, ...], ...]
     resource_timelines: tuple[tuple[tuple[str, str], tuple[datetime, ...], tuple[Any, ...]], ...]
     resource_availability_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...]
+    # The rooms of the house, so a `resident.location` holding something else can be told apart.
+    region_ids: frozenset[str]
 
 
 class _OracleSource:
@@ -189,18 +191,46 @@ def _cause(link: Any) -> ObservationCause:
 
 
 def _point_at(movement: MovementExecution, at: datetime) -> Point2D:
+    """Where the body is drawn between two waypoints.
+
+    Straight-line interpolation is right inside a storey and wrong between two, because the storeys
+    are drawn side by side in one coordinate plane. A flight of stairs joins two points about
+    fourteen metres apart on the page and one floor apart in the house, so the resident was
+    animated sliding across the upstairs bedroom, out through its wall, over the empty page between
+    the blocks and into the downstairs hall — 276 times in one authored month, nine times a day,
+    every time she used the stairs.
+
+    A climb is therefore held at the foot she started from and shown at the other the moment she
+    arrives. That is not a compromise: the two ends *are* the two places she is, and there is no
+    floor between them to draw her on.
+    """
     waypoints = movement.waypoints
     times = [item.at for item in waypoints]
     right = bisect_right(times, at)
     if right == 0 or right == len(waypoints):
         return _waypoint_at(movement, at).position
     left_item, right_item = waypoints[right - 1], waypoints[right]
+    if left_item.region_id != right_item.region_id and _is_a_climb(left_item, right_item):
+        return left_item.position
     span = (right_item.at - left_item.at).total_seconds()
     ratio = 0.0 if span == 0 else (at - left_item.at).total_seconds() / span
     return Point2D(
         x=left_item.position.x + (right_item.position.x - left_item.position.x) * ratio,
         y=left_item.position.y + (right_item.position.y - left_item.position.y) * ratio,
     )
+
+
+# Two rooms whose walls do not touch are not adjacent on this page, whatever joins them in the
+# house. Doorways sit on a shared wall and their two portals are centimetres apart; a staircase's
+# two feet are on different blocks of the drawing. The gap is what tells them apart, so the replay
+# needs no access to the home model to know which crossing it is looking at.
+_ADJACENT_METRES = 3.0
+
+
+def _is_a_climb(left: Any, right: Any) -> bool:
+    return (
+        (right.position.x - left.position.x) ** 2 + (right.position.y - left.position.y) ** 2
+    ) ** 0.5 > _ADJACENT_METRES
 
 
 def _waypoint_at(movement: MovementExecution, at: datetime) -> Any:
@@ -577,6 +607,31 @@ def _with_oracle(item: ReplayEventView, oracle_links: Mapping[str, Any] | None) 
     return result
 
 
+def _room_or_keep(
+    value: Any, current: str | None, known_regions: frozenset[str]
+) -> str | None:
+    """Take the new location only when it names a room of the house.
+
+    `resident.location` carries two vocabularies. `move_to` writes a region — `bedroom` — and
+    `move_to_capability` writes the *role* it walked to: `sleeping_area`, `dining_seat`,
+    `cooking_appliance`. Reading both as a place on the plan is what made the replay caption say
+    "in the cooking appliance", and made the room highlight vanish, for 17.2% of the frames of one
+    authored day: `activeRegionId` matched no region, so nothing lit up.
+
+    The movements are the authority — every one of them carries real region ids — so a role falls
+    back to where the walk that produced it ended. Falling back to the *previous* value was tried
+    first and is wrong in the same way, one step later: `move_to_capability(personal_care_fixture)`
+    walks her into the bathroom, and the caption went on saying bedroom while the body was drawn at
+    the shower. Where the house is unknown (a trace read without its bundle) the old behaviour
+    stands, because there is then nothing to check against.
+    """
+    if not isinstance(value, str):
+        return None if value is None else current
+    if not known_regions or value in known_regions:
+        return value
+    return current
+
+
 def _initial_residents(
     trace: ExecutionTrace, bundle: SimulationBundle | None
 ) -> dict[str, dict[str, Any]]:
@@ -659,6 +714,11 @@ def _resident_frames(
 ) -> tuple[list[ReplayResidentFrame], list[str]]:
     if sources is not None:
         return _indexed_resident_frames(at, sources)
+    known_regions = (
+        frozenset(item.region_id for item in bundle.home_model.regions)
+        if bundle is not None
+        else frozenset()
+    )
     residents = deepcopy(sources.residents) if sources else _initial_residents(trace, bundle)
     resident_ids = (
         set(sources.resident_ids)
@@ -755,7 +815,7 @@ def _resident_frames(
         _apply_transition(state["facts"], transition)
         if transition.fact == "location":
             value = _fold_transition_value(state["region_id"], transition)
-            state["region_id"] = value if isinstance(value, str) else None
+            state["region_id"] = _room_or_keep(value, state["region_id"], known_regions)
         else:
             current = state["position"]
             raw_current = current.model_dump(mode="python") if current is not None else None
@@ -907,8 +967,12 @@ def _indexed_resident_frames(
                         Point2D.model_validate(candidate)
                         if field == "position" and isinstance(candidate, dict)
                         else (
-                            candidate
-                            if field == "region_id" and isinstance(candidate, str)
+                            _room_or_keep(
+                                candidate,
+                                _waypoint_at(movement, at).region_id,
+                                sources.region_ids,
+                            )
+                            if field == "region_id"
                             else None
                         )
                     )
@@ -941,8 +1005,14 @@ def _indexed_resident_frames(
                 state[field] = (
                     Point2D.model_validate(candidate)
                     if field == "position" and isinstance(candidate, dict)
-                    else candidate
-                    if field == "region_id" and isinstance(candidate, str)
+                    else _room_or_keep(
+                        candidate,
+                        _waypoint_at(completed, completed.ended_at).region_id
+                        if completed is not None
+                        else state[field],
+                        sources.region_ids,
+                    )
+                    if field == "region_id"
                     else None
                 )
         if movement is not None:
@@ -1230,6 +1300,11 @@ def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _F
         for resource_id, items in sorted(resource_availability_groups.items())
     )
     return _FrameSources(
+        region_ids=frozenset(
+            item.region_id for item in bundle.home_model.regions
+        )
+        if bundle is not None
+        else frozenset(),
         residents=residents,
         resident_ids=tuple(sorted(resident_ids)),
         entity_states=entity_states,

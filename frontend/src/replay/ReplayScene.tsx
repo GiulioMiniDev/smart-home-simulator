@@ -118,6 +118,23 @@ function headline(activity: SceneActivity | undefined, name: string, atMs: numbe
   return atMs - activity.startMs < 6_000 ? `${name} ${activity.wish}` : `${name} is ${activity.title}`;
 }
 
+/** The stretch the scrubber covers: the day on screen, not the whole horizon.
+ *
+ * Spanning the run put a month behind one slider, where a pixel was a quarter of an hour and
+ * nothing could be reached on purpose. The days are stepped with the arrows either side of it, so
+ * the slider is free to be what it is useful as — a way of moving inside the day you are watching.
+ * It is clipped to the run at both ends, so the first and last days do not offer hours that are
+ * not there. */
+function dayBounds(controller: ReplaySceneController): { min: number; max: number } {
+  const { startMs, endMs, dayStartMs } = controller;
+  if (startMs === undefined || endMs === undefined) return { min: 0, max: 1 };
+  if (dayStartMs === undefined) return { min: startMs, max: endMs };
+  return {
+    min: Math.max(startMs, dayStartMs),
+    max: Math.min(endMs, dayStartMs + MILLISECONDS_PER_DAY),
+  };
+}
+
 export function ReplayScene({ runId }: { runId: string }) {
   const models = useResource<ReplayModels>(`/runs/${encodeURIComponent(runId)}/models`);
   const controller = useReplayScene(runId, models.data?.homeModel);
@@ -202,6 +219,20 @@ export function ReplayScene({ runId }: { runId: string }) {
         <button
           type="button"
           className="scene-key"
+          aria-label="Back 15 seconds"
+          disabled={controller.status !== "ready"}
+          onClick={() => { controller.nudge(-1); }}
+        >−15s</button>
+        <button
+          type="button"
+          className="scene-key"
+          aria-label="Forward 15 seconds, stopping before a walk"
+          disabled={controller.status !== "ready"}
+          onClick={() => { controller.nudge(1); }}
+        >+15s</button>
+        <button
+          type="button"
+          className="scene-key"
           disabled={controller.status !== "ready"}
           onClick={() => { controller.skip(); }}
         >Skip ahead</button>
@@ -218,8 +249,7 @@ export function ReplayScene({ runId }: { runId: string }) {
           className="scene-scrub"
           type="range"
           aria-label="Replay time"
-          min={controller.startMs ?? 0}
-          max={controller.endMs ?? 1}
+          {...dayBounds(controller)}
           value={Math.round(atMs)}
           disabled={controller.startMs === undefined}
           onChange={(event) => { controller.seek(Number(event.target.value)); }}
