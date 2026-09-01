@@ -7,6 +7,13 @@ import type { BehaviourSlice, HomeModel, IntentRhythm, JobRecord, ResidentProfil
 const now = "2026-07-22T10:00:00Z";
 const job: JobRecord = { jobId: "run_1", homeId: "home_1", kind: "materialization", status: "completed", progress: { phase: "completed", percent: 100, completedUnits: 1, totalUnits: 1, message: "Done" }, requestedAt: now, startedAt: now, finishedAt: now, seed: 7 };
 const homeModel: HomeModel = { schemaVersion: "1.0.0", documentType: "home_model", homeId: "model_home", homeVersion: "1", coordinateSystem: {}, regions: [{ regionId: "room", kind: "room", traversable: true, boundary: { vertices: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }] } }], connections: [], obstacles: [{ obstacleId: "obstacle_wardrobe", regionId: "room", orientationDegrees: 0, boundary: { vertices: [{ x: 0, y: 1 }, { x: 0.6, y: 1 }, { x: 0.6, y: 2.2 }, { x: 0, y: 2.2 }] } }], interactionPoints: [{ interactionPointId: "point", regionId: "room", position: { x: 1, y: 1 }, approachRadiusMeters: 1 }, { interactionPointId: "point_wardrobe", regionId: "room", position: { x: 1.2, y: 1.6 }, approachRadiusMeters: 0.3 }], entities: [{ entityId: "door", entityType: "door", regionId: "room", interactionPointId: "point", capabilities: [{ capability: "access", roles: ["door"], supportedOperations: ["open"] }], initialState: { open: false } }, { entityId: "wardrobe", entityType: "wardrobe", regionId: "room", interactionPointId: "point_wardrobe", capabilities: [{ capability: "storage_support", roles: ["clothes"], supportedOperations: ["open"] }], initialState: { open: false } }], locationBindings: [], resourceBindings: [], kinematicDefaults: {} };
+/** The plan page edits one layer at a time, so a test says which one it means. */
+function openPlan(layer: "House" | "Sensors") {
+  const tab = screen.getByRole("tab", { name: "Plan & sensors" });
+  if (tab.getAttribute("aria-selected") !== "true") fireEvent.click(tab);
+  fireEvent.click(screen.getByRole("radio", { name: layer }));
+}
+
 const sensorModel: SensorModel = { schemaVersion: "1.0.0", documentType: "sensor_model", sensorModelId: "s", sensorModelVersion: "1", sourceBundleId: "b", sourceBundleSha256: "a".repeat(64), seed: 7, regionIds: ["room"], entityIds: ["door"], sensors: [{ sensorId: "pir", sensorType: "pir", position: { x: 2, y: 2 }, regionIds: ["room"], coverage: homeModel.regions[0].boundary, timing: { latencyMilliseconds: 0, clockJitterMilliseconds: 0, cooldownMilliseconds: 0 }, errorModel: { dropoutProbability: 0, falseNegativeProbability: 0, falsePositiveProbabilityPerDay: 0, measurementNoiseStandardDeviation: 0 }, failureWindows: [] }] };
 const home = { homeId: "home_1", name: "Golden home", description: "Acceptance", residentCount: 1, runCount: 1, issueCount: 0, currentHomeArtifactId: "artifact_home", currentSensorArtifactId: "artifact_sensor", createdAt: now, updatedAt: now };
 const resident = { residentId: "resident_1", homeId: "home_1", sourceResidentId: "mario", displayName: "Mario", scenarioArtifactId: "scenario", behaviorArtifactId: "behavior", createdAt: now };
@@ -286,7 +293,7 @@ describe("complete application routes", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const prompt = writeText.mock.calls[0]?.[0] ?? "";
     expect(prompt).toContain("Nicoletta Palmi, 8 months");
-    expect(prompt).toContain("generate-horizon-outline-1.1.0");
+    expect(prompt).toContain("generate-horizon-outline-1.3.0");
     expect(prompt).toContain("Do not write the days of the horizon.");
     expect(prompt).not.toContain("{{PERSON_AND_CASE_DESCRIPTION}}");
     // The guide must say the response cannot be imported as it stands, or a reader will try.
@@ -303,14 +310,14 @@ describe("complete application routes", () => {
   it("creates a home and exercises the undoable home and sensor editors", async () => {
     mount("/homes/home_1");
     await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: "room room" }));
     fireEvent.change(screen.getByLabelText("Kind", { selector: "select" }), { target: { value: "outdoor" } });
     fireEvent.change(screen.getByLabelText("Floor"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Floor"), { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: /Validate and publish plan/ }));
     await screen.findByText(/Plan validated and published/);
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    openPlan("Sensors");
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     fireEvent.change(screen.getByLabelText("X position"), { target: { value: "3" } });
     useTool("Temperature", 2, 2);
@@ -351,7 +358,7 @@ describe("complete application routes", () => {
   it("widens a PIR range from the inspector and keeps it inside the room", async () => {
     mount("/homes/home_1");
     await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    openPlan("Sensors");
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
 
     const range = screen.getByLabelText("Range m") as HTMLInputElement;
@@ -371,7 +378,7 @@ describe("complete application routes", () => {
     expect(await screen.findByText(/no plan to approve/)).toBeInTheDocument();
 
     // With no object selected there is nothing to move: the inspector says so instead of guessing.
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     expect(screen.getByText(/Select an object on the plan/)).toBeInTheDocument();
   });
 
@@ -399,7 +406,7 @@ describe("complete application routes", () => {
     // reseeded from the server each time — quietly discarding the wall you had just moved.
     mount("/homes/home_1");
     await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    openPlan("Sensors");
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     fireEvent.change(screen.getByLabelText("Range m"), { target: { value: "0.6" } });
 
@@ -409,7 +416,7 @@ describe("complete application routes", () => {
 
     // A reload arrives (as a running job would trigger); the edit survives it.
     fireEvent.click(screen.getByRole("tab", { name: "overview" }));
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    openPlan("Sensors");
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     expect((screen.getByLabelText("Range m") as HTMLInputElement).value).toBe("0.6");
 
@@ -902,7 +909,7 @@ describe("complete application routes", () => {
 
   it("edits all sensor types, nudges objects, removes drafts and imports models", async () => {
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: "door door" }));
     fireEvent.change(screen.getByLabelText("Provider type"), { target: { value: "entry_door" } });
     fireEvent.change(screen.getByLabelText("Containing region"), { target: { value: "room" } });
@@ -917,7 +924,7 @@ describe("complete application routes", () => {
     const homeFile = new File([JSON.stringify(homeModel)], "home.json"); Object.defineProperty(homeFile, "text", { value: () => Promise.resolve(JSON.stringify(homeModel)) });
     fireEvent.change(screen.getByLabelText(/Import home/), { target: { files: [homeFile] } });
     expect(await screen.findByText(/Home model loaded as a draft/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    openPlan("Sensors");
     useTool("Contact", 2, 2);
     fireEvent.click(screen.getByRole("button", { name: /contact sensor contact_01/ }));
     fireEvent.change(screen.getByLabelText("Entity"), { target: { value: "door" } });
@@ -933,7 +940,7 @@ describe("complete application routes", () => {
     // traversable first, and a doorway could not be made at all: the only way to get one was to add
     // a room and accept the passage that came with it.
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
 
     fireEvent.click(screen.getByRole("button", { name: "Room" }));
     const svg = document.querySelector("svg.plan-canvas") as SVGSVGElement;
@@ -980,7 +987,7 @@ describe("complete application routes", () => {
     // The tool used to add an untyped 0.8 by 0.8 obstacle. There was no way to say "a wardrobe"
     // short of publishing the box and editing the JSON by hand.
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: "Furniture" }));
     const palette = screen.getByRole("group", { name: "Furniture to place" });
     expect(within(palette).getByRole("button", { name: "Sofa" })).toBeInTheDocument();
@@ -1008,7 +1015,7 @@ describe("complete application routes", () => {
     // moment the page went away.
     localStorage.clear();
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: /Obstacle obstacle_wardrobe/ }));
     const layout = document.querySelector(".editor-layout") as HTMLElement;
     fireEvent.keyDown(layout, { key: "ArrowRight" });
@@ -1032,7 +1039,7 @@ describe("complete application routes", () => {
     }));
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
     expect(await screen.findByText(/Reopened the working copy/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     expect(screen.getByRole("button", { name: /room kept_room/ })).toBeInTheDocument();
     localStorage.clear();
   });
@@ -1041,7 +1048,7 @@ describe("complete application routes", () => {
     // The nudge grid could always move a thing with the mouse. What it could not do is let somebody
     // keep their eyes on the plan, and there was no way at all to turn a piece of furniture round.
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: /Obstacle obstacle_wardrobe/ }));
     const layout = document.querySelector(".editor-layout") as HTMLElement;
     const footprint = () =>
@@ -1070,7 +1077,7 @@ describe("complete application routes", () => {
 
   it("says what the gate would refuse while the object is still in your hand", async () => {
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: /Obstacle obstacle_wardrobe/ }));
     const layout = document.querySelector(".editor-layout") as HTMLElement;
     // Walked out of its room half a metre at a time. Learning this at publication, and having the
@@ -1083,14 +1090,14 @@ describe("complete application routes", () => {
 
   it("covers precise region, obstacle and PIR controls plus invalid model feedback", async () => {
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: "room room" }));
     fireEvent.click(screen.getByLabelText("Traversable"));
     fireEvent.change(screen.getByLabelText("Vertex 1 X"), { target: { value: "0.5" } });
     fireEvent.change(screen.getByLabelText("Vertex 1 Y"), { target: { value: "0.5" } });
     useTool("Furniture", 2, 2);
     fireEvent.change(screen.getByLabelText("Containing region"), { target: { value: "room" } });
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" }));
+    openPlan("Sensors");
     fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     fireEvent.click(screen.getByRole("button", { name: "Add window" }));
     fireEvent.click(screen.getByLabelText("Remove failure window 1"));
@@ -1149,14 +1156,14 @@ describe("complete application routes", () => {
     overrides["/homes/home_1"] = { home: { ...home, currentHomeArtifactId: undefined, currentSensorArtifactId: undefined }, residents: [resident, second], models: {}, jobs: [] };
     mount("/homes/home_1");
     expect(await screen.findByText("2 associated residents")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     expect(screen.getByText("No spatial model yet")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "runs" }));
     expect(screen.getByText("No simulation evidence yet")).toBeInTheDocument();
     cleanup(); overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [] };
     overrides["/homes/home_1/home-model"] = { valid: false, issues: [{ message: "Geometry overlaps" }] };
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: /Validate and publish/ }));
     expect(await screen.findByText("Geometry overlaps")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Dismiss message"));
@@ -1223,7 +1230,7 @@ describe("complete application routes", () => {
     expect(await screen.findByText("Worker unavailable")).toBeInTheDocument();
     cleanup(); overrides["/homes/home_1/home-model"] = new Response(JSON.stringify({ error: { message: "Write failed" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "Plan & resources" }));
+    openPlan("House");
     fireEvent.click(screen.getByRole("button", { name: /Validate and publish/ }));
     expect(await screen.findByText("Write failed")).toBeInTheDocument();
   });
@@ -1232,7 +1239,7 @@ describe("complete application routes", () => {
     const windowed = { ...sensorModel, sensors: [{ ...sensorModel.sensors[0], failureWindows: [{ startsAt: now, endsAt: "2026-07-22T11:00:00Z" }] }] };
     overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel: windowed }, jobs: [] };
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
-    fireEvent.click(screen.getByRole("tab", { name: "sensors" })); fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
+    openPlan("Sensors"); fireEvent.click(screen.getByRole("button", { name: /pir sensor pir/ }));
     expect(screen.getByRole("heading", { name: "Failure windows" })).toBeInTheDocument();
     expect(screen.getByLabelText("Starts")).toHaveValue("2026-07-22T10:00");
     cleanup();

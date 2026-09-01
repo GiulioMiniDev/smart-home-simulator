@@ -293,6 +293,17 @@ dd { margin: 0; }
 .viewport-tools { align-items: center; justify-content: flex-end; }
 .viewport-tools > span { align-self: center; min-width: 36px; color: var(--text-soft); font-size: .7rem; text-align: right; }
 .editor-toolbar > span { color: var(--text-soft); font-size: .72rem; }
+/* The house and the sensor field are one page and two layers. The switch reads as a switch — two
+   halves of one control, one of them pressed — because it changes what the pointer touches, which
+   is a mode and not a command. */
+.layer-switch { display: inline-flex; margin-right: .5rem; padding: 2px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+.layer-switch button { padding: .3rem .7rem; border: 0; border-radius: 3px; background: transparent; color: var(--text-soft); font-size: .73rem; font-weight: 600; cursor: pointer; }
+.layer-switch button[aria-checked="true"] { background: var(--indigo); color: oklch(97% .008 85); }
+.layer-switch button:disabled { opacity: .45; cursor: not-allowed; }
+/* Placing a detector means seeing what it watches, so the house stays behind the sensor field:
+   drawn in full, drained of its colour so the sensors read as the subject, and deaf to the pointer
+   so reaching for a sofa cannot pick one up. */
+.plan-layer.is-backdrop { pointer-events: none; filter: grayscale(.7) contrast(.92); }
 .tool-button { display: inline-flex; align-items: center; gap: .35rem; padding: .38rem .55rem; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text-soft); font-size: .73rem; cursor: pointer; }
 .tool-button:hover, .tool-button[aria-pressed="true"] { border-color: var(--line); background: var(--surface); color: var(--text); }
 .plan-canvas-wrap { position: relative; min-height: 0; height: 100%; background: var(--surface-raised); }

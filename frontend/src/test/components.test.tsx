@@ -166,39 +166,47 @@ describe("application components", () => {
     expect(screen.getByText("Open").closest("a")).toHaveAttribute("href", "/simulations/run");
   });
 
-  it("supports pointer and keyboard plan selection", () => {
+  it("supports pointer and keyboard plan selection, on the layer being edited", () => {
     const select = vi.fn();
     const view = render(<PlanCanvas home={home} sensors={sensors} selectedId="kitchen" onSelect={select} viewport={{ zoom: 2, x: 1, y: -1 }} />);
     fireEvent.click(screen.getByLabelText("room kitchen"));
     fireEvent.keyDown(screen.getByLabelText("oven oven"), { key: "Enter" });
-    fireEvent.keyDown(screen.getByLabelText("pir sensor pir"), { key: " " });
     fireEvent.click(screen.getByLabelText("Obstacle table"));
-    expect(select.mock.calls.flat()).toEqual(["kitchen", "oven", "pir", "table"]);
+    expect(select.mock.calls.flat()).toEqual(["kitchen", "oven", "table"]);
+
+    // Editing the sensors keeps the furniture drawn — a detector is placed against what it watches
+    // — and deaf: reaching for a sofa and picking up the detector above it is a mistake nobody
+    // notices until after publishing.
+    select.mockClear();
+    view.rerender(<PlanCanvas home={home} sensors={sensors} layer="sensors" onSelect={select} />);
+    fireEvent.keyDown(screen.getByLabelText("pir sensor pir"), { key: " " });
+    fireEvent.click(screen.getByLabelText("room kitchen"));
+    fireEvent.click(screen.getByLabelText("Obstacle table"));
+    expect(select.mock.calls.flat()).toEqual(["pir"]);
     view.rerender(<PlanCanvas home={{ ...home, connections: [{ connectionId: "broken", regionAId: "kitchen", regionBId: "missing", kind: "doorway", bidirectional: true, widthMeters: 1 }], entities: [...home.entities, { ...home.entities[0], entityId: "orphan", interactionPointId: "missing" }] }} />);
     expect(screen.queryByLabelText("oven orphan")).not.toBeInTheDocument();
   });
 
-  it("keeps passive plans fitted while the wheel remains available to page scrolling", () => {
-    const passive = render(<PlanCanvas home={home} sensors={sensors} interactionMode="passive" />);
-    const passivePlan = passive.container.querySelector("svg.plan-canvas") as SVGSVGElement;
-    const initialViewBox = passivePlan.getAttribute("viewBox");
-    const passiveWheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 120 });
+  it("leaves the wheel to the page, on an interactive plan as on a passive one", () => {
+    // The plan is fitted to its own extent when it opens, so wheel zoom had little left to do and
+    // plenty to get wrong: over a canvas that fills the view it swallowed the page scroll, and a
+    // reader scrolling down to the inspector zoomed the drawing instead. The toolbar keeps the
+    // buttons, which are also the only zoom a keyboard ever had.
+    for (const mode of ["passive", "interactive"] as const) {
+      const view = render(
+        <PlanCanvas home={home} sensors={sensors} interactionMode={mode} />,
+      );
+      const plan = view.container.querySelector("svg.plan-canvas") as SVGSVGElement;
+      const before = plan.getAttribute("viewBox");
+      const wheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 120 });
 
-    fireEvent(passivePlan, passiveWheel);
+      fireEvent(plan, wheel);
 
-    expect(passiveWheel.defaultPrevented).toBe(false);
-    expect(passivePlan).toHaveAttribute("data-interaction-mode", "passive");
-    expect(passivePlan).toHaveAttribute("viewBox", initialViewBox);
-
-    passive.unmount();
-    const interactive = render(<PlanCanvas home={home} sensors={sensors} />);
-    const interactivePlan = interactive.container.querySelector("svg.plan-canvas") as SVGSVGElement;
-    const interactiveWheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 120 });
-
-    fireEvent(interactivePlan, interactiveWheel);
-
-    expect(interactiveWheel.defaultPrevented).toBe(true);
-    expect(interactivePlan).toHaveAttribute("data-interaction-mode", "interactive");
+      expect(wheel.defaultPrevented).toBe(false);
+      expect(plan).toHaveAttribute("data-interaction-mode", mode);
+      expect(plan).toHaveAttribute("viewBox", before as string);
+      view.unmount();
+    }
   });
 
   it("moves and resizes plan objects by pointer, reporting gestures in metres", () => {
@@ -339,7 +347,7 @@ describe("application components", () => {
     // Clicking a sensor used to shift the drawing out from under the pointer: the press is never
     // perfectly still, and the first stray pixel was taken for a pan.
     const select = vi.fn();
-    const { container } = render(<PlanCanvas home={home} sensors={sensors} onSelect={select} />);
+    const { container } = render(<PlanCanvas home={home} sensors={sensors} layer="sensors" onSelect={select} />);
     const svg = container.querySelector("svg") as SVGSVGElement;
     svg.getBoundingClientRect = () => ({ width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "" });
     const before = svg.getAttribute("viewBox");
@@ -401,7 +409,7 @@ describe("application components", () => {
     expect(container.querySelector("path.door-swing")).not.toBeNull();
   });
 
-  it("pans by dragging the plan and zooms towards the cursor", () => {
+  it("pans by dragging the plan, and the wheel does not zoom it", () => {
     // Nudging a twelve-metre flat one metre per button press is not navigation.
     const { container } = render(<PlanCanvas home={home} sensors={sensors} />);
     const svg = container.querySelector("svg") as SVGSVGElement;
@@ -416,13 +424,10 @@ describe("application components", () => {
     // Dragging left moves the window right by the same metre count the pointer travelled.
     expect(Number(panned?.split(" ")[0]) - Number(before?.split(" ")[0])).toBeCloseTo(1, 6);
 
+    // The wheel belongs to the page. Zoom is the toolbar's, which is also the only zoom a keyboard
+    // ever had, and the plan opens fitted to its own extent anyway.
     fireEvent.wheel(svg, { deltaY: -400, clientX: 0, clientY: 0 });
-    const zoomed = svg.getAttribute("viewBox")?.split(" ").map(Number) ?? [];
-    const start = panned?.split(" ").map(Number) ?? [];
-    expect(zoomed[2]).toBeLessThan(start[2] as number);
-    // The corner under the cursor stays where it was while the view closes in on it.
-    expect(zoomed[0]).toBeCloseTo(start[0] as number, 6);
-    expect(zoomed[1]).toBeCloseTo(start[1] as number, 6);
+    expect(svg.getAttribute("viewBox")).toBe(panned);
   });
 
   it("draws the house, not the town it is standing in", () => {

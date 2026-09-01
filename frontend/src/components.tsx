@@ -487,6 +487,7 @@ export function PlanCanvas({
   onViewport,
   interactionMode = "interactive",
   tool = "select",
+  layer = "home",
   storey: storeyProp,
   onStoreyChange,
 }: {
@@ -500,6 +501,8 @@ export function PlanCanvas({
   onViewport?: (next: { zoom: number; x: number; y: number }) => void;
   interactionMode?: "interactive" | "passive";
   tool?: PlanTool;
+  /** Which drawing the pointer edits. The other one is still drawn, and is inert. */
+  layer?: "home" | "sensors";
   /** The storey being drawn. Owned by the page when it has tools that create on one. */
   storey?: number;
   onStoreyChange?: (level: number) => void;
@@ -585,7 +588,16 @@ export function PlanCanvas({
   // that has to be stopped, in capture, and only the one belonging to that gesture — swallowing
   // "the next activation" instead would eat an unrelated click that happened to come first.
   const toolJustUsed = useRef(false);
-  const activate = (id: string) => onSelect?.(id);
+  // Which of the two drawings on this canvas the pointer is allowed to touch. Editing a plan means
+  // editing one thing at a time: reaching for a sofa and picking up the detector above it is the
+  // kind of mistake that is only noticed after publishing, and the two layers are always drawn
+  // together because a sensor is placed *with respect to* the furniture it watches.
+  const sensorIds = new Set((sensors?.sensors ?? []).map((item) => item.sensorId));
+  const editable = (id: string) => (sensorIds.has(id) ? layer === "sensors" : layer === "home");
+  const activate = (id: string) => {
+    if (!editable(id)) return;
+    onSelect?.(id);
+  };
   const keyboard = (event: React.KeyboardEvent<SVGGElement>, id: string) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -753,39 +765,14 @@ export function PlanCanvas({
     // Dragging the plan right moves the window left, which is what makes it feel like paper.
     changeViewport({ zoom, x: view.x - dx, y: view.y - dy });
   };
-  const wheelZoom = (event: React.WheelEvent<SVGSVGElement>) => {
-    event.preventDefault();
-    const box = svgRef.current?.getBoundingClientRect();
-    if (!box || !box.width || !box.height) return;
-    const next = Math.max(
-      MINIMUM_ZOOM,
-      Math.min(zoom * Math.exp(-event.deltaY * 0.0015), MAXIMUM_ZOOM),
-    );
-    if (next === zoom) return;
-    // Keep the point under the cursor still: zoom towards what the reader is looking at.
-    const fx = (event.clientX - box.left) / box.width;
-    const fy = (event.clientY - box.top) / box.height;
-    const world = { x: viewX + fx * width, y: viewY + fy * height };
-    const nextWidth = (maxX - minX) / next;
-    const nextHeight = (maxY - minY) / next;
-    changeViewport({
-      zoom: next,
-      x: world.x - fx * nextWidth - minX - (maxX - minX - nextWidth) / 2,
-      y: world.y - fy * nextHeight - minY - (maxY - minY - nextHeight) / 2,
-    });
-  };
-  useEffect(() => {
-    if (interactionMode !== "interactive") return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    // React registers wheel listeners as passive in this runtime, so retain the browser-level
-    // cancellation that keeps interactive canvas zoom from scrolling the containing page.
-    const preventPageScroll = (event: WheelEvent) => event.preventDefault();
-    svg.addEventListener("wheel", preventPageScroll, { passive: false });
-    return () => svg.removeEventListener("wheel", preventPageScroll);
-  }, [interactionMode]);
+  // No wheel zoom. The plan is fitted to its own extent when it opens, so the wheel had almost
+  // nothing left to do and plenty to get wrong: it swallowed the page scroll over a canvas that
+  // fills the view, and a reader scrolling down to the inspector zoomed the drawing instead. The
+  // toolbar keeps the buttons, which are also the only zoom a keyboard ever had.
   const draggable = (id: string) =>
-    editing ? { onPointerDown: (event: ReactPointerEvent) => beginDrag(event, id) } : {};
+    editing && editable(id)
+      ? { onPointerDown: (event: ReactPointerEvent) => beginDrag(event, id) }
+      : {};
   // Carrying the id alongside the box removes the need to re-check it when wiring the handles.
   const selectedBox = editing && selectedId ? selectionBox(home, sensors, selectedId) : undefined;
   const selection = selectedBox ? { id: selectedId as string, box: selectedBox } : undefined;
@@ -810,7 +797,6 @@ export function PlanCanvas({
     },
     onPointerCancel: () => { drawing.current = undefined; setDraft(undefined); endDrag(); },
     onPointerLeave: () => { setDropPoint(undefined); setWallUnderPointer(undefined); endDrag(); },
-    onWheel: wheelZoom,
   } : {};
   return (
     <div className="plan-canvas-wrap">
@@ -831,6 +817,10 @@ export function PlanCanvas({
           <CustomFurnitureSymbols />
         </defs>
         <rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill="url(#grid)" className="plan-grid" />
+        {/* Editing the sensors means seeing the furniture they watch, so the house stays drawn
+            behind them — greyed back, and deaf to the pointer. Editing the house is the other way
+            round: the detectors are simply not part of that drawing and are left out of it. */}
+        <g className={`plan-layer${layer === "sensors" ? " is-backdrop" : ""}`}>
         <g role="group" aria-label="Regions">
           {regionsShown.map((region) => (
             <g
@@ -965,7 +955,8 @@ export function PlanCanvas({
             );
           })}
         </g>
-        {sensors && <g role="group" aria-label="Sensors">
+        </g>
+        {sensors && <g className="plan-layer" role="group" aria-label="Sensors">
           {sensorsShown.map((sensor) => {
             const coverage = sensor.sensorType === "pir" ? (sensor.coverage as Polygon | undefined) : undefined;
             const isSelected = selectedId === sensor.sensorId;
