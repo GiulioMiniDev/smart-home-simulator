@@ -13,12 +13,14 @@ from smart_home_sim.authoring.preflight import (
     _join,
     _resolve_arguments,
     validate_activities_do_not_park_the_resident,
+    validate_activity_rooms_can_perform_them,
     validate_away_round_trips,
     validate_declared_objects_are_reachable,
     validate_habit_bands_are_inhabited,
     validate_habit_bands_hold_a_stable_stretch,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
+    validate_named_objects_can_do_what_is_asked,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
 )
@@ -258,6 +260,135 @@ def test_a_furnished_scenario_passes_and_a_stripped_one_does_not() -> None:
     assert len(kitchen) == 1
     assert kitchen[0].details["declaredResources"] == []
     assert "placeholder" in kitchen[0].message
+
+
+def test_a_room_that_cannot_perform_its_activity_is_reported_and_a_crossing_model_is_not() -> None:
+    """The rooms nobody named: the catalog chose them and has never seen this home.
+
+    An authored month put twenty-seven work-from-home blocks in a living room furnished with a sofa
+    and a television, while the desk the same author declared stood in the study. Nothing was wrong
+    enough to reject — every object existed — and the work bound to the living room's anchor.
+
+    The negative control matters as much: a process model may cross rooms on purpose. Laundry is
+    unloaded from the machine in the bathroom and hung on the balcony, and an earlier version of
+    this check read every capability against the activity's one room and called that a defect. Only
+    the actions that name no role can fall to the anchor; one that names its object finds it
+    anywhere, because a declared piece of furniture takes its own roles away from every anchor.
+    """
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    package = PersonalProcessPackage.model_validate_json(
+        (ROOT / "examples/behavior/mario_rossi_week_2026_10_12.behavior.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    catalog = ActionCatalog.model_validate_json(
+        default_action_catalog_path("1.0.0").read_text(encoding="utf-8")
+    )
+    reported = validate_activity_rooms_can_perform_them(
+        Scenario.model_validate_json(json.dumps(payload)), package, catalog
+    )
+
+    # This week declares nine objects and no wardrobe, so `dress_for_work` in a bedroom holding
+    # only a bed is a true finding, not a false one.
+    assert ("dress_for_work", "bedroom") in {
+        (item.details["intent"], item.details["room"]) for item in reported
+    }
+    assert "generated placeholder" in reported[0].message
+    # Not the front door: `leave_home` needs `home_egress`, which the materialiser fits itself and
+    # no scenario ever declares. Blaming the entrance for lacking one would fire on every bundle.
+    assert not [
+        item
+        for item in reported
+        if "home_egress" in list(item.details["missingCapabilities"])  # type: ignore[arg-type]
+    ]
+
+    # Nor a model that crosses rooms on purpose. The laundry is unloaded from the machine in the
+    # bathroom and hung on the balcony; only the balcony's own half is judged here.
+    laundry = [item for item in reported if item.details["intent"] == "hang_laundry"]
+    assert [item.details["missingCapabilities"] for item in laundry] == [["laundry_support"]]
+
+    # Give the bedroom a wardrobe and the dressing stops being reported.
+    furnished = json.loads(json.dumps(payload))
+    furnished["resources"].append(
+        {"resourceId": "wardrobe_01", "resourceType": "wardrobe", "locationId": "bedroom"}
+    )
+    after = validate_activity_rooms_can_perform_them(
+        Scenario.model_validate_json(json.dumps(furnished)), package, catalog
+    )
+    assert ("dress_for_work", "bedroom") not in {
+        (item.details["intent"], item.details["room"]) for item in after
+    }
+
+
+def test_asking_an_object_for_something_it_cannot_do_is_reported_before_the_run() -> None:
+    """`put_item(coffee_equipment)` asks the moka to be a place things can be put.
+
+    Written to balance an earlier `take_item` of the same role, it needs `storable`, and a moka
+    offers everything except that. The role belongs to declared furniture, so it is taken away from
+    the room anchors and nothing else can answer: the action binds to no provider at all. On the
+    authored month that was 108 unresolved bindings and a run that stopped after the home had
+    already been built, on a bundle every earlier gate had passed.
+    """
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    scenario = Scenario.model_validate_json(json.dumps(payload))
+    catalog = ActionCatalog.model_validate_json(
+        default_action_catalog_path("1.1.0").read_text(encoding="utf-8")
+    )
+    package = PersonalProcessPackage.model_validate_json(
+        (ROOT / "examples/behavior/mario_rossi_week_2026_10_12.behavior.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert validate_named_objects_can_do_what_is_asked(scenario, package, catalog) == []
+
+    # The moka is the fixture with no `storable`; asking it to hold something cannot resolve.
+    asking = _package_with(
+        [
+            {
+                "nodeId": "a1",
+                "kind": "action",
+                "actionType": "put_item",
+                "arguments": {"itemRole": {"source": "literal", "value": "coffee_equipment"}},
+            }
+        ],
+        "prepare_and_drink_hot_drink",
+    )
+    with_moka = json.loads(json.dumps(payload))
+    with_moka["resources"].append(
+        {"resourceId": "moka_01", "resourceType": "moka_coffee_maker", "locationId": "kitchen"}
+    )
+    findings = validate_named_objects_can_do_what_is_asked(
+        Scenario.model_validate_json(json.dumps(with_moka)), asking, catalog
+    )
+
+    assert len(findings) == 1
+    assert findings[0].details["capability"] == "storable"
+    assert findings[0].details["claimants"] == ["moka_01"]
+
+    # `coffee_equipment` is the moka's alias and nothing else claims it, so no amount of extra
+    # furniture answers: the fix is to name a role something storable does claim. A cupboard
+    # answers `household_storage` and can hold things, and the question stops being one.
+    answerable = json.loads(json.dumps(with_moka))
+    answerable["resources"].append(
+        {"resourceId": "cabinet_01", "resourceType": "storage_cabinet", "locationId": "kitchen"}
+    )
+    into_the_cupboard = _package_with(
+        [
+            {
+                "nodeId": "a1",
+                "kind": "action",
+                "actionType": "put_item",
+                "arguments": {"itemRole": {"source": "literal", "value": "household_storage"}},
+            }
+        ],
+        "prepare_and_drink_hot_drink",
+    )
+    assert (
+        validate_named_objects_can_do_what_is_asked(
+            Scenario.model_validate_json(json.dumps(answerable)), into_the_cupboard, catalog
+        )
+        == []
+    )
 
 
 def test_a_model_that_ends_in_a_bare_corridor_is_flagged() -> None:
@@ -601,6 +732,7 @@ def _observation(
     unaccounted: float,
     *,
     dominant: str | None = "sleep",
+    dominant_room: str = "bedroom",
     dominant_share: float = 0.7,
     effective: tuple[str, str] | None = ("23:28", "06:30"),
 ) -> HabitObservation:
@@ -613,13 +745,18 @@ def _observation(
         dayCount=365,
         totalMinutes=208050.0,
         composition=(
-            [HabitComposition(intent=dominant, minutes=1.0, share=dominant_share)]
+            [
+                HabitComposition(
+                    intent=dominant, location=dominant_room, minutes=1.0, share=dominant_share
+                )
+            ]
             if dominant is not None
             else []
         ),
         unaccountedMinutes=unaccounted * 208050.0,
         unaccountedShare=unaccounted,
         dominantIntent=dominant,
+        dominantLocation=dominant_room if dominant is not None else None,
         effectiveStart=effective[0] if effective else None,
         effectiveEnd=effective[1] if effective else None,
         effectiveShare=0.74 if effective else 0.0,

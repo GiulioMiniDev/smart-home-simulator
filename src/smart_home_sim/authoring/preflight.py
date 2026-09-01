@@ -31,6 +31,7 @@ from smart_home_sim.domain.models import (
 from smart_home_sim.domain.plan import CanonicalActivity, CanonicalPlan
 from smart_home_sim.domain.sensors import contact_instrumented_types
 from smart_home_sim.hybrid_planning.outline import HabitGroundTruth, HabitObservation
+from smart_home_sim.materialization.service import ENTRANCE_CAPABILITIES
 
 _UNKNOWN = object()
 _ABSENT = object()
@@ -613,6 +614,195 @@ def validate_rooms_are_furnished(scenario: Scenario) -> list[PreflightFinding]:
     return findings
 
 
+def validate_activity_rooms_can_perform_them(
+    scenario: Scenario, package: PersonalProcessPackage, action_catalog: ActionCatalog
+) -> list[PreflightFinding]:
+    """Does the room an activity happens in hold anything that can perform it?
+
+    The expander refuses this outright when a recurring activity *names* its room, because naming
+    one and furnishing it are the same decision. It cannot refuse the rooms nobody named: those
+    come from the activity catalog, which knows one room per intent and nothing about this home.
+    So `work_from_home` goes to the living room, and a living room furnished with a sofa and a
+    television offers no `work_support` — the binder falls to the room's generated anchor, and the
+    work happens at a point with no footprint, no contact sensor and no position of its own.
+
+    Measured on an authored one-month horizon: twenty-seven executive work blocks performed at an
+    anchor in the living room while the desk the same author had declared stood in the study, one
+    room away. Nothing in the bundle was wrong enough to reject — the desk was there, the study was
+    there, and the two had simply never been introduced.
+
+    A warning rather than a rejection, because the catalog's room is often right and an author who
+    means it should not have to say so. The fix is one line either way: furnish the room, or give
+    the activity a `location`.
+    """
+    definitions = {item.action_type: item for item in action_catalog.actions}
+    models = {item.process_model_id: item for item in package.process_models}
+    # The intent's model, taking the first binding that names it: a conditional variant performs
+    # the same activity, so it reaches for the same kind of object.
+    by_intent: dict[str, str] = {}
+    for binding in package.bindings:
+        by_intent.setdefault(binding.intent, binding.process_model_id)
+
+    rooms = {
+        location.location_id
+        for location in scenario.locations
+        if location.kind is LocationKind.room
+    }
+    offered: dict[str, set[str]] = defaultdict(set)
+    # A type the engine does not know offers *every* capability rather than none, so a room holding
+    # one can always answer and there is nothing here to report. Same reasoning as
+    # `validate_declared_objects_are_reachable`: a scenario naming its own furniture opts out of
+    # this check, which is a weakness of the vocabulary and not of the room.
+    permissive: set[str] = set()
+    for resource in scenario.resources:
+        known = capabilities_for_entity_type(resource.resource_type)
+        if known is None:
+            permissive.add(resource.location_id)
+        else:
+            offered[resource.location_id].update(known)
+
+    occurrences: dict[tuple[str, str], int] = defaultdict(int)
+    for day in scenario.days:
+        for activity in day.activities:
+            room = activity.location_ids[0] if activity.location_ids else None
+            if room in rooms:
+                occurrences[(activity.intent, room)] += 1  # type: ignore[index]
+
+    findings: list[PreflightFinding] = []
+    for (intent, room), count in sorted(occurrences.items()):
+        model = models.get(by_intent.get(intent, ""))
+        if model is None or room in permissive:
+            continue
+        needed: set[str] = set()
+        for node in model.nodes:
+            definition = definitions.get(node.action_type or "")
+            if definition is None:
+                continue
+            needed.update(
+                item.capability
+                for item in definition.required_capabilities
+                # Only the actions that name no role. One that does — `open(laundry_equipment)` —
+                # finds its object anywhere in the home, because the roles of declared furniture
+                # are taken away from the room anchors and nothing else answers to the name. Those
+                # are also why a process model may legitimately cross rooms: the laundry is
+                # unloaded from the machine in the bathroom and hung on the balcony, and reading
+                # every capability against the activity's one room reported that as a defect.
+                if item.parameter_name is None
+                and item.capability not in _SELF_CAPABILITIES
+                and item.capability not in UNIVERSAL_ENTITY_CAPABILITIES
+                # The front door is generated, never declared, so no room can be blamed for
+                # not holding one.
+                and item.capability not in ENTRANCE_CAPABILITIES
+            )
+        unmet = sorted(needed - offered[room])
+        if not unmet:
+            continue
+        elsewhere = sorted(
+            other for other in rooms if other not in permissive and set(unmet) <= offered[other]
+        )
+        findings.append(
+            PreflightFinding(
+                path="$.resources",
+                message=(
+                    f"{count} occurrence(s) of {intent!r} happen in {room!r}, which declares "
+                    f"nothing offering {', '.join(unmet)}. Each one will bind to the room's "
+                    "generated placeholder — no footprint, no contact sensor, no position — so the "
+                    "activity leaves no trace a sensor log can carry. Furnish the room, or give "
+                    "the recurring activity a `location` naming one that is already furnished"
+                    + (f" ({', '.join(elsewhere)})." if elsewhere else ".")
+                ),
+                details={
+                    "intent": intent,
+                    "room": room,
+                    "occurrences": count,
+                    "missingCapabilities": unmet,
+                    "roomsThatCould": elsewhere,
+                },
+            )
+        )
+    return findings
+
+
+def validate_named_objects_can_do_what_is_asked(
+    scenario: Scenario, package: PersonalProcessPackage, action_catalog: ActionCatalog
+) -> list[PreflightFinding]:
+    """An action naming an object by role: can that object actually do it?
+
+    A role a declared resource claims is taken away from every room anchor, so it binds to that
+    furniture or to nothing at all. When the furniture cannot answer the capability the action
+    needs, "nothing at all" is what happens — `ACTION_BINDING_UNRESOLVED`, hours into a run, on a
+    bundle that passed schema, compilation and behaviour validation without a word.
+
+    The case that produced this: `put_item(coffee_equipment)`, written to balance an earlier
+    `take_item(coffee_equipment)`, asking the moka to be somewhere a thing can be put. `put_item`
+    needs `storable` and a moka offers `cleanable, consumable, food_preparation, graspable,
+    inspectable, switchable` — so a month of coffee breaks failed to bind, 108 of them, and the
+    run stopped after the home was already built.
+
+    Only roles some declared resource claims are judged. A role nothing claims resolves to the room
+    anchor, which answers everything: silently wrong rather than unresolvable, and the business of
+    `validate_activity_rooms_can_perform_them` above.
+    """
+    definitions = {item.action_type: item for item in action_catalog.actions}
+    claimants: dict[str, list[str]] = defaultdict(list)
+    offered: dict[str, set[str] | None] = {}
+    for resource in scenario.resources:
+        offered[resource.resource_id] = capabilities_for_entity_type(resource.resource_type)
+        for role in resource_roles_for_type(resource.resource_type) | {
+            resource.resource_id,
+            resource.resource_type,
+        }:
+            claimants[role].append(resource.resource_id)
+
+    findings: list[PreflightFinding] = []
+    for index, model in enumerate(package.process_models):
+        for node in model.nodes:
+            definition = definitions.get(node.action_type or "")
+            if definition is None:
+                continue
+            for requirement in definition.required_capabilities:
+                if requirement.parameter_name is None:
+                    continue
+                if requirement.capability in _SELF_CAPABILITIES | UNIVERSAL_ENTITY_CAPABILITIES:
+                    continue
+                argument = node.arguments.get(requirement.parameter_name)
+                if argument is None or argument.source is not ValueSource.literal:
+                    continue
+                role = str(argument.value)
+                named = claimants.get(role)
+                if not named:
+                    continue
+                # An unknown resource type offers every capability, so one claimant of that kind
+                # settles the question in the author's favour.
+                if any(
+                    offered[item] is None or requirement.capability in (offered[item] or set())
+                    for item in named
+                ):
+                    continue
+                findings.append(
+                    PreflightFinding(
+                        path=f"$.processModels[{index}].nodes",
+                        message=(
+                            f"{model.process_model_id!r} asks {node.action_type!r} of "
+                            f"{role!r}, which needs {requirement.capability!r}, and the only "
+                            f"object answering to that role is {', '.join(sorted(named))} — which "
+                            "does not offer it. Nothing else can answer, because a declared "
+                            "object's roles are taken away from the room anchors, so the action "
+                            "resolves to no provider and the run stops once the home is built."
+                        ),
+                        details={
+                            "processModelId": model.process_model_id,
+                            "nodeId": node.node_id,
+                            "actionType": node.action_type,
+                            "role": role,
+                            "capability": requirement.capability,
+                            "claimants": sorted(named),
+                        },
+                    )
+                )
+    return findings
+
+
 # Somewhere a person can plausibly settle for a while. A corridor with a shoe cabinet is not.
 _DWELLABLE_RESOURCE_TYPES = frozenset(
     {"armchair", "bed", "bench", "chair", "couch", "recliner", "sofa", "stool"}
@@ -865,15 +1055,33 @@ def _thin_bands(ground_truth: HabitGroundTruth) -> list[tuple[int, HabitObservat
     ]
 
 
+def _largest_share(habit: HabitObservation) -> tuple[str, float] | None:
+    """The band's largest activity and the share it holds, summed over the rooms it happens in.
+
+    Ground truth 1.2.0 splits composition by room as well as by intent, so `composition[0]` is the
+    largest (activity, room) pair rather than the largest activity. Reading it as the latter would
+    quietly understate every habit an author has sent to more than one room — which is precisely
+    the case the split was added to make visible.
+    """
+    totals: dict[str, float] = {}
+    for item in habit.composition:
+        totals[item.intent] = totals.get(item.intent, 0.0) + item.share
+    if not totals:
+        return None
+    intent = max(sorted(totals), key=lambda key: totals[key])
+    return intent, totals[intent]
+
+
 def _largest(habit: HabitObservation) -> str:
-    if not habit.composition:
+    largest = _largest_share(habit)
+    if largest is None:
         return "nothing at all was measured inside it"
-    dominant = habit.composition[0]
-    return f"its largest single activity is {dominant.intent!r} at {dominant.share:.0%}"
+    intent, share = largest
+    return f"its largest single activity is {intent!r} at {share:.0%}"
 
 
 def _band_details(habit: HabitObservation) -> dict[str, JsonValue]:
-    dominant = habit.composition[0] if habit.composition else None
+    largest = _largest_share(habit)
     return {
         "habitId": habit.habit_id,
         "windowStart": habit.window_start,
@@ -881,7 +1089,8 @@ def _band_details(habit: HabitObservation) -> dict[str, JsonValue]:
         "dayCount": habit.day_count,
         "unaccountedShare": habit.unaccounted_share,
         "dominantIntent": habit.dominant_intent,
-        "dominantShare": dominant.share if dominant is not None else None,
+        "dominantLocation": habit.dominant_location,
+        "dominantShare": largest[1] if largest is not None else None,
         "effectiveStart": habit.effective_start,
         "effectiveEnd": habit.effective_end,
         "effectiveShare": habit.effective_share,

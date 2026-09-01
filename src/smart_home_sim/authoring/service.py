@@ -14,11 +14,13 @@ from pydantic import ValidationError
 
 from smart_home_sim.authoring.preflight import (
     validate_activities_do_not_park_the_resident,
+    validate_activity_rooms_can_perform_them,
     validate_away_round_trips,
     validate_declared_objects_are_reachable,
     validate_deterministic_preconditions,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
+    validate_named_objects_can_do_what_is_asked,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
 )
@@ -562,6 +564,36 @@ def validate_authoring_payload(
                             "ACTIVITY_PARKS_RESIDENT_IN_A_CROSSING",
                             "behavior",
                             _prefix_path("$.personalProcessPackage", finding.path),
+                            finding.message,
+                            severity="warning",
+                            details=finding.details,
+                        )
+                    )
+                # The one that is not a matter of degree: a named object that cannot do what is
+                # asked of it binds to nothing at all, and the run stops after the home is built.
+                for finding in validate_named_objects_can_do_what_is_asked(
+                    parsed_scenario, parsed_package, _declared_action_catalog(behavior_payload)
+                ):
+                    issues.append(
+                        _authoring_issue(
+                            "NAMED_OBJECT_CANNOT_ANSWER",
+                            "behavior",
+                            _prefix_path("$.personalProcessPackage", finding.path),
+                            finding.message,
+                            severity="warning",
+                            details=finding.details,
+                        )
+                    )
+                # The mirror of the expander's refusal, for the rooms an author never named: the
+                # activity catalog chose those, and it has never seen this home.
+                for finding in validate_activity_rooms_can_perform_them(
+                    parsed_scenario, parsed_package, _declared_action_catalog(behavior_payload)
+                ):
+                    issues.append(
+                        _authoring_issue(
+                            "ROOM_CANNOT_PERFORM_ACTIVITY",
+                            "scenario",
+                            _prefix_path("$.scenario", finding.path),
                             finding.message,
                             severity="warning",
                             details=finding.details,
