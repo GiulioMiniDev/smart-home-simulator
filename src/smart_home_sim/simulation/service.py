@@ -1783,6 +1783,51 @@ class SimulationEngine:
         self._settle_onto(actor, kinds, lying=lying, action_id=action_id)
         self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
 
+    def _sit_back_down(self, actor: ResidentRuntime, action_id: str) -> Generator[Any, Any, None]:
+        """Take the body back to the piece it is still recorded as being on.
+
+        Only when it actually left: an action performed within reach of the seat moves nothing, and
+        this then has nothing to do. The berth is found from the body rather than remembered,
+        because the berth is the only thing that says which piece she is on, and it is what every
+        other reader of the trace is already using.
+        """
+        seat = next(
+            (
+                entity
+                for entity in self.bundle.home_model.entities
+                if entity.interaction_point_id
+                and entity.region_id == actor.region_id
+                and self._footprints.get(entity.entity_id) is not None
+                and self._footprints[entity.entity_id].covers(
+                    ShapelyPoint(actor.resting_at.x, actor.resting_at.y)
+                )
+            ),
+            None,
+        )
+        point = self._points.get(seat.interaction_point_id) if seat is not None else None
+        if point is None:
+            return
+        kinetics = self.kinematics[actor.resident_id]
+        path = plan_path(
+            self.bundle.home_model,
+            start_region_id=actor.region_id,
+            start=actor.position,
+            end_region_id=point.region_id,
+            end=point.position,
+            walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+            body_radius_meters=kinetics.body_radius_meters,
+            mobility_profile=kinetics.mobility_profile,
+        )
+        if path is None or path.distance_meters <= 1e-9:
+            return
+        yield from self._travel(
+            actor, path, int(round(path.duration_seconds * 1_000_000)), action_id, tag="return"
+        )
+        kinds = _RECLINING_FURNITURE if actor.posture == _RECLINING_POSTURE else _SEATING_FURNITURE
+        self._settle_onto(
+            actor, kinds, lying=actor.posture == _RECLINING_POSTURE, action_id=action_id
+        )
+
     def _resting_entity(self, actor: ResidentRuntime, kinds: frozenset[str]) -> Any | None:
         """The piece in this room she rests on: the nearest one, then by id to settle a tie.
 
@@ -1954,6 +1999,7 @@ class SimulationEngine:
         path: NavigationPath,
         movement_us: int,
         action_id: str,
+        tag: str | None = None,
     ) -> Generator[Any, Any, None]:
         """Walk the resident along one planned path and record the movement it produced.
 
@@ -2024,7 +2070,12 @@ class SimulationEngine:
         actor.position = Point2D(x=destination.x, y=destination.y)
         self.trace.movements.append(
             MovementExecution(
-                movement_id=self.trace.identifier("movement", [action_id]),
+                # An action may walk twice — out to something out of reach and back to the seat
+                # it left — and a movement id derived from the action alone then collides with
+                # itself. The tag names which of the two this is.
+                movement_id=self.trace.identifier(
+                    "movement", [action_id] if tag is None else [action_id, tag]
+                ),
                 action_execution_id=action_id,
                 actor_id=actor.resident_id,
                 started_at=_at(self.origin, walk_started),
@@ -2107,6 +2158,18 @@ class SimulationEngine:
                 self._set_execution_state(
                     actor, "performing_activity", "runtime_event", payload["event_id"]
                 )
+        # She got up to reach something out of arm's length, and then stayed standing at it. The
+        # berth survives a walk that does not leave the room, so the trace went on saying she was
+        # sitting on the sofa while the body stood at the television for the thirty-one minutes she
+        # watched it — the sensor log read the berth and the replay read the movement, and the two
+        # described different evenings. Pressing a button is not the end of sitting down: what a
+        # person does next is sit back down, and this is that walk.
+        if (
+            path is not None
+            and actor.resting_at is not None
+            and node.action_type != "change_posture"
+        ):
+            yield from self._sit_back_down(actor, action_id)
         if node.action_type == "change_posture":
             # Only the runtime field is set here. The transition is left to the catalog effect
             # below — `change_posture` declares `resident.posture := {posture}` — because writing it

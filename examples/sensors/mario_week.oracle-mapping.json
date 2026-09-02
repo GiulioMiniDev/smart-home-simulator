@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "oracle_mapping",
-  "mappingId": "oracle_6b620fa65f703d94",
+  "mappingId": "oracle_867ea96662454ba9",
   "observableLogId": "sensor_log_ed10e67d395b5735",
-  "sourceTraceId": "trace_43d7b6a097e8ccb6",
+  "sourceTraceId": "trace_b3cb369ace6a271f",
   "sourceTraceSemanticDigest": "f397e82de6b33104c1d000f40ed00ed99ff128a90a2e98dfc0166d0cab4432e2",
   "links": [
     {
@@ -11,7 +11,7 @@
       "origin": "initial_state",
       "causeType": "trace",
       "causeIds": [
-        "trace_43d7b6a097e8ccb6"
+        "trace_b3cb369ace6a271f"
       ],
       "residentIds": [],
       "activityExecutionIds": [],

@@ -611,6 +611,13 @@ def _capability_providers(
 # `fixture`, `equipment`, `place` are where the resident has to be; `item` is what she is holding,
 # and holding something does not move her.
 _CARRIED_ROLE = "item"
+# And the role of a provider an action is performed *with* rather than *on*. `leisure` is the only
+# action in the catalogue that has one, and its provider is the television or the book: you watch
+# television with the television, you do not go and stand on it. Binding it as a destination sent
+# the resident across the living room to her own set and left her there for the thirty-one minutes
+# she was recorded as sitting on the sofa. Where the process has not already said where she is,
+# the approach still happens, the same way it does for an item.
+_INSTRUMENT_ROLE = "medium"
 # Capabilities that are not about standing anywhere in particular.
 _NON_POSITIONING = frozenset({"reachable", "transport_reachable", "posture_control"})
 
@@ -923,7 +930,10 @@ def _build_action_bindings(
                     # an `item` provider hands over the item and leaves the body alone; where it has
                     # not, the approach still happens, so a `take_item` nobody walked to does not
                     # reach through a wall.
-                    carried = requirement.role == _CARRIED_ROLE and standing is not None
+                    carried = (
+                        requirement.role in {_CARRIED_ROLE, _INSTRUMENT_ROLE}
+                        and standing is not None
+                    )
                     if entity.interaction_point_id and not carried:
                         destination_interaction_point_id = entity.interaction_point_id
                         destination_regions = [

@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 from smart_home_sim.cli import app
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
+    ActionCatalog,
     PersonalProcessPackage,
     ValueExpression,
     ValueSource,
@@ -32,6 +33,7 @@ from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.environment.navigation import plan_path
 from smart_home_sim.environment.service import (
+    _build_action_bindings,
     _capability_providers,
     _entity_candidates,
     _resolve_expression,
@@ -640,6 +642,93 @@ def test_a_role_that_names_a_capability_finds_the_furniture_that_provides_it() -
     assert all(
         entity.entity_type != "generated_environment_service" for entity, _ in as_a_capability
     )
+
+
+def test_the_thing_an_action_is_done_with_does_not_move_the_body() -> None:
+    """`leisure` binds the television, and you watch television *with* it, not on top of it.
+
+    Binding a provider is also an instruction to walk there, which is right for the object an
+    action is performed on and wrong for the one it is performed with. It sent the resident across
+    her living room to her own set and left her standing at it for the thirty-one minutes she was
+    recorded as sitting on the sofa. Only where the process has already said where the body is,
+    exactly as for a carried item: `move_to` names a room rather than an object, so a model that
+    never approaches anything still gets its approach.
+    """
+    scenario = Scenario.model_validate_json(SCENARIO.read_text())
+    package = PersonalProcessPackage.model_validate_json(
+        (ROOT / "examples/behavior/mario_rossi_week_2026_10_12.behavior-1.1.0.json").read_text()
+    )
+    actions = ActionCatalog.model_validate_json(
+        (ROOT / "src/smart_home_sim/catalogs/action-catalog-1.1.0.json").read_text()
+    )
+    variables = VariableCatalog.model_validate_json(
+        (ROOT / "src/smart_home_sim/catalogs/variable-catalog-1.0.0.json").read_text()
+    )
+    home = parsed_home()
+
+    breakfast = "resident_mario_rossi__eat_breakfast_and_listen_to_radio"
+
+    def leisure_destination(built: list[Any]) -> set[str | None]:
+        return {
+            item.destination_interaction_point_id
+            for item in built
+            if item.action_type == "leisure" and item.process_model_id == breakfast
+        }
+
+    # As written the model walks to a room and then sits, so nothing has named an object and the
+    # approach still happens.
+    built, issues = _build_action_bindings(home, scenario, package, actions, variables)
+    assert not [item for item in issues if item.severity == "error"]
+    assert leisure_destination(built) == {"ip_living_room_anchor"}
+
+    # With an approach in front of it, the process has said where she is, and the television stops
+    # being somewhere to stand.
+    model = next(item for item in package.process_models if item.process_model_id == breakfast)
+    approach = next(node for node in model.nodes if node.action_type == "change_posture")
+    seated = model.model_copy(
+        update={
+            "nodes": [
+                *model.nodes,
+                approach.model_copy(
+                    update={
+                        "node_id": "approach_seat",
+                        "action_type": "move_to_capability",
+                        "arguments": {
+                            "targetRole": ValueExpression(
+                                source=ValueSource.literal, value="consumption_area"
+                            )
+                        },
+                    }
+                ),
+            ],
+            "edges": [
+                *(
+                    edge
+                    for edge in model.edges
+                    if not (
+                        edge.source_node_id == "move_to_activity" and edge.target_node_id == "sit"
+                    )
+                ),
+                model.edges[0].model_copy(
+                    update={"source_node_id": "move_to_activity", "target_node_id": "approach_seat"}
+                ),
+                model.edges[0].model_copy(
+                    update={"source_node_id": "approach_seat", "target_node_id": "sit"}
+                ),
+            ],
+        }
+    )
+    with_approach = package.model_copy(
+        update={
+            "process_models": [
+                seated if item.process_model_id == model.process_model_id else item
+                for item in package.process_models
+            ]
+        }
+    )
+    built, issues = _build_action_bindings(home, scenario, with_approach, actions, variables)
+    assert not [item for item in issues if item.severity == "error"]
+    assert leisure_destination(built) == {None}
 
 
 def test_environment_cli_success_failure_and_atomic_bundle_output(tmp_path: Path) -> None:

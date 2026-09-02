@@ -33135,14 +33135,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "service_kitchen",
-          "interactionPointId": "point_service_kitchen"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_service_kitchen"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "fri_breakfast_prep",
@@ -33295,14 +33295,12 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_kitchen",
-          "interactionPointId": "point_service_kitchen"
+          "providerId": "kitchen_chair",
+          "interactionPointId": "point_kitchen_chair"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "point_service_kitchen"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "fri_breakfast",
@@ -35064,10 +35062,8 @@
           "interactionPointId": "point_television"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "point_television"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "fri_documentary",
@@ -35595,14 +35591,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "service_kitchen",
-          "interactionPointId": "point_service_kitchen"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_service_kitchen"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sat_breakfast_prep",
@@ -35755,14 +35751,12 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_kitchen",
-          "interactionPointId": "point_service_kitchen"
+          "providerId": "kitchen_chair",
+          "interactionPointId": "point_kitchen_chair"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "point_service_kitchen"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "sat_breakfast",
@@ -36670,14 +36664,14 @@
           "role": "equipment",
           "capability": "laundry_support",
           "providerType": "entity",
-          "providerId": "service_balcony",
-          "interactionPointId": "point_service_balcony"
+          "providerId": "washing_machine",
+          "interactionPointId": "point_washing_machine"
         }
       ],
       "destinationRegionIds": [
-        "balcony"
+        "bathroom"
       ],
-      "destinationInteractionPointId": "point_service_balcony"
+      "destinationInteractionPointId": "point_washing_machine"
     },
     {
       "sourceActivityId": "sat_prepare_lunch",
@@ -37757,10 +37751,8 @@
           "interactionPointId": "point_television"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "point_television"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "sat_tv",
@@ -38288,14 +38280,14 @@
           "role": "equipment",
           "capability": "food_preparation",
           "providerType": "entity",
-          "providerId": "service_kitchen",
-          "interactionPointId": "point_service_kitchen"
+          "providerId": "moka",
+          "interactionPointId": "point_moka"
         }
       ],
       "destinationRegionIds": [
         "kitchen"
       ],
-      "destinationInteractionPointId": "point_service_kitchen"
+      "destinationInteractionPointId": "point_moka"
     },
     {
       "sourceActivityId": "sun_breakfast_prep",
@@ -38448,14 +38440,12 @@
           "role": "medium",
           "capability": "leisure_support",
           "providerType": "entity",
-          "providerId": "service_kitchen",
-          "interactionPointId": "point_service_kitchen"
+          "providerId": "kitchen_chair",
+          "interactionPointId": "point_kitchen_chair"
         }
       ],
-      "destinationRegionIds": [
-        "kitchen"
-      ],
-      "destinationInteractionPointId": "point_service_kitchen"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "sun_breakfast",
@@ -39816,10 +39806,8 @@
           "interactionPointId": "point_television"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "point_television"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "sun_documentary",

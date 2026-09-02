@@ -779,7 +779,7 @@ def _furnished_living_room(bundle: SimulationBundle) -> SimulationBundle:
         InteractionPoint(
             interaction_point_id="ip_near_chair",
             region_id="living_room",
-            position=Point2D(x=13.0, y=8.0),
+            position=Point2D(x=11.8, y=8.0),
             approach_radius_meters=0.35,
         ),
         InteractionPoint(
@@ -791,7 +791,7 @@ def _furnished_living_room(bundle: SimulationBundle) -> SimulationBundle:
         InteractionPoint(
             interaction_point_id="ip_desk",
             region_id="living_room",
-            position=Point2D(x=13.9, y=8.0),
+            position=Point2D(x=14.7, y=8.0),
             approach_radius_meters=0.35,
         ),
     ]
@@ -826,10 +826,10 @@ def _furnished_living_room(bundle: SimulationBundle) -> SimulationBundle:
             region_id="living_room",
             boundary=Polygon2D(
                 vertices=[
+                    Point2D(x=12.2, y=7.8),
                     Point2D(x=12.6, y=7.8),
-                    Point2D(x=13.0, y=7.8),
-                    Point2D(x=13.0, y=8.2),
                     Point2D(x=12.6, y=8.2),
+                    Point2D(x=12.2, y=8.2),
                 ]
             ),
         ),
@@ -838,10 +838,10 @@ def _furnished_living_room(bundle: SimulationBundle) -> SimulationBundle:
             region_id="living_room",
             boundary=Polygon2D(
                 vertices=[
-                    Point2D(x=13.4, y=7.6),
-                    Point2D(x=14.7, y=7.6),
-                    Point2D(x=14.7, y=8.4),
-                    Point2D(x=13.4, y=8.4),
+                    Point2D(x=13.0, y=7.6),
+                    Point2D(x=14.3, y=7.6),
+                    Point2D(x=14.3, y=8.4),
+                    Point2D(x=13.0, y=8.4),
                 ]
             ),
         ),
@@ -871,7 +871,7 @@ def test_she_sits_on_the_seat_she_is_standing_next_to(bundle) -> None:
     actor = ResidentRuntime(
         resident_id="resident_mario_rossi",
         region_id="living_room",
-        position=Point2D(x=13.9, y=8.0),
+        position=Point2D(x=14.7, y=8.0),
     )
 
     assert engine._resting_entity(actor, _SEATING_FURNITURE).entity_id == "near_chair"
@@ -892,9 +892,9 @@ def test_a_seated_body_reaches_the_desk_rather_than_getting_up_to_walk_round_it(
     seated = ResidentRuntime(
         resident_id="resident_mario_rossi",
         region_id="living_room",
-        position=Point2D(x=13.0, y=8.0),
+        position=Point2D(x=11.8, y=8.0),
         posture="sitting",
-        resting_at=Point2D(x=12.8, y=8.0),
+        resting_at=Point2D(x=12.4, y=8.0),
     )
 
     assert engine._within_reach(seated, "ip_desk")
@@ -902,3 +902,34 @@ def test_a_seated_body_reaches_the_desk_rather_than_getting_up_to_walk_round_it(
     assert not engine._within_reach(seated, "ip_far_armchair")
     seated.resting_at = None
     assert not engine._within_reach(seated, "ip_desk")
+
+
+def test_she_sits_back_down_after_reaching_something_across_the_room(bundle) -> None:
+    """Getting up to press a button is not the end of sitting down.
+
+    The berth survives a walk that does not leave the room — which is right, a posture is what lets
+    a berth go — so the trace went on saying she was on the sofa while the body stood at the
+    television for the thirty-one minutes she watched it. The sensor projection read the berth and
+    the replay read the movement, and the two described different evenings. She goes back.
+    """
+    engine = SimulationEngine(_furnished_living_room(bundle))
+    actor = ResidentRuntime(
+        resident_id="resident_mario_rossi",
+        region_id="living_room",
+        position=Point2D(x=14.7, y=8.0),
+        posture="sitting",
+        resting_at=Point2D(x=12.4, y=8.0),
+    )
+
+    walk = list(engine._sit_back_down(actor, "action_1"))
+    assert walk, "the body was across the room from the seat it is recorded as being on"
+
+    # Nothing to do when she never left: the berth is where she already is.
+    settled = ResidentRuntime(
+        resident_id="resident_mario_rossi",
+        region_id="living_room",
+        position=Point2D(x=11.8, y=8.0),
+        posture="sitting",
+        resting_at=Point2D(x=12.4, y=8.0),
+    )
+    assert list(engine._sit_back_down(settled, "action_2")) == []

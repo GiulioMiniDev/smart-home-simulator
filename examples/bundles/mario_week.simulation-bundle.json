@@ -36052,10 +36052,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d1_a25",
@@ -38998,10 +38996,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d2_a21",
@@ -41210,10 +41206,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d3_a20",
@@ -43498,10 +43492,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d4_a19",
@@ -45814,10 +45806,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d5_a19",
@@ -48268,10 +48258,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d6_a19",
@@ -50932,10 +50920,8 @@
           "interactionPointId": "ip_living_room_anchor"
         }
       ],
-      "destinationRegionIds": [
-        "living_room"
-      ],
-      "destinationInteractionPointId": "ip_living_room_anchor"
+      "destinationRegionIds": [],
+      "destinationInteractionPointId": null
     },
     {
       "sourceActivityId": "d7_a20",
