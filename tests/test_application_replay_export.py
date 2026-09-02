@@ -204,9 +204,7 @@ def test_daily_summary_availability_uses_next_local_midnight_and_trace_end_clamp
     rome = ZoneInfo("Europe/Rome")
     trace_end = datetime(2026, 3, 30, 12, tzinfo=UTC)
 
-    assert _daily_summary_available_at(
-        date(2026, 3, 29), trace_end, timezone=rome
-    ) == datetime(
+    assert _daily_summary_available_at(date(2026, 3, 29), trace_end, timezone=rome) == datetime(
         2026, 3, 30, 0, tzinfo=rome
     )
     assert _daily_summary_available_at(date(2026, 3, 30), trace_end, timezone=rome) == trace_end
@@ -242,9 +240,11 @@ def test_horizon_daily_summaries_keep_the_scenario_timezone_across_dst(tmp_path:
         result_reference=job.job_id,
     )
 
-    summary = ReplayService(workspace).events(
-        job.job_id, kinds={"daily_summary"}, include_oracle=True
-    ).items
+    summary = (
+        ReplayService(workspace)
+        .events(job.job_id, kinds={"daily_summary"}, include_oracle=True)
+        .items
+    )
 
     assert [item.at.isoformat() for item in summary] == ["2026-10-25T00:00:00+02:00"]
 

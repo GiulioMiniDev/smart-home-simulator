@@ -586,9 +586,7 @@ def test_replay_event_window_rejects_more_than_5000_items() -> None:
                 expected_semantic_digest=_REPLAY_DIGEST,
                 actual_semantic_digest=_REPLAY_DIGEST,
             ),
-            ReplaySessionState(
-                run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True
-            ),
+            ReplaySessionState(run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True),
         ),
         (
             ReplayVerification(
@@ -598,9 +596,7 @@ def test_replay_event_window_rejects_more_than_5000_items() -> None:
                 expected_semantic_digest=_REPLAY_DIGEST,
                 actual_semantic_digest="b" * 64,
             ),
-            ReplaySessionState(
-                run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True
-            ),
+            ReplaySessionState(run_id="run_1", verified_digest=_REPLAY_DIGEST, playable=True),
         ),
         (
             ReplayVerification(
@@ -740,9 +736,7 @@ def test_playable_replay_session_cannot_bypass_verification_by_mutation() -> Non
                 actual_semantic_digest="b" * 64,
             )
         },
-        {
-            "session": ReplaySessionState(run_id="run_1", verified_digest="b" * 64, playable=True)
-        },
+        {"session": ReplaySessionState(run_id="run_1", verified_digest="b" * 64, playable=True)},
         {
             "verification": ReplayVerification(
                 run_id="run_1",

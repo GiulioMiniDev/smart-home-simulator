@@ -90,8 +90,7 @@ class BehaviouralIndicators:
             ("inter-region moves", f"{self.inter_region_move_count}"),
             (
                 "moves begun sitting or lying",
-                f"{self.moves_from_non_ambulatory_posture}"
-                f" ({self.non_ambulatory_move_share:.1%})",
+                f"{self.moves_from_non_ambulatory_posture} ({self.non_ambulatory_move_share:.1%})",
             ),
             ("nights with no sleep", f"{self.nights_without_sleep}"),
             ("days with a morning before the wake", f"{self.days_with_morning_before_wake}"),
@@ -128,9 +127,7 @@ def _idle_spans(trace: ExecutionTrace) -> list[tuple[datetime, datetime]]:
 
 def _region_at(trace: ExecutionTrace) -> tuple[list[datetime], list[str]]:
     """Where the resident is over time, read off the movements she has finished."""
-    arrivals = sorted(
-        (item.ended_at, item.destination_region_id) for item in trace.movements
-    )
+    arrivals = sorted((item.ended_at, item.destination_region_id) for item in trace.movements)
     return [item[0] for item in arrivals], [item[1] for item in arrivals]
 
 

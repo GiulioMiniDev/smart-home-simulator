@@ -607,9 +607,7 @@ def _with_oracle(item: ReplayEventView, oracle_links: Mapping[str, Any] | None) 
     return result
 
 
-def _room_or_keep(
-    value: Any, current: str | None, known_regions: frozenset[str]
-) -> str | None:
+def _room_or_keep(value: Any, current: str | None, known_regions: frozenset[str]) -> str | None:
     """Take the new location only when it names a room of the house.
 
     `resident.location` carries two vocabularies. `move_to` writes a region — `bedroom` — and
@@ -1300,9 +1298,7 @@ def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _F
         for resource_id, items in sorted(resource_availability_groups.items())
     )
     return _FrameSources(
-        region_ids=frozenset(
-            item.region_id for item in bundle.home_model.regions
-        )
+        region_ids=frozenset(item.region_id for item in bundle.home_model.regions)
         if bundle is not None
         else frozenset(),
         residents=residents,

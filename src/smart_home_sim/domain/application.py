@@ -502,9 +502,7 @@ class ReplaySessionState(ContractModel):
     updated_at: AwareDatetime | None = None
 
 
-_OBSERVABLE_REPLAY_KEY_TOKEN = re.compile(
-    r"[A-Z]+(?=[A-Z][a-z]|[^A-Za-z]|$)|[A-Z]?[a-z]+|[0-9]+"
-)
+_OBSERVABLE_REPLAY_KEY_TOKEN = re.compile(r"[A-Z]+(?=[A-Z][a-z]|[^A-Za-z]|$)|[A-Z]?[a-z]+|[0-9]+")
 _OBSERVABLE_REPLAY_IDENTITY_PREFIXES = ("source", "current", "target", "parent")
 _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS = frozenset({"resident", "actor", "activity", "action"})
 _OBSERVABLE_REPLAY_IDENTITY_SUFFIXES = (
@@ -567,8 +565,7 @@ def _is_observable_replay_redacted_key(key: str) -> bool:
         if _is_observable_replay_causal_stem(stem):
             return True
         return any(
-            stem == f"{subject}execution"
-            for subject in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS
+            stem == f"{subject}execution" for subject in _OBSERVABLE_REPLAY_IDENTITY_SUBJECTS
         )
     return _is_observable_replay_causal_stem(value)
 
@@ -808,10 +805,7 @@ class ApplicationReplayContract(ContractModel):
             raise ValueError("playable replay session requires a matching verification")
         if self.session.verified_digest is None:
             raise ValueError("playable replay session requires a verified digest")
-        if (
-            self.verification.expected_semantic_digest
-            != self.verification.actual_semantic_digest
-        ):
+        if self.verification.expected_semantic_digest != self.verification.actual_semantic_digest:
             raise ValueError(
                 "playable replay session requires matching expected and actual verification digests"
             )
@@ -831,9 +825,7 @@ class ApplicationReplayContract(ContractModel):
             session=ObservableReplaySessionState.from_session(self.session),
         )
 
-    def model_copy(
-        self, *, update: Mapping[str, Any] | None = None, deep: bool = False
-    ) -> Self:
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
         copied = super().model_copy(update=update, deep=deep)
         if not update:
             copied.check_playable_session_verification()

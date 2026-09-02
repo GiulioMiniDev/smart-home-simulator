@@ -113,9 +113,7 @@ def test_build_day_plan_scaffolds_wake_and_sleep() -> None:
     # The bladder drive seeds candidate bathroom trips through the waking day, and they are not
     # part of the scaffold this test is about: the engine decides which of them happen, and on a
     # day with two declared occurrences they would otherwise outnumber the day.
-    declared = [
-        activity for activity in plan.activities if "bladder_drive" not in activity.labels
-    ]
+    declared = [activity for activity in plan.activities if "bladder_drive" not in activity.labels]
     intents = [activity.intent for activity in declared]
     assert intents[0] == "wake_up"
     assert intents[-1] == "sleep"
