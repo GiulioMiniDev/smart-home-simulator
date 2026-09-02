@@ -32,6 +32,7 @@ from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
 from smart_home_sim.environment.navigation import plan_path
 from smart_home_sim.environment.service import (
+    _capability_providers,
     _entity_candidates,
     _resolve_expression,
     build_bundle_files,
@@ -545,6 +546,100 @@ def test_expression_resolution_and_candidate_access_policy() -> None:
         action_type="prepare_food",
     )
     assert candidates[0][0].entity_id == "kitchen_workstation"
+
+
+def _room_with_a_sofa_and_an_anchor() -> HomeModel:
+    """The golden home plus the two things a generated one has: furniture, and a backstop.
+
+    The hand-authored fixture predates both — its living room is a `media_and_social_hub` and it
+    has no per-region service anchor at all — and the anchor is precisely what this is about.
+    """
+    payload = load(HOME)
+    media = next(item for item in payload["entities"] if item["entityId"] == "living_room_media")
+    offered = next(
+        item for item in media["capabilities"] if item["capability"] == "leisure_support"
+    )
+    approach = {"capability": "interaction_point", "supportedOperations": ["move_to_capability"]}
+    payload["entities"].append(
+        {
+            "entityId": "living_sofa",
+            "entityType": "sofa",
+            "regionId": "living_room",
+            "interactionPointId": media["interactionPointId"],
+            "capabilities": [
+                {**offered, "roles": ["living_sofa", "seating", "sofa"]},
+                {**approach, "roles": ["living_sofa", "seating", "sofa"]},
+            ],
+            "initialState": {"open": False, "active": False},
+        }
+    )
+    # A second provider of the same capability whose id sorts *first*, so ordering by name alone
+    # would pick it. What decides is that a television is not something you sit on.
+    payload["entities"].append(
+        {
+            "entityId": "a_television",
+            "entityType": "television",
+            "regionId": "living_room",
+            "interactionPointId": media["interactionPointId"],
+            "capabilities": [{**offered, "roles": ["a_television", "media", "television"]}],
+            "initialState": {"open": False, "active": False},
+        }
+    )
+    # The anchor answers to every role there is, which is what makes it a backstop and what made
+    # it beat the furniture.
+    payload["entities"].append(
+        {
+            "entityId": "service_living_room",
+            "entityType": "generated_environment_service",
+            "regionId": "living_room",
+            "interactionPointId": media["interactionPointId"],
+            "capabilities": [
+                {**approach, "roles": ["leisure_support", "sofa", "television", "work_support"]},
+                {**offered, "roles": ["leisure_support", "sofa", "television", "work_support"]},
+            ],
+            "initialState": {"open": False, "active": False},
+        }
+    )
+    return parsed_home(payload)
+
+
+def test_a_role_that_names_a_capability_finds_the_furniture_that_provides_it() -> None:
+    """A process asks for somewhere to sit by naming the capability, not a role anything answers to.
+
+    `move_to_capability` is written the way the process thinks of the place — "somewhere that
+    supports leisure" — and a sofa's roles are `sofa`, `seating` and its own id. Only the anchor
+    answers to `leisure_support` as a *role*, and that is how a generated month put the resident in
+    front of her television rather than on the sofa for every evening she spent watching it.
+    """
+    home = _room_with_a_sofa_and_an_anchor()
+
+    as_a_role = _entity_candidates(
+        home,
+        capability="interaction_point",
+        role_value="leisure_support",
+        actor_id="resident_mario_rossi",
+        mobility_profile="unimpaired",
+        preferred_regions={"living_room"},
+        action_type="move_to_capability",
+    )
+    assert [entity.entity_id for entity, _ in as_a_role] == ["service_living_room"]
+
+    as_a_capability = _capability_providers(
+        home,
+        capability="leisure_support",
+        actor_id="resident_mario_rossi",
+        mobility_profile="unimpaired",
+        preferred_regions={"living_room"},
+    )
+    # The sofa first because a body can be on it, and the anchor not at all: asked this way the
+    # question has a real answer, so the backstop is not one of the candidates.
+    assert [entity.entity_id for entity, _ in as_a_capability][:2] == [
+        "living_sofa",
+        "a_television",
+    ]
+    assert all(
+        entity.entity_type != "generated_environment_service" for entity, _ in as_a_capability
+    )
 
 
 def test_environment_cli_success_failure_and_atomic_bundle_output(tmp_path: Path) -> None:

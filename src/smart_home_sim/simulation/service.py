@@ -161,6 +161,10 @@ _SEATING_FURNITURE = frozenset(
 # The capability role of a provider that is merely holding something. Handing over an item does
 # not move the body that is already seated within reach.
 _ITEM_ROLE = "item"
+# How far a seated body will reach rather than stand up, measured from where she is sitting to the
+# edge of the thing she wants. Generous for an arm — a desk chair sits 0.27m from its desk — and
+# far short of anything across the room.
+SEATED_REACH_METRES = 0.9
 # And what may be lain on. Reclining is not a property of the room but of what she is on: lying
 # down in a sitting room is a sofa, and lying down in the middle of one is a floor.
 _RECLINING_FURNITURE = frozenset({"sofa", "bed", "recliner", "daybed"})
@@ -881,6 +885,20 @@ class SimulationEngine:
             for item in bundle.home_model.connections
             if item.kind is ConnectionKind.stairway and item.distance_meters is not None
         }
+        self._points = {
+            item.interaction_point_id: item for item in bundle.home_model.interaction_points
+        }
+        self._entity_at_point = {
+            item.interaction_point_id: item
+            for item in bundle.home_model.entities
+            if item.interaction_point_id
+        }
+        self._footprints = {
+            item.obstacle_id.removeprefix("obstacle_"): Polygon(
+                [(vertex.x, vertex.y) for vertex in item.boundary.vertices]
+            )
+            for item in bundle.home_model.obstacles
+        }
         self.action_catalog = ActionCatalog.model_validate_json(
             default_action_catalog_path(
                 bundle.behavior_package.catalogs.action_catalog.version
@@ -1517,6 +1535,8 @@ class SimulationEngine:
             for item in self.bundle.home_model.interaction_points
             if item.interaction_point_id == binding.destination_interaction_point_id
         )
+        if self._within_reach(actor, destination.interaction_point_id):
+            return None
         kinetics = self.kinematics[actor.resident_id]
         return plan_path(
             self.bundle.home_model,
@@ -1527,6 +1547,34 @@ class SimulationEngine:
             walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
             body_radius_meters=kinetics.body_radius_meters,
             mobility_profile=kinetics.mobility_profile,
+        )
+
+    def _within_reach(self, actor: ResidentRuntime, interaction_point_id: str) -> bool:
+        """Is she sitting at the thing already, so that going to it would mean getting up?
+
+        An interaction point is where a body *stands* to use a piece, so a chair pulled up to a
+        desk and the desk itself have points a metre and a half apart — and the resident sat on
+        the chair, stood up, walked round to the desk's own point and worked there for eighty
+        minutes with the posture still reading `sitting`. The sensor projection put her on the
+        chair for the whole block because that is where the berth was, the replay drew her at the
+        desk because that is where the movement ended, and the two disagreed about the same hour.
+
+        Measured from the berth to the *footprint*, not between the two standing points, because
+        that is the question being asked: not how far apart the two places to stand are, but
+        whether what she wants is within arm's length of where she is sitting. Sitting at the desk
+        it is 0.27m and at the kitchen table 0.26m; the television across the living room is 5.6m,
+        and for that she does get up.
+        """
+        if actor.resting_at is None:
+            return False
+        entity = self._entity_at_point.get(interaction_point_id)
+        if entity is None:
+            return False
+        footprint = self._footprints.get(entity.entity_id)
+        if footprint is None:
+            return False
+        return footprint.distance(ShapelyPoint(actor.resting_at.x, actor.resting_at.y)) <= (
+            SEATED_REACH_METRES
         )
 
     def _settling_region(self) -> str | None:
@@ -1713,7 +1761,7 @@ class SimulationEngine:
         if self._is_on_resting_furniture(actor, kinds):
             self._settle_onto(actor, kinds, lying=lying, action_id=action_id)
             return
-        point = self._furniture_point(actor.region_id, kinds)
+        point = self._furniture_point(actor, kinds)
         if point is None:
             return
         kinetics = self.kinematics[actor.resident_id]
@@ -1735,17 +1783,33 @@ class SimulationEngine:
         self._settle_onto(actor, kinds, lying=lying, action_id=action_id)
         self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
 
-    def _resting_entity(self, region_id: str, kinds: frozenset[str]) -> Any | None:
-        """The piece in this room she rests on, chosen the same way `_furniture_point` chooses."""
+    def _resting_entity(self, actor: ResidentRuntime, kinds: frozenset[str]) -> Any | None:
+        """The piece in this room she rests on: the nearest one, then by id to settle a tie.
+
+        By id alone it was whichever piece sorted first, which is a property of its name and not
+        of where she is standing. A study holding a desk chair and a reading armchair sat her in
+        the armchair to work and then walked her back to the desk, still recorded as sitting; the
+        sensor log put her in the armchair for the whole block and the replay drew her at the desk,
+        and neither of them was wrong about the trace it was reading. You sit on the seat you are
+        next to.
+        """
         candidates = [
             entity
             for entity in self.bundle.home_model.entities
             if entity.entity_type in kinds
-            and entity.region_id == region_id
+            and entity.region_id == actor.region_id
             and entity.interaction_point_id
         ]
-        candidates.sort(key=lambda item: item.entity_id)
-        return candidates[0] if candidates else None
+        if not candidates:
+            return None
+        return min(candidates, key=lambda item: (self._reach(actor, item), item.entity_id))
+
+    def _reach(self, actor: ResidentRuntime, entity: Any) -> float:
+        """How far the body is from the point it would stand at to use this piece."""
+        point = self._points.get(entity.interaction_point_id)
+        if point is None:
+            return math.inf
+        return math.hypot(point.position.x - actor.position.x, point.position.y - actor.position.y)
 
     def _settle_onto(
         self,
@@ -1767,7 +1831,7 @@ class SimulationEngine:
         takes no time, because lying down is already paid for by the posture change that asked for
         it. `_stand_up` puts her back on the floor before anything tries to route from here.
         """
-        entity = self._resting_entity(actor.region_id, kinds)
+        entity = self._resting_entity(actor, kinds)
         if entity is None:
             return
         obstacle = next(
@@ -1864,25 +1928,12 @@ class SimulationEngine:
             action_id,
         )
 
-    def _furniture_point(self, region_id: str, kinds: frozenset[str]) -> Any | None:
-        candidates = [
-            entity
-            for entity in self.bundle.home_model.entities
-            if entity.entity_type in kinds
-            and entity.region_id == region_id
-            and entity.interaction_point_id
-        ]
-        if not candidates:
+    def _furniture_point(self, actor: ResidentRuntime, kinds: frozenset[str]) -> Any | None:
+        """Where she would stand to get onto the piece `_resting_entity` would put her on."""
+        entity = self._resting_entity(actor, kinds)
+        if entity is None:
             return None
-        candidates.sort(key=lambda item: item.entity_id)
-        return next(
-            (
-                item
-                for item in self.bundle.home_model.interaction_points
-                if item.interaction_point_id == candidates[0].interaction_point_id
-            ),
-            None,
-        )
+        return self._points.get(entity.interaction_point_id)
 
     def _stand_up(
         self,

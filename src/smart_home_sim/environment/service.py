@@ -552,6 +552,61 @@ def _entity_candidates(
     )
 
 
+_SERVICE_ANCHOR = "generated_environment_service"
+# Types a body can be on. A capability the room offers in more than one place is answered by the
+# thing that can hold her: a living room's `leisure_support` is the sofa and the television alike,
+# and it is the sofa she is going there to be on. Ordering by id alone got this right by the
+# accident of `living_sofa` sorting before `living_tv`, which is not a reason.
+_BODY_SUPPORTING_TYPES = frozenset(
+    {"chair", "sofa", "armchair", "stool", "bench", "bed", "single_bed", "recliner", "daybed"}
+)
+
+
+def _real_furniture(candidates: list[tuple[HomeEntity, Any]]) -> bool:
+    """Does anything here answer that is not the room's own backstop?"""
+    return any(entity.entity_type != _SERVICE_ANCHOR for entity, _ in candidates)
+
+
+def _capability_providers(
+    home: HomeModel,
+    *,
+    capability: str,
+    actor_id: str,
+    mobility_profile: str,
+    preferred_regions: set[str],
+) -> list[tuple[HomeEntity, Any]]:
+    """The furniture that provides a capability, for a process that named it as a place to be.
+
+    Deliberately blind to `supported_operations`, which the role-matched search is right to check
+    and this one is not: the question here is not *do this to the sofa*, it is *stand where the
+    sofa can be used*. A sofa offers `leisure_support` for the operation `leisure`, and the action
+    doing the asking is `move_to_capability`, which no piece of furniture lists and none should.
+    """
+    candidates = [
+        (entity, provided)
+        for entity in home.entities
+        if not (
+            entity.access.allowed_resident_ids
+            and actor_id not in entity.access.allowed_resident_ids
+        )
+        and not (
+            entity.access.allowed_mobility_profiles
+            and mobility_profile not in entity.access.allowed_mobility_profiles
+        )
+        and entity.entity_type != _SERVICE_ANCHOR
+        for provided in entity.capabilities
+        if provided.capability == capability
+    ]
+    return sorted(
+        candidates,
+        key=lambda item: (
+            item[0].region_id not in preferred_regions,
+            item[0].entity_type not in _BODY_SUPPORTING_TYPES,
+            item[0].entity_id,
+        ),
+    )
+
+
 # The role a requirement names is a statement about the body as well as about the object. `target`,
 # `fixture`, `equipment`, `place` are where the resident has to be; `item` is what she is holding,
 # and holding something does not move her.
@@ -765,6 +820,27 @@ def _build_action_bindings(
                         preferred_regions=preferred_regions,
                         action_type=node.action_type,
                     )
+                    # A role that names a capability rather than a role. A process says where the
+                    # body goes the way it thinks of the place — "somewhere that supports leisure",
+                    # "somewhere that supports work" — and nothing in the room answers to that as a
+                    # *role*: a sofa's roles are `sofa`, `seating`, `rest_area` and its own id. The
+                    # per-region service anchor answers to every role there is, so every one of
+                    # these resolved to a generated point in the middle of the floor. On one
+                    # generated month that was 111 approaches, and it put the resident in front of
+                    # her television rather than on the sofa for all thirteen evenings she spent
+                    # watching it, and beside her desk rather than at it for all twenty-seven
+                    # blocks of work. Asked of the capability instead, the furniture that provides
+                    # it answers, and the anchor goes back to being the backstop it is meant to be.
+                    if role_value is not None and not _real_furniture(candidates):
+                        offered = _capability_providers(
+                            home,
+                            capability=role_value,
+                            actor_id=activity.actor_id,
+                            mobility_profile=mobility_profiles[activity.actor_id],
+                            preferred_regions=preferred_regions,
+                        )
+                        if offered:
+                            candidates = offered
                     # What the action says it is doing, offered as a role. `personal_care` names a
                     # procedure and `manage_medication` an operation, and where an object in the
                     # room answers to that word it is the object the action means. Tried before
@@ -789,10 +865,7 @@ def _build_action_bindings(
                             # carries every role there is, so an unmatched word — `read_book`,
                             # `copywriting` — matched the backstop and sent the resident to the
                             # middle of the room instead of to her sofa or her desk.
-                            if any(
-                                entity.entity_type != "generated_environment_service"
-                                for entity, _ in named
-                            ):
+                            if _real_furniture(named):
                                 candidates = named
                                 named_by_argument = True
                                 break
@@ -818,10 +891,7 @@ def _build_action_bindings(
                         # bookshelf by id and then asked for somewhere to sit therefore found the
                         # anchor rather than the sofa two metres away, and she read a month of
                         # evenings standing in the middle of the room.
-                        if any(
-                            entity.entity_type != "generated_environment_service"
-                            for entity, _ in at_hand
-                        ):
+                        if _real_furniture(at_hand):
                             candidates = at_hand
                     if not candidates:
                         failed = True

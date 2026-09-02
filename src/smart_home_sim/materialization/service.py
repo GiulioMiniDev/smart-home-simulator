@@ -394,6 +394,54 @@ def _entity_capabilities(
     ]
 
 
+# A surface you work or eat at is used sitting down, and the seat is the piece an author forgets.
+# `_SATELLITES` in the placer already knows a chair belongs around a desk; it can only place one
+# that exists. A study holding a desk and a reading armchair and no desk chair is what an outline
+# actually produced, and the resident then sat in the armchair to work and got up again to reach
+# the desk — the posture said sitting for eighty minutes of a body standing at a keyboard.
+_SEAT_WANTED_BY = {"desk", "table", "dining_table", "kitchen_table", "writing_desk", "study_desk"}
+# What counts as already having a seat *for a surface*, so a furnished room is left alone. An
+# armchair is not one: you do not pull a reading chair up to a desk, and a study holding one is
+# exactly the room this exists for. The split is the placer's own — `chair` and `stool` are in its
+# `dine` group and travel to a table, an armchair is `lounge` and stays where the room wants it.
+_PULLED_UP_SEATS = frozenset({"chair", "stool", "bench"})
+
+
+@dataclass(frozen=True)
+class _CompanionSeat:
+    """A seat the generator supplies because the room has a surface and nothing to sit on.
+
+    Shaped like a scenario resource because everything downstream of placement reads it as one.
+    It is *not* one: nothing in the scenario names it, no behaviour binds to it by id, and it gets
+    no resource binding. It is furniture in the same sense the front door is — part of the dwelling
+    rather than part of the case.
+    """
+
+    resource_id: str
+    resource_type: str
+    location_id: str
+
+
+def _companion_seats(resources_by_region: dict[str, list[Any]]) -> list[_CompanionSeat]:
+    """One chair for each room that has something to sit at and nothing to pull up to it."""
+    taken = {item.resource_id for items in resources_by_region.values() for item in items}
+    seats: list[_CompanionSeat] = []
+    for region_id, items in sorted(resources_by_region.items()):
+        types = {item.resource_type for item in items}
+        if types & _PULLED_UP_SEATS or not (types & _SEAT_WANTED_BY):
+            continue
+        resource_id = f"{region_id}_chair"
+        suffix = 1
+        while resource_id in taken:
+            suffix += 1
+            resource_id = f"{region_id}_chair_{suffix:02d}"
+        taken.add(resource_id)
+        seats.append(
+            _CompanionSeat(resource_id=resource_id, resource_type="chair", location_id=region_id)
+        )
+    return seats
+
+
 def _resource_roles(resource: Any) -> set[str]:
     return {
         resource.resource_id,
@@ -715,6 +763,9 @@ def generate_home(
     resources_by_region: dict[str, list[Any]] = defaultdict(list)
     for resource in scenario.resources:
         resources_by_region[_expanded_regions(scenario, resource.location_id)[0]].append(resource)
+    companions = _companion_seats(resources_by_region)
+    for seat in companions:
+        resources_by_region[seat.location_id].append(seat)
     for region_resources in resources_by_region.values():
         region_resources.sort(key=lambda item: item.resource_id)
 
@@ -826,7 +877,7 @@ def generate_home(
         for resource, point in zip(refused, points, strict=False):
             fallbacks[resource.resource_id] = point
 
-    for resource in scenario.resources:
+    for resource in [*scenario.resources, *companions]:
         region_id = _expanded_regions(scenario, resource.location_id)[0]
         region_resources = resources_by_region[region_id]
         placed = furniture.get(resource.resource_id)
@@ -865,12 +916,15 @@ def generate_home(
                 initial_state=state,
             )
         )
-        resource_bindings.append(
-            ResourceBinding(
-                scenario_resource_id=resource.resource_id,
-                entity_id=resource.resource_id,
+        # A companion seat answers to no scenario resource, so it gets no binding: a binding is
+        # the promise that something the case named is standing here, and nothing named this.
+        if not isinstance(resource, _CompanionSeat):
+            resource_bindings.append(
+                ResourceBinding(
+                    scenario_resource_id=resource.resource_id,
+                    entity_id=resource.resource_id,
+                )
             )
-        )
     # The flat's front door belongs in a circulation space, and its point has to clear the
     # furniture like any other; the old fixed offset from the left wall now lands inside a wardrobe.
     entrance_region = anchor_id

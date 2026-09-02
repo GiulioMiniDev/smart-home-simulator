@@ -12,7 +12,15 @@ from typer.testing import CliRunner
 
 from smart_home_sim.cli import app
 from smart_home_sim.domain.behavior import ProcessNode, ProcessNodeKind
-from smart_home_sim.domain.environment import SimulationBundle
+from smart_home_sim.domain.environment import (
+    EntityCapability,
+    HomeEntity,
+    HomeObstacle,
+    InteractionPoint,
+    Point2D,
+    Polygon2D,
+    SimulationBundle,
+)
 from smart_home_sim.domain.execution import (
     ActionExecution,
     ActivityExecution,
@@ -21,12 +29,14 @@ from smart_home_sim.domain.execution import (
 from smart_home_sim.domain.models import ConditionOperator
 from smart_home_sim.simulation.service import (
     _AMBULATORY_POSTURES,
+    _SEATING_FURNITURE,
     _TRANSIENT_REGIONS,
     EXECUTION_PACE_MAX_FACTOR,
     EXECUTION_PACE_MIN_FACTOR,
     PUNCTUAL_ACTION_SECONDS,
     RETURN_NODE_ID,
     NamedRandomStreams,
+    ResidentRuntime,
     ResourceCoordinator,
     SimulationEngine,
     _initial_runtime,
@@ -698,8 +708,7 @@ def test_executed_gestures_stay_short_across_a_whole_week(result, bundle) -> Non
     """
     assert result.trace is not None
     stand_up = max(
-        item.posture_transition_seconds.get("standing", 0.0)
-        for item in bundle.resident_kinematics
+        item.posture_transition_seconds.get("standing", 0.0) for item in bundle.resident_kinematics
     )
     elastic_activities = {
         item.activity_execution_id
@@ -755,3 +764,141 @@ def test_lying_down_takes_longer_than_sitting_down(result) -> None:
     assert by_posture["sitting"] == {2.0}
     assert by_posture["standing"] == {1.5}
     assert PUNCTUAL_ACTION_SECONDS["change_posture"] not in {2.0, 1.5}
+
+
+def _furnished_living_room(bundle: SimulationBundle) -> SimulationBundle:
+    """The golden home with two seats in the living room and a desk pulled up to one of them."""
+    home = bundle.home_model
+    approach = [
+        EntityCapability(
+            capability="interaction_point", roles=[], supported_operations=["move_to_capability"]
+        )
+    ]
+    points = [
+        *home.interaction_points,
+        InteractionPoint(
+            interaction_point_id="ip_near_chair",
+            region_id="living_room",
+            position=Point2D(x=13.0, y=8.0),
+            approach_radius_meters=0.35,
+        ),
+        InteractionPoint(
+            interaction_point_id="ip_far_armchair",
+            region_id="living_room",
+            position=Point2D(x=18.5, y=11.0),
+            approach_radius_meters=0.35,
+        ),
+        InteractionPoint(
+            interaction_point_id="ip_desk",
+            region_id="living_room",
+            position=Point2D(x=13.9, y=8.0),
+            approach_radius_meters=0.35,
+        ),
+    ]
+    entities = [
+        *home.entities,
+        HomeEntity(
+            entity_id="near_chair",
+            entity_type="chair",
+            region_id="living_room",
+            interaction_point_id="ip_near_chair",
+            capabilities=approach,
+        ),
+        HomeEntity(
+            entity_id="far_armchair",
+            entity_type="armchair",
+            region_id="living_room",
+            interaction_point_id="ip_far_armchair",
+            capabilities=approach,
+        ),
+        HomeEntity(
+            entity_id="desk",
+            entity_type="desk",
+            region_id="living_room",
+            interaction_point_id="ip_desk",
+            capabilities=approach,
+        ),
+    ]
+    obstacles = [
+        *home.obstacles,
+        HomeObstacle(
+            obstacle_id="obstacle_near_chair",
+            region_id="living_room",
+            boundary=Polygon2D(
+                vertices=[
+                    Point2D(x=12.6, y=7.8),
+                    Point2D(x=13.0, y=7.8),
+                    Point2D(x=13.0, y=8.2),
+                    Point2D(x=12.6, y=8.2),
+                ]
+            ),
+        ),
+        HomeObstacle(
+            obstacle_id="obstacle_desk",
+            region_id="living_room",
+            boundary=Polygon2D(
+                vertices=[
+                    Point2D(x=13.4, y=7.6),
+                    Point2D(x=14.7, y=7.6),
+                    Point2D(x=14.7, y=8.4),
+                    Point2D(x=13.4, y=8.4),
+                ]
+            ),
+        ),
+    ]
+    return bundle.model_copy(
+        update={
+            "home_model": home.model_copy(
+                update={
+                    "interaction_points": points,
+                    "entities": entities,
+                    "obstacles": obstacles,
+                }
+            )
+        }
+    )
+
+
+def test_she_sits_on_the_seat_she_is_standing_next_to(bundle) -> None:
+    """By id it was whichever seat sorted first, which is a fact about its name.
+
+    A study holding a desk chair and a reading armchair sat her in the armchair to work and then
+    walked her back to the desk, still recorded as sitting: the sensor log put her in the armchair
+    for the whole block and the replay drew her at the desk, and neither was wrong about the trace
+    it was reading. `far_armchair` sorts before `near_chair`, so this is that ordering exactly.
+    """
+    engine = SimulationEngine(_furnished_living_room(bundle))
+    actor = ResidentRuntime(
+        resident_id="resident_mario_rossi",
+        region_id="living_room",
+        position=Point2D(x=13.9, y=8.0),
+    )
+
+    assert engine._resting_entity(actor, _SEATING_FURNITURE).entity_id == "near_chair"
+
+    # And from the other end of the room, the armchair. Nearest, not favourite.
+    actor.position = Point2D(x=19.0, y=11.5)
+    assert engine._resting_entity(actor, _SEATING_FURNITURE).entity_id == "far_armchair"
+
+
+def test_a_seated_body_reaches_the_desk_rather_than_getting_up_to_walk_round_it(bundle) -> None:
+    """An interaction point is where a body *stands*, so a chair and the desk it is at have two.
+
+    Walking between them is what turned eighty minutes of work into a body standing at a keyboard
+    with the posture reading `sitting`. Measured from the berth to the *footprint*, because the
+    question is whether what she wants is within arm's length of where she is sitting.
+    """
+    engine = SimulationEngine(_furnished_living_room(bundle))
+    seated = ResidentRuntime(
+        resident_id="resident_mario_rossi",
+        region_id="living_room",
+        position=Point2D(x=13.0, y=8.0),
+        posture="sitting",
+        resting_at=Point2D(x=12.8, y=8.0),
+    )
+
+    assert engine._within_reach(seated, "ip_desk")
+    # Nothing across the room, and nothing at all while she is on her feet.
+    assert not engine._within_reach(seated, "ip_far_armchair")
+    seated.resting_at = None
+    assert not engine._within_reach(seated, "ip_desk")

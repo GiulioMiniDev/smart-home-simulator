@@ -67,6 +67,8 @@ from smart_home_sim.materialization import (
     materialize_workspace,
 )
 from smart_home_sim.materialization.service import (
+    _companion_seats,
+    _CompanionSeat,
     _functional_zones,
     _stair_pose,
     load_home_policy,
@@ -1143,6 +1145,52 @@ def test_a_quiet_room_is_told_apart_less_finely_than_a_busy_one() -> None:
 
     assert len(_functional_zones(region, points, 4)) == 1
     assert len(_functional_zones(region, points, 300)) == 2
+
+
+def test_a_desk_with_nothing_to_sit_at_it_is_given_a_chair() -> None:
+    """A surface you work or eat at needs a seat, and the seat is the piece an author forgets.
+
+    An outline furnished a study with a desk and a reading armchair. The placer already knows a
+    chair belongs around a desk; it can only place one that exists, so the resident sat in the
+    armchair to work and stood up again to reach the desk — eighty minutes of a body at a keyboard
+    with the posture reading `sitting`, the sensor log putting her in the armchair and the replay
+    drawing her at the desk.
+
+    An armchair is not the answer to a desk: `_PULLED_UP_SEATS` is the placer's own `dine` group,
+    the seats that travel to a surface.
+    """
+    seats = _companion_seats(
+        {
+            "study": [
+                _CompanionSeat("study_desk", "desk", "study"),
+                _CompanionSeat("study_armchair", "armchair", "study"),
+            ],
+            # Already has something to pull up: left exactly as the author wrote it.
+            "kitchen": [
+                _CompanionSeat("kitchen_table", "table", "kitchen"),
+                _CompanionSeat("kitchen_chair", "chair", "kitchen"),
+            ],
+            # Nothing to sit *at*: a sitting room does not get a dining chair for its sofa.
+            "living_room": [_CompanionSeat("living_sofa", "sofa", "living_room")],
+        }
+    )
+
+    assert [(item.resource_id, item.resource_type, item.location_id) for item in seats] == [
+        ("study_chair", "chair", "study")
+    ]
+
+
+def test_a_companion_chair_takes_a_free_id_and_no_resource_binding() -> None:
+    """It is furniture, not a resource: nothing in the case named it, so nothing binds to it."""
+    taken = _companion_seats(
+        {
+            "study": [
+                _CompanionSeat("study_desk", "desk", "study"),
+                _CompanionSeat("study_chair", "bookshelf", "study"),
+            ]
+        }
+    )
+    assert [item.resource_id for item in taken] == ["study_chair_02"]
 
 
 def test_a_landing_too_small_for_a_clear_flight_still_keeps_its_doorways_open() -> None:
