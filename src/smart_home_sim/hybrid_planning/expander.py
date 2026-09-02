@@ -50,6 +50,7 @@ from smart_home_sim.domain.models import (
     ConditionOperator,
     DateTimeWindow,
     DayPlan,
+    DependencyGroup,
     DurationRange,
     LocationKind,
     Provenance,
@@ -1186,6 +1187,56 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
     )
 
 
+# A meal has to be cooked before it is eaten, and nothing said so. Preparing lunch and eating it
+# are two habits with two bands, the author's bands overlap by the best part of two hours, and
+# between the two activities there was no ordering of any kind — no dependency, no precondition.
+# The compiler is then free, and on a day with no slack it takes the freedom: it put `eat_lunch`
+# at 12:19, squeezed to its twelve-minute minimum, and left `prepare_simple_lunch` at its own
+# preferred 13:32. Twelve dinners of twenty-nine and five lunches of nine came out that way over
+# one generated month, and what the replay showed was a woman at the stove making a lunch she had
+# finished ninety minutes earlier.
+_MEAL_AFTER_PREPARATION: dict[str, str] = {
+    "eat_lunch": "prepare_simple_lunch",
+    "eat_dinner": "prepare_light_dinner",
+}
+
+
+def _cook_before_eating(activities: list[Activity]) -> list[Activity]:
+    """Make each meal depend on the day's own preparation of it, where the day has one.
+
+    The dependency is deliberately not added when the cooking is sacrificial and the meal is not.
+    The solver reads a dependency as `presence(meal) <= presence(cooking)`, so tying a mandatory
+    meal to an optional preparation makes the preparation mandatory by the back door — and on the
+    day that could not fit it, over-constrains a horizon that used to schedule. Where the author
+    made the cooking optional, an uncooked lunch is what they asked for.
+    """
+    earliest: dict[str, Activity] = {}
+    for activity in activities:
+        current = earliest.get(activity.intent)
+        if current is None or activity.start_window.preferred < current.start_window.preferred:
+            earliest[activity.intent] = activity
+    updated: list[Activity] = []
+    for activity in activities:
+        cooking = earliest.get(_MEAL_AFTER_PREPARATION.get(activity.intent, ""))
+        if (
+            cooking is None
+            or activity.dependency_groups
+            or (activity.mandatory and not cooking.mandatory)
+        ):
+            updated.append(activity)
+            continue
+        updated.append(
+            activity.model_copy(
+                update={
+                    "dependency_groups": [
+                        DependencyGroup(activity_ids=[cooking.activity_id], minimum_lag_minutes=0)
+                    ]
+                }
+            )
+        )
+    return updated
+
+
 def _planning_world(outline: HorizonOutline) -> PlanningWorld:
     world: OutlineWorld = outline.world
     return PlanningWorld(
@@ -1500,6 +1551,7 @@ def expand_outline(
             seed,
         )
         activities = _resolve_overlaps(activities, _lights_out(plan))
+        activities = _cook_before_eating(activities)
         if calendar_day is calendar.days[-1]:
             # The horizon stops at midnight after the last day, so whatever is still running then
             # is truncated rather than made infeasible. This is what the flag is for; the evening

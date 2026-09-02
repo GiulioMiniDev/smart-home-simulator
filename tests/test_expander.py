@@ -30,6 +30,7 @@ from smart_home_sim.hybrid_planning.day_generation import (
 from smart_home_sim.hybrid_planning.expander import (
     MINIMUM_FLEX_MINUTES,
     ExpansionError,
+    _cook_before_eating,
     _measure_habits,
     expand_outline,
 )
@@ -1198,3 +1199,65 @@ def test_no_effective_window_is_published_when_nothing_holds_the_band() -> None:
     assert observation.effective_start is None
     assert observation.effective_end is None
     assert observation.effective_share == 0.0
+
+
+def _meal(intent: str, hour: int, *, mandatory: bool = True) -> Activity:
+    moment = datetime(2026, 9, 13, hour, tzinfo=UTC)
+    return Activity(
+        activity_id=f"2026-09-13_{intent}",
+        actor_id="resident",
+        intent=intent,
+        location_ids=["kitchen"],
+        start_window=DateTimeWindow(
+            earliest=moment - timedelta(hours=2), preferred=moment, latest=moment
+        ),
+        duration=DurationRange(minimum_minutes=12, preferred_minutes=24, maximum_minutes=75),
+        mandatory=mandatory,
+    )
+
+
+def test_a_meal_waits_for_the_day_to_cook_it() -> None:
+    """Nothing said the cooking comes first, and on a congested day the compiler used the freedom.
+
+    `prepare_simple_lunch` and `eat_lunch` are two habits with two bands, the author's bands
+    overlap by the best part of two hours, and between the two activities there was no ordering of
+    any kind. So the solver put lunch at 12:19, squeezed to its twelve-minute minimum, and left the
+    cooking at its own preferred 13:32: twelve dinners of twenty-nine and five lunches of nine came
+    out that way over one generated month.
+    """
+    activities = _cook_before_eating(
+        [_meal("prepare_simple_lunch", 13), _meal("eat_lunch", 12), _meal("wake_up", 8)]
+    )
+    by_intent = {item.intent: item for item in activities}
+
+    groups = by_intent["eat_lunch"].dependency_groups
+    assert [group.activity_ids for group in groups] == [["2026-09-13_prepare_simple_lunch"]]
+    assert groups[0].minimum_lag_minutes == 0
+    # Only the meal waits. The cooking has nothing to wait for, and neither does the morning.
+    assert not by_intent["prepare_simple_lunch"].dependency_groups
+    assert not by_intent["wake_up"].dependency_groups
+
+
+def test_a_mandatory_meal_is_not_chained_to_cooking_the_author_made_optional() -> None:
+    """The solver reads a dependency as `presence(meal) <= presence(cooking)`.
+
+    So tying a mandatory dinner to a sacrificial preparation makes the preparation mandatory by the
+    back door, and over-constrains the one day that could not fit it. Where the author said the
+    cooking may be dropped, an uncooked dinner is what they asked for.
+    """
+    kept = _cook_before_eating(
+        [
+            _meal("prepare_light_dinner", 19, mandatory=False),
+            _meal("eat_dinner", 20, mandatory=True),
+        ]
+    )
+    assert all(not item.dependency_groups for item in kept)
+
+    # Both sacrificial is a different matter: dropping the cooking drops the meal, which is true.
+    chained = _cook_before_eating(
+        [
+            _meal("prepare_light_dinner", 19, mandatory=False),
+            _meal("eat_dinner", 20, mandatory=False),
+        ]
+    )
+    assert [item.intent for item in chained if item.dependency_groups] == ["eat_dinner"]
