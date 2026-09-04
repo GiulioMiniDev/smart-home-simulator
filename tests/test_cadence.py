@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from datetime import UTC, date, datetime
 
 import pytest
@@ -164,6 +165,48 @@ def test_weekly_with_weekdays_only_on_those_days() -> None:
     due = _due_times(activity, _START, _END, seed=0)
     assert due
     assert all(day.weekday() in {1, 4} for day in due)
+
+
+def test_weekly_with_weekdays_counts_them_as_candidates_not_as_occurrences() -> None:
+    """Two evenings a week at the gym, declared monday-to-friday, is two — not five.
+
+    The weekday list is where the activity may fall, and `timesPerPeriod` is how often it does.
+    Reading the list as the schedule itself inflated every weekly habit that named its days: on the
+    first five-month case the gym ran 109 times against a declared 2-3 a week, and the weekly shop
+    66 times against a declared 1.
+    """
+    activity = _recurring(
+        "gym",
+        CadencePeriod.week,
+        times=2,
+        weekdays=(
+            Weekday.monday,
+            Weekday.tuesday,
+            Weekday.wednesday,
+            Weekday.thursday,
+            Weekday.friday,
+        ),
+    )
+
+    due = _due_times(activity, _START, _END, seed=0)
+
+    assert all(day.weekday() < 5 for day in due)
+    # Four whole weeks and a monday-to-wednesday tail, two working days drawn from each.
+    per_week = Counter((day - _START).days // 7 for day in due)
+    assert sorted(per_week.values()) == [2, 2, 2, 2, 2]
+
+
+def test_weekly_asking_for_more_than_the_weekdays_allow_takes_all_of_them() -> None:
+    activity = _recurring(
+        "shop", CadencePeriod.week, times=4, weekdays=(Weekday.saturday, Weekday.sunday)
+    )
+
+    due = _due_times(activity, _START, _END, seed=0)
+
+    assert all(day.weekday() in {5, 6} for day in due)
+    # Four saturdays and four sundays: the horizon's last bucket is a monday-to-wednesday tail
+    # holding neither, and a week with no candidate day simply yields nothing.
+    assert len(due) == 8
 
 
 def test_weekly_without_weekdays_picks_times_per_bucket() -> None:

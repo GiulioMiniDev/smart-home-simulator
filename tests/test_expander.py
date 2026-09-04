@@ -668,6 +668,31 @@ def test_a_habit_sent_to_a_room_that_cannot_perform_it_is_refused(
         expand_outline(outline, package, seed=1)
 
 
+def test_a_habit_sent_outdoors_is_accepted(package: PersonalProcessPackage) -> None:
+    """Naming `outdoors` is the outline agreeing with the catalog, not contradicting the world.
+
+    `evening_walk` and `buy_groceries` are placed `outdoors` by the activity catalog, and the
+    world declares it `external` because it is not a room — so the room-kinded check refused an
+    outline for stating the destination those two intents already have. Nothing is furnished out
+    there by the resident either, which is why the capability half has to stay off it.
+    """
+    outline = _outline(
+        profile=_override(
+            _override(_profile(), "morning_walk", "outdoors"), "buy_groceries", "outdoors"
+        )
+    )
+
+    result = expand_outline(outline, package, seed=1)
+
+    outdoors = {
+        activity.location_ids[0]
+        for day in result.bundle.scenario.days
+        for activity in day.activities
+        if activity.intent in {"evening_walk", "buy_groceries"}
+    }
+    assert outdoors == {"outdoors"}
+
+
 def test_the_horizon_covers_every_day_exactly_once(package: PersonalProcessPackage) -> None:
     outline = _outline()
 

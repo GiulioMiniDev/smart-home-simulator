@@ -78,6 +78,7 @@ import {
   addDoorway,
   addFurnitureAt,
   addSensorAt,
+  addSensorInRegion,
   addStoreyByStairs,
   alignSensorModel,
   createRoomFromBox,
@@ -85,12 +86,16 @@ import {
   pirRange,
   planProblems,
   removeSelection,
+  renameSensor,
   resizePlanObject,
   rotatePlanObject,
+  sensorSlug,
+  sensorsByRoom,
   setPirRange,
   setRegionLevel,
+  setSensorPosition,
 } from "./editor";
-import type { PlanBox, ResizeHandle, WallCandidate } from "./editor";
+import type { PlanBox, ResizeHandle, RoomSensors, WallCandidate } from "./editor";
 import { authoringPrompts } from "./prompts";
 import { ReplayScene } from "./replay/ReplayScene";
 import type {
@@ -110,6 +115,7 @@ import type {
   Overview,
   PathSource,
   ResidentProfile,
+  SensorBase,
   SensorModel,
   StorageReport,
   VolumeUsage,
@@ -699,6 +705,8 @@ type OperationProgress = {
   startedAt: number;
   elapsed: number;
   stage?: string;
+  stageSeconds?: number;
+  stages?: { stage: string; seconds: number }[];
   serverElapsed?: number;
   reason?: string;
 };
@@ -736,7 +744,13 @@ function useOperationWatch(
         }
         if (state.operation) {
           misses.current = 0;
-          patch({ phase: "working", stage: state.operation.stage, serverElapsed: state.operation.elapsedSeconds });
+          patch({
+            phase: "working",
+            stage: state.operation.stage,
+            stageSeconds: state.operation.stageSeconds,
+            stages: state.operation.stages,
+            serverElapsed: state.operation.elapsedSeconds,
+          });
           return;
         }
         misses.current += 1;
@@ -752,6 +766,21 @@ function useOperationWatch(
   }, [operationId, settled, progress?.startedAt, setProgress]);
 }
 
+/** `92` to `1m 32s`: a step measured in thousands of seconds is unreadable as seconds. */
+function elapsedLabel(seconds: number): string {
+  if (seconds < 90) return `${Math.round(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${Math.round(seconds % 60)}s`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+// When one step has been running this much longer than the whole history before it, it is no
+// longer "the next step": it is the step, and saying so is the difference between waiting and
+// wondering. Deliberately generous — solving a week of a contended horizon really is the
+// expensive part of an import, and calling that stuck would be a lie.
+const STALLED_RATIO = 8;
+const STALLED_FLOOR_SECONDS = 120;
+
 function OperationPanel({ progress }: { progress: OperationProgress }) {
   const spent = `${progress.elapsed}s`;
   const description =
@@ -759,6 +788,15 @@ function OperationPanel({ progress }: { progress: OperationProgress }) {
       : progress.phase === "sending" ? "Sent to the server, waiting for it to pick the request up"
         : progress.phase === "working" ? (progress.stage ?? "The server is working on it")
           : (progress.reason ?? "The request was lost.");
+  const history = progress.stages ?? [];
+  const before = history.reduce((total, step) => total + step.seconds, 0);
+  const inStage = progress.stageSeconds ?? 0;
+  // A first step with nothing behind it cannot be compared with anything, so it is judged against
+  // the floor alone rather than against a history of zero.
+  const stalled =
+    progress.phase === "working" &&
+    inStage > STALLED_FLOOR_SECONDS &&
+    inStage > Math.max(before, STALLED_FLOOR_SECONDS) * (before > 0 ? STALLED_RATIO : 1);
   return (
     <section className={`operation-panel${progress.phase === "lost" ? " operation-panel-lost" : ""}`} role="status" aria-live="polite">
       <div>
@@ -766,9 +804,17 @@ function OperationPanel({ progress }: { progress: OperationProgress }) {
         <strong>{progress.label}</strong>
         <span className="operation-elapsed">{spent}</span>
       </div>
-      <p>{description}</p>
+      <p>{description}{progress.phase === "working" && inStage > 0 && <span className="operation-stage-age"> · {elapsedLabel(inStage)} on this step</span>}</p>
       {progress.phase !== "lost" && <div className="operation-track" aria-hidden="true"><i /></div>}
-      {progress.phase === "working" && <small>The server confirmed it is alive and {progress.serverElapsed ?? progress.elapsed}s into this request.</small>}
+      {history.length > 0 && (
+        <ol className="operation-steps">
+          {history.map((step, index) => (
+            <li key={`${index}-${step.stage}`}><span>{step.stage}</span><time>{elapsedLabel(step.seconds)}</time></li>
+          ))}
+        </ol>
+      )}
+      {progress.phase === "working" && <small>The server confirmed it is alive and {elapsedLabel(progress.serverElapsed ?? progress.elapsed)} into this request.</small>}
+      {stalled && <p className="operation-hint">This step has been running far longer than everything before it put together. The server is not stuck — it is solving — but a horizon this contended can take hours. The console window the simulator was started from shows what it is doing.</p>}
       {progress.phase === "lost" && <p className="operation-hint">Check the console window the simulator was started from, and <code>server-errors.log</code> in the workspace folder. Nothing was imported.</p>}
     </section>
   );
@@ -784,14 +830,20 @@ function HomePage() {
   // without leaving the page you were placing it on.
   const [layer, setLayer] = useState<"home" | "sensors">("home");
   const [selectedId, setSelectedId] = useState<string>();
-  const [bundleFile, setBundleFile] = useState<File>();
   const [outlineFile, setOutlineFile] = useState<File>();
   // Read locally, the moment the file is chosen: the outline is the one input nobody can check by
   // eye, and the server's verdict arrives only after the days have been computed from it.
   const [outlineReading, setOutlineReading] = useState<OutlineReadResult>();
-  const [scenarioFile, setScenarioFile] = useState<File>();
-  const [behaviorFile, setBehaviorFile] = useState<File>();
   const [working, setWorking] = useState(false);
+  // How far one import is allowed to carry itself. Validation is not a step: it is what an import
+  // is. The other two are the buttons the researcher would otherwise press by hand, in the order
+  // they would press them, and each is only reached because the one before it reported success.
+  const [depth, setDepth] = useState<PipelineDepth>("environment");
+  // The half of the deployment policy worth a control. The rest of `SensorDeploymentPolicy` is
+  // forty numbers calibrated against CASAS, and a form for those is a form nobody can answer.
+  const [deployment, setDeployment] = useState<DeploymentChoice>({
+    preset: "functional_zones", pirCoverageShape: "rectangle", observationProfile: "realistic",
+  });
   const [progress, setProgress] = useState<OperationProgress>();
   const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
   useOperationWatch(progress, setProgress);
@@ -817,6 +869,10 @@ function HomePage() {
   // The plan is the house. Supermarket, bar and the relative's flat exist in the model so the
   // resident has somewhere to be when they are out; they are shown only when explicitly asked for.
   const [showExternalPlaces, setShowExternalPlaces] = useState(false);
+  // What the whole field sees, drawn at once. On by default on the sensor layer, because the first
+  // question anybody has about an installation is which corners of the flat nobody is watching,
+  // and a drawing that answers it only one detector at a time does not answer it.
+  const [showCoverage, setShowCoverage] = useState(true);
   useJobRefresh(resource.data?.jobs ?? [], resource.reload);
   const sourceHome = resource.data?.models.homeModel;
   const sourceSensor = resource.data?.models.sensorModel;
@@ -855,7 +911,7 @@ function HomePage() {
   const activeJob = detail.jobs.find((job) => !terminal.has(job.status));
   const inputResident = detail.residents.find((resident) => resident.scenarioArtifactId && resident.behaviorArtifactId);
 
-  const submitAuthoring = async (path: string, body: () => Promise<Record<string, unknown>>, label: string) => {
+  const submitAuthoring = async (path: string, body: () => Promise<Record<string, unknown>>, label: string, carry: PipelineDepth = "validate") => {
     const operationId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     setWorking(true); setNotice(undefined);
     setProgress({ operationId, label, phase: "reading", startedAt: Date.now(), elapsed: 0 });
@@ -876,35 +932,46 @@ function HomePage() {
           : "";
         setNotice({ kind: "success", text: `The complete authoring bundle passed validation, compilation and behavior compatibility gates.${expanded}` });
         await resource.reload();
+        if (carry !== "validate") await carryOn(carry);
       }
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
     finally { setWorking(false); setProgress(undefined); }
   };
-  const importBundle = async () => {
-    if (!bundleFile) return;
-    await submitAuthoring("authoring-bundle", () => readJson(bundleFile), "Validating the authoring bundle");
-  };
-  const importOutline = async () => {
+  const importOutline = async (carry: PipelineDepth = "validate") => {
     if (!outlineFile) return;
-    await submitAuthoring("horizon-outline?seed=1", () => readJson(outlineFile), "Expanding and importing the outline");
+    await submitAuthoring("horizon-outline?seed=1", () => readJson(outlineFile), "Expanding and importing the outline", carry);
   };
   const chooseOutline = async (file?: File) => {
     setOutlineFile(file);
     setOutlineReading(undefined);
     if (file) setOutlineReading(await readOutlineFile(file));
   };
-  const importAdvancedInputs = async () => {
-    if (!scenarioFile || !behaviorFile) return;
-    await submitAuthoring("authoring", async () => ({
-      scenario: await readJson(scenarioFile),
-      personal_process_package: await readJson(behaviorFile),
-    }), "Validating the Advanced import");
+  /**
+   * Take the import as far as it was asked to go.
+   *
+   * The resident context this import just created is not in the render that started it, so the
+   * ids come back from the server rather than from state. Anything that refuses stops the chain
+   * and says so: nothing here forces a step that the step before it did not earn.
+   */
+  const carryOn = async (carry: PipelineDepth) => {
+    const fresh = await api<HomeDetail>(`/homes/${homeId}`);
+    const resident = fresh.residents.find((item) => item.scenarioArtifactId && item.behaviorArtifactId);
+    if (!resident?.scenarioArtifactId || !resident.behaviorArtifactId) return;
+    const path = carry === "run" ? "runs" : "environment";
+    await api(`/homes/${homeId}/${path}`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: resident.scenarioArtifactId, behavior_artifact_id: resident.behaviorArtifactId, sensor_policy: deployment }) });
+    setNotice({
+      kind: "success",
+      text: carry === "run"
+        ? "Imported, and the run was queued: it builds the home and its sensor field, then executes every generated day."
+        : "Imported, and the home and its sensor field are being built. Nothing is executed until you start a run.",
+    });
+    await resource.reload();
   };
   const start = async (path: "runs" | "environment", message: string) => {
     if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
     setWorking(true); setNotice(undefined);
     try {
-      await api(`/homes/${homeId}/${path}`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId }) });
+      await api(`/homes/${homeId}/${path}`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId, sensor_policy: deployment }) });
       setNotice({ kind: "success", text: message });
       await resource.reload();
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
@@ -916,6 +983,16 @@ function HomePage() {
   // What the M4 gate would refuse, worked out here so the researcher sees it while they still have
   // the object in their hand rather than after a publish that throws the whole edit away.
   const planFaults = homeDraft ? planProblems(homeDraft) : [];
+  // Why the plan can or cannot be built again, said in the one place that has to answer for it.
+  const regenerateBlock = !inputResident
+    ? "Import a resident context first: the plan is built from its scenario."
+    : detail.generation
+      ? "A generated horizon publishes its own home and sensor field; the server rebuilds them with the horizon, not on their own."
+      : detail.planApproval?.approved
+        ? "This plan was confirmed, so it is the home's own model rather than a recommendation. Rebuilding it would throw away that decision."
+        : activeJob
+          ? "A job is already running for this home."
+          : undefined;
   const selectedProblem = planFaults.find((item) => item.objectId === selectedId)?.message;
   const currentSnapshot = () => ({ home: homeDraft ? structuredClone(homeDraft) : undefined, sensor: sensorDraft ? structuredClone(sensorDraft) : undefined });
   const snapshot = () => { setHistory((items) => [...items.slice(-49), currentSnapshot()]); setFuture([]); setUnsaved(true); };
@@ -956,6 +1033,12 @@ function HomePage() {
     const result = resizePlanObject(homeDraft, sensorDraft, id, handle, dx, dy);
     commitHome(result.home, result.sensors);
   };
+  // How far a detector sees, pulled out from the node itself. One number, one gesture, and the
+  // node stays where it was put — the corner handles moved it every time the cone changed shape.
+  const rangeSelected = (id: string, range: number) => {
+    if (!homeDraft || !sensorDraft) return;
+    setSensorDraft(setPirRange(sensorDraft, homeDraft, id, range));
+  };
   /**
    * Keep the working copy, and throw it away: the two things an editor owes you that publishing
    * cannot do. Publishing creates an immutable revision every run of this home then executes, so
@@ -972,6 +1055,36 @@ function HomePage() {
     }
     setDraftSavedAt(savedAt);
     setNotice({ kind: "success", text: "Working copy saved on this computer. It is not a revision: nothing runs on it until you publish." });
+  };
+  /**
+   * Ask the policies for the whole plan again, and throw away the one on screen.
+   *
+   * "Discard changes" goes back to the published plan; this goes back further, to no plan at all,
+   * and builds rooms, furniture and the sensor field from the scenario as if the home had just
+   * been imported. It is the way out of an arrangement that has been edited into a corner, and of
+   * a field a since-corrected policy produced — until now the only one was to delete the home and
+   * import the same bundle into a new one.
+   *
+   * Only while the plan is still a recommendation. Once it is confirmed or published it is the
+   * researcher's own answer, and rebuilding over it would throw away a decision rather than a
+   * draft; and a home whose horizon was generated publishes its plan from that generation, which
+   * the server refuses to rebuild piecemeal.
+   */
+  const regeneratePlan = async () => {
+    if (!inputResident?.scenarioArtifactId || !inputResident.behaviorArtifactId) return;
+    setWorking(true); setNotice(undefined);
+    try {
+      await api(`/homes/${homeId}/environment`, { method: "POST", body: JSON.stringify({ scenario_artifact_id: inputResident.scenarioArtifactId, behavior_artifact_id: inputResident.behaviorArtifactId, sensor_policy: deployment }) });
+      // The working copy is of the plan being replaced: left in place it would be reseeded over
+      // the new one, which is the drawing the researcher just asked to be rid of.
+      localStorage.removeItem(draftKey);
+      setDraftSavedAt(undefined);
+      setHomeDraft(undefined); setSensorDraft(undefined);
+      setHistory([]); setFuture([]); setUnsaved(false); setSelectedId(undefined); setTool("select");
+      setNotice({ kind: "success", text: "Building the home and its sensor field again from the policies. The plan on screen is replaced when the worker finishes." });
+      await resource.reload();
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
+    finally { setWorking(false); }
   };
   const discardChanges = () => {
     localStorage.removeItem(draftKey);
@@ -1083,6 +1196,18 @@ function HomePage() {
       }
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
   };
+  // The other way to install one: name the room instead of finding it on the drawing. It lands in
+  // the middle of that room, named after it, and is selected so it can be dragged off centre.
+  const placeSensorInRoom = (kind: "pir" | "contact" | "temperature", regionId: string) => {
+    if (!homeDraft || !sensorDraft) return;
+    try {
+      snapshot();
+      const result = addSensorInRegion(sensorDraft, homeDraft, kind, regionId);
+      setSensorDraft(result.model);
+      setSelectedId(result.selectedId);
+      setNotice({ kind: "success", text: `Installed ${result.selectedId} in the middle of ${regionId}. Drag it where it belongs, or rename it in the inspector.` });
+    } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); }
+  };
   // A floor is not something you add and then connect: you build the stairs, and the storey they
   // reach comes with them. So the room the flight starts in has to be picked first, which is what
   // `stairsFrom` is — the selected room, on the storey being drawn.
@@ -1184,23 +1309,14 @@ function HomePage() {
               <button className="button secondary" disabled={!outlineFile || working} onClick={() => void importOutline()}><RotateCcw size={16} /> Replace the resident context</button>
             </div>}
           </> : <div className="import-flow">
-            <p>Import the single pure-JSON response generated by your external LLM. Nothing is published unless the whole bundle passes every authoritative gate.</p>
+            <p>Import the outline prompt&rsquo;s whole answer, as the model returned it. It describes the structure of the period; the days are computed here. Nothing is published unless it passes every authoritative gate.</p>
             <Link className="import-guide-link" to="/help#authoring"><BookOpen size={18} /><span><strong>Need to generate the file?</strong><small>Open the integrated guide and copy the horizon outline prompt.</small></span></Link>
-            <label className="file-picker bundle-picker"><FileJson size={22} /><span><strong>Simulation authoring bundle</strong><small>{bundleFile?.name ?? "Choose the complete authoring-bundle.json"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBundleFile(event.target.files?.[0])} /></label>
-            <label className="file-picker bundle-picker"><FileJson size={22} /><span><strong>Horizon outline and processes</strong><small>{outlineFile?.name ?? <>The outline prompt&rsquo;s whole answer — <code>horizon_authoring_bundle</code>. The days are computed here.</>}</small></span><input type="file" accept="application/json,.json" aria-label="Horizon outline and processes" onChange={(event) => void chooseOutline(event.target.files?.[0])} /></label>
+            <label className="file-picker bundle-picker"><FileJson size={22} /><span><strong>Horizon outline and processes</strong><small>{outlineFile?.name ?? <>The outline prompt&rsquo;s whole answer — <code>horizon_authoring_bundle</code>.</>}</small></span><input type="file" accept="application/json,.json" aria-label="Horizon outline and processes" onChange={(event) => void chooseOutline(event.target.files?.[0])} /></label>
             {outlineReading?.kind === "outline" && <p className="hint"><Eye size={15} /> Drawn below as a clock, a week and a calendar — read it before importing.</p>}
             {outlineReading?.kind === "other" && <div className="horizon-mismatch"><AlertCircle size={17} /><p>{outlineReading.message}<small>Importing it anyway is still allowed: the server gives the authoritative verdict.</small></p></div>}
-            <button className="button secondary" disabled={!outlineFile || working} onClick={() => void importOutline()}>Expand and import outline</button>
-            <button className="button primary" disabled={!bundleFile || working} onClick={() => void importBundle()}><Upload size={16} /> Validate bundle and attach</button>
-            <details className="advanced-import">
-              <summary><ChevronDown size={17} /><span><strong>Advanced: import canonical documents separately</strong><small>For debugging, migrations and expert intervention.</small></span></summary>
-              <div>
-                <p>The server reconstructs one bundle and applies the same atomic validation pipeline.</p>
-                <label className="file-picker"><FileJson size={20} /><span><strong>Scenario JSON</strong><small>{scenarioFile?.name ?? "Choose the accepted scenario"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setScenarioFile(event.target.files?.[0])} /></label>
-                <label className="file-picker"><ListTree size={20} /><span><strong>Personal process package</strong><small>{behaviorFile?.name ?? "Choose the matching process package"}</small></span><input type="file" accept="application/json,.json" onChange={(event) => setBehaviorFile(event.target.files?.[0])} /></label>
-                <button className="button secondary" disabled={!scenarioFile || !behaviorFile || working} onClick={() => void importAdvancedInputs()}><Upload size={16} /> Validate Advanced import</button>
-              </div>
-            </details>
+            <PipelineChoice depth={depth} onDepth={setDepth} />
+            <DeploymentChoiceFields choice={deployment} onChoice={setDeployment} disabled={depth === "validate"} />
+            <button className="button primary" disabled={!outlineFile || working} onClick={() => void importOutline(depth)}><Upload size={16} /> {DEPTH_ACTIONS[depth]}</button>
           </div>}
         </section>
         <section className="surface evidence-sheet">
@@ -1209,6 +1325,7 @@ function HomePage() {
           {detail.generation && <p className="hint">Running this home simulates every generated day and publishes them as one run: a single trace, one observable sensor log and one oracle mapping to export whole.</p>}
           {!homeDraft && inputResident && <>
             <p className="hint">The plan and the sensor field come from the deterministic policies, not from the execution. Building them first lets you move a wall or a PIR before anything is simulated — and what you approve is what the run then executes.</p>
+            <DeploymentChoiceFields choice={deployment} onChoice={setDeployment} />
             <div className="button-row">
               <button className="button primary" disabled={working || !!activeJob} onClick={() => void startEnvironment()}><HomeIcon size={16} /> Generate home and sensors</button>
               <button className="button secondary" disabled={working || !!activeJob} onClick={() => void startRun()}><RouteIcon size={16} /> Generate and run in one step</button>
@@ -1221,16 +1338,24 @@ function HomePage() {
       )}
       {tab === "plan" && <div className="editor-layout" onKeyDown={editorKeys}>
         <section className="editor-stage">
-          <div className="editor-toolbar"><div><div className="layer-switch" role="radiogroup" aria-label="What this plan edits">{([["home", "House"], ["sensors", "Sensors"]] as const).map(([item, label]) => <button key={item} role="radio" aria-checked={layer === item} disabled={item === "sensors" && !sensorDraft} onClick={() => { if (layer === item) return; setLayer(item); setSelectedId(""); setTool("select"); }} title={item === "home" ? "Edit rooms, doors and furniture. The sensors stay drawn, and stay out of the way." : "Edit the sensor field. The house stays drawn, and stays out of the way."}>{label}</button>)}</div><button className="tool-button" disabled={!history.length} onClick={undo}><RotateCcw size={16} /> Undo</button><button className="tool-button" disabled={!future.length} onClick={redo}><RotateCw size={16} /> Redo</button><PlanTools layer={layer} tool={tool} onTool={setTool} disabled={!homeDraft || (layer === "sensors" && !sensorDraft)} /><button className="tool-button" disabled={!homeDraft || !selectedId} onClick={() => rotateSelected(selectedId)} title="Turn the selected furniture a quarter of the way round (R)."><RefreshCw size={15} /> Turn</button><label className="tool-button file-tool"><Upload size={15} /> Import {layer === "home" ? "home" : "sensors"}<input type="file" accept="application/json,.json" onChange={(event) => void importModel(layer === "home" ? "home" : "sensor", event.target.files?.[0])} /></label></div><div className="viewport-tools" aria-label="Plan viewport">{layer === "home" && <><button className="tool-button" disabled={!stairsFrom} onClick={() => buildStairs("up")} title={stairsFrom ? "Build a flight up out of the selected room. The storey it reaches is drawn beside the plan, not on top of it: two floors are two blocks of one coordinate plane." : "Select the room the stairs start in. A floor arrives with the flight that reaches it."}><ArrowUpFromLine size={15} /> Stairs up</button><button className="tool-button" disabled={!stairsFrom} onClick={() => buildStairs("down")} title={stairsFrom ? "Build a flight down out of the selected room, into a basement." : "Select the room the stairs start in. A floor arrives with the flight that reaches it."}><ArrowDownFromLine size={15} /> Stairs down</button></>}<button className="tool-button" aria-pressed={showExternalPlaces} onClick={() => setShowExternalPlaces(!showExternalPlaces)} title="The places the resident travels to are regions of the model, not rooms of the house."><Trees size={15} /> External places</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.4, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button><button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(12, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">←</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">↑</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">↓</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">→</button><span>{Math.round(viewport.zoom * 100)}%</span></div></div>
+          <div className="editor-toolbar"><div><div className="layer-switch" role="radiogroup" aria-label="What this plan edits">{([["home", "House"], ["sensors", "Sensors"]] as const).map(([item, label]) => <button key={item} role="radio" aria-checked={layer === item} disabled={item === "sensors" && !sensorDraft} onClick={() => { if (layer === item) return; setLayer(item); setSelectedId(""); setTool("select"); }} title={item === "home" ? "Edit rooms, doors and furniture. The sensors stay drawn, and stay out of the way." : "Edit the sensor field. The house stays drawn, and stays out of the way."}>{label}</button>)}</div><button className="tool-button" disabled={!history.length} onClick={undo}><RotateCcw size={16} /> Undo</button><button className="tool-button" disabled={!future.length} onClick={redo}><RotateCw size={16} /> Redo</button><PlanTools layer={layer} tool={tool} onTool={setTool} disabled={!homeDraft || (layer === "sensors" && !sensorDraft)} /><button className="tool-button" disabled={!homeDraft || !selectedId} onClick={() => rotateSelected(selectedId)} title="Turn the selected furniture a quarter of the way round (R)."><RefreshCw size={15} /> Turn</button><label className="tool-button file-tool"><Upload size={15} /> Import {layer === "home" ? "home" : "sensors"}<input type="file" accept="application/json,.json" onChange={(event) => void importModel(layer === "home" ? "home" : "sensor", event.target.files?.[0])} /></label></div><div className="viewport-tools" aria-label="Plan viewport">{layer === "sensors" && <button className="tool-button" aria-pressed={showCoverage} onClick={() => setShowCoverage(!showCoverage)} title="Draw what every detector sees at once. The floor nothing watches is the floor left bare."><SquareDashed size={15} /> Coverage</button>}{layer === "home" && <><button className="tool-button" disabled={!stairsFrom} onClick={() => buildStairs("up")} title={stairsFrom ? "Build a flight up out of the selected room. The storey it reaches is drawn beside the plan, not on top of it: two floors are two blocks of one coordinate plane." : "Select the room the stairs start in. A floor arrives with the flight that reaches it."}><ArrowUpFromLine size={15} /> Stairs up</button><button className="tool-button" disabled={!stairsFrom} onClick={() => buildStairs("down")} title={stairsFrom ? "Build a flight down out of the selected room, into a basement." : "Select the room the stairs start in. A floor arrives with the flight that reaches it."}><ArrowDownFromLine size={15} /> Stairs down</button></>}<button className="tool-button" aria-pressed={showExternalPlaces} onClick={() => setShowExternalPlaces(!showExternalPlaces)} title="The places the resident travels to are regions of the model, not rooms of the house."><Trees size={15} /> External places</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.4, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button><button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(12, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">←</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">↑</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">↓</button><button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">→</button><span>{Math.round(viewport.zoom * 100)}%</span></div></div>
           {layer === "home" && tool === "obstacle" && (
             <FurniturePalette chosen={furnitureType} onChoose={setFurnitureType} />
           )}
-          {homeDraft ? <PlanCanvas home={homeDraft} sensors={layer === "sensors" ? sensorDraft : undefined} layer={layer} selectedId={selectedId} onSelect={setSelectedId} viewport={viewport} editing={{ onDragStart: snapshot, onMove: moveSelected, onResize: resizeSelected, onDrawRoom: drawRoom, onPlaceDoor: placeDoor, onPlaceObject: placeObject, onToolUsed: () => setTool("select") }} tool={tool} storey={storey} onStoreyChange={setStorey} showExternalPlaces={showExternalPlaces} onViewport={setViewport} /> : <EmptyState title="No spatial model yet" icon={<RouteIcon size={25} />}><p>Run scenario-first materialization or import a valid home model to open the editor.</p></EmptyState>}
+          {homeDraft ? <PlanCanvas home={homeDraft} sensors={layer === "sensors" ? sensorDraft : undefined} layer={layer} selectedId={selectedId} onSelect={setSelectedId} viewport={viewport} editing={{ onDragStart: snapshot, onMove: moveSelected, onResize: resizeSelected, onRange: rangeSelected, onDrawRoom: drawRoom, onPlaceDoor: placeDoor, onPlaceObject: placeObject, onToolUsed: () => setTool("select") }} tool={tool} storey={storey} onStoreyChange={setStorey} showExternalPlaces={showExternalPlaces} showCoverage={layer === "sensors" && showCoverage} onViewport={setViewport} /> : <EmptyState title="No spatial model yet" icon={<RouteIcon size={25} />}><p>Run scenario-first materialization or import a valid home model to open the editor.</p></EmptyState>}
         </section>
         <aside className="inspector" aria-label="Selection inspector">
           <div className="inspector-heading"><div><p className="eyebrow">Inspector</p><h2>{selectedId ?? "Nothing selected"}</h2></div>{selectedId && <button className="icon-button" onClick={() => setSelectedId(undefined)} aria-label="Clear selection"><X size={16} /></button>}</div>
-          {selectedId ? <><p className="inspector-help">Drag on the plan, or keep your hands on the keys: <kbd>↑↓←→</kbd> move, <kbd>Shift</kbd> by half a metre, <kbd>Alt</kbd> by a centimetre and past the magnets, <kbd>R</kbd> turns, <kbd>Del</kbd> removes. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div><button className="tool-button turn-button" onClick={() => rotateSelected(selectedId)}><RefreshCw size={15} /> Turn a quarter</button></fieldset>{selectedProblem && <p className="plan-problem" role="status"><AlertCircle size={14} /> This {selectedProblem}.</p>}<EditorFields layer={layer} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); commitHome(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
-          <div className="inspector-footer">{layer === "home" && <div className="draft-actions"><button className="tool-button" disabled={!homeDraft} onClick={saveDraft} title="Keep this working copy on this computer without publishing a revision."><HardDrive size={15} /> Save working copy</button><button className="tool-button" disabled={!unsaved} onClick={discardChanges} title="Throw away every unpublished edit and go back to the published plan."><Undo2 size={15} /> Discard changes</button></div>}{planFaults.length > 0 && <details className="plan-faults"><summary><AlertCircle size={14} /> {planFaults.length} object{planFaults.length === 1 ? "" : "s"} the gate will reject</summary><ul>{planFaults.map((fault) => <li key={fault.objectId}><button className="row-link" onClick={() => setSelectedId(fault.objectId)}>{fault.objectId}</button> {fault.message}</li>)}</ul></details>}{unsaved && <p className="unsaved-note"><AlertCircle size={14} /> Unpublished edits{draftSavedAt ? `, working copy saved at ${formatTime(draftSavedAt)}` : ", not saved"}. Publishing covers this tab only — the plan and the sensor field are separate revisions.</p>}<button className="button primary" disabled={working || !(layer === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(layer === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish {layer === "home" ? "plan" : "sensors"}{unsaved ? " •" : ""}</button></div>
+          {layer === "sensors" && homeDraft && sensorDraft && (
+            <SensorRooms
+              rooms={sensorsByRoom(homeDraft, sensorDraft).filter((item) => item.level === storey)}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onAdd={placeSensorInRoom}
+            />
+          )}
+          {selectedId ? <><p className="inspector-help">Drag on the plan, or keep your hands on the keys: <kbd>↑↓←→</kbd> move, <kbd>Shift</kbd> by half a metre, <kbd>Alt</kbd> by a centimetre and past the magnets, <kbd>R</kbd> turns, <kbd>Del</kbd> removes. Publishing creates a new immutable revision and runs authoritative validation.</p><fieldset><legend>Position adjustment</legend><div className="nudge-grid"><span /><button onClick={() => nudgeSelected(0, -0.1)} aria-label="Move up">↑</button><span /><button onClick={() => nudgeSelected(-0.1, 0)} aria-label="Move left">←</button><b>0.1 m</b><button onClick={() => nudgeSelected(0.1, 0)} aria-label="Move right">→</button><span /><button onClick={() => nudgeSelected(0, 0.1)} aria-label="Move down">↓</button><span /></div><button className="tool-button turn-button" onClick={() => rotateSelected(selectedId)}><RefreshCw size={15} /> Turn a quarter</button></fieldset>{selectedProblem && <p className="plan-problem" role="status"><AlertCircle size={14} /> This {selectedProblem}.</p>}<EditorFields layer={layer} selectedId={selectedId} home={homeDraft} sensors={sensorDraft} onHome={(model) => { snapshot(); commitHome(model); }} onSensors={(model) => { snapshot(); setSensorDraft(model); }} onSelect={setSelectedId} /><div className="inspector-section"><h3>Identity and provenance</h3><code>{selectedId}</code><p>Selection is preserved between the plan, structured tree and validation report.</p><button className="button danger" onClick={removeEditorObject}><Trash2 size={15} /> Remove selected object</button></div></> : <div className="quiet-state"><CircleDot size={22} /><strong>Select an object on the plan</strong><p>Rooms, providers, obstacles and sensors are also reachable with Tab, Enter and Space.</p></div>}
+          <div className="inspector-footer">{layer === "home" && <div className="draft-actions"><button className="tool-button" disabled={!homeDraft} onClick={saveDraft} title="Keep this working copy on this computer without publishing a revision."><HardDrive size={15} /> Save working copy</button><button className="tool-button" disabled={!unsaved} onClick={discardChanges} title="Throw away every unpublished edit and go back to the published plan."><Undo2 size={15} /> Discard changes</button></div>}<div className="draft-actions"><ConfirmAction label="Regenerate plan" title="Build this plan again from the policies?" consequence="Rooms, furniture and the whole sensor field are proposed again from the scenario, as if the home had just been imported, with the instrumentation chosen on the Overview tab. Every unpublished edit on this plan is lost, and the working copy saved on this computer with it." busy={working} disabled={!!regenerateBlock} icon={<Sparkles size={16} />} busyLabel="Rebuilding…" hint={regenerateBlock ?? "Throw away this plan and ask the deterministic policies for a new one."} onConfirm={() => void regeneratePlan()} /></div>{planFaults.length > 0 && <details className="plan-faults"><summary><AlertCircle size={14} /> {planFaults.length} object{planFaults.length === 1 ? "" : "s"} the gate will reject</summary><ul>{planFaults.map((fault) => <li key={fault.objectId}><button className="row-link" onClick={() => setSelectedId(fault.objectId)}>{fault.objectId}</button> {fault.message}</li>)}</ul></details>}{unsaved && <p className="unsaved-note"><AlertCircle size={14} /> Unpublished edits{draftSavedAt ? `, working copy saved at ${formatTime(draftSavedAt)}` : ", not saved"}. Publishing covers this tab only — the plan and the sensor field are separate revisions.</p>}<button className="button primary" disabled={working || !(layer === "home" ? homeDraft : sensorDraft)} onClick={() => void publish(layer === "home" ? "home" : "sensor")}><Save size={16} /> Validate and publish {layer === "home" ? "plan" : "sensors"}{unsaved ? " •" : ""}</button></div>
         </aside>
       </div>}
       {tab === "runs" && <RunTable jobs={detail.jobs} empty="No run has been started for this home." />}
@@ -1275,6 +1400,91 @@ function readStoredDraft(key: string): StoredDraft | undefined {
  * are furnishing — and each item is its own glyph at its own proportions, so a bed reads as a bed
  * and you can see it is two metres long before you drop it.
  */
+/** How far an import carries itself once the document is accepted. */
+type PipelineDepth = "validate" | "environment" | "run";
+
+const DEPTH_ACTIONS: Record<PipelineDepth, string> = {
+  validate: "Validate and attach",
+  environment: "Validate, then build the home",
+  run: "Validate, build and run",
+};
+
+const DEPTH_STEPS: Array<{ depth: PipelineDepth; label: string; detail: string }> = [
+  { depth: "validate", label: "Attach it and stop", detail: "The document is validated, compiled and attached. Nothing is built." },
+  { depth: "environment", label: "Build the home and sensors", detail: "Rooms, furniture and the sensor field are proposed from the scenario, and wait for your review. Nothing is executed." },
+  { depth: "run", label: "Build it and run the simulation", detail: "The run builds the home and its field and then executes every generated day, on the plan as the policies proposed it." },
+];
+
+/**
+ * Which steps an import is allowed to take by itself.
+ *
+ * Validation is not one of them: it is what an import *is*, and a document that fails it publishes
+ * nothing. The other two are the buttons somebody would otherwise press by hand, in the order they
+ * would press them, and each is reached only because the one before it reported success — which is
+ * the whole of what "automatic" can honestly mean here.
+ */
+function PipelineChoice({ depth, onDepth }: { depth: PipelineDepth; onDepth: (next: PipelineDepth) => void }) {
+  return (
+    <fieldset className="choice-block">
+      <legend>When it passes</legend>
+      {DEPTH_STEPS.map((item) => (
+        <label key={item.depth} className={depth === item.depth ? "is-chosen" : undefined}>
+          <input type="radio" name="pipeline-depth" checked={depth === item.depth} onChange={() => onDepth(item.depth)} />
+          <span><strong>{item.label}</strong><small>{item.detail}</small></span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** The part of the deployment policy that is a decision rather than a calibration. */
+interface DeploymentChoice {
+  preset: "room_coverage" | "functional_zones";
+  pirCoverageShape: "rectangle" | "circle";
+  observationProfile: "ideal" | "realistic";
+}
+
+/**
+ * The three questions about the sensor field that a researcher actually answers.
+ *
+ * `SensorDeploymentPolicy` has forty more fields — hold times, drift bands, quantisation, failure
+ * rates — calibrated against CASAS and left alone on purpose: a form for those is a form nobody
+ * can answer, and the server keeps the research defaults for everything not asked about here.
+ */
+function DeploymentChoiceFields({ choice, onChoice, disabled = false }: { choice: DeploymentChoice; onChoice: (next: DeploymentChoice) => void; disabled?: boolean }) {
+  const set = <Key extends keyof DeploymentChoice>(key: Key, value: DeploymentChoice[Key]) =>
+    onChoice({ ...choice, [key]: value });
+  return (
+    <fieldset className="choice-block choice-grid" disabled={disabled}>
+      <legend>How the home is instrumented</legend>
+      <label>
+        <span>Detectors</span>
+        <select aria-label="Detectors" value={choice.preset} onChange={(event) => set("preset", event.target.value as DeploymentChoice["preset"])}>
+          <option value="functional_zones">Several per room, one per place things happen</option>
+          <option value="room_coverage">One per room</option>
+        </select>
+        <small>{choice.preset === "functional_zones" ? "A kitchen tells the worktop from the table. One per room reports everything that happens there as the same event." : "The simplest field, and the one CASAS Aruba is closest to in the rooms it treats as single places."}</small>
+      </label>
+      <label>
+        <span>What each one watches</span>
+        <select aria-label="What each one watches" value={choice.pirCoverageShape} onChange={(event) => set("pirCoverageShape", event.target.value as DeploymentChoice["pirCoverageShape"])}>
+          <option value="rectangle">Its share of the room, corners included</option>
+          <option value="circle">A circle of its reach, like a ceiling node</option>
+        </select>
+        <small>{choice.pirCoverageShape === "circle" ? "Closer to a real ceiling detector, and it leaves the corners of every room unwatched — around a quarter of the floor. Crossing that floor emits nothing, which is realistic and is a hole in the data." : "Every corner of every room is watched by something. Neither shape is what the optics do: a real lens makes a fan of separate beams."}</small>
+      </label>
+      <label>
+        <span>Readings</span>
+        <select aria-label="Readings" value={choice.observationProfile} onChange={(event) => set("observationProfile", event.target.value as DeploymentChoice["observationProfile"])}>
+          <option value="realistic">Realistic — latency, jitter, dropout, dead batteries</option>
+          <option value="ideal">Ideal — every event, exactly on time</option>
+        </select>
+        <small>{choice.observationProfile === "ideal" ? "A clean log for checking an algorithm against the ground truth it was given." : "What a deployed field records, faults included. This is the research default."}</small>
+      </label>
+    </fieldset>
+  );
+}
+
 function FurniturePalette({ chosen, onChoose }: { chosen: string; onChoose: (type: string) => void }) {
   return (
     <div className="furniture-palette" role="group" aria-label="Furniture to place">
@@ -1350,7 +1560,111 @@ function PlanTools({
   );
 }
 
-function EditorFields({ layer, selectedId, home, sensors, onHome, onSensors }: { layer: "home" | "sensors"; selectedId: string; home?: HomeModel; sensors?: SensorModel; onHome: (model: HomeModel) => void; onSensors: (model: SensorModel) => void }) {
+const SENSOR_KINDS = [
+  { kind: "pir", label: "motion detector", icon: <Radar size={13} /> },
+  { kind: "contact", label: "contact switch", icon: <Square size={13} /> },
+  { kind: "temperature", label: "thermometer", icon: <Thermometer size={13} /> },
+] as const;
+
+/**
+ * The sensor field read room by room, in the panel beside the plan that draws it.
+ *
+ * A drawing shows where the nodes are and is silent about where they are not: the bathroom nobody
+ * instrumented looks exactly like a bathroom, because nothing is drawn in it. Redistributing a
+ * field — the reason anybody opens this layer — is mostly a matter of finding those rooms and the
+ * ones carrying three detectors, so the rooms are listed with what watches each, and a room can be
+ * given one without hunting for it on the plan first.
+ *
+ * It reads down the inspector rather than across the top of the drawing: as a strip over the plan
+ * it was a line of chips that scrolled sideways past the edge of the window, which is the shape a
+ * list takes when it is put where a list does not go.
+ */
+function SensorRooms({ rooms, selectedId, onSelect, onAdd }: { rooms: RoomSensors[]; selectedId?: string; onSelect: (id: string) => void; onAdd: (kind: "pir" | "contact" | "temperature", regionId: string) => void }) {
+  if (!rooms.length) return null;
+  const bare = rooms.filter((item) => item.sensors.length === 0).length;
+  return (
+    <div className="inspector-section sensor-rooms" role="group" aria-label="Sensors by room">
+      <h3>Rooms and what watches them</h3>
+      <p className="sensor-rooms-note">{bare === 0 ? "Every room on this floor is watched by something." : `${bare} room${bare === 1 ? "" : "s"} on this floor with nothing watching ${bare === 1 ? "it" : "them"}.`}</p>
+      {rooms.map((room) => (
+        <section key={room.regionId} className={room.sensors.length ? undefined : "is-bare"}>
+          <h4>{room.regionId.replaceAll("_", " ")} <small>{room.sensors.length || "nothing watches it"}</small></h4>
+          <div className="sensor-chips">
+            {room.sensors.map((sensor) => (
+              <button
+                key={sensor.sensorId}
+                className={`sensor-chip is-${sensor.sensorType}`}
+                aria-pressed={selectedId === sensor.sensorId}
+                title={`Select ${sensor.sensorId}`}
+                onClick={() => onSelect(sensor.sensorId)}
+              >
+                {SENSOR_KINDS.find((item) => item.kind === sensor.sensorType)?.icon}
+                <span>{sensor.sensorId}</span>
+              </button>
+            ))}
+            {SENSOR_KINDS.map((item) => (
+              <button
+                key={item.kind}
+                className="sensor-chip is-add"
+                aria-label={`Add a ${item.label} to ${room.regionId}`}
+                title={`Add a ${item.label} to ${room.regionId}`}
+                onClick={() => onAdd(item.kind, room.regionId)}
+              >
+                <Plus size={11} />{item.icon}
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * What the sensor is called, which is the whole of what an export says about it.
+ *
+ * `observable-sensor-log.json` carries a `sensorId` and a type, and the reader is left to work out
+ * the rest. A field the researcher rearranged by hand used to come out as `pir_01` beside the
+ * policy's own `pir_kitchen`; this is where that gets fixed, before the run rather than in a
+ * spreadsheet afterwards.
+ */
+function SensorIdField({ sensor, sensors, onSensors, onSelect }: { sensor: SensorBase; sensors: SensorModel; onSensors: (model: SensorModel) => void; onSelect: (id: string) => void }) {
+  const [draft, setDraft] = useState(sensor.sensorId);
+  const [error, setError] = useState<string>();
+  useEffect(() => { setDraft(sensor.sensorId); setError(undefined); }, [sensor.sensorId]);
+  const commit = () => {
+    const wanted = sensorSlug(draft);
+    if (wanted === sensor.sensorId) { setDraft(sensor.sensorId); setError(undefined); return; }
+    try {
+      onSensors(renameSensor(sensors, sensor.sensorId, draft));
+      onSelect(wanted);
+      setError(undefined);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setDraft(sensor.sensorId);
+    }
+  };
+  return (
+    <label className="sensor-name">
+      <span>Sensor name</span>
+      <input
+        value={draft}
+        aria-label="Sensor name"
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") { event.preventDefault(); commit(); }
+          if (event.key === "Escape") { setDraft(sensor.sensorId); setError(undefined); }
+        }}
+      />
+      <small className={error ? "is-error" : undefined}>
+        {error ?? "The name every observation of it carries into the export. Lower case, underscores for spaces."}
+      </small>
+    </label>
+  );
+}
+
+function EditorFields({ layer, selectedId, home, sensors, onHome, onSensors, onSelect }: { layer: "home" | "sensors"; selectedId: string; home?: HomeModel; sensors?: SensorModel; onHome: (model: HomeModel) => void; onSensors: (model: SensorModel) => void; onSelect: (id: string) => void }) {
   if (!home) return null;
   // The storeys the house actually has. A room can be moved between them, but not onto a floor
   // that no staircase reaches: those only come into being with the flight that climbs to them.
@@ -1366,7 +1680,7 @@ function EditorFields({ layer, selectedId, home, sensors, onHome, onSensors }: {
       const ends = new Date(starts.getTime() + 60 * 60 * 1000);
       update({ failureWindows: [...sensor.failureWindows, { startsAt: starts.toISOString(), endsAt: ends.toISOString() }] });
     };
-    return <div className="inspector-section editor-fields"><h3>Sensor configuration</h3><div className="field-grid"><label><span>X position</span><input type="number" step="0.1" value={sensor.position.x} onChange={(event) => update({ position: { ...sensor.position, x: event.target.valueAsNumber } })} /></label><label><span>Y position</span><input type="number" step="0.1" value={sensor.position.y} onChange={(event) => update({ position: { ...sensor.position, y: event.target.valueAsNumber } })} /></label><label><span>Latency ms</span><input type="number" min="0" value={sensor.timing.latencyMilliseconds} onChange={(event) => timing("latencyMilliseconds", event.target.valueAsNumber)} /></label><label><span>Jitter ms</span><input type="number" min="0" value={sensor.timing.clockJitterMilliseconds} onChange={(event) => timing("clockJitterMilliseconds", event.target.valueAsNumber)} /></label><label><span>Cooldown ms</span><input type="number" min="0" value={sensor.timing.cooldownMilliseconds} onChange={(event) => timing("cooldownMilliseconds", event.target.valueAsNumber)} /></label><label><span>Dropout 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.dropoutProbability} onChange={(event) => error("dropoutProbability", event.target.valueAsNumber)} /></label><label><span>False negative 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falseNegativeProbability} onChange={(event) => error("falseNegativeProbability", event.target.valueAsNumber)} /></label><label><span>False positives/day</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falsePositiveProbabilityPerDay} onChange={(event) => error("falsePositiveProbabilityPerDay", event.target.valueAsNumber)} /></label><label><span>Noise σ</span><input type="number" min="0" step="0.01" value={sensor.errorModel.measurementNoiseStandardDeviation} onChange={(event) => error("measurementNoiseStandardDeviation", event.target.valueAsNumber)} /></label>{sensor.sensorType === "pir" && <><label><span>Range m</span><input type="number" min="0.2" max="12" step="0.1" value={pirRange(sensor)} onChange={(event) => onSensors(setPirRange(sensors, home, sensor.sensorId, event.target.valueAsNumber))} /></label><label><span>Hold ms</span><input type="number" min="1" step="100" value={Number(sensor.holdMilliseconds ?? 30000)} onChange={(event) => update({ holdMilliseconds: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "temperature" && <><label><span>Region</span><select value={String(sensor.regionId)} onChange={(event) => update({ regionId: event.target.value })}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label><label><span>Baseline °C</span><input type="number" step="0.1" value={Number(sensor.baselineCelsius)} onChange={(event) => update({ baselineCelsius: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "contact" && <label><span>Entity</span><select value={String(sensor.entityId)} onChange={(event) => update({ entityId: event.target.value })}>{home.entities.map((item) => <option key={item.entityId}>{item.entityId}</option>)}</select></label>}</div><div className="failure-editor"><div><h4>Failure windows</h4><button className="button secondary" onClick={addFailure}><Plus size={14} /> Add window</button></div>{sensor.failureWindows.length ? sensor.failureWindows.map((window, index) => <div className="failure-window" key={`${window.startsAt}-${index}`}><label><span>Starts</span><input type="datetime-local" value={window.startsAt.slice(0, 16)} onChange={(event) => setFailure(index, "startsAt", event.target.value)} /></label><label><span>Ends</span><input type="datetime-local" value={window.endsAt.slice(0, 16)} onChange={(event) => setFailure(index, "endsAt", event.target.value)} /></label><button className="icon-button" aria-label={`Remove failure window ${index + 1}`} onClick={() => update({ failureWindows: sensor.failureWindows.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>) : <p>No planned dropout interval. Random dropout remains controlled by the probability above.</p>}</div></div>;
+    return <div className="inspector-section editor-fields"><h3>Sensor configuration</h3><SensorIdField sensor={sensor} sensors={sensors} onSensors={onSensors} onSelect={onSelect} /><div className="field-grid"><label><span>X position</span><input type="number" step="0.1" value={sensor.position.x} onChange={(event) => onSensors(setSensorPosition(sensors, home, sensor.sensorId, { ...sensor.position, x: event.target.valueAsNumber }))} /></label><label><span>Y position</span><input type="number" step="0.1" value={sensor.position.y} onChange={(event) => onSensors(setSensorPosition(sensors, home, sensor.sensorId, { ...sensor.position, y: event.target.valueAsNumber }))} /></label><label><span>Latency ms</span><input type="number" min="0" value={sensor.timing.latencyMilliseconds} onChange={(event) => timing("latencyMilliseconds", event.target.valueAsNumber)} /></label><label><span>Jitter ms</span><input type="number" min="0" value={sensor.timing.clockJitterMilliseconds} onChange={(event) => timing("clockJitterMilliseconds", event.target.valueAsNumber)} /></label><label><span>Cooldown ms</span><input type="number" min="0" value={sensor.timing.cooldownMilliseconds} onChange={(event) => timing("cooldownMilliseconds", event.target.valueAsNumber)} /></label><label><span>Dropout 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.dropoutProbability} onChange={(event) => error("dropoutProbability", event.target.valueAsNumber)} /></label><label><span>False negative 0–1</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falseNegativeProbability} onChange={(event) => error("falseNegativeProbability", event.target.valueAsNumber)} /></label><label><span>False positives/day</span><input type="number" min="0" max="1" step="0.001" value={sensor.errorModel.falsePositiveProbabilityPerDay} onChange={(event) => error("falsePositiveProbabilityPerDay", event.target.valueAsNumber)} /></label><label><span>Noise σ</span><input type="number" min="0" step="0.01" value={sensor.errorModel.measurementNoiseStandardDeviation} onChange={(event) => error("measurementNoiseStandardDeviation", event.target.valueAsNumber)} /></label>{sensor.sensorType === "pir" && <><label><span>Range m</span><input type="number" min="0.2" max="12" step="0.1" value={pirRange(sensor)} onChange={(event) => onSensors(setPirRange(sensors, home, sensor.sensorId, event.target.valueAsNumber))} /></label><label><span>Hold ms</span><input type="number" min="1" step="100" value={Number(sensor.holdMilliseconds ?? 30000)} onChange={(event) => update({ holdMilliseconds: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "temperature" && <><label><span>Region</span><select value={String(sensor.regionId)} onChange={(event) => update({ regionId: event.target.value })}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label><label><span>Baseline °C</span><input type="number" step="0.1" value={Number(sensor.baselineCelsius)} onChange={(event) => update({ baselineCelsius: event.target.valueAsNumber })} /></label></>}{sensor.sensorType === "contact" && <label><span>Entity</span><select value={String(sensor.entityId)} onChange={(event) => update({ entityId: event.target.value })}>{home.entities.map((item) => <option key={item.entityId}>{item.entityId}</option>)}</select></label>}</div><div className="failure-editor"><div><h4>Failure windows</h4><button className="button secondary" onClick={addFailure}><Plus size={14} /> Add window</button></div>{sensor.failureWindows.length ? sensor.failureWindows.map((window, index) => <div className="failure-window" key={`${window.startsAt}-${index}`}><label><span>Starts</span><input type="datetime-local" value={window.startsAt.slice(0, 16)} onChange={(event) => setFailure(index, "startsAt", event.target.value)} /></label><label><span>Ends</span><input type="datetime-local" value={window.endsAt.slice(0, 16)} onChange={(event) => setFailure(index, "endsAt", event.target.value)} /></label><button className="icon-button" aria-label={`Remove failure window ${index + 1}`} onClick={() => update({ failureWindows: sensor.failureWindows.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>) : <p>No planned dropout interval. Random dropout remains controlled by the probability above.</p>}</div></div>;
   }
   const region = home.regions.find((item) => item.regionId === selectedId);
   if (region) return <div className="inspector-section editor-fields"><h3>Region geometry</h3><label><span>Kind</span><select value={region.kind} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, kind: event.target.value as typeof item.kind } : item) })}>{["room", "outdoor", "external", "transit"].map((kind) => <option key={kind}>{kind}</option>)}</select></label><label><span>Floor</span><input aria-label="Floor" type="number" min={storeys[0]} max={storeys[storeys.length - 1]} step={1} value={region.level ?? 0} onChange={(event) => onHome(setRegionLevel(home, selectedId, Math.min(storeys[storeys.length - 1]!, Math.max(storeys[0]!, Math.round(event.target.valueAsNumber || 0)))))} /></label><label className="check-field"><input type="checkbox" checked={region.traversable} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, traversable: event.target.checked } : item) })} /><span>Traversable</span></label><div className="vertex-list">{region.boundary.vertices.map((point, index) => <div key={index}><span>Vertex {index + 1}</span><input aria-label={`Vertex ${index + 1} X`} type="number" step="0.1" value={point.x} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, x: event.target.valueAsNumber } : vertex) } } : item) })} /><input aria-label={`Vertex ${index + 1} Y`} type="number" step="0.1" value={point.y} onChange={(event) => onHome({ ...home, regions: home.regions.map((item) => item.regionId === selectedId ? { ...item, boundary: { vertices: item.boundary.vertices.map((vertex, vertexIndex) => vertexIndex === index ? { ...vertex, y: event.target.valueAsNumber } : vertex) } } : item) })} /></div>)}</div></div>;
@@ -2000,7 +2314,7 @@ function PromptCard({ title, label, description, template, caseDescription }: { 
 
 function HelpPage() {
   const [caseDescription, setCaseDescription] = useState("");
-  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">Which file to use</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery and disk space</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM for the <em>structure</em> of the period—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><p>It does not ask for the days themselves, because that degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. An outline costs the same whether it covers a week or a year.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into the prompt. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Recommended · outline 1.3.0" description="Returns a horizon outline plus its process package, not days. The expander also publishes the habit ground truth a segmentation algorithm is scored against, and every declared band must be inhabited: an anchor activity, something that occupies a wide band in blocks, and content that differs between two bands sharing a window. 1.2.0 also describes the dwelling — every room the plan can draw, every piece of furniture it can bind, and how a home says it has two storeys and is larger than a small flat — and 1.3.0 lets a habit name the room it happens in rather than taking the one its intent usually uses." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> It answers with both halves at once — the outline and the process package that says how its intents are performed — so the saved file has <code>documentType: horizon_authoring_bundle</code>. Choose it under <em>Horizon outline and processes</em> in Resident context: the application computes the days and imports the result in one step. Choosing the file draws it first — the day as a clock, the week beside itself and the months as a calendar — so what the model wrote can be read before a horizon of days is computed from it. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the complete <code>authoring-bundle.json</code> in Resident context.</li><li>Resolve every reported validation issue; rejected bundles publish no authoring revision.</li><li>Choose <em>Generate home and sensors</em> to build the environment alone. The worker compiles, builds the home, binds behavior and deploys sensors, and executes nothing — so you can review the plan, move a wall or a PIR and confirm it before a single day is simulated.</li><li>Start the run. It executes the plan and the sensor field you approved, then projects the observations. <em>Generate and run in one step</em> does both at once when the recommended plan needs no review.</li><li>Open the completed run and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>Source, canonical and runtime files</h2><p><strong>Import the source bundle in the ordinary workflow.</strong> It has <code>documentType: simulation_authoring_bundle</code> and contains <code>scenario</code> plus <code>personalProcessPackage</code>. Canonical split files are internal validated projections. Runtime inputs may reference upgraded execution catalogs and are not a substitute for the researcher-authored source.</p><p>The collapsed Advanced importer accepts the two canonical documents separately for debugging or controlled migration. It does not silently repair or upgrade them.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and disk space</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p><p>A workspace grows with every run and every export, and the folder it starts in is on the system drive. <Link to="/settings">Settings</Link> weighs each part of it against the space left on that drive, and moves the whole workspace to another one. The move is agreed there and performed by the next start, when nothing has the database open: across drives the files are copied before anything is removed, so an interrupted move leaves the workspace where it was.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
+  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">One file goes in</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery and disk space</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM for the <em>structure</em> of the period—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><p>It does not ask for the days themselves, because that degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. An outline costs the same whether it covers a week or a year.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into the prompt. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Recommended · outline 1.3.0" description="Returns a horizon outline plus its process package, not days. The expander also publishes the habit ground truth a segmentation algorithm is scored against, and every declared band must be inhabited: an anchor activity, something that occupies a wide band in blocks, and content that differs between two bands sharing a window. 1.2.0 also describes the dwelling — every room the plan can draw, every piece of furniture it can bind, and how a home says it has two storeys and is larger than a small flat — and 1.3.0 lets a habit name the room it happens in rather than taking the one its intent usually uses." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> It answers with both halves at once — the outline and the process package that says how its intents are performed — so the saved file has <code>documentType: horizon_authoring_bundle</code>. Choose it under <em>Horizon outline and processes</em> in Resident context: the application computes the days and imports the result in one step. Choosing the file draws it first — the day as a clock, the week beside itself and the months as a calendar — so what the model wrote can be read before a horizon of days is computed from it. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the outline prompt&rsquo;s saved answer under <em>Horizon outline and processes</em>. The application expands it into days, validates, compiles and attaches it.</li><li>Say how far that import should carry itself: attach and stop, build the home and its sensor field, or build it and run. Each step is reached only if the one before it passed; anything refused stops there and is reported.</li><li>Resolve every reported validation issue; rejected documents publish no authoring revision.</li><li>Review the proposed plan. Move a wall or a PIR and publish, confirm it as it stands, or ask for the whole planimetry again with <em>Regenerate plan</em>.</li><li>Start the run, then open it and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>One file goes in</h2><p><strong>The horizon outline bundle is the only document this application imports.</strong> It has <code>documentType: horizon_authoring_bundle</code> and carries both halves of the prompt&rsquo;s answer: the outline of the period and the process package saying how its intents are performed. The days are computed from it here, and everything after that is the ordinary path.</p><p>Everything else you will see in a workspace — the scenario, the process package, the compiled plan, the bundle the expander wrote — is an internal projection of that import, published as evidence rather than authored by hand. The command line still accepts them separately for debugging and controlled migration: <code>smart-home-sim expand-outline</code>, then the materialization commands.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and disk space</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p><p>A workspace grows with every run and every export, and the folder it starts in is on the system drive. <Link to="/settings">Settings</Link> weighs each part of it against the space left on that drive, and moves the whole workspace to another one. The move is agreed there and performed by the next start, when nothing has the database open: across drives the files are copied before anything is removed, so an interrupted move leaves the workspace where it was.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
 }
 
 function NotFound() {

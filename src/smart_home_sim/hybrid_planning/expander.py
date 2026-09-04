@@ -1397,8 +1397,18 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
     The capability is the right unit to check, not the role: an action naming a role binds by name
     and an action naming none binds by capability, but every one of them needs *some* object in the
     room offering the capability. Checked against the same tables the binder uses.
+
+    Neither failure exists outside the home. `outdoors` is where the activity catalog already puts
+    `evening_walk` and `buy_groceries`, `_check_locations` above requires the world to declare it,
+    and the world declares it `external` rather than `room` — so an outline naming it explicitly
+    was saying something true, and was refused for it. It carries no resident-owned furniture by
+    design, which is why the capability half is skipped there too; see the same exclusion, with the
+    same reason, in `validate_rooms_are_furnished`.
     """
     rooms = {item.location_id for item in outline.world.locations if item.kind is LocationKind.room}
+    away = {
+        item.location_id for item in outline.world.locations if item.kind is LocationKind.external
+    }
     by_room: dict[str, set[str]] = {}
     for resource in outline.world.resources:
         by_room.setdefault(resource.location_id, set()).update(
@@ -1417,6 +1427,8 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
     for activity in outline.profile.recurring_activities:
         room = activity.location
         if room is None:
+            continue
+        if room in away:
             continue
         if room not in rooms:
             problems.append(

@@ -19,30 +19,66 @@ const timing = { latencyMilliseconds: 0, clockJitterMilliseconds: 0, cooldownMil
 const errorModel = { dropoutProbability: 0, falseNegativeProbability: 0, falsePositiveProbabilityPerDay: 0, measurementNoiseStandardDeviation: 0 };
 
 /**
- * The sensor a tool installs, before it is moved to where the researcher pointed.
+ * An identifier a reader of the exported log can place.
  *
- * Not exported any more: every sensor now arrives through `addSensorAt`, because a sensor dropped
- * in "whichever room happens to be traversable first" is a sensor somebody then has to find and
- * drag, and having two ways in was how it stayed that way.
+ * The identifier is the whole of a sensor's identity downstream: `observable-sensor-log.json` has
+ * a `sensorId` column and nothing beside it saying which room the reading came from. The
+ * deployment policy already names its own nodes after the place they watch — `pir_kitchen`,
+ * `temperature_bathroom`, `contact_refrigerator` — while a sensor added by hand was called
+ * `pir_01`, a name only the person holding the mouse could read, and only that afternoon.
+ *
+ * Lowercased and punctuated with underscores like every other identifier in the contract, because
+ * the export also names files after it.
  */
-function addSensor(model: SensorModel, home: HomeModel, type: SensorBase["sensorType"]): { model: SensorModel; selectedId: string } {
-  const region = home.regions.find((item) => item.traversable) ?? home.regions[0];
-  if (!region) throw new Error("Create a region before adding a sensor");
-  const entity = home.entities[0];
-  const id = nextId(type, model.sensors.map((item) => item.sensorId));
-  const position = centre(region.boundary.vertices);
-  const common = { sensorId: id, sensorType: type, position, timing: { ...timing }, errorModel: { ...errorModel }, failureWindows: [] };
-  let sensor: SensorBase;
-  if (type === "pir") {
-    sensor = { ...common, regionIds: [region.regionId], coverage: structuredClone(region.boundary), holdMilliseconds: 30_000 };
-  } else if (type === "contact") {
-    if (!entity) throw new Error("A contact sensor requires at least one home entity");
-    sensor = { ...common, entityId: entity.entityId, fact: "open", actionTypes: [], actionTrigger: "ended", pulseMilliseconds: 1000, openValue: true, closedValue: false };
-  } else {
-    if (!entity) throw new Error("A temperature sensor requires at least one home entity");
-    sensor = { ...common, regionId: region.regionId, baselineCelsius: 20, sources: [{ entityId: entity.entityId, fact: "active", activeValue: true, deltaCelsius: 1, responseDelaySeconds: 0, riseDurationSeconds: 60, decayDurationSeconds: 300, sampleIntervalSeconds: 60 }] };
+export function sensorSlug(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+/** `pir_kitchen`, and `pir_kitchen_2` once the kitchen already has one. */
+export function sensorIdFor(type: SensorBase["sensorType"], anchor: string, existing: string[]): string {
+  const slug = sensorSlug(anchor);
+  const base = slug ? `${type}_${slug}` : type;
+  if (!existing.includes(base)) return base;
+  let index = 2;
+  while (existing.includes(`${base}_${index}`)) index += 1;
+  return `${base}_${index}`;
+}
+
+/**
+ * Rename a sensor, the one handle a reader of the export has on it.
+ *
+ * Nothing else in the draft points at a sensor by name — the observations that will carry it do
+ * not exist until the run — so a rename is exactly what it looks like.
+ */
+export function renameSensor(model: SensorModel, sensorId: string, nextId: string): SensorModel {
+  const wanted = sensorSlug(nextId);
+  if (!wanted) throw new Error("A sensor needs a name: letters, digits and underscores.");
+  if (wanted === sensorId) return model;
+  if (model.sensors.some((item) => item.sensorId === wanted)) {
+    throw new Error(`Another sensor is already called ${wanted}.`);
   }
-  return { model: { ...model, sensors: [...model.sensors, sensor] }, selectedId: id };
+  return {
+    ...model,
+    sensors: model.sensors.map((item) => item.sensorId === sensorId ? { ...item, sensorId: wanted } : item),
+  };
+}
+
+/**
+ * The thing a sensor dropped here is meant to watch: the nearest one, in the room pointed at.
+ *
+ * A contact sensor used to be fitted to `home.entities[0]` — the first provider of the whole flat,
+ * wherever it happened to be — and the researcher then had to find the fridge again in a dropdown
+ * of every door, cupboard and appliance in the house. Clicking the fridge fits the switch to it.
+ */
+function nearestEntity(home: HomeModel, point: Point, regionId: string): HomeEntity | undefined {
+  const places = new Map(home.interactionPoints.map((item) => [item.interactionPointId, item.position]));
+  const distance = (entity: HomeEntity) => {
+    const at = places.get(entity.interactionPointId);
+    return at ? Math.hypot(at.x - point.x, at.y - point.y) : Number.POSITIVE_INFINITY;
+  };
+  const inRoom = home.entities.filter((item) => item.regionId === regionId);
+  const candidates = inRoom.length > 0 ? inRoom : home.entities;
+  return [...candidates].sort((left, right) => distance(left) - distance(right))[0];
 }
 
 /**
@@ -252,7 +288,7 @@ export function movePlanObject(
 ): { home: HomeModel; sensors?: SensorModel } {
   const sensor = sensors?.sensors.find((item) => item.sensorId === selectedId);
   if (sensor && sensors) {
-    return { home, sensors: { ...sensors, sensors: sensors.sensors.map((item) => item.sensorId === selectedId ? moveSensor(item, dx, dy) : item) } };
+    return { home, sensors: { ...sensors, sensors: sensors.sensors.map((item) => item.sensorId === selectedId ? moveSensor(item, home, dx, dy) : item) } };
   }
   const region = home.regions.find((item) => item.regionId === selectedId);
   if (region) {
@@ -302,12 +338,87 @@ export function movePlanObject(
   };
 }
 
-function moveSensor(sensor: SensorBase, dx: number, dy: number): SensorBase {
+/** The rooms a sensor says it watches: a PIR names several, a thermometer one, a reed switch none. */
+export function regionsOf(sensor: SensorBase): string[] {
+  if (sensor.sensorType === "pir") return (sensor.regionIds as string[] | undefined) ?? [];
+  if (sensor.sensorType === "temperature") return typeof sensor.regionId === "string" ? [sensor.regionId] : [];
+  return [];
+}
+
+/** The room a point is in, on whichever storey it is drawn — the sensor's own one first. */
+function regionUnder(home: HomeModel, point: Point, preferred: number): string | undefined {
+  const levels = [...new Set(home.regions.map((item) => item.level ?? 0))];
+  const ordered = [preferred, ...levels.filter((item) => item !== preferred)];
+  for (const level of ordered) {
+    const found = regionAt(home, point, level);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
+ * A detector dragged into another room comes to watch that room.
+ *
+ * Moving one used to move the drawing and nothing else: the node sat in the bedroom and went on
+ * declaring `regionIds: ["kitchen"]`, so every firing it produced was still credited to the room
+ * it had left — a mislabelling invisible on the plan and impossible to spot in the log afterwards.
+ * Rearranging a field by hand is exactly the gesture this is for, so the record follows the hand.
+ *
+ * A doorway detector naming two rooms is left alone while it stays inside either of them, because
+ * straddling the threshold is the whole of what it is for. A contact sensor is bound to a thing
+ * rather than to a place, so it is never rebound by being moved.
+ */
+function rebindSensor(sensor: SensorBase, home: HomeModel): SensorBase {
+  const current = regionsOf(sensor);
+  if (current.length === 0) return sensor;
+  const level = home.regions.find((item) => current.includes(item.regionId))?.level ?? 0;
+  const regionId = regionUnder(home, sensor.position, level);
+  if (!regionId || current.includes(regionId)) return sensor;
+  const region = home.regions.find((item) => item.regionId === regionId);
+  if (!region) return sensor;
+  if (sensor.sensorType === "temperature") return { ...sensor, regionId };
+  // The coverage travelled with it, so what watches the new room is whatever part of it landed
+  // there. When the drag left too little of it inside, the room itself is the honest answer.
   const coverage = sensor.coverage as { vertices: Point[] } | undefined;
+  const clipped = coverage ? clampToRegions(boxOf(coverage.vertices), home, [regionId]) : undefined;
+  const usable = clipped !== undefined
+    && clipped.maxX - clipped.minX >= MINIMUM_EXTENT && clipped.maxY - clipped.minY >= MINIMUM_EXTENT
+    && sensor.position.x >= clipped.minX && sensor.position.x <= clipped.maxX
+    && sensor.position.y >= clipped.minY && sensor.position.y <= clipped.maxY;
   return {
+    ...sensor,
+    regionIds: [regionId],
+    coverage: usable ? { vertices: rectangle(clipped) } : structuredClone(region.boundary),
+  };
+}
+
+function moveSensor(sensor: SensorBase, home: HomeModel, dx: number, dy: number): SensorBase {
+  const coverage = sensor.coverage as { vertices: Point[] } | undefined;
+  return rebindSensor({
     ...sensor,
     position: { x: snap(sensor.position.x + dx), y: snap(sensor.position.y + dy) },
     coverage: coverage ? { vertices: translate(coverage.vertices, dx, dy) } : sensor.coverage,
+  }, home);
+}
+
+/**
+ * Put a sensor at a stated position, which is the inspector's two number fields.
+ *
+ * The same path as dragging it there, so typing a coordinate and pulling the node across the plan
+ * cannot leave the field in two different states.
+ */
+export function setSensorPosition(
+  model: SensorModel,
+  home: HomeModel,
+  sensorId: string,
+  next: Point,
+): SensorModel {
+  if (!Number.isFinite(next.x) || !Number.isFinite(next.y)) return model;
+  return {
+    ...model,
+    sensors: model.sensors.map((item) => item.sensorId === sensorId
+      ? moveSensor(item, home, next.x - item.position.x, next.y - item.position.y)
+      : item),
   };
 }
 
@@ -331,7 +442,7 @@ export function resizePlanObject(
   if (sensor && sensors) {
     const coverage = sensor.coverage as { vertices: Point[] } | undefined;
     if (!coverage) return { home, sensors };
-    const box = clampToRegions(resizeBox(boxOf(coverage.vertices), handle, dx, dy), home, sensor);
+    const box = clampToRegions(resizeBox(boxOf(coverage.vertices), handle, dx, dy), home, regionsOf(sensor));
     return {
       home,
       sensors: {
@@ -380,8 +491,7 @@ function centreOf(box: PlanBox): Point {
  * cannot see through a wall — so widening the range stops at the room instead of producing a model
  * that only fails on publication.
  */
-function clampToRegions(box: PlanBox, home: HomeModel, sensor: SensorBase): PlanBox {
-  const regionIds = (sensor.regionIds as string[] | undefined) ?? [];
+function clampToRegions(box: PlanBox, home: HomeModel, regionIds: string[]): PlanBox {
   const boxes = home.regions
     .filter((item) => regionIds.includes(item.regionId))
     .map((item) => boxOf(item.boundary.vertices));
@@ -424,7 +534,7 @@ export function setPirRange(
         minY: snap(sensor.position.y - range),
         maxX: snap(sensor.position.x + range),
         maxY: snap(sensor.position.y + range),
-      }, home, sensor);
+      }, home, regionsOf(sensor));
       return { ...sensor, coverage: { vertices: rectangle(box) }, position: centreOf(box) };
     }),
   };
@@ -1390,7 +1500,16 @@ function entityCapabilities(
     : [{ capability: "interaction_point", roles: [...roles], supportedOperations: ["move_to_capability"] }];
 }
 
-/** The same for a sensor: installed where the researcher pointed at, not where the code guessed. */
+/** How far a second detector in an already watched room sees, in metres. */
+const PIR_ZONE_RANGE_METRES = 1.5;
+
+/**
+ * The same for a sensor: installed where the researcher pointed at, not where the code guessed.
+ *
+ * It arrives named after what it watches — `pir_kitchen`, `contact_refrigerator` — because the
+ * identifier is all a reader of the exported log gets, and it arrives bound to the room clicked
+ * and to the nearest thing in it rather than to whatever the model happened to list first.
+ */
 export function addSensorAt(
   model: SensorModel,
   home: HomeModel,
@@ -1399,25 +1518,103 @@ export function addSensorAt(
   level = 0,
 ): { model: SensorModel; selectedId: string } {
   const regionId = regionAt(home, point, level);
-  if (!regionId) throw new Error("Install a sensor inside a room.");
-  const placed = addSensor(model, home, type);
   const region = home.regions.find((item) => item.regionId === regionId);
-  return {
-    model: {
-      ...placed.model,
-      sensors: placed.model.sensors.map((sensor) => {
-        if (sensor.sensorId !== placed.selectedId) return sensor;
-        const moved: SensorBase = { ...sensor, position: { x: snap(point.x), y: snap(point.y) } };
-        // A PIR watches the room it was dropped in; the others belong to a thing, not to a place.
-        if (moved.sensorType === "pir" && region) {
-          return { ...moved, regionIds: [regionId], coverage: structuredClone(region.boundary) };
-        }
-        if (moved.sensorType === "temperature") return { ...moved, regionId };
-        return moved;
-      }),
-    },
-    selectedId: placed.selectedId,
-  };
+  if (!regionId || !region) throw new Error("Install a sensor inside a room.");
+  const position = { x: snap(point.x), y: snap(point.y) };
+  const taken = model.sensors.map((item) => item.sensorId);
+  const common = { position, timing: { ...timing }, errorModel: { ...errorModel }, failureWindows: [] };
+  let sensor: SensorBase;
+  if (type === "pir") {
+    // The first detector in a room watches the room. A second one is there to tell one end of it
+    // from the other, so it arrives as a zone around the point it was dropped on instead of as a
+    // second copy of the same coverage, which would have watched the room twice and said nothing.
+    const alreadyWatched = model.sensors.some((item) => regionsOf(item).includes(regionId));
+    const zone = clampToRegions({
+      minX: snap(position.x - PIR_ZONE_RANGE_METRES),
+      minY: snap(position.y - PIR_ZONE_RANGE_METRES),
+      maxX: snap(position.x + PIR_ZONE_RANGE_METRES),
+      maxY: snap(position.y + PIR_ZONE_RANGE_METRES),
+    }, home, [regionId]);
+    sensor = {
+      ...common,
+      sensorId: sensorIdFor("pir", regionId, taken),
+      sensorType: "pir",
+      regionIds: [regionId],
+      coverage: alreadyWatched ? { vertices: rectangle(zone) } : structuredClone(region.boundary),
+      holdMilliseconds: 30_000,
+    };
+  } else if (type === "contact") {
+    const entity = nearestEntity(home, point, regionId);
+    if (!entity) throw new Error("A contact sensor requires at least one home entity");
+    sensor = {
+      ...common,
+      sensorId: sensorIdFor("contact", entity.entityId, taken),
+      sensorType: "contact",
+      entityId: entity.entityId,
+      fact: "open", actionTypes: [], actionTrigger: "ended",
+      pulseMilliseconds: 1000, openValue: true, closedValue: false,
+    };
+  } else {
+    const entity = nearestEntity(home, point, regionId);
+    if (!entity) throw new Error("A temperature sensor requires at least one home entity");
+    sensor = {
+      ...common,
+      sensorId: sensorIdFor("temperature", regionId, taken),
+      sensorType: "temperature",
+      regionId,
+      baselineCelsius: 20,
+      sources: [{ entityId: entity.entityId, fact: "active", activeValue: true, deltaCelsius: 1, responseDelaySeconds: 0, riseDurationSeconds: 60, decayDurationSeconds: 300, sampleIntervalSeconds: 60 }],
+    };
+  }
+  return { model: { ...model, sensors: [...model.sensors, sensor] }, selectedId: sensor.sensorId };
+}
+
+/**
+ * The same sensor, installed from the room list rather than by pointing at the plan.
+ *
+ * Placing one detector per room is the commonest thing anybody does to a sensor field, and doing
+ * it by pointing means finding each room on the drawing first. This puts it in the middle of the
+ * named room, where the researcher can then drag it if the middle is not where it belongs.
+ */
+export function addSensorInRegion(
+  model: SensorModel,
+  home: HomeModel,
+  type: SensorBase["sensorType"],
+  regionId: string,
+): { model: SensorModel; selectedId: string } {
+  const region = home.regions.find((item) => item.regionId === regionId);
+  if (!region) throw new Error(`This home has no room called ${regionId}.`);
+  return addSensorAt(model, home, type, centre(region.boundary.vertices), region.level ?? 0);
+}
+
+/** The sensor field read as the house reads it: every room of the dwelling, and what watches it. */
+export interface RoomSensors {
+  regionId: string;
+  level: number;
+  sensors: SensorBase[];
+}
+
+/**
+ * Which room holds which sensor, rooms with none included.
+ *
+ * The plan shows where the nodes are; this shows the gaps, which is the question somebody
+ * redistributing a field is actually asking — the bathroom nobody instrumented is invisible on a
+ * drawing precisely because nothing is drawn there.
+ */
+export function sensorsByRoom(home: HomeModel, model: SensorModel | undefined): RoomSensors[] {
+  const inside = dwellingRegionIds(home);
+  const entityRegion = new Map(home.entities.map((item) => [item.entityId, item.regionId]));
+  const rooms = home.regions
+    .filter((item) => inside.has(item.regionId))
+    .map((item) => ({ regionId: item.regionId, level: item.level ?? 0, sensors: [] as SensorBase[] }));
+  const byId = new Map(rooms.map((item) => [item.regionId, item]));
+  for (const sensor of model?.sensors ?? []) {
+    const watched = sensor.sensorType === "contact"
+      ? [entityRegion.get(String(sensor.entityId)) ?? ""]
+      : regionsOf(sensor);
+    for (const regionId of watched) byId.get(regionId)?.sensors.push(sensor);
+  }
+  return rooms.sort((left, right) => left.level - right.level || left.regionId.localeCompare(right.regionId));
 }
 
 /** How far apart two storeys are drawn, matching the generator's own spacing. */

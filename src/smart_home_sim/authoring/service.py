@@ -30,7 +30,11 @@ from smart_home_sim.behavior.service import (
     default_variable_catalog_path,
     validate_behavior_payloads,
 )
-from smart_home_sim.compiler.service import CompilationResult, compile_payload
+from smart_home_sim.compiler.service import (
+    CompilationProgress,
+    CompilationResult,
+    compile_payload,
+)
 from smart_home_sim.domain.authoring import (
     AuthoringArtifact,
     AuthoringIngestionIssue,
@@ -425,7 +429,7 @@ def _declared_catalog_version(
 
 def validate_authoring_payload(
     payload: Any,
-    on_progress: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[CompilationProgress], None] | None = None,
 ) -> AuthoringValidationResult:
     envelope_issues = _validate_envelope(payload)
     bundle_version = (

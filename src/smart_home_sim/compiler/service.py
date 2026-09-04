@@ -58,6 +58,41 @@ COMPILATION_WINDOW_DAYS = 7
 COMPILATION_WINDOW_THRESHOLD_DAYS = 45
 
 
+@dataclass(frozen=True, slots=True)
+class CompilationProgress:
+    """Where the windowed solve has got to, reported both entering a window and leaving it.
+
+    Entering matters more than leaving. A window is the unit of work here and a hard one can hold
+    the process for hours; a caller told only about completions watches a blank line the whole
+    time and cannot tell a slow first window from a hung one. `days_done` is therefore what is
+    *finished*, and `window_first_day`/`window_last_day` say what is being worked on now.
+    """
+
+    window_index: int
+    window_count: int
+    window_first_day: int
+    window_last_day: int
+    days_done: int
+    days_total: int
+    activities_done: int
+    activities_total: int
+    entering: bool
+
+    def describe(self) -> str:
+        """One line a researcher can read while it happens."""
+        span = (
+            f"day {self.window_first_day}"
+            if self.window_first_day == self.window_last_day
+            else f"days {self.window_first_day}-{self.window_last_day}"
+        )
+        verb = "solving" if self.entering else "solved"
+        return (
+            f"{verb} {span} of {self.days_total} "
+            f"(window {self.window_index} of {self.window_count}, "
+            f"{self.activities_done} of {self.activities_total} activities placed)"
+        )
+
+
 def canonical_sha256(value: Any) -> str:
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json", by_alias=True)
@@ -81,7 +116,7 @@ def compile_file(path: Path) -> CompilationResult:
 
 def compile_payload(
     payload: Any,
-    on_progress: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[CompilationProgress], None] | None = None,
 ) -> CompilationResult:
     validation_report = validate_payload(payload)
     if not validation_report.valid:
@@ -148,18 +183,36 @@ def _windows_are_safe(records: list[SourceRecord]) -> bool:
     window's last day into the next solve as a fixed schedule preserves it.
 
     A dependency does not have that shape. It can name any activity anywhere in the horizon, and a
-    predecessor the current window has not solved yet would silently drop its successor. The
-    generated horizons declare none, so rather than reason about which ones would be safe, the
-    split is simply refused when any exist.
+    predecessor the current window has not solved yet would silently drop its successor.
+
+    So the question is not whether dependencies exist but whether any of them leaves its day. One
+    that does not cannot leave its window either, because windows are cut on day boundaries and a
+    window is never shorter than a day: predecessor and successor are solved together, and the
+    group means there what it would have meant in a single solve. Every dependency the generator
+    emits is of that kind — a meal waiting for the cooking that same evening — and refusing the
+    split for all of them cost a five-month horizon its windows and turned a compilation that
+    should take minutes into hours of one undivided solve with no progress to report.
+
+    An id naming nothing in this set is not a crossing and does not refuse anything. The solver
+    drops a successor whose predecessor is absent from the model, and an id outside the set is
+    absent from the single solve exactly as it is from every window — the two paths already agree
+    on it. `mario_week` has one, a main activity depending on a conditional branch, and treating
+    that as unsafe took its 122 same-day dependencies down with it.
     """
-    return not any(record.activity.dependency_groups for record in records)
+    day_by_activity = {record.activity.activity_id: record.day_index for record in records}
+    return all(
+        day_by_activity.get(activity_id, record.day_index) == record.day_index
+        for record in records
+        for group in record.activity.dependency_groups
+        for activity_id in group.activity_ids
+    )
 
 
 def _solve_in_windows(
     scenario: Scenario,
     axis: TimeAxis,
     records: list[SourceRecord],
-    on_progress: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[CompilationProgress], None] | None = None,
 ) -> SolveOutcome:
     """Solve the horizon a window at a time, each one seeing the previous window's last day.
 
@@ -174,8 +227,31 @@ def _solve_in_windows(
     values: dict[str, ScheduledValue] = {}
     omitted: list[str] = []
     totals = [0, 0, 0, 0, 0]
+    window_count = -(-len(ordered_days) // COMPILATION_WINDOW_DAYS)
+
+    def report(index: int, window_days: list[int], done: int, *, entering: bool) -> None:
+        if on_progress is None:
+            return
+        on_progress(
+            CompilationProgress(
+                window_index=index,
+                window_count=window_count,
+                window_first_day=window_days[0] + 1,
+                window_last_day=window_days[-1] + 1,
+                days_done=done,
+                days_total=len(ordered_days),
+                activities_done=len(values) + len(omitted),
+                activities_total=len(records),
+                entering=entering,
+            )
+        )
+
     for start in range(0, len(ordered_days), COMPILATION_WINDOW_DAYS):
         window_days = ordered_days[start : start + COMPILATION_WINDOW_DAYS]
+        window_index = start // COMPILATION_WINDOW_DAYS + 1
+        # Announced before the solve, not only after it: this is the call that turns the hours a
+        # contended window can take from an unexplained silence into a named piece of work.
+        report(window_index, window_days, start, entering=True)
         # One day of lookahead. Without it the window's last night is placed with nothing after it
         # to push against, takes its full preferred length, and leaves the next morning — whose
         # activities are mandatory and narrow — nowhere to go: the following window is then
@@ -224,8 +300,7 @@ def _solve_in_windows(
             totals[3] + outcome.objective_values.temporal_deviation_microseconds,
             totals[4] + outcome.objective_values.scheduled_start_sum_microseconds,
         ]
-        if on_progress is not None:
-            on_progress(len(values) + len(omitted), len(records))
+        report(window_index, window_days, start + len(window_days), entering=False)
     return SolveOutcome(
         status="OPTIMAL",
         values=values,
@@ -242,7 +317,7 @@ def _solve_in_windows(
 
 def compile_scenario(
     scenario: Scenario,
-    on_progress: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[CompilationProgress], None] | None = None,
 ) -> CompilationResult:
     records = activity_records(scenario)
     branch_by_activity, branch_records, preflight_issues = _classify_branches(records)

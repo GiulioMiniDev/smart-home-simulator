@@ -64,6 +64,15 @@
       "title": "Pircooldownmilliseconds",
       "type": "number"
     },
+    "pirCoverageShape": {
+      "default": "rectangle",
+      "enum": [
+        "rectangle",
+        "circle"
+      ],
+      "title": "Pircoverageshape",
+      "type": "string"
+    },
     "contactPulseMilliseconds": {
       "default": 1000,
       "exclusiveMinimum": 0,

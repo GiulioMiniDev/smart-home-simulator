@@ -166,6 +166,31 @@ il mapping separato verso la causa simulata. **Replay** ricontrolla il digest se
 prima di registrare la sessione. Le esportazioni mantengono la stessa separazione e includono
 un manifest con seed, versioni, conteggi, relazioni, dimensioni e digest.
 
+Nell'applicazione entra **un solo documento**: la risposta del prompt outline, salvata così com'è
+(`documentType: horizon_authoring_bundle`). L'importatore del bundle completo e l'importatore
+"Advanced" dei due documenti canonici separati non sono più offerti — restano i comandi da
+terminale, per debug e migrazioni controllate. Accanto al file ci sono le due domande che decidono
+cosa succede dopo.
+
+La prima è **fin dove arriva l'import**: attaccare e fermarsi, costruire casa e sensori, oppure
+costruirli ed eseguire la simulazione. La validazione non è un passo scegliibile — è ciò che *è*
+un import, e un documento che non la supera non pubblica niente — mentre gli altri due sono i
+pulsanti che si premerebbero a mano subito dopo, nell'ordine in cui si premerebbero: ognuno viene
+raggiunto solo perché quello prima ha risposto bene, e ciò che viene rifiutato ferma la catena e lo
+dice. La seconda è **come viene strumentata la casa**: quanti rilevatori per stanza (uno solo,
+oppure uno per ogni posto in cui succedono cose), cosa vede ciascuno (la sua fetta di stanza,
+angoli compresi, o il cerchio della sua portata come un nodo a soffitto) e se le letture sono ideali
+o realistiche. Le altre quaranta voci di `SensorDeploymentPolicy` — tenute, deriva del clock,
+quantizzazione, tassi di guasto — restano ai valori di ricerca calibrati su CASAS: un modulo che le
+chiedesse tutte sarebbe un modulo a cui nessuno sa rispondere.
+
+La scelta del cerchio ha un prezzo dichiarato: misurata sulla casa golden, una schiera di dischi
+sorveglia il **72,9%** del pavimento contro il 100% dei rettangoli, perché gli angoli delle stanze
+non li raggiunge nessuno. Attraversare quel pavimento non emette nulla, il che è realistico ed è un
+buco nei dati — per questo il rettangolo resta il default, e il cerchio è lì per gli studi su cosa
+si perde un impianto plausibile. Nessuna delle due è ciò che fa l'ottica: una lente di Fresnel
+divide il campo in un ventaglio di fasci separati, e non c'è poligono che lo dica.
+
 La planimetria che le policy producono è una **proposta**, non una decisione. L'applicazione la
 mostra come *Recommended* — stanze, arredi e sensori disegnati sul piano — subito dopo la
 generazione e sulla pagina della casa, con due sole risposte possibili: confermarla così com'è
@@ -179,6 +204,15 @@ L'appartenenza non dipende dal nome né dal tipo della regione ma da come ci si 
 stanza, o ciò che una porta o un passaggio collega a una stanza — mai un link di transito. Il
 balcone, il terrazzo e una veranda restano quindi stanze della planimetria, come sono nel modello.
 
+C'è anche una terza risposta: **Regenerate plan**, nel pannello dell'editor, ributta via il disegno
+e richiede alle policy l'intera planimetria — stanze, arredi e campo sensoriale — come se la casa
+fosse appena stata importata. Serve per l'arrangiamento modificato fino a incastrarsi e per il
+campo prodotto da una policy poi corretta; prima l'unica via era cancellare la casa e reimportare
+lo stesso bundle. È offerto solo finché il piano è ancora una *raccomandazione*: una volta
+confermato o pubblicato è il modello della casa, e ricostruirci sopra butterebbe via una decisione
+invece che una bozza — il pulsante resta allora disabilitato e dice perché. Lo stesso vale per una
+casa il cui orizzonte è stato generato, che pubblica planimetria e sensori insieme all'orizzonte.
+
 Il disegno è una **pianta**, non un diagramma delle regioni: l'involucro dell'appartamento è
 tracciato più spesso dei tramezzi, le porte sono varchi veri nel muro con anta e arco di apertura,
 e ogni stanza porta nome e superficie calcolata. Muri e aperture sono derivati dagli stessi dati che
@@ -188,11 +222,50 @@ link di transito e la porta è l'entità a cui si legano `enter_home` e `leave_h
 la ricava da lì — l'entità che dichiara quelle operazioni — e traccia il varco sul muro perimetrale
 della sua stanza più vicino al punto di interazione, con apertura verso l'esterno ed etichetta.
 Il livello sensori è disegnato per essere letto: ogni famiglia ha la sua forma e il suo colore —
-onde di movimento per il PIR, coppia di contatti per il reed, termometro per la temperatura — la
-copertura di un PIR compare solo quando è selezionato (trenta rettangoli traslucidi sovrapposti non
-dicono nulla di nessuno), e arredi e provider si attenuano perché sotto un impianto sono contesto.
+onde di movimento per il PIR, coppia di contatti per il reed, termometro per la temperatura — e
+arredi e provider si attenuano perché sotto un impianto sono contesto. Il pulsante **Coverage**,
+attivo di default su questo livello, disegna la portata di **ogni** rilevatore invece che del solo
+selezionato: ciascuna con la sua velatura chiara dentro un bordo tratteggiato, come quella del
+sensore selezionato, perché quello che serve sapere non è se il pavimento è coperto ma da chi.
+Riempite piene si fondevano in una casa verde — l'unione dice che l'appartamento è coperto e niente
+del campo che lo copre — mentre i bordi dicono dove arriva ciascuno e dove due si sovrappongono.
+Spento, resta disegnata la sola copertura del sensore selezionato.
 L'etichetta della stanza si alza quando il livello è attivo, perché la policy mette il sensore di
 temperatura esattamente al centro della stanza, dov'era la scritta.
+
+Un sensore piazzato a mano nasce **con il nome del posto che sorveglia** — `pir_cucina`,
+`temperature_bagno`, `contact_frigorifero`, e `pir_cucina_2` se la cucina ne ha già uno — come già
+fa la policy di deployment: l'identificatore è tutto ciò che di un sensore arriva nell'export, e un
+`pir_01` in mezzo ai nomi della policy è una colonna che a mesi di distanza non si sa più dove
+collocare. Si rinomina dall'inspector, nel campo *Sensor name* in cima alla scheda del sensore: il
+nome viene normalizzato come ogni altro identificatore del contratto (minuscolo, underscore al
+posto degli spazi) e un nome già preso viene rifiutato lì, non dal gate al momento della
+pubblicazione. Un contatto si aggancia alla cosa **più vicina nella stanza cliccata**, non alla
+prima entità del modello, e il primo PIR di una stanza la sorveglia tutta mentre il secondo arriva
+come zona attorno al punto in cui è stato lasciato — due copertura identiche sovrapposte non
+distinguono un'estremità della stanza dall'altra. Trascinare un rilevatore in un'altra stanza gli
+fa cambiare stanza anche nel modello: prima si spostava solo il disegno, e il nodo continuava ad
+attribuire i propri scatti alla stanza da cui era uscito. Il rilevatore di soglia che ne dichiara
+due resta legato a entrambe finché sta dentro l'una o l'altra, perché stare a cavallo della porta è
+esattamente il suo compito.
+
+Nell'inspector, quando il livello sensori è attivo, c'è **l'elenco delle stanze** con ciò che le
+sorveglia: la stanza senza sensori viene evidenziata, e da lì si aggiunge un rilevatore, un
+contatto o un termometro alla stanza per nome, senza doverla prima trovare sul disegno. Sta nel
+pannello di destra e non sopra la pianta: come striscia orizzontale era una fila di chip che
+scorreva di lato oltre il bordo della finestra, cioè la forma che prende un elenco messo dove un
+elenco non va.
+
+Un PIR selezionato non si ridimensiona più con gli otto angoli di una stanza: la sua portata è **un
+numero solo** — "questo vede circa due metri" — quindi ha un'unica presa, ripetuta sui quattro lati
+della copertura, che si tira verso l'esterno e segue il puntatore invece di accumulare delta; il
+nodo resta dove è stato messo, mentre con gli angoli ogni ridimensionamento lo spostava al centro
+di ciò che restava, facendolo camminare per la stanza qualche centimetro alla volta. Con la
+copertura disegnata, l'**area** di un rilevatore è anche il suo bersaglio: cliccarla lo seleziona e,
+una volta selezionato, lo si trascina da lì invece che dal pallino di un quarto di metro (che
+comunque ora ha un'area di presa più grande del suo inchiostro). Le coperture sono disegnate dalla
+più grande alla più piccola, così una zona dentro una stanza prende il click destinato a lei e non
+il cono che copre tutta la stanza.
 Si naviga trascinando la
 pianta e con la rotellina, che zooma verso il puntatore; i pulsanti restano per l'uso da tastiera,
 e la barra di navigazione si richiude a icone quando alla pianta serve larghezza.
@@ -307,7 +380,21 @@ digest canonici. I generatori possono essere usati separatamente con `generate-h
 `deploy-sensors`; home e sensor model manuali restano supportati dai comandi originali.
 
 Il layout generato è sintetico e controllato dalla policy: non ricostruisce una vera
-planimetria. La policy sensoriale `1.1.0` aggiunge attività PIR intra-stanza, campionamento
+planimetria.
+
+Il preset `functional_zones` divide una stanza fra più rilevatori a partire da dove sta la
+roba — i posti in cui ci si ferma, raggruppati per vicinanza — e poi **squadra** la divisione: il
+confine fra due rilevatori è il punto medio sull'asse lungo cui sono più distanti, così ciascuno
+sorveglia la testata, il lato o il centro della stanza. Prima la spartizione era un diagramma di
+Voronoi cresciuto con un buffer a spigolo vivo, che su tre punti in un rettangolo produce cunei con
+bordi diagonali e punte: nessun rilevatore vede un triangolo di pavimento, e la pianta si leggeva
+come un esercizio di geometria invece che come un impianto. Le coperture ora sono rettangoli, con
+una portata dell'ordine dei due-quattro metri, e la stanza resta comunque coperta per intero con i
+coni adiacenti che si sovrappongono — un pavimento non sorvegliato è un attraversamento che non
+emette nulla, ed era il difetto peggiore delle prime versioni a scatole. Anche il rilevatore di
+soglia è un quadrato attorno alla porta, tagliato sul tratto di muro che le due stanze condividono:
+preso contro l'unione delle due stanze tornava intagliato a L ogni volta che avevano profondità
+diverse. La policy sensoriale `1.1.0` aggiunge attività PIR intra-stanza, campionamento
 termico periodico quantizzato e contatti sugli oggetti fisici effettivamente risolti. Il
 confronto con CASAS Aruba è un controllo di plausibilità, non la calibrazione statistica
 formale assegnata a M9. Questa scelta, insieme alle

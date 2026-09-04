@@ -7,6 +7,18 @@ import type { BehaviourSlice, HomeModel, IntentRhythm, JobRecord, ResidentProfil
 const now = "2026-07-22T10:00:00Z";
 const job: JobRecord = { jobId: "run_1", homeId: "home_1", kind: "materialization", status: "completed", progress: { phase: "completed", percent: 100, completedUnits: 1, totalUnits: 1, message: "Done" }, requestedAt: now, startedAt: now, finishedAt: now, seed: 7 };
 const homeModel: HomeModel = { schemaVersion: "1.0.0", documentType: "home_model", homeId: "model_home", homeVersion: "1", coordinateSystem: {}, regions: [{ regionId: "room", kind: "room", traversable: true, boundary: { vertices: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }] } }], connections: [], obstacles: [{ obstacleId: "obstacle_wardrobe", regionId: "room", orientationDegrees: 0, boundary: { vertices: [{ x: 0, y: 1 }, { x: 0.6, y: 1 }, { x: 0.6, y: 2.2 }, { x: 0, y: 2.2 }] } }], interactionPoints: [{ interactionPointId: "point", regionId: "room", position: { x: 1, y: 1 }, approachRadiusMeters: 1 }, { interactionPointId: "point_wardrobe", regionId: "room", position: { x: 1.2, y: 1.6 }, approachRadiusMeters: 0.3 }], entities: [{ entityId: "door", entityType: "door", regionId: "room", interactionPointId: "point", capabilities: [{ capability: "access", roles: ["door"], supportedOperations: ["open"] }], initialState: { open: false } }, { entityId: "wardrobe", entityType: "wardrobe", regionId: "room", interactionPointId: "point_wardrobe", capabilities: [{ capability: "storage_support", roles: ["clothes"], supportedOperations: ["open"] }], initialState: { open: false } }], locationBindings: [], resourceBindings: [], kinematicDefaults: {} };
+/**
+ * Import an outline, going only as far as the chosen step.
+ *
+ * The button says what it is about to do, so its name follows the step: a test that clicks
+ * "the import button" has to say which of the three it means.
+ */
+function attachOutline(file: File, step: RegExp = /Attach it and stop/) {
+  fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [file] } });
+  fireEvent.click(screen.getByRole("radio", { name: step }));
+  fireEvent.click(screen.getByRole("button", { name: /^Validate/ }));
+}
+
 /** The plan page edits one layer at a time, so a test says which one it means. */
 function openPlan(layer: "House" | "Sensors") {
   const tab = screen.getByRole("tab", { name: "Plan & sensors" });
@@ -93,7 +105,7 @@ function installApi() {
     if (url.startsWith("/runs/run_1/replay/events")) return response({ items: [{ at: now, end: now, kind: "movement", eventId: "move", label: "walk", status: "completed", waypoints: [{ at: now, regionId: "room", traversalMode: "walk", position: { x: 1, y: 1 } }], details: {} }], total: 1, traceStart: now, traceEnd: now, windowStart: now, windowEnd: now });
     if (url.startsWith("/runs/run_1/replay/frame")) return response({ runId: "run_1", at: now, traceStart: now, traceEnd: now, residents: [], sensorStates: [], entityStates: {}, environmentFacts: {}, resourceAvailableUnits: {} });
     if (url === "/runs/run_1/exports") return response({ exportId: "export_1", runId: "run_1", sourceBundleSha256: "a".repeat(64), sourceTraceSemanticDigest: "b".repeat(64), seed: 7, createdAt: now, observableOracleSeparated: true, files: [{ role: "observable", format: "jsonl", relativePath: "export_1/observable.jsonl", mediaType: "application/x-ndjson", recordCount: 1, sizeBytes: 10, sha256: "c".repeat(64) }] }, { status: 201 });
-    if (url.includes("/authoring")) return response({ valid: true, issues: [], scenarioArtifact: { artifactId: "scenario" } });
+    if (url.includes("/authoring") || url.includes("/horizon-outline")) return response({ valid: true, issues: [], scenarioArtifact: { artifactId: "scenario" } });
     if (url.includes("/runs") && init?.method === "POST") return response(job, { status: 202 });
     if (url.includes("/home-model") || url.includes("/sensor-model")) return response({ valid: true, issues: [] });
     return response([]);
@@ -185,8 +197,7 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const outline = new File(["{}"], "outline.json", { type: "application/json" });
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
-    fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
+    attachOutline(outline);
     // The counts are the whole point of showing anything: a structure went in, days came out.
     expect(await screen.findAllByText(/243 days, 2535 activities and 5 habit bands/)).not.toHaveLength(0);
   });
@@ -228,7 +239,7 @@ describe("complete application routes", () => {
     Object.defineProperty(wrong, "text", { value: () => Promise.resolve(text) });
     fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [wrong] } });
     expect(await screen.findByText(/It is a complete authoring bundle/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Expand and import outline" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^Validate/ })).toBeEnabled();
   });
 
   it("shows the single sentence when an outline is refused before any day exists", async () => {
@@ -238,8 +249,7 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const outline = new File(["{}"], "outline.json", { type: "application/json" });
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
-    fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
+    attachOutline(outline);
     expect(await screen.findAllByText(/the rhythm emits these intents on its own/)).not.toHaveLength(0);
   });
 
@@ -267,8 +277,7 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const outline = new File(["{}"], "outline.json", { type: "application/json" });
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
-    fireEvent.click(screen.getByRole("button", { name: "Expand and import outline" }));
+    attachOutline(outline);
 
     await vi.advanceTimersByTimeAsync(3500);
     expect(await screen.findByText(/expanding 8 months into days/)).toBeInTheDocument();
@@ -276,6 +285,53 @@ describe("complete application routes", () => {
     holding = false;
     await vi.advanceTimersByTimeAsync(12000);
     expect(await screen.findByText(/no longer working on this request/)).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("names the step, times it, and says when one step has swallowed the whole wait", async () => {
+    // The case this exists for: a five-month import that sat on one line for two hours. "The
+    // server is alive" was true the whole time and said nothing about what it was doing.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = () => new Promise<Response>(() => {});
+    vi.stubGlobal("fetch", ((original) => (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input).replace(/^.*\/api/, "");
+      if (url.startsWith("/health")) {
+        return response({
+          status: "ok",
+          inFlight: 1,
+          operation: {
+            operationId: "op",
+            method: "POST",
+            path: "/horizon-outline",
+            stage: "compiling: solving days 1-7 of 153 (window 1 of 22, 0 of 4410 activities placed)",
+            elapsedSeconds: 4210,
+            stageSeconds: 4180,
+            stages: [
+              { stage: "reading the outline", seconds: 0.4 },
+              { stage: "expanding 5 months into days", seconds: 26.4 },
+            ],
+          },
+        });
+      }
+      return original(input, init);
+    })(globalThis.fetch as typeof fetch));
+
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const outline = new File(["{}"], "outline.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
+    attachOutline(outline);
+    await vi.advanceTimersByTimeAsync(3500);
+
+    // What it is doing, not merely that it is doing something.
+    expect(await screen.findByText(/window 1 of 22/)).toBeInTheDocument();
+    // How long this step alone has held, in a unit a human reads.
+    expect(await screen.findByText(/1h 9m on this step/)).toBeInTheDocument();
+    // And what it already got through, so a long step can be compared with something.
+    expect(await screen.findByText("expanding 5 months into days")).toBeInTheDocument();
+    expect(await screen.findByText("26s")).toBeInTheDocument();
+    expect(await screen.findByText(/far longer than everything before it/)).toBeInTheDocument();
     vi.useRealTimers();
   });
 
@@ -298,7 +354,9 @@ describe("complete application routes", () => {
     expect(prompt).not.toContain("{{PERSON_AND_CASE_DESCRIPTION}}");
     // The guide must say the response cannot be imported as it stands, or a reader will try.
     expect(screen.getByText(/Its response is expanded, not imported as it stands/)).toBeInTheDocument();
-    expect(screen.getByText(/expand-outline/)).toBeInTheDocument();
+    // Twice now: beside the prompt, and again where the guide says the outline is the one document
+    // that goes in and the command line is where the rest is done by hand.
+    expect(screen.getAllByText(/expand-outline/).length).toBeGreaterThan(0);
     writeText.mockRejectedValueOnce(new Error("Clipboard denied"));
     fireEvent.click(copyButtons[0]);
     expect(await screen.findByRole("button", { name: "Copy failed" })).toBeInTheDocument();
@@ -874,8 +932,7 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     const file = new File(["{}"], "input.json", { type: "application/json" });
     Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
+    attachOutline(file);
     expect(await screen.findByText(/complete authoring bundle passed validation/)).toBeInTheDocument();
     cleanup(); overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [] };
     mount("/homes/home_1");
@@ -884,27 +941,69 @@ describe("complete application routes", () => {
     expect(await screen.findByText(/queued in an isolated/)).toBeInTheDocument();
   });
 
-  it("keeps split-document import Advanced and reports malformed bundle JSON", async () => {
-    const emptyDetail = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
-    overrides["/homes/home_1"] = emptyDetail;
-    mount("/homes/home_1");
-    await screen.findByText("Attach accepted authoring");
-    fireEvent.click(screen.getByText(/Advanced: import canonical documents separately/));
-    const file = new File(["{}"], "canonical.json", { type: "application/json" });
-    Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Scenario JSON/), { target: { files: [file] } });
-    fireEvent.change(screen.getByLabelText(/Personal process package/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate Advanced import/ }));
-    expect(await screen.findByText(/complete authoring bundle passed validation/)).toBeInTheDocument();
+  it("carries one import as far as it was asked to, with the field the researcher chose", async () => {
+    // Validation is not a step: it is what an import is. The other two are the buttons somebody
+    // would press by hand afterwards, and each is reached only because the one before it passed.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
+    const built = vi.fn((_options?: RequestInit) => response(job, { status: 202 }));
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
+    const ran = vi.fn((_options?: RequestInit) => response(job, { status: 202 }));
+    let attached = false;
+    overrides["/homes/home_1"] = () => response(attached
+      ? { home, residents: [resident], models: {}, jobs: [] }
+      : { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] });
+    overrides["/homes/home_1/horizon-outline?seed=1"] = () => { attached = true; return response({ valid: true, issues: [] }); };
+    overrides["/homes/home_1/environment"] = built;
+    overrides["/homes/home_1/runs"] = ran;
+    const outline = new File(["{}"], "outline.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
 
-    cleanup();
     mount("/homes/home_1");
     await screen.findByText("Attach accepted authoring");
-    const malformed = new File(["{"], "broken-bundle.json", { type: "application/json" });
+    // The two questions about the field that are decisions rather than calibrations.
+    fireEvent.change(screen.getByLabelText("Detectors"), { target: { value: "room_coverage" } });
+    fireEvent.change(screen.getByLabelText("What each one watches"), { target: { value: "circle" } });
+    expect(screen.getByText(/leaves the corners of every room unwatched/)).toBeInTheDocument();
+    attachOutline(outline, /Build the home and sensors/);
+    await waitFor(() => expect(built).toHaveBeenCalled());
+    expect(JSON.parse(String(built.mock.calls[0]?.[0]?.body))).toEqual({
+      scenario_artifact_id: "scenario", behavior_artifact_id: "behavior",
+      sensor_policy: { preset: "room_coverage", pirCoverageShape: "circle", observationProfile: "realistic" },
+    });
+    expect(ran).not.toHaveBeenCalled();
+    expect(await screen.findByText(/the home and its sensor field are being built/)).toBeInTheDocument();
+
+    // One step further: the run builds the environment and executes the days in one job.
+    cleanup(); attached = false;
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    attachOutline(outline, /Build it and run the simulation/);
+    await waitFor(() => expect(ran).toHaveBeenCalled());
+    expect(await screen.findByText(/executes every generated day/)).toBeInTheDocument();
+
+    // Refused, nothing follows: the steps after an import are earned by it, not scheduled.
+    cleanup(); attached = false; built.mockClear(); ran.mockClear();
+    overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: false, message: "the outline declares a band nothing inhabits" };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    attachOutline(outline, /Build it and run the simulation/);
+    expect(await screen.findAllByText(/declares a band nothing inhabits/)).not.toHaveLength(0);
+    expect(built).not.toHaveBeenCalled();
+    expect(ran).not.toHaveBeenCalled();
+  });
+
+  it("names the file that is not valid JSON rather than sending it", async () => {
+    // The bundle picker and the Advanced split-document importer are gone: one document goes in,
+    // and a file that is not even JSON is refused here rather than by the server.
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    expect(screen.queryByLabelText(/Simulation authoring bundle/)).toBeNull();
+    expect(screen.queryByText(/Advanced: import canonical documents separately/)).toBeNull();
+    const malformed = new File(["{"], "broken-outline.json", { type: "application/json" });
     Object.defineProperty(malformed, "text", { value: () => Promise.resolve("{") });
-    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [malformed] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
-    expect(await screen.findByText(/“broken-bundle.json” is not valid JSON/)).toBeInTheDocument();
+    attachOutline(malformed);
+    expect(await screen.findByText(/“broken-outline.json” is not valid JSON/)).toBeInTheDocument();
   });
 
   it("edits all sensor types, nudges objects, removes drafts and imports models", async () => {
@@ -926,13 +1025,124 @@ describe("complete application routes", () => {
     expect(await screen.findByText(/Home model loaded as a draft/)).toBeInTheDocument();
     openPlan("Sensors");
     useTool("Contact", 2, 2);
-    fireEvent.click(screen.getByRole("button", { name: /contact sensor contact_01/ }));
+    // Named after the thing it is fitted to, which is the nearest one in the room clicked and not
+    // whatever the model happens to list first.
+    fireEvent.click(screen.getByRole("button", { name: /contact sensor contact_wardrobe/ }));
     fireEvent.change(screen.getByLabelText("Entity"), { target: { value: "door" } });
     useTool("Temperature", 2, 2);
-    fireEvent.click(screen.getByRole("button", { name: /temperature sensor temperature_01/ }));
+    fireEvent.click(screen.getByRole("button", { name: /temperature sensor temperature_room/ }));
     fireEvent.change(screen.getByLabelText("Baseline °C"), { target: { value: "21" } });
     fireEvent.change(screen.getByLabelText("Dropout 0–1"), { target: { value: "0.02" } });
     fireEvent.click(screen.getByRole("button", { name: "Move up" }));
+  });
+
+  it("installs a sensor from the room list and names it for the export", async () => {
+    // A plan cannot show the room nothing watches — there is nothing to draw there — and the name
+    // is the whole of what an exported log says about a sensor. Both are handled off the drawing.
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    openPlan("Sensors");
+    const rooms = screen.getByRole("group", { name: "Sensors by room" });
+    fireEvent.click(within(rooms).getByRole("button", { name: /pir/ }));
+    expect(screen.getByRole("heading", { name: "pir" })).toBeInTheDocument();
+
+    // Everything the field sees, drawn at once. The question anybody has about an installation is
+    // which corners of the flat nobody watches, and one cone at a time does not answer it.
+    const coverage = screen.getByRole("button", { name: "Coverage" });
+    expect(coverage).toHaveAttribute("aria-pressed", "true");
+    expect(document.querySelectorAll(".coverage-wash polygon")).toHaveLength(1);
+    const svg = document.querySelector("svg.plan-canvas") as SVGSVGElement;
+    svg.getBoundingClientRect = () => ({
+      width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "",
+    }) as DOMRect;
+    const [viewX, viewY, viewWidth, viewHeight] = (svg.getAttribute("viewBox") ?? "0 0 1 1")
+      .split(" ").map(Number) as [number, number, number, number];
+    const at = (x: number, y: number) => ({
+      clientX: ((x - viewX) / viewWidth) * 800,
+      clientY: ((y - viewY) / viewHeight) * 800,
+    });
+    // How far it sees is one number, pulled out from the node, which stays where it was put. The
+    // eight corner handles moved the node a little further across the room on every pull.
+    const grip = document.querySelector('[aria-label="Range of pir east"]') as Element;
+    fireEvent(grip, new MouseEvent("pointerdown", { bubbles: true, ...at(4, 2) }));
+    fireEvent(svg, new MouseEvent("pointermove", { bubbles: true, ...at(3, 2) }));
+    fireEvent(svg, new MouseEvent("pointerup", { bubbles: true, ...at(3, 2) }));
+    expect((screen.getByLabelText("Range m") as HTMLInputElement).value).toBe("1");
+    expect((screen.getByLabelText("X position") as HTMLInputElement).value).toBe("2");
+    fireEvent.click(coverage);
+    expect(document.querySelector(".coverage-wash")).toBeNull();
+    // Typed the way a person types it, stored the way every other identifier is written.
+    fireEvent.change(screen.getByLabelText("Sensor name"), { target: { value: "Kitchen East" } });
+    fireEvent.keyDown(screen.getByLabelText("Sensor name"), { key: "Enter" });
+    expect(screen.getByRole("heading", { name: "kitchen_east" })).toBeInTheDocument();
+    expect(within(rooms).getByRole("button", { name: /kitchen_east/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a thermometer to room" }));
+    expect(await screen.findByText(/Installed temperature_room in the middle of room/)).toBeInTheDocument();
+    // Two sensors cannot answer to one name: the log would have no way to tell them apart.
+    fireEvent.change(screen.getByLabelText("Sensor name"), { target: { value: "kitchen_east" } });
+    fireEvent.blur(screen.getByLabelText("Sensor name"));
+    expect(screen.getByText("Another sensor is already called kitchen_east.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "temperature_room" })).toBeInTheDocument();
+    // Thinking better of it costs one key, and a name that is the name it already has is not a
+    // rename at all.
+    fireEvent.change(screen.getByLabelText("Sensor name"), { target: { value: "something else" } });
+    fireEvent.keyDown(screen.getByLabelText("Sensor name"), { key: "Escape" });
+    fireEvent.blur(screen.getByLabelText("Sensor name"));
+    expect(screen.getByRole("heading", { name: "temperature_room" })).toBeInTheDocument();
+    // Typing a coordinate moves the node the same way dragging it does.
+    fireEvent.change(screen.getByLabelText("X position"), { target: { value: "3" } });
+    expect(screen.getByLabelText("X position")).toHaveValue(3);
+  });
+
+  it("says why a room cannot be given the sensor asked for", async () => {
+    // A thermometer measures the effect of something that heats the room, so a flat with nothing
+    // in it has nothing for one to watch. Said where the button was pressed, not thrown away.
+    overrides["/homes/home_1"] = { home, residents: [resident], jobs: [job], models: {
+      homeModel: { ...homeModel, entities: [], interactionPoints: [] }, sensorModel,
+    } };
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    openPlan("Sensors");
+    fireEvent.click(screen.getByRole("button", { name: "Add a thermometer to room" }));
+    expect(await screen.findByText(/requires at least one home entity/)).toBeInTheDocument();
+  });
+
+  it("builds the plan again from the policies, and not over one the researcher stands behind", async () => {
+    // The way out of a plan edited into a corner, and of a field an since-corrected policy
+    // produced. Before this the only one was to delete the home and import the same bundle again.
+    const rebuilt = vi.fn((options?: RequestInit) => {
+      expect(JSON.parse(String(options?.body))).toEqual({
+        scenario_artifact_id: "scenario", behavior_artifact_id: "behavior",
+        sensor_policy: { preset: "functional_zones", pirCoverageShape: "rectangle", observationProfile: "realistic" },
+      });
+      return response(job, { status: 202 });
+    });
+    overrides["/homes/home_1/environment"] = rebuilt;
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    openPlan("House");
+    fireEvent.click(screen.getByRole("button", { name: "door door" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save working copy" }));
+    expect(localStorage.getItem("habitat-lab-plan-draft:home_1")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Regenerate plan/ }));
+    expect(screen.getByText(/Every unpublished edit on this plan is lost/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+    fireEvent.click(screen.getByRole("button", { name: /Regenerate plan/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Regenerate plan/ })[0]!);
+    await waitFor(() => expect(rebuilt).toHaveBeenCalled());
+    // The working copy was of the plan being replaced: kept, it would be reseeded over the new one.
+    expect(localStorage.getItem("habitat-lab-plan-draft:home_1")).toBeNull();
+    expect(await screen.findByText(/Building the home and its sensor field again/)).toBeInTheDocument();
+
+    // A confirmed plan is the home's own model, not a recommendation: rebuilding it would throw
+    // away a decision rather than a draft, and the button says so rather than going quiet.
+    cleanup();
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "researcher", sensor: "researcher", approved: true } };
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    openPlan("House");
+    const refused = screen.getByRole("button", { name: /Regenerate plan/ });
+    expect(refused).toBeDisabled();
+    expect(refused.getAttribute("title")).toMatch(/confirmed/);
   });
 
   it("draws a room, opens a doorway into it and builds the stairs a floor arrives with", async () => {
@@ -1172,11 +1382,10 @@ describe("complete application routes", () => {
 
   it("shows invalid authoring and failed creation without partial state", async () => {
     overrides["/homes/home_1"] = { home, residents: [], models: {}, jobs: [] };
-    overrides["/homes/home_1/authoring-bundle"] = { valid: false, issues: [{ code: "BEHAVIOR_MISMATCH", path: "$.personalProcessPackage", message: "Behavior mismatch" }, { code: "BEHAVIOR_MISMATCH", path: "$.personalProcessPackage", message: "Behavior mismatch" }] };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: false, issues: [{ code: "BEHAVIOR_MISMATCH", path: "$.personalProcessPackage", message: "Behavior mismatch" }, { code: "BEHAVIOR_MISMATCH", path: "$.personalProcessPackage", message: "Behavior mismatch" }] };
     mount("/homes/home_1"); await screen.findByText("Attach accepted authoring");
     const file = new File(["{}"], "input.json"); Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
+    attachOutline(file);
     expect(await screen.findByText("Behavior mismatch (BEHAVIOR_MISMATCH · $.personalProcessPackage)")).toBeInTheDocument();
     cleanup(); overrides["/homes"] = new Response(JSON.stringify({ error: { message: "Name conflict" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/homes"); await screen.findByText("Name conflict");
@@ -1217,11 +1426,10 @@ describe("complete application routes", () => {
 
   it("reports failed authoring, run start and model publication requests", async () => {
     overrides["/homes/home_1"] = { home, residents: [], models: {}, jobs: [] };
-    overrides["/homes/home_1/authoring-bundle"] = new Response(JSON.stringify({ error: { message: "Upload failed" } }), { status: 409, headers: { "Content-Type": "application/json" } });
+    overrides["/homes/home_1/horizon-outline?seed=1"] = new Response(JSON.stringify({ error: { message: "Upload failed" } }), { status: 409, headers: { "Content-Type": "application/json" } });
     mount("/homes/home_1"); await screen.findByText("Attach accepted authoring");
     const file = new File(["{}"], "input.json"); Object.defineProperty(file, "text", { value: () => Promise.resolve("{}") });
-    fireEvent.change(screen.getByLabelText(/Simulation authoring bundle/), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole("button", { name: /Validate bundle and attach/ }));
+    attachOutline(file);
     expect(await screen.findByText("Upload failed")).toBeInTheDocument();
     cleanup(); overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [] };
     overrides["/homes/home_1/runs"] = new Response(JSON.stringify({ error: { message: "Worker unavailable" } }), { status: 409, headers: { "Content-Type": "application/json" } });

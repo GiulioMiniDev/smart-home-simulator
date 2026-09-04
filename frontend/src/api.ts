@@ -53,6 +53,10 @@ export type ServerHealth = {
     path: string;
     stage: string;
     elapsedSeconds: number;
+    /** How long the current step alone has been running. */
+    stageSeconds: number;
+    /** The steps already finished, oldest first, with what each of them cost. */
+    stages: { stage: string; seconds: number }[];
   } | null;
 };
 

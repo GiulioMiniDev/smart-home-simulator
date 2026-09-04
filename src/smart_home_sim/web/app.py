@@ -11,7 +11,7 @@ import time
 import traceback
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from datetime import date as _date
 from pathlib import Path
@@ -186,12 +186,34 @@ log = logging.getLogger("smart_home_sim.web")
 
 @dataclass
 class _Operation:
-    """One request the server is currently holding, and how far into it the handler has got."""
+    """One request the server is currently holding, and how far into it the handler has got.
+
+    The stage alone answers "what is it doing"; it does not answer "is it still moving", which is
+    the question an operator actually has after the first quiet minute. So each stage is timed and
+    the finished ones are kept: a step that has been running for an hour, next to five that took a
+    second each, says what a spinner cannot.
+    """
 
     method: str
     path: str
     started: float
     stage: str = "starting"
+    stage_since: float = field(default_factory=time.monotonic)
+    # (name, seconds) for the steps already finished, oldest first. Bounded because a per-window
+    # compilation reports one per window and a long horizon has many.
+    history: list[tuple[str, float]] = field(default_factory=list)
+
+    def enter(self, name: str) -> None:
+        now = time.monotonic()
+        self.history.append((self.stage, round(now - self.stage_since, 1)))
+        del self.history[:-_STAGE_HISTORY]
+        self.stage = name
+        self.stage_since = now
+
+
+# How many finished steps the health reply carries. Enough to show the shape of an import — read,
+# expand, then a window at a time — without turning a poll into a transcript.
+_STAGE_HISTORY = 12
 
 
 def _crash_log_path(workspace_root: Path) -> Path:
@@ -365,7 +387,7 @@ def create_app(
 
         def report(name: str) -> None:
             if running is not None:
-                running.stage = name
+                running.enter(name)
 
         return report
 
@@ -410,6 +432,13 @@ def create_app(
                 "path": running.path,
                 "stage": running.stage,
                 "elapsedSeconds": round(time.monotonic() - running.started, 1),
+                # How long *this* step has been running. A client comparing it with the finished
+                # steps below can say "the first window has taken forty times what reading the
+                # file did" without knowing anything about what a window is.
+                "stageSeconds": round(time.monotonic() - running.stage_since, 1),
+                "stages": [
+                    {"stage": name, "seconds": seconds} for name, seconds in running.history
+                ],
             },
             "inFlight": len(in_flight),
         }

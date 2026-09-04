@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
+from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 from typer.testing import CliRunner
@@ -681,6 +682,96 @@ def test_functional_zones_split_a_room_where_room_coverage_cannot() -> None:
         ]
         if by_region.get(point.region_id):
             assert covering, f"{point.interaction_point_id} is covered by no sensor"
+
+
+def test_a_deployed_detector_watches_a_rectangle_of_a_believable_size() -> None:
+    """What a detector sees is drawn on the plan, and nothing sees a triangle of floor.
+
+    The share-out between two detectors of one room used to be a Voronoi diagram grown with a
+    mitred buffer, and the doorway detectors were a square cut against the union of two rooms.
+    Three points in a rectangle make wedges with diagonal edges, and rooms of different depths
+    make an L: on the plan the field read as a geometry exercise rather than as an installation.
+    The coverage is not a survey of what the optics would do and is not meant to be — it is meant
+    to be a shape somebody can point at, of a size a real cone has.
+
+    The whole-room floor stays covered, which is the property the wedges were bought with: a body
+    crossing floor nobody watches emits nothing at all.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    result = deploy_sensors(bundle, SensorDeploymentPolicy.realistic())
+    assert result.sensor_model is not None
+    rooms = {
+        region.region_id: ShapelyPolygon([(v.x, v.y) for v in region.boundary.vertices])
+        for region in bundle.home_model.regions
+    }
+    watched: dict[str, list[Any]] = defaultdict(list)
+    for sensor in result.sensor_model.sensors:
+        if sensor.sensor_type != "pir":
+            continue
+        corners = [(round(v.x, 6), round(v.y, 6)) for v in sensor.coverage.vertices]
+        xs = {x for x, _ in corners}
+        ys = {y for _, y in corners}
+        assert len(corners) == 4 and len(xs) == 2 and len(ys) == 2, (
+            f"{sensor.sensor_id} watches a {len(corners)}-sided shape"
+        )
+        width, depth = max(xs) - min(xs), max(ys) - min(ys)
+        assert 1.0 <= width <= 6.0 and 1.0 <= depth <= 6.0, (
+            f"{sensor.sensor_id} sees {width:.1f} by {depth:.1f} m, which no detector does"
+        )
+        for region_id in sensor.region_ids:
+            watched[region_id].append(ShapelyPolygon(corners))
+    for region_id, shapes in watched.items():
+        room = rooms[region_id]
+        assert unary_union(shapes).intersection(room).area == pytest.approx(room.area, rel=1e-6), (
+            f"{region_id} has floor nobody watches"
+        )
+
+
+def test_a_detector_can_be_asked_for_the_disc_a_ceiling_node_actually_casts() -> None:
+    """The shape is a choice, and it is a choice about the data rather than about the drawing.
+
+    A rectangle is the room's floor shared out and leaves nothing unwatched. A disc is what a
+    ceiling node approximates — its reach in every direction, stopped by the walls — and it leaves
+    the corners of every room to nobody: measured on this home, 72.9% of the floor against 100%.
+    That is a real hole in the data and the reason the rectangle stays the default; it is also
+    exactly what a study of what a plausible installation *misses* has to be able to ask for.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    rooms = {
+        region.region_id: ShapelyPolygon([(v.x, v.y) for v in region.boundary.vertices])
+        for region in bundle.home_model.regions
+    }
+
+    def watched(shape: str) -> tuple[float, list[int]]:
+        policy = SensorDeploymentPolicy.realistic().model_copy(update={"pir_coverage_shape": shape})
+        result = deploy_sensors(bundle, policy)
+        assert result.sensor_model is not None
+        seen: dict[str, list[Any]] = defaultdict(list)
+        corners = []
+        for sensor in result.sensor_model.sensors:
+            if sensor.sensor_type != "pir":
+                continue
+            coverage = ShapelyPolygon([(v.x, v.y) for v in sensor.coverage.vertices])
+            corners.append(len(sensor.coverage.vertices))
+            # The gate refuses a coverage that does not hold its own node or leaves its rooms.
+            assert coverage.covers(ShapelyPoint(sensor.position.x, sensor.position.y))
+            monitored = unary_union([rooms[region_id] for region_id in sensor.region_ids])
+            assert coverage.difference(monitored).area == pytest.approx(0, abs=1e-9)
+            for region_id in sensor.region_ids:
+                seen[region_id].append(coverage)
+        floor = sum(rooms[region_id].area for region_id in seen)
+        covered = sum(
+            unary_union(shapes).intersection(rooms[region_id]).area
+            for region_id, shapes in seen.items()
+        )
+        return covered / floor, corners
+
+    squared, square_corners = watched("rectangle")
+    round_, round_corners = watched("circle")
+    assert squared == pytest.approx(1.0, rel=1e-6)
+    assert 0.5 < round_ < 0.95, f"a field of discs watched {round_:.1%} of the floor"
+    assert max(square_corners) == 4
+    assert min(round_corners) > 4
 
 
 def _covers(coverage: Any, position: Any) -> bool:

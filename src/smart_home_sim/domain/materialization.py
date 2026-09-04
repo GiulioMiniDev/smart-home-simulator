@@ -65,6 +65,21 @@ class SensorDeploymentPolicy(ContractModel):
     pir_hold_milliseconds: float = Field(default=5_000, gt=0)
     pir_hold_log_sigma: float = Field(default=0.0, ge=0, le=2)
     pir_cooldown_milliseconds: float = Field(default=750, ge=0)
+    # What a detector is taken to watch, once its reach has been worked out.
+    #
+    # A real PIR is neither: a Fresnel lens splits the field into a fan of discrete beams, so the
+    # detection volume is a set of wedges with gaps between them, sensitive to movement across the
+    # beams and much less to movement along them. Both options here are approximations of that, and
+    # the choice is between the two things a researcher might want the field to be.
+    #
+    # `rectangle` keeps the floor covered: each zone's share of the room, its neighbours overlapping
+    # it, no unwatched corners. A body crossing floor nobody watches emits nothing at all, which is
+    # the worst failure a generated dataset can carry, so it is the default.
+    #
+    # `circle` is what a ceiling node actually approximates — a disc of its reach, cut off by the
+    # walls — and it leaves the corners of a room unwatched, which is realistic and is a real hole
+    # in the data. Choose it when the point of the study is what a plausible installation misses.
+    pir_coverage_shape: Literal["rectangle", "circle"] = "rectangle"
     contact_pulse_milliseconds: float = Field(default=1000, gt=0)
     contact_pulse_log_sigma: float = Field(default=0.0, ge=0, le=2)
     latency_milliseconds: float = Field(default=0.0, ge=0)

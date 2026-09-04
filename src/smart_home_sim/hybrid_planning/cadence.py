@@ -219,12 +219,26 @@ def _due_times(
 def _select_week_dates(
     activity: RecurringActivity, week_index: int, dates: list[date], seed: int
 ) -> list[date]:
+    """Which days of this week the activity falls on: `weekdays` says where, `timesPerPeriod` how
+    many.
+
+    The two are a filter and a count, and this branch used to read the filter as the whole answer —
+    a gym declared twice a week on monday-to-friday was scheduled on all five, and a weekly shop
+    named on friday, saturday and sunday happened on each of the three. The monthly branch below
+    has always composed them the right way round; this one now matches it, which is also what makes
+    a weekday list usable as "these are the days it *could* fall on" rather than "these are the days
+    it does".
+
+    A week with no declared weekdays is unchanged down to the seeding key, so every horizon whose
+    activities named none expands to exactly the calendar it did before.
+    """
     weekdays = set(activity.cadence.weekdays)
-    if weekdays:
-        return [day for day in dates if weekday_of(day) in weekdays]
-    count = min(activity.cadence.times_per_period, len(dates))
+    candidates = [day for day in dates if weekday_of(day) in weekdays] if weekdays else dates
+    if not candidates:
+        return []
+    count = min(activity.cadence.times_per_period, len(candidates))
     rng = _rng(seed, activity.recurring_activity_id, "week", week_index)
-    return sorted(rng.sample(dates, count))
+    return sorted(rng.sample(candidates, count))
 
 
 def _select_month_dates(

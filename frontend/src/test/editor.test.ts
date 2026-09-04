@@ -3,6 +3,7 @@ import {
   addDoorway,
   addFurnitureAt,
   addSensorAt,
+  addSensorInRegion,
   addStoreyByStairs,
   alignSensorModel,
   boxOf,
@@ -19,14 +20,22 @@ import {
   polygonArea,
   regionAt,
   removeSelection,
+  renameSensor,
   resizePlanObject,
   rotatePlanObject,
+  sensorIdFor,
+  sensorSlug,
+  sensorsByRoom,
   setPirRange,
   setRegionLevel,
+  setSensorPosition,
   sharedWallAt,
   snap,
 } from "../editor";
-import type { HomeModel, SensorModel } from "../types";
+import type { HomeModel, Point, SensorBase, SensorModel } from "../types";
+
+/** The area a detector watches, which the contract carries as an open field. */
+const coverageOf = (sensor: SensorBase) => boxOf((sensor.coverage as { vertices: Point[] }).vertices);
 
 const home = (): HomeModel => ({
   schemaVersion: "1.0.0", documentType: "home_model", homeId: "home", homeVersion: "1", coordinateSystem: {},
@@ -137,6 +146,124 @@ describe("editor commands", () => {
     expect(() => addSensorAt(sensors(), home(), "pir", { x: 40, y: 40 })).toThrow("inside a room");
   });
 
+  it("names a hand-placed sensor after what it watches, the way the policy does", () => {
+    // The identifier is the whole of a sensor's identity in the exported log: a column called
+    // `pir_01` beside the policy's own `pir_kitchen` is a reading nobody can place months later.
+    expect(addSensorAt(sensors(), home(), "pir", { x: 2, y: 2 }).selectedId).toBe("pir_room_01");
+    expect(addSensorAt(sensors(), home(), "temperature", { x: 2, y: 2 }).selectedId)
+      .toBe("temperature_room_01");
+    // A contact switch is fitted to a thing, so it is named after the thing.
+    expect(addSensorAt(sensors(), home(), "contact", { x: 2, y: 2 }).selectedId).toBe("contact_door");
+    const twice = addSensorAt(addSensorAt(sensors(), home(), "pir", { x: 1, y: 1 }).model, home(), "pir", { x: 3, y: 3 });
+    expect(twice.selectedId).toBe("pir_room_01_2");
+    // The first detector watches the room. The second is there to tell one end of it from the
+    // other, so it arrives as a zone rather than as a second copy of the same coverage.
+    expect(coverageOf(twice.model.sensors[0]!)).toEqual({ minX: 0, minY: 0, maxX: 4, maxY: 4 });
+    expect(coverageOf(twice.model.sensors[1]!)).toEqual({ minX: 1.5, minY: 1.5, maxX: 4, maxY: 4 });
+  });
+
+  it("fits a contact switch to the nearest thing in the room that was clicked", () => {
+    // It used to be fitted to `home.entities[0]` — the first provider of the whole flat, wherever
+    // it happened to be — and the researcher then had to find the fridge again in a dropdown.
+    const two: HomeModel = {
+      ...home(),
+      interactionPoints: [
+        ...home().interactionPoints,
+        { interactionPointId: "fridge_point", regionId: "room_01", position: { x: 3.5, y: 3.5 }, approachRadiusMeters: 0.5 },
+      ],
+      entities: [
+        ...home().entities,
+        { entityId: "refrigerator", entityType: "refrigerator", regionId: "room_01", interactionPointId: "fridge_point", capabilities: [], initialState: { open: false } },
+      ],
+    };
+    const fitted = addSensorAt(sensors(), two, "contact", { x: 3.4, y: 3.4 });
+    expect(fitted.model.sensors[0]!.entityId).toBe("refrigerator");
+    expect(fitted.selectedId).toBe("contact_refrigerator");
+    // A room with nothing in it still takes a switch: it is fitted to the nearest thing anywhere,
+    // and a provider whose standing point the model has lost is simply the furthest away.
+    const elsewhere: HomeModel = {
+      ...createRoomFromBox(two, { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model,
+      interactionPoints: two.interactionPoints.filter((item) => item.interactionPointId !== "point"),
+    };
+    expect(addSensorAt(sensors(), elsewhere, "contact", { x: 6, y: 2 }).selectedId)
+      .toBe("contact_refrigerator");
+    // An anchor with nothing to slugify leaves the kind of instrument as the whole name.
+    expect(sensorIdFor("pir", "—", [])).toBe("pir");
+  });
+
+  it("renames a sensor, and refuses a name another one already answers to", () => {
+    const field = addSensorAt(sensors(), home(), "pir", { x: 2, y: 2 }).model;
+    // Typed the way a person types it; stored the way every other identifier is written.
+    expect(renameSensor(field, "pir_room_01", "Kitchen East").sensors[0]!.sensorId)
+      .toBe("kitchen_east");
+    expect(sensorSlug(" Kitchen East ")).toBe("kitchen_east");
+    const both = addSensorAt(field, home(), "temperature", { x: 2, y: 2 }).model;
+    expect(() => renameSensor(both, "pir_room_01", "temperature_room_01"))
+      .toThrow("already called temperature_room_01");
+    expect(() => renameSensor(both, "pir_room_01", "  ")).toThrow("needs a name");
+    // Renaming to the name it already has is not a collision with itself.
+    expect(renameSensor(both, "pir_room_01", "pir_room_01")).toBe(both);
+  });
+
+  it("rebinds a detector dragged into another room, and leaves a doorway one alone", () => {
+    const two = createRoomFromBox(home(), { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model;
+    const field = addSensorAt(sensors(), two, "pir", { x: 2, y: 2 }).model;
+    // Moving one used to move the drawing and nothing else: the node stood in the second room and
+    // went on crediting every firing to the first.
+    const moved = movePlanObject(two, field, "pir_room_01", 3.5, 0);
+    expect(moved.sensors?.sensors[0]!.regionIds).toEqual(["room_02"]);
+    expect(coverageOf(moved.sensors!.sensors[0]!).minX).toBeGreaterThanOrEqual(4);
+    // A doorway detector names both rooms because straddling the threshold is what it is for.
+    const doorway: SensorModel = {
+      ...field,
+      sensors: [{ ...field.sensors[0]!, sensorId: "pir_hall_door", regionIds: ["room_01", "room_02"] }],
+    };
+    expect(movePlanObject(two, doorway, "pir_hall_door", 3.5, 0).sensors?.sensors[0]!.regionIds)
+      .toEqual(["room_01", "room_02"]);
+    // Typing a coordinate is the same gesture as dragging it there.
+    const typed = setSensorPosition(field, two, "pir_room_01", { x: 6, y: 2 });
+    expect(typed.sensors[0]!.regionIds).toEqual(["room_02"]);
+    expect(setSensorPosition(field, two, "pir_room_01", { x: Number.NaN, y: 2 })).toBe(field);
+    // Dragged out of the house altogether it keeps the room it had: there is no other answer, and
+    // a sensor watching nothing is what the bundle refuses.
+    expect(setSensorPosition(field, two, "pir_room_01", { x: 40, y: 40 }).sensors[0]!.regionIds)
+      .toEqual(["room_01"]);
+  });
+
+  it("carries a thermometer's room with it, and gives up a coverage the drag cut to nothing", () => {
+    const two = createRoomFromBox(home(), { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model;
+    const warmth = addSensorAt(sensors(), two, "temperature", { x: 2, y: 2 }).model;
+    expect(movePlanObject(two, warmth, "temperature_room_01", 3.5, 0).sensors?.sensors[0]!.regionId)
+      .toBe("room_02");
+    // A detector whose coverage is a sliver at the far edge of the room it left has nothing left to
+    // clip, so it watches the room it arrived in rather than a strip of floor by the wall.
+    const sliver: SensorModel = {
+      ...sensors(),
+      sensors: [{
+        ...addSensorAt(sensors(), two, "pir", { x: 3.9, y: 2 }).model.sensors[0]!,
+        coverage: { vertices: [{ x: 3.8, y: 1.9 }, { x: 4, y: 1.9 }, { x: 4, y: 2.1 }, { x: 3.8, y: 2.1 }] },
+      }],
+    };
+    const arrived = movePlanObject(two, sliver, "pir_room_01", 2.5, 0);
+    expect(arrived.sensors?.sensors[0]!.regionIds).toEqual(["room_02"]);
+    expect(coverageOf(arrived.sensors!.sensors[0]!)).toEqual({ minX: 4, minY: 0, maxX: 8, maxY: 4 });
+  });
+
+  it("lists every room of the dwelling against what watches it, empty ones included", () => {
+    const two = createRoomFromBox(home(), { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model;
+    const field = addSensorInRegion(sensors(), two, "pir", "room_01");
+    expect(field.selectedId).toBe("pir_room_01");
+    const rooms = sensorsByRoom(two, field.model);
+    expect(rooms.map((item) => item.regionId)).toEqual(["room_01", "room_02"]);
+    expect(rooms[0]!.sensors.map((item) => item.sensorId)).toEqual(["pir_room_01"]);
+    // The room nothing watches is the one the drawing cannot show, because nothing is drawn there.
+    expect(rooms[1]!.sensors).toEqual([]);
+    // A contact switch is counted in the room its thing stands in.
+    const contact = addSensorAt(field.model, two, "contact", { x: 1, y: 1 }).model;
+    expect(sensorsByRoom(two, contact)[0]!.sensors).toHaveLength(2);
+    expect(() => addSensorInRegion(sensors(), two, "pir", "nowhere")).toThrow("no room called");
+  });
+
   it("rejects sensor creation without the providers a sensor needs", () => {
     const empty = { ...home(), entities: [] };
     expect(() => addSensorAt(sensors(), empty, "contact", { x: 1, y: 1 })).toThrow("contact sensor requires");
@@ -187,7 +314,7 @@ describe("editor commands", () => {
 
   it("removes regions, providers and sensors with their dependent objects", () => {
     const withSensor = addSensorAt(sensors(), home(), "pir", { x: 2, y: 2 }).model;
-    const noSensor = removeSelection(home(), withSensor, "pir_01");
+    const noSensor = removeSelection(home(), withSensor, "pir_room_01");
     expect(noSensor.sensors?.sensors).toHaveLength(0);
     const noEntity = removeSelection(home(), withSensor, "door");
     expect(noEntity.home.entities).toHaveLength(0);

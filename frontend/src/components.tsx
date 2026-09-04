@@ -43,7 +43,7 @@ import { furnitureSymbol, structuralSymbol } from "./furniture";
 import { FurnitureGlyph } from "./furniture-glyph";
 import { FurnitureSymbols } from "./furniture-symbols";
 import { CustomFurnitureSymbols } from "./vocabulary/CustomFurnitureSymbols";
-import type { HomeModel, JobStatus, Point, Polygon, SensorModel } from "./types";
+import type { HomeModel, JobStatus, Point, Polygon, SensorBase, SensorModel } from "./types";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Activity },
@@ -199,6 +199,9 @@ export function ConfirmAction({
   busy = false,
   disabled = false,
   compact = false,
+  icon,
+  busyLabel = "Deleting…",
+  hint,
   onConfirm,
 }: {
   label: string;
@@ -207,6 +210,12 @@ export function ConfirmAction({
   busy?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  /** What the button carries. Deletion is the common case and stays the default. */
+  icon?: ReactNode;
+  /** What it says while the work is in flight, for the actions that are not deletions. */
+  busyLabel?: string;
+  /** Why it is disabled, or what it will do — shown on hover, where a reason belongs. */
+  hint?: string;
   onConfirm: () => void | Promise<void>;
 }) {
   const [asking, setAsking] = useState(false);
@@ -216,9 +225,10 @@ export function ConfirmAction({
         className={compact ? "icon-button danger" : "button danger"}
         disabled={disabled || busy}
         aria-label={compact ? label : undefined}
+        title={hint}
         onClick={() => setAsking(true)}
       >
-        <Trash2 size={compact ? 15 : 16} />
+        {icon ?? <Trash2 size={compact ? 15 : 16} />}
         {!compact && label}
       </button>
     );
@@ -241,7 +251,7 @@ export function ConfirmAction({
             void onConfirm();
           }}
         >
-          <Trash2 size={15} /> {busy ? "Deleting…" : label}
+          {icon ?? <Trash2 size={15} />} {busy ? busyLabel : label}
         </button>
       </div>
     </div>
@@ -378,6 +388,16 @@ export interface PlanEditing {
   onDragStart: () => void;
   onMove: (id: string, dx: number, dy: number) => void;
   onResize: (id: string, handle: ResizeHandle, dx: number, dy: number) => void;
+  /**
+   * How far a detector sees, in metres, dragged out from the node itself.
+   *
+   * A PIR used to be reshaped through the same eight corner handles as a room, and each pull moved
+   * the node to the middle of what was left: shrinking a cone from its north-west corner walked the
+   * sensor across the room a few centimetres at a time. Its range is one number — the researcher
+   * says "this one watches about two metres" — so the gesture is one grip, symmetric, and the node
+   * stays where it was put.
+   */
+  onRange?: (id: string, rangeMetres: number) => void;
   /** Drawn out on empty floor with the room tool. */
   onDrawRoom?: (box: PlanBox, level: number) => void;
   /** Clicked on the party wall the door tool was hovering. */
@@ -403,6 +423,14 @@ const HANDLES: Array<{ handle: ResizeHandle; fx: number; fy: number }> = [
   { handle: "s", fx: 0.5, fy: 1 },
   { handle: "sw", fx: 0, fy: 1 },
   { handle: "w", fx: 0, fy: 0.5 },
+];
+
+/** The four sides of a detector's reach. Pulling any of them out pulls all of them. */
+const GRIPS: Array<{ grip: string; fx: number; fy: number }> = [
+  { grip: "north", fx: 0.5, fy: 0 },
+  { grip: "east", fx: 1, fy: 0.5 },
+  { grip: "south", fx: 0.5, fy: 1 },
+  { grip: "west", fx: 0, fy: 0.5 },
 ];
 
 /**
@@ -488,6 +516,7 @@ export function PlanCanvas({
   interactionMode = "interactive",
   tool = "select",
   layer = "home",
+  showCoverage = false,
   storey: storeyProp,
   onStoreyChange,
 }: {
@@ -503,6 +532,8 @@ export function PlanCanvas({
   tool?: PlanTool;
   /** Which drawing the pointer edits. The other one is still drawn, and is inert. */
   layer?: "home" | "sensors";
+  /** Draw what every detector sees at once, so the floor nothing watches is the floor left bare. */
+  showCoverage?: boolean;
   /** The storey being drawn. Owned by the page when it has tools that create on one. */
   storey?: number;
   onStoreyChange?: (level: number) => void;
@@ -607,9 +638,9 @@ export function PlanCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   // The gesture remembers what it grabbed. Selection is React state and settles a render later, so
   // a drag that read it back would drop its first samples — or move the previous selection.
-  const drag = useRef<{ x: number; y: number; id: string; handle?: ResizeHandle } | undefined>(
-    undefined,
-  );
+  const drag = useRef<
+    { x: number; y: number; id: string; handle?: ResizeHandle; range?: boolean } | undefined
+  >(undefined);
   // Metres per pixel: what one pixel of pointer travel is worth on the plan at this zoom.
   const scale = () => {
     const box = svgRef.current?.getBoundingClientRect();
@@ -648,9 +679,34 @@ export function PlanCanvas({
       (event.target as Element).setPointerCapture?.(event.pointerId);
     }
   };
+  /**
+   * Take hold of how far a detector sees.
+   *
+   * The grip follows the pointer rather than accumulating deltas: pulling the edge of the cone out
+   * to the far wall is one movement, and it lands where you let go of it instead of wherever the
+   * arithmetic drifted to.
+   */
+  const beginRange = (event: ReactPointerEvent, id: string) => {
+    if (!editing?.onRange || tool !== "select") return;
+    event.stopPropagation();
+    event.preventDefault();
+    drag.current = { x: event.clientX, y: event.clientY, id, range: true };
+    editing.onDragStart();
+    if (typeof event.pointerId === "number") {
+      (event.target as Element).setPointerCapture?.(event.pointerId);
+    }
+  };
   const continueDrag = (event: ReactPointerEvent) => {
     const current = drag.current;
     if (!editing || !current) return;
+    if (current.range) {
+      const sensor = sensors?.sensors.find((item) => item.sensorId === current.id);
+      if (!sensor) return;
+      const at = planPoint(event);
+      const reach = Math.max(Math.abs(at.x - sensor.position.x), Math.abs(at.y - sensor.position.y));
+      editing.onRange?.(current.id, reach);
+      return;
+    }
     const metres = scale();
     const dx = (event.clientX - current.x) * metres.x;
     const dy = (event.clientY - current.y) * metres.y;
@@ -776,6 +832,21 @@ export function PlanCanvas({
   // Carrying the id alongside the box removes the need to re-check it when wiring the handles.
   const selectedBox = editing && selectedId ? selectionBox(home, sensors, selectedId) : undefined;
   const selection = selectedBox ? { id: selectedId as string, box: selectedBox } : undefined;
+  // Every detector's coverage, largest first: drawn in that order the smallest ends up on top, so
+  // a zone inside a room takes the click that was meant for it rather than the room-wide cone.
+  const covered = (sensors?.sensors ?? [])
+    .filter((sensor) => sensorsShown.includes(sensor) && sensor.sensorType === "pir")
+    .map((sensor) => ({ sensor, coverage: sensor.coverage as Polygon | undefined }))
+    .filter((item): item is { sensor: SensorBase; coverage: Polygon } =>
+      Boolean(item.coverage?.vertices?.length))
+    .sort((left, right) =>
+      polygonArea(right.coverage.vertices) - polygonArea(left.coverage.vertices));
+  // A detector is sized by one number, so it is gripped by one kind of grip. Anything with a real
+  // shape — a room, a footprint — keeps the eight corners it is actually shaped by.
+  const gripped = Boolean(
+    editing?.onRange
+    && sensors?.sensors.some((item) => item.sensorId === selectedId && item.sensorType === "pir"),
+  );
   const planInteractions = interactionMode === "interactive" ? {
     onPointerDown: (event: ReactPointerEvent) => {
       // A new gesture: whatever the last one asked to be swallowed no longer applies.
@@ -956,14 +1027,35 @@ export function PlanCanvas({
           })}
         </g>
         </g>
+        {/* Where every detector reaches, all of them at once.
+            Each one is drawn the way the selected one is — pale wash inside a dashed edge — so the
+            drawing says which node watches which floor. Filled solid instead, the cones merged
+            into one green house: the union tells you the flat is covered and nothing whatever
+            about the field that covers it, which is the question somebody arranging one is
+            actually asking. Drawn smallest last, so a zone inside a room takes the click that was
+            meant for it rather than the room-wide cone underneath. */}
+        {sensors && showCoverage && covered.length > 0 && (
+          <g className={`coverage-wash${layer === "sensors" ? " is-live" : ""}`} role="group" aria-label="Sensor coverage">
+            {covered.map(({ sensor, coverage }) => (
+              <polygon
+                key={sensor.sensorId}
+                points={polygonPoints(coverage.vertices)}
+                className={selectedId === sensor.sensorId ? "is-selected" : undefined}
+                aria-label={`Coverage of ${sensor.sensorId}`}
+                onClick={() => activate(sensor.sensorId)}
+                {...(selectedId === sensor.sensorId ? draggable(sensor.sensorId) : {})}
+              />
+            ))}
+          </g>
+        )}
         {sensors && <g className="plan-layer" role="group" aria-label="Sensors">
           {sensorsShown.map((sensor) => {
             const coverage = sensor.sensorType === "pir" ? (sensor.coverage as Polygon | undefined) : undefined;
             const isSelected = selectedId === sensor.sensorId;
             return (
               <g key={sensor.sensorId}>
-                {/* Six overlapping translucent rectangles say nothing about any one of them. The
-                    field a researcher is reading is the one they picked, so only that is drawn. */}
+                {/* The one being worked on is drawn in full whether or not the wash is on: it is
+                    the field a researcher is reading, and it has to stand out of the rest. */}
                 {coverage && isSelected && (
                   <polygon points={polygonPoints(coverage.vertices)} className="sensor-coverage" />
                 )}
@@ -977,6 +1069,9 @@ export function PlanCanvas({
                   onKeyDown={(event) => keyboard(event, sensor.sensorId)}
                   {...draggable(sensor.sensorId)}
                 >
+                  {/* A node is drawn at a quarter of a metre and has to be caught by a hand with a
+                      mouse in it. The grab area is the size of the thing, not of the ink. */}
+                  <circle className="sensor-grab" r=".33" />
                   <SensorGlyph type={sensor.sensorType} />
                   <text x=".3" y=".1">{shortSensorName(sensor.sensorId)}</text>
                 </g>
@@ -992,7 +1087,23 @@ export function PlanCanvas({
             height={selection.box.maxY - selection.box.minY}
             className="selection-outline"
           />
-          {HANDLES.map(({ handle, fx, fy }) => {
+          {gripped && GRIPS.map(({ grip, fx, fy }) => {
+            const size = Math.min(width, height) / 32;
+            return (
+              <circle
+                key={grip}
+                className={`range-grip grip-${grip}`}
+                role="button"
+                tabIndex={-1}
+                aria-label={`Range of ${selection.id} ${grip}`}
+                cx={selection.box.minX + (selection.box.maxX - selection.box.minX) * fx}
+                cy={selection.box.minY + (selection.box.maxY - selection.box.minY) * fy}
+                r={size / 2}
+                onPointerDown={(event) => beginRange(event, selection.id)}
+              />
+            );
+          })}
+          {!gripped && HANDLES.map(({ handle, fx, fy }) => {
             // Handles keep a constant size on screen, so they stay grabbable at any zoom.
             const size = Math.min(width, height) / 45;
             return (

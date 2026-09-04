@@ -14,9 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
-from shapely.geometry import MultiPoint, Point, Polygon
+from shapely.geometry import Point as ShapelyPoint
+from shapely.geometry import Polygon
 from shapely.geometry import box as ShapelyBox
-from shapely.ops import unary_union, voronoi_diagram
+from shapely.ops import unary_union
 
 from smart_home_sim.behavior.service import default_action_catalog_path
 from smart_home_sim.compiler import CompilationResult, compile_scenario
@@ -1139,10 +1140,46 @@ def _cluster_places(
     return groups
 
 
+def _polygon2d(shape: Polygon) -> Polygon2D:
+    corners = list(shape.exterior.coords)[:-1]
+    return Polygon2D(vertices=[Point2D(x=round(x, 4), y=round(y, 4)) for x, y in corners])
+
+
+# Sixteen sides per quarter turn is round at the scale a flat is drawn and costs nothing to carry.
+_DISC_SEGMENTS = 6
+
+
+def _reach(area: Polygon, seat: Point2D, shape: str, inside: Polygon) -> Polygon2D:
+    """The floor a detector is taken to watch: the area worked out for it, or a disc of that reach.
+
+    The rectangle is the room's floor shared out, which keeps every corner watched. The disc is
+    what a ceiling node approximates — its reach in every direction, stopped by the walls — and it
+    leaves the corners to nobody, which is realistic and is a hole in the data. Neither is what the
+    optics do: a Fresnel lens makes a fan of separate beams, and no polygon says that.
+
+    Falls back to the rectangle whenever the disc would not hold its own node, so a coverage that
+    does not contain its sensor — which the M6 gate refuses — cannot be produced here.
+    """
+    if shape != "circle":
+        return _polygon2d(area)
+    minimum_x, minimum_y, maximum_x, maximum_y = area.bounds
+    radius = min(maximum_x - minimum_x, maximum_y - minimum_y) / 2
+    if radius <= 0:
+        return _polygon2d(area)
+    node = ShapelyPoint(seat.x, seat.y)
+    disc = node.buffer(radius, quad_segs=_DISC_SEGMENTS).intersection(inside)
+    if disc.geom_type != "Polygon":
+        disc = max(disc.geoms, key=lambda item: item.area) if not disc.is_empty else disc
+    if disc.is_empty or disc.area <= 0 or not disc.covers(node):
+        return _polygon2d(area)
+    return _polygon2d(disc)
+
+
 def _functional_zones(
     region: HomeRegion,
     points: list[InteractionPoint],
     activity_count: int = 0,
+    shape: str = "rectangle",
 ) -> list[tuple[Point2D, Polygon2D]]:
     """One motion sensor per group of places to stand, covering that group and its surroundings.
 
@@ -1177,8 +1214,10 @@ def _functional_zones(
     area = max(0.0, (maximum_x - minimum_x) * (maximum_y - minimum_y))
     affordable = max(1, int(area // _MINIMUM_ZONE_AREA_SQUARE_METRES))
     cap = max(1, min(_MAX_ZONES_PER_ROOM, affordable))
+    room = Polygon([(vertex.x, vertex.y) for vertex in region.boundary.vertices])
     if not places:
-        return [(_center(region.boundary), region.boundary)]
+        seat = _center(region.boundary)
+        return [(seat, _reach(room, seat, shape, room))]
 
     centres = [
         (
@@ -1189,7 +1228,8 @@ def _functional_zones(
     ]
     centres.sort(key=lambda item: (item[1], item[0]))
     if len(centres) == 1:
-        return [(Point2D(x=centres[0][0], y=centres[0][1]), region.boundary)]
+        seat = Point2D(x=centres[0][0], y=centres[0][1])
+        return [(seat, _reach(room, seat, shape, room))]
 
     # The detectors share the room out between them rather than each taking a box around its own
     # furniture. Boxes were tried first and left 60% of a living room unwatched, which is worse than
@@ -1197,30 +1237,47 @@ def _functional_zones(
     # zone therefore takes the floor nearest to it and then grows past that boundary, so the room is
     # covered once and its neighbours overlap — measured, Aruba fires more than one sensor within
     # two seconds 29.5% of the time against 3.4% here.
-    room = Polygon([(vertex.x, vertex.y) for vertex in region.boundary.vertices])
-    cells = voronoi_diagram(MultiPoint(centres), envelope=room)
+    #
+    # The share-out is squared off. A Voronoi diagram of three points in a rectangle makes wedges
+    # with diagonal edges and mitred spikes, and a plan of them reads as a geometry exercise rather
+    # than as an installation: no detector sees a triangle of floor. The boundary between two of
+    # them is the midpoint on whichever axis separates them, so what each one watches is the end,
+    # the side or the middle of the room — a shape a person can point at and a reach a real cone
+    # has. It is not a survey of what the optics would do, and it is not meant to be.
     placed: list[tuple[Point2D, Polygon2D]] = []
     for centre in centres:
-        owner = next(
-            (cell for cell in cells.geoms if cell.covers(Point(centre))),
-            None,
-        )
-        shape = room if owner is None else owner.intersection(room)
-        grown = shape.buffer(_ZONE_OVERLAP_METRES, join_style=2).intersection(room)
+        left, bottom, right, top = minimum_x, minimum_y, maximum_x, maximum_y
+        for other in centres:
+            if other == centre:
+                continue
+            step_x, step_y = other[0] - centre[0], other[1] - centre[1]
+            # Whichever way the two are further apart is the way the room is cut between them: two
+            # detectors along one wall divide it left from right, two across it near from far.
+            if abs(step_x) >= abs(step_y):
+                middle = (centre[0] + other[0]) / 2
+                if step_x > 0:
+                    right = min(right, middle)
+                else:
+                    left = max(left, middle)
+            else:
+                middle = (centre[1] + other[1]) / 2
+                if step_y > 0:
+                    top = min(top, middle)
+                else:
+                    bottom = max(bottom, middle)
+        grown = ShapelyBox(
+            max(minimum_x, left - _ZONE_OVERLAP_METRES),
+            max(minimum_y, bottom - _ZONE_OVERLAP_METRES),
+            min(maximum_x, right + _ZONE_OVERLAP_METRES),
+            min(maximum_y, top + _ZONE_OVERLAP_METRES),
+        ).intersection(room)
+        if grown.is_empty or grown.area <= 0:
+            continue
         winner = (
             max(grown.geoms, key=lambda item: item.area) if grown.geom_type != "Polygon" else grown
         )
-        placed.append(
-            (
-                Point2D(x=centre[0], y=centre[1]),
-                Polygon2D(
-                    vertices=[
-                        Point2D(x=round(x, 4), y=round(y, 4))
-                        for x, y in list(winner.exterior.coords)[:-1]
-                    ]
-                ),
-            )
-        )
+        seat = Point2D(x=centre[0], y=centre[1])
+        placed.append((seat, _reach(winner, seat, shape, room)))
     return placed or [(_center(region.boundary), region.boundary)]
 
 
@@ -1292,6 +1349,37 @@ def _failure_windows(
     return [SensorFailureWindow(starts_at=opens, ends_at=closes) for opens, closes in merged]
 
 
+def _wall_span(
+    left: Polygon, right: Polygon, connection: HomeConnection
+) -> tuple[tuple[float, float] | None, str | None]:
+    """The stretch of wall two rooms share, and the axis they stand either side of.
+
+    An axis of `"x"` means the two stand either side of a wall that runs north to south, and the
+    span is the piece of that wall they have in common. Rooms that are not the plain rectangles
+    the generator draws get `(None, None)`, and the caller falls back to clipping against the pair
+    itself: a rectangle spanning an L-shaped room would reach through a wall, and coverage outside
+    its own rooms is exactly what the M6 gate refuses.
+    """
+    portal_a, portal_b = connection.portal_a, connection.portal_b
+    if portal_a is None or portal_b is None:
+        return None, None
+    rectangular = all(
+        abs(shape.area - (shape.bounds[2] - shape.bounds[0]) * (shape.bounds[3] - shape.bounds[1]))
+        <= 1e-9
+        for shape in (left, right)
+    )
+    if not rectangular:
+        return None, None
+    first, second = left.bounds, right.bounds
+    if abs(portal_a.x - portal_b.x) >= abs(portal_a.y - portal_b.y):
+        span = (max(first[1], second[1]), min(first[3], second[3]))
+        axis = "x"
+    else:
+        span = (max(first[0], second[0]), min(first[2], second[2]))
+        axis = "y"
+    return (span, axis) if span[1] > span[0] else (None, None)
+
+
 def _threshold_sensors(
     home: HomeModel,
     rooms: set[str],
@@ -1300,6 +1388,7 @@ def _threshold_sensors(
     hold_log_sigma: float,
     timing: Any,
     error_model: SensorErrorModel,
+    shape: str = "rectangle",
 ) -> list[PirSensor]:
     """One detector per doorway, watching the crossing rather than either room.
 
@@ -1335,27 +1424,45 @@ def _threshold_sensors(
         )
         both = unary_union([shapes[left], shapes[right]])
         reach = _THRESHOLD_REACH_METRES
-        area = ShapelyBox(
-            centre[0] - reach, centre[1] - reach, centre[0] + reach, centre[1] + reach
-        ).intersection(both)
+        # A square around the doorway, cut back to the piece of wall the two rooms actually share.
+        # Taken against the union instead, it came back notched wherever the rooms are of different
+        # depths — a detector drawn as an L, which is not a shape a passage detector has. Along the
+        # wall it stops at the shared span, so it stays inside both rooms; across it, it reaches
+        # into each of them, which is what makes a crossing fire it from either side.
+        along, across = _wall_span(shapes[left], shapes[right], connection)
+        if along is None or across is None:
+            area = ShapelyBox(
+                centre[0] - reach, centre[1] - reach, centre[0] + reach, centre[1] + reach
+            ).intersection(both)
+        else:
+            vertical = across == "x"
+            # Along the wall it is cut back to what the two rooms have in common; through it, it
+            # reaches its own distance into each of them.
+            beside = centre[1] if vertical else centre[0]
+            through = centre[0] if vertical else centre[1]
+            span = (max(along[0], beside - reach), min(along[1], beside + reach))
+            depth = (through - reach, through + reach)
+            area = (
+                ShapelyBox(depth[0], span[0], depth[1], span[1])
+                if vertical
+                else ShapelyBox(span[0], depth[0], span[1], depth[1])
+            ).intersection(both)
         if area.is_empty or area.area <= 0:
             continue
-        shape = max(area.geoms, key=lambda item: item.area) if area.geom_type != "Polygon" else area
+        watched = (
+            max(area.geoms, key=lambda item: item.area) if area.geom_type != "Polygon" else area
+        )
         # The position has to lie inside the coverage, and a doorway's own midpoint sits on the
         # wall between two rooms, which belongs to neither interior.
-        seat = shape.representative_point()
+        point = watched.representative_point()
+        seat = Point2D(x=round(point.x, 4), y=round(point.y, 4))
         sensor_id = f"pir_{connection.connection_id}"
         placed.append(
             PirSensor(
                 sensor_id=sensor_id,
-                position=Point2D(x=round(seat.x, 4), y=round(seat.y, 4)),
+                position=seat,
                 region_ids=sorted((left, right)),
-                coverage=Polygon2D(
-                    vertices=[
-                        Point2D(x=round(x, 4), y=round(y, 4))
-                        for x, y in list(shape.exterior.coords)[:-1]
-                    ]
-                ),
+                coverage=_reach(watched, seat, shape, both),
                 hold_milliseconds=hold_milliseconds,
                 hold_log_sigma=hold_log_sigma,
                 timing=timing(sensor_id),
@@ -1415,6 +1522,7 @@ def deploy_sensors(
                 region,
                 points_by_region.get(region.region_id, []),
                 activities_by_region.get(region.region_id, 0),
+                policy.pir_coverage_shape,
             )
             for number, (position, coverage) in enumerate(zones, start=1):
                 sensor_id = (
@@ -1447,6 +1555,7 @@ def deploy_sensors(
                 Point2D(x=minimum_x + (maximum_x - minimum_x) / 3, y=center.y),
                 Point2D(x=minimum_x + 2 * (maximum_x - minimum_x) / 3, y=center.y),
             ]
+        floor = Polygon([(vertex.x, vertex.y) for vertex in region.boundary.vertices])
         for number, position in enumerate(positions, start=1):
             suffix = f"_{number}" if len(positions) > 1 else ""
             sensors.append(
@@ -1454,7 +1563,7 @@ def deploy_sensors(
                     sensor_id=f"pir_{region.region_id}{suffix}",
                     position=position,
                     region_ids=[region.region_id],
-                    coverage=region.boundary,
+                    coverage=_reach(floor, position, policy.pir_coverage_shape, floor),
                     hold_milliseconds=policy.pir_hold_milliseconds,
                     hold_log_sigma=policy.pir_hold_log_sigma,
                     timing=sensor_timing(
@@ -1475,6 +1584,7 @@ def deploy_sensors(
                     sensor_id, cooldown_milliseconds=policy.pir_cooldown_milliseconds
                 ),
                 error_model=pir_error,
+                shape=policy.pir_coverage_shape,
             )
         )
     entities = {item.entity_id: item for item in home.entities}

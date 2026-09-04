@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from collections import defaultdict
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,7 @@ from smart_home_sim.compiler.solver import (
     activity_records,
 )
 from smart_home_sim.domain.compilation import COMPILATION_ISSUE_CODES
-from smart_home_sim.domain.models import Scenario
+from smart_home_sim.domain.models import DependencyGroup, Scenario
 
 PROJECT_ROOT = Path(__file__).parents[1]
 EXAMPLES = PROJECT_ROOT / "examples"
@@ -456,16 +457,14 @@ def test_window_split_reproduces_the_single_solve(monkeypatch: pytest.MonkeyPatc
     horizon from the per-solve cost — but only if the answer is the one the single solve would
     have given, since the plan hash is what every downstream guarantee is anchored to.
 
-    `mario_week` has dependencies, so the split refuses it on the real path; the guard is lifted
-    here because the point being tested is the equivalence, and that scenario is the one with a
-    frozen expected plan.
+    `mario_week` carries 122 dependencies and every one of them stays inside its day, so the split
+    accepts it on the real path and the guard no longer has to be lifted to test the equivalence.
     """
     monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_THRESHOLD_DAYS", 10_000)
     whole = compile_file(EXAMPLES / "valid/mario_week.json")
 
     monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_THRESHOLD_DAYS", 0)
     monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_DAYS", 2)
-    monkeypatch.setattr(compiler_service, "_windows_are_safe", lambda records: True)
     windowed = compile_file(EXAMPLES / "valid/mario_week.json")
 
     assert whole.plan is not None
@@ -474,11 +473,15 @@ def test_window_split_reproduces_the_single_solve(monkeypatch: pytest.MonkeyPatc
     assert windowed.report.canonical_plan_sha256 == whole.report.canonical_plan_sha256
 
 
-def test_a_scenario_with_dependencies_is_not_split(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A dependency can name an activity in a window that has not been solved yet.
+def test_a_scenario_whose_dependencies_stay_in_their_day_is_split(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A dependency inside one day cannot reach outside the window that day belongs to.
 
-    Its successor would be dropped rather than scheduled, silently, so the split declines instead
-    of reasoning about which dependencies happen to be safe.
+    This is the case that matters, because it is the only kind the generator emits — a meal
+    waiting for the cooking that same evening. Refusing the split for it sent a five-month import
+    down the single-solve path the windows exist to avoid: one undivided solve, hours long, with
+    no progress to report while it ran.
     """
     monkeypatch.setattr(compiler_service, "COMPILATION_WINDOW_THRESHOLD_DAYS", 0)
     calls: list[int] = []
@@ -492,7 +495,36 @@ def test_a_scenario_with_dependencies_is_not_split(monkeypatch: pytest.MonkeyPat
     result = compile_file(EXAMPLES / "valid/mario_week.json")
 
     assert result.plan is not None
-    assert calls == []
+    assert calls == [1]
+
+
+def test_a_dependency_that_leaves_its_day_refuses_the_split() -> None:
+    """The unsafe shape is still refused, and it is the crossing that makes it unsafe.
+
+    A predecessor in a window that has not been solved yet would see its successor silently
+    dropped rather than scheduled, so one reference out of 122 is enough to take the whole
+    scenario back to the single solve.
+    """
+    scenario = Scenario.model_validate_json(
+        json.dumps(_payload("mario_week.json"), separators=(",", ":"))
+    )
+    records = activity_records(scenario)
+    assert compiler_service._windows_are_safe(records)
+
+    first_day = next(record for record in records if record.day_index == 0)
+    later = next(record for record in records if record.day_index > 0)
+    crossed = later.activity.model_copy(
+        update={
+            "dependency_groups": [
+                DependencyGroup(activity_ids=[first_day.activity.activity_id])
+            ]
+        }
+    )
+    mutated = [
+        replace(record, activity=crossed) if record is later else record for record in records
+    ]
+
+    assert not compiler_service._windows_are_safe(mutated)
 
 
 def test_an_infeasible_horizon_names_the_day_that_cannot_be_scheduled() -> None:

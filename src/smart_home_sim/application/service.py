@@ -18,6 +18,7 @@ from smart_home_sim.authoring.preflight import (
     validate_habit_bands_hold_a_stable_stretch,
 )
 from smart_home_sim.authoring.service import validate_authoring_payload
+from smart_home_sim.compiler.service import CompilationProgress
 from smart_home_sim.domain.application import ApplicationIssue, GraphicalReference
 from smart_home_sim.domain.authoring import AuthoringIngestionIssue
 from smart_home_sim.domain.environment import HomeModel
@@ -172,9 +173,7 @@ class ApplicationService:
         imported = self.import_authoring_bundle(
             home_id,
             json.loads(expansion.bundle.model_dump_json(by_alias=True)),
-            on_progress=lambda done, total: stage(
-                f"compiling {expansion.day_count} days: {done} of {total} activities placed"
-            ),
+            on_progress=lambda step: stage(f"compiling: {step.describe()}"),
             extra_issues=band_issues,
         )
         return {
@@ -194,7 +193,7 @@ class ApplicationService:
         self,
         home_id: str,
         payload: dict[str, Any],
-        on_progress: Callable[[int, int], None] | None = None,
+        on_progress: Callable[[CompilationProgress], None] | None = None,
         extra_issues: list[AuthoringIngestionIssue] | None = None,
     ) -> dict[str, Any]:
         """Validate and publish one researcher-facing authoring bundle.

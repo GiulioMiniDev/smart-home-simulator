@@ -201,6 +201,14 @@ p { color: var(--text-soft); line-height: 1.55; }
    that invented one would be the same false reassurance as a spinner. */
 .operation-track i { display: block; width: 35%; height: 100%; border-radius: inherit; background: var(--indigo); animation: operation-sweep 1.5s ease-in-out infinite; }
 @keyframes operation-sweep { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+/* The steps already finished, with what each cost. Reversed visually would put the newest at the
+   top, but this list is read as a shape — read, expand, then a window at a time — and a shape is
+   read in the order it happened. */
+.operation-steps { display: grid; gap: .18rem; margin: .1rem 0 0; padding: 0; list-style: none; }
+.operation-steps li { display: flex; gap: .6rem; align-items: baseline; color: var(--text-faint); font-size: .74rem; }
+.operation-steps li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.operation-steps li time { font: 500 .72rem "Cascadia Code", monospace; font-variant-numeric: tabular-nums; }
+.operation-stage-age { color: var(--text-faint); font-variant-numeric: tabular-nums; }
 .operation-panel-lost { border-color: color-mix(in oklch, var(--red) 40%, var(--line)); background: var(--red-soft); }
 .operation-panel-lost > div { color: var(--red); }
 @media (prefers-reduced-motion: reduce) { .operation-track i { animation: none; width: 100%; margin-left: 0; opacity: .45; } }
@@ -250,6 +258,21 @@ dd { margin: 0; }
 .resident-list > div > span:nth-child(2) { display: flex; flex-direction: column; }
 .resident-list code { color: var(--text-faint); }
 .import-flow { display: grid; gap: .7rem; padding: 1.1rem; }
+/* The two questions an import asks before it runs: how far to go, and how to instrument the house.
+   Written as a form somebody reads once and answers, with the consequence of each answer under it
+   rather than in a manual — the fields it does not ask about are calibrations, not decisions. */
+.choice-block { display: grid; gap: .35rem; margin: 0; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-cool); }
+.choice-block legend { padding: 0 .3rem; color: var(--text-faint); font-size: .62rem; font-weight: 640; letter-spacing: .07em; text-transform: uppercase; }
+.choice-block:disabled { opacity: .5; }
+.choice-block > label { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: .1rem .5rem; padding: .3rem .35rem; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.choice-block > label.is-chosen { border-color: var(--indigo); background: var(--surface); }
+.choice-block > label > span { display: grid; gap: .1rem; }
+.choice-block strong { font-size: .8rem; font-weight: 620; }
+.choice-block small { color: var(--text-soft); font-size: .7rem; line-height: 1.35; }
+.choice-block input[type="radio"] { margin-top: .25rem; accent-color: var(--indigo); }
+.choice-grid > label { grid-template-columns: 1fr; padding: .25rem .35rem; }
+.choice-grid > label > span:first-child { color: var(--text-faint); font-size: .62rem; font-weight: 640; letter-spacing: .07em; text-transform: uppercase; }
+.choice-grid select { width: 100%; padding: .35rem .4rem; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); font-size: .78rem; }
 .import-guide-link { display: flex; align-items: center; gap: .7rem; padding: .75rem; border-inline-start: 3px solid var(--indigo); background: var(--indigo-soft); color: var(--text); text-decoration: none; }
 .import-guide-link > span { display: flex; flex-direction: column; }
 .import-guide-link small { color: var(--text-soft); }
@@ -262,13 +285,6 @@ dd { margin: 0; }
 .file-picker small code { font-size: 1em; color: var(--text-soft); }
 .file-picker input { position: absolute; inset: 0; cursor: pointer; opacity: 0; }
 .bundle-picker { min-height: 76px; border-color: color-mix(in oklch, var(--teal) 60%, var(--line)); background: var(--teal-soft); }
-.advanced-import { margin-top: .4rem; border-top: 1px solid var(--line); }
-.advanced-import > summary { display: flex; align-items: center; gap: .6rem; padding: .85rem 0; color: var(--text-soft); cursor: pointer; list-style: none; }
-.advanced-import > summary::-webkit-details-marker { display: none; }
-.advanced-import > summary > span { display: flex; flex-direction: column; }
-.advanced-import > summary small { color: var(--text-faint); }
-.advanced-import[open] > summary svg { transform: rotate(180deg); }
-.advanced-import > div { display: grid; gap: .7rem; padding: 0 0 .5rem; }
 .definition-list { display: grid; margin: 0; padding: 0 1.15rem; }
 .definition-list > div { display: grid; grid-template-columns: minmax(110px, .7fr) 1.3fr; gap: .8rem; align-items: center; min-height: 49px; border-bottom: 1px solid var(--line); }
 .definition-list dd { display: flex; min-width: 0; align-items: center; gap: .5rem; }
@@ -383,6 +399,22 @@ g.has-problem .furniture-glyph { color: var(--red); }
 .sensor-contact { color: var(--indigo); }
 .sensor-temperature { color: var(--red); }
 .sensor-node.is-selected .sensor-glyph circle, .sensor-node.is-selected .sensor-glyph rect { fill: currentcolor; }
+/* Everything the field sees, one detector at a time. Filled flat it was a green house: the union
+   of the cones says which floor is watched and nothing at all about which node watches it, and the
+   question in front of somebody arranging a field is where each one reaches. So every cone is
+   drawn the way the selected one is — pale wash, dashed edge — and the edges are what carry it. */
+.coverage-wash { pointer-events: none; }
+.coverage-wash polygon { fill: color-mix(in oklch, var(--teal) 9%, transparent); vector-effect: non-scaling-stroke; stroke: var(--teal); stroke-width: 1.4px; stroke-dasharray: 5 4; opacity: .85; }
+.coverage-wash.is-live polygon { pointer-events: auto; cursor: pointer; }
+.coverage-wash.is-live polygon.is-selected { cursor: grab; }
+/* A node is a quarter of a metre of ink and has to be caught with a mouse: the grab area is the
+   size of the thing rather than of what is drawn. */
+.sensor-grab { fill: transparent; stroke: none; }
+/* How far a detector sees is one number, so it is pulled by one kind of grip, from any side. */
+.range-grip { fill: var(--surface); stroke: var(--teal); stroke-width: 2px; vector-effect: non-scaling-stroke; cursor: ew-resize; }
+.range-grip.grip-north, .range-grip.grip-south { cursor: ns-resize; }
+.range-grip:hover { fill: var(--teal); }
+
 .sensor-node.is-selected text { opacity: 1; }
 /* With a sensor field on top, the furniture below is context: it should not compete with it. */
 .shows-sensors .entity-node { opacity: .32; }
@@ -420,6 +452,31 @@ g.has-problem .furniture-glyph { color: var(--red); }
 .furniture-choice span { overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .furniture-choice:hover { border-color: var(--line); background: var(--surface); color: var(--text); }
 .furniture-choice[aria-pressed="true"] { border-color: var(--indigo); background: var(--surface); color: var(--text); font-weight: 620; }
+/* The sensor field said as a list of rooms, down the inspector beside the drawing. The plan cannot
+   show a room nothing watches — there is nothing to draw there — and that room is the one somebody
+   redistributing a field is looking for, so it is called out rather than left to be noticed. */
+.sensor-rooms section { margin-top: .5rem; }
+.sensor-rooms h4 { display: flex; align-items: baseline; gap: .35rem; margin: 0 0 .25rem; color: var(--text-faint); font-size: .62rem; font-weight: 640; letter-spacing: .07em; text-transform: uppercase; }
+.sensor-rooms h4 small { color: var(--text-faint); font-size: .6rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.sensor-rooms .is-bare h4, .sensor-rooms .is-bare h4 small { color: var(--amber); }
+.sensor-rooms-note { margin: 0; color: var(--text-faint); font-size: .66rem; }
+.sensor-chips { display: flex; flex-wrap: wrap; gap: .25rem; }
+.sensor-chip { display: inline-flex; align-items: center; gap: .25rem; max-width: 100%; padding: .22rem .45rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text-soft); font-size: .66rem; cursor: pointer; }
+.sensor-chip.is-pir { color: var(--teal); }
+.sensor-chip.is-contact { color: var(--indigo); }
+.sensor-chip.is-temperature { color: var(--red); }
+.sensor-chip span { overflow: hidden; color: var(--text-soft); text-overflow: ellipsis; white-space: nowrap; }
+.sensor-chip:hover { background: var(--surface-raised); }
+.sensor-chip[aria-pressed="true"] { border-color: var(--indigo); background: var(--surface-raised); }
+.sensor-chip[aria-pressed="true"] span { color: var(--text); font-weight: 620; }
+.sensor-chip.is-add { padding: .22rem .35rem; border-style: dashed; color: var(--text-faint); }
+.sensor-chip.is-add:hover { border-style: solid; color: var(--text); }
+/* The name is the one field of a sensor that leaves the simulator, so it sits above the rest. */
+.sensor-name { display: grid; gap: .2rem; margin-bottom: .6rem; }
+.sensor-name > span { color: var(--text-faint); font-size: .62rem; font-weight: 640; letter-spacing: .07em; text-transform: uppercase; }
+.sensor-name input { padding: .35rem .45rem; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); font-family: "Cascadia Code", monospace; font-size: .74rem; }
+.sensor-name small { color: var(--text-faint); font-size: .64rem; line-height: 1.35; }
+.sensor-name small.is-error { color: var(--red); }
 /* Keeping a working copy, and throwing one away: neither of them is publishing. */
 .draft-actions { display: flex; gap: .3rem; margin-bottom: .55rem; }
 .draft-actions .tool-button { flex: 1; justify-content: center; }

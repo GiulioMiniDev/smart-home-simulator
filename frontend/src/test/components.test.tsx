@@ -367,6 +367,50 @@ describe("application components", () => {
     expect(svg.getAttribute("viewBox")).not.toBe(before);
   });
 
+  it("draws what the whole field sees, and pulls a detector's reach from any side of it", () => {
+    // Two questions the drawing could not answer: which corners of the flat nobody watches, and
+    // how far this one sees. The first needs every cone drawn at once without them piling up into
+    // mud; the second needs one grip instead of the eight corners of a room.
+    const editing = { onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn(), onRange: vi.fn() };
+    const select = vi.fn();
+    const view = render(<PlanCanvas home={home} sensors={sensors} layer="sensors" selectedId="pir" onSelect={select} editing={editing} showCoverage />);
+    const svg = view.container.querySelector("svg") as SVGSVGElement;
+    svg.getBoundingClientRect = () => ({ width: 800, height: 800, x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 800, toJSON: () => "" });
+    expect(view.container.querySelectorAll(".coverage-wash polygon")).toHaveLength(1);
+    // A number has one grip, not eight corners, and the four sides are the same gesture.
+    expect(view.container.querySelectorAll("circle.range-grip")).toHaveLength(4);
+    expect(view.container.querySelectorAll("rect.resize-handle")).toHaveLength(0);
+
+    // The grip follows the pointer: the edge lands where it was let go of, not where deltas drifted
+    // to. The node sits at (2, 2) and the plan is eight metres across eight hundred pixels.
+    const grip = view.container.querySelector('[aria-label="Range of pir east"]') as Element;
+    fireEvent(grip, pointer("pointerdown", 600, 400));
+    fireEvent(svg, pointer("pointermove", 600, 400));
+    expect(editing.onRange).toHaveBeenCalledWith("pir", 2);
+    fireEvent(svg, pointer("pointerup", 600, 400));
+
+    // The area a detector watches is a target the size of what it watches: clicking it picks the
+    // detector up, and once picked up it is dragged by the same area rather than by its own dot.
+    const wash = view.container.querySelector('[aria-label="Coverage of pir"]') as Element;
+    fireEvent(wash, pointer("pointerdown", 300, 300));
+    fireEvent(svg, pointer("pointermove", 400, 300));
+    expect(editing.onMove.mock.calls[0]?.[0]).toBe("pir");
+    fireEvent(svg, pointer("pointerup", 400, 300));
+
+    // Nothing selected: the wash still selects, and takes no drag.
+    view.rerender(<PlanCanvas home={home} sensors={sensors} layer="sensors" onSelect={select} editing={editing} showCoverage />);
+    const idle = view.container.querySelector('[aria-label="Coverage of pir"]') as Element;
+    fireEvent(idle, pointer("pointerdown", 300, 300));
+    fireEvent.click(idle);
+    expect(select).toHaveBeenCalledWith("pir");
+    expect(editing.onMove).toHaveBeenCalledTimes(1);
+
+    // Off, it is the selected field alone again — the view the plan opens with everywhere else.
+    view.rerender(<PlanCanvas home={home} sensors={sensors} layer="sensors" selectedId="pir" editing={editing} />);
+    expect(view.container.querySelector(".coverage-wash")).toBeNull();
+    expect(view.container.querySelector("polygon.sensor-coverage")).not.toBeNull();
+  });
+
   it("offers resize handles for areas only, and none when the plan is read-only", () => {
     const editing = { onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn() };
     const areas = render(<PlanCanvas home={home} sensors={sensors} selectedId="pir" editing={editing} />);
