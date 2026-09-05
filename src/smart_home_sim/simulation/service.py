@@ -1689,6 +1689,13 @@ class SimulationEngine:
         started = self.env.now
         movement_us = int(round(path.duration_seconds * 1_000_000))
         yield from self._travel(actor, path, movement_us, action_id)
+        # The action is written here rather than through `_execute_action`, so the catalog effects
+        # it declares have to be applied here too. `move_to` declares exactly one —
+        # `resident.location := {destination}` — and skipping it left the fact saying `bathroom`
+        # for every minute after a shower: over five months 1,466 of 12,080 stationary stretches,
+        # 18,585 minutes, had the resident recorded in a room her own waypoints had already left.
+        # Anything reading the trace by location rather than by trajectory believed it.
+        self._apply_move_effects(actor, destination, action_id)
         self.trace.actions.append(
             ActionExecution(
                 action_execution_id=action_id,
@@ -1705,6 +1712,30 @@ class SimulationEngine:
             )
         )
         return action_id
+
+    def _apply_move_effects(self, actor: ResidentRuntime, destination: str, action_id: str) -> None:
+        """Apply what the catalog says a `move_to` does, for a walk the catalog never routed.
+
+        Read from the action definition rather than written out, so the engine's own walk and an
+        authored one can never come to mean different things.
+        """
+        definition = self.action_definitions["move_to"]
+        arguments = {"destination": destination}
+        for template in definition.effects:
+            value = (
+                template.value.format(**arguments)
+                if isinstance(template.value, str)
+                else template.value
+            )
+            self._apply_effect(
+                StateEffect(
+                    fact=template.fact_template.format(**arguments),
+                    operation=template.operation,
+                    value=value,
+                ),
+                actor.resident_id,
+                action_id,
+            )
 
     def _settle(
         self,
@@ -2027,8 +2058,19 @@ class SimulationEngine:
         # a person reaches across a table without getting up, and it stood her up one second after
         # she had sat down to eat, so a twenty-eight minute breakfast was taken on her feet. Read
         # off the replay frames, which is where it shows.
+        #
+        # The exemption belongs to a *seated* body, though, and saying only `leaves_the_room` gave
+        # it to a lying one as well: on one five-month export 380 of 8,131 movements were walked
+        # with the posture reading `lying`, all of them inside a single room, the longest 2.58 m.
+        # Reaching across the table without getting up is a person; crossing two and a half metres
+        # of floor without getting off the bed is two channels of the model contradicting each
+        # other. Nothing is within reach of a body lying down — `_within_reach` has already
+        # returned every genuine reach as no path at all — so a walk that survives to here while
+        # lying is a walk, and it starts by standing up.
         leaves_the_room = path.waypoints[-1].region_id != actor.region_id
-        if leaves_the_room and actor.posture not in _AMBULATORY_POSTURES:
+        if actor.posture not in _AMBULATORY_POSTURES and (
+            leaves_the_room or actor.posture == _RECLINING_POSTURE
+        ):
             yield from self._stand_up(actor, action_id)
         self._set_execution_state(actor, "moving", "process_edge", action_id)
         # The walk begins when the walk begins, not when the action did: standing up above
@@ -2289,6 +2331,36 @@ class SimulationEngine:
                         cause_id="live_precondition_failed",
                     )
                 )
+                # Giving up on this activity is also the moment to ask again whether she should
+                # still be standing where the last one left her.
+                #
+                # `_return_from_service_room` decides once, when the previous activity ends, and
+                # defers when the next commitment is inside `IDLE_RETURN_AFTER_SECONDS` — she is
+                # between two steps of the same morning and the walk is not worth taking. That
+                # commitment is *this* one, and it has just evaporated: nothing else revisits the
+                # decision, so she waits in the service room for the gap that follows instead.
+                # Measured over five months, every one of the 43 idle bathroom stays past twenty
+                # minutes had a dropped activity inside that window — sixteen past the hour, the
+                # longest 111.8 minutes — against a median stay of 4.2. Sitting there a while is a
+                # person; the tail was the engine forgetting she was in there.
+                #
+                # The walk is filed under the activity that was dropped, which is the only one that
+                # can own it and is also the honest reading: the plan giving up is what sent her
+                # out. The drop itself stays the instant it was, so a dropped activity is still a
+                # zero-length statement that nothing happened.
+                dropped_at_us = int(self.env.now)
+                actor = self.state.residents[actor_id]
+                returned = None
+                if actor.execution_state == "idle":
+                    next_us = self._next_commitment(actor_id, dropped_at_us)
+                    returned = yield from self._return_from_service_room(
+                        actor, activity, execution_id, next_us
+                    )
+                    if returned is not None:
+                        # She has just been walked across the flat and is on her feet in a room
+                        # with nothing to do. The settle the previous activity spawned ran out at
+                        # the commitment this drop cancelled, so without this she stands there.
+                        self.env.process(self._settle(actor, execution_id, next_us))
                 self.trace.activities.append(
                     ActivityExecution(
                         activity_execution_id=execution_id,
@@ -2298,9 +2370,10 @@ class SimulationEngine:
                         process_model_id=self._process_model_id(activity.source_activity_id),
                         planned_start=activity.scheduled_start,
                         planned_end=activity.scheduled_end,
-                        actual_start=_at(self.origin, self.env.now),
-                        actual_end=_at(self.origin, self.env.now),
+                        actual_start=_at(self.origin, dropped_at_us),
+                        actual_end=_at(self.origin, dropped_at_us),
                         status="dropped",
+                        action_execution_ids=[returned] if returned is not None else [],
                         deviation_ids=[deviation_id],
                     )
                 )

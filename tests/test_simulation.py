@@ -20,13 +20,15 @@ from smart_home_sim.domain.environment import (
     Point2D,
     Polygon2D,
     SimulationBundle,
+    TraversalMode,
 )
 from smart_home_sim.domain.execution import (
     ActionExecution,
     ActivityExecution,
     MovementExecution,
 )
-from smart_home_sim.domain.models import ConditionOperator
+from smart_home_sim.domain.models import Condition, ConditionOperator
+from smart_home_sim.environment.navigation import NavigationPath, NavigationWaypoint
 from smart_home_sim.simulation.service import (
     _AMBULATORY_POSTURES,
     _SEATING_FURNITURE,
@@ -933,3 +935,141 @@ def test_she_sits_back_down_after_reaching_something_across_the_room(bundle) -> 
         resting_at=Point2D(x=12.4, y=8.0),
     )
     assert list(engine._sit_back_down(settled, "action_2")) == []
+
+
+def test_a_lying_body_stands_up_even_for_a_walk_that_stays_in_the_room(bundle) -> None:
+    """Reaching across the table is a person; crossing the room from the bed is two channels lying.
+
+    The stand-up used to be owed only to a walk that changed room, and that handed the exemption to
+    a lying body as well as a seated one: over five months 380 of 8,131 movements were walked with
+    the posture still reading `lying`, every one of them inside a single room, the longest 2.58 m.
+    Nothing is within reach of a body lying down — `_within_reach` has already turned every genuine
+    reach into no path at all — so a walk that gets this far while lying is a walk.
+    """
+    engine = SimulationEngine(_furnished_living_room(bundle))
+    across_the_room = NavigationPath(
+        waypoints=(
+            NavigationWaypoint(
+                region_id="living_room", x=11.8, y=8.0, traversal_mode=TraversalMode.walking
+            ),
+            NavigationWaypoint(
+                region_id="living_room", x=14.7, y=8.0, traversal_mode=TraversalMode.walking
+            ),
+        ),
+        distance_meters=2.9,
+        duration_seconds=3.0,
+    )
+
+    lying = ResidentRuntime(
+        resident_id="resident_mario_rossi",
+        region_id="living_room",
+        position=Point2D(x=11.8, y=8.0),
+        posture="lying",
+        resting_at=Point2D(x=11.8, y=8.0),
+    )
+    list(engine._travel(lying, across_the_room, 3_000_000, "action_lying"))
+    assert lying.posture in _AMBULATORY_POSTURES
+    assert lying.resting_at is None, "she is not still on the thing she was lying on"
+
+    # And the reason the gate was narrow in the first place survives: a seated body stays seated,
+    # which is what stopped a twenty-eight minute breakfast being eaten standing up.
+    seated = ResidentRuntime(
+        resident_id="resident_mario_rossi",
+        region_id="living_room",
+        position=Point2D(x=11.8, y=8.0),
+        posture="sitting",
+        resting_at=Point2D(x=11.8, y=8.0),
+    )
+    list(engine._travel(seated, across_the_room, 3_000_000, "action_seated"))
+    assert seated.posture == "sitting"
+
+
+def test_the_return_walk_says_which_room_it_walked_into(result) -> None:
+    """A walk the catalog never routed still owes the fact the catalog says it writes.
+
+    `move_to` declares `resident.location := {destination}` and the engine's own walk out of a
+    service room wrote the action without ever applying it, so the fact went on naming the bathroom
+    for every minute after a shower: over five months 1,466 of 12,080 stationary stretches — 18,585
+    minutes — had the resident recorded in a room her own waypoints had already left.
+    """
+    trace = result.trace
+    returns = [item for item in trace.action_executions if item.node_id == RETURN_NODE_ID]
+    assert returns
+
+    moves = defaultdict(list)
+    for transition in trace.state_transitions:
+        if transition.fact == "location":
+            moves[transition.causality.cause_id].append(transition)
+
+    for action in returns:
+        written = moves[action.action_execution_id]
+        assert len(written) == 1, "one walk, one statement about where it ended"
+        assert written[0].value == action.resolved_arguments["destination"]
+
+
+def _dinner_the_plan_gives_up_on(bundle: SimulationBundle) -> SimulationBundle:
+    """The golden week with `d1_a22` optional and impossible.
+
+    It is the activity that follows a shower by 7.7 minutes, which is inside
+    `IDLE_RETURN_AFTER_SECONDS`: the walk out of the bathroom is deferred for it, and then it never
+    happens.
+    """
+    plan = bundle.canonical_plan.model_copy(deep=True)
+    target = next(
+        activity
+        for day in plan.days
+        for activity in day.activities
+        if activity.source_activity_id == "d1_a22"
+    )
+    target.mandatory = False
+    target.preconditions = [
+        Condition(fact="resident.a_fact_no_day_ever_sets", operator=ConditionOperator.exists)
+    ]
+    return bundle.model_copy(update={"canonical_plan": plan})
+
+
+def test_giving_up_on_an_activity_walks_her_out_of_the_room_it_left_her_waiting_in(
+    bundle: SimulationBundle,
+) -> None:
+    """The bathroom stay that is a person, and the one that is the engine forgetting.
+
+    `_return_from_service_room` decides once, when an activity ends, and defers when the next
+    commitment is inside `IDLE_RETURN_AFTER_SECONDS` — she is between two steps of the same morning
+    and the walk is not worth taking. That commitment can then be dropped for failing its live
+    preconditions, and nothing revisited the decision: over five months every one of the 43 idle
+    bathroom stays past twenty minutes had a dropped activity inside that window, sixteen of them
+    past the hour and the longest 111.8 minutes, against a median stay of 4.2. Sitting there a
+    while is a person. The tail was this.
+
+    The walk is filed under the activity that was dropped, which is the only one that can own it
+    and is also the honest reading: the plan giving up is what sent her out.
+    """
+    trace = simulate_bundle(_dinner_the_plan_gives_up_on(bundle)).trace
+    assert not validate_execution_trace(trace, _dinner_the_plan_gives_up_on(bundle))
+
+    dropped = next(
+        item for item in trace.activity_executions if item.source_activity_id == "d1_a22"
+    )
+    assert dropped.status == "dropped"
+    # Giving up stays a zero-length statement that nothing happened.
+    assert dropped.actual_start == dropped.actual_end
+
+    walk = next(
+        item
+        for item in trace.action_executions
+        if item.action_execution_id in dropped.action_execution_ids
+    )
+    assert walk.node_id == RETURN_NODE_ID
+    movement = next(
+        item for item in trace.movements if item.action_execution_id == walk.action_execution_id
+    )
+    assert movement.origin_region_id in _TRANSIENT_REGIONS
+    assert movement.destination_region_id not in _TRANSIENT_REGIONS
+
+    # And she is not left standing in the room the walk delivered her to.
+    postures = [
+        item
+        for item in trace.state_transitions
+        if item.fact == "posture" and item.at >= walk.ended_at
+    ]
+    assert postures and postures[0].value != "standing"
