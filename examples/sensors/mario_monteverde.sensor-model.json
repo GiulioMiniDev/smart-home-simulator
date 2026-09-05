@@ -68,7 +68,7 @@
           }
         ]
       },
-      "holdMilliseconds": 30000.0,
+      "holdMilliseconds": 3500.0,
       "timing": {
         "latencyMilliseconds": 120.0,
         "clockJitterMilliseconds": 20.0,
@@ -112,7 +112,7 @@
           }
         ]
       },
-      "holdMilliseconds": 30000.0,
+      "holdMilliseconds": 3500.0,
       "timing": {
         "latencyMilliseconds": 100.0,
         "clockJitterMilliseconds": 15.0,
@@ -161,7 +161,7 @@
           }
         ]
       },
-      "holdMilliseconds": 30000.0,
+      "holdMilliseconds": 3500.0,
       "timing": {
         "latencyMilliseconds": 110.0,
         "clockJitterMilliseconds": 20.0,
@@ -205,7 +205,7 @@
           }
         ]
       },
-      "holdMilliseconds": 30000.0,
+      "holdMilliseconds": 3500.0,
       "timing": {
         "latencyMilliseconds": 130.0,
         "clockJitterMilliseconds": 25.0,
@@ -249,7 +249,7 @@
           }
         ]
       },
-      "holdMilliseconds": 30000.0,
+      "holdMilliseconds": 3500.0,
       "timing": {
         "latencyMilliseconds": 125.0,
         "clockJitterMilliseconds": 20.0,

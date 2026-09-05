@@ -62,7 +62,11 @@ class SensorDeploymentPolicy(ContractModel):
     # which is what makes two sensors in one room say different things.
     preset: Literal["minimal", "room_coverage", "dense", "functional_zones"] = "room_coverage"
     observation_profile: Literal["ideal", "realistic", "adverse"] = "ideal"
-    pir_hold_milliseconds: float = Field(default=5_000, gt=0)
+    # The same 3.5 s the `research` preset below already calibrates to, and the same the sensor
+    # model now defaults to: CASAS Aruba's detectors hold for 3.4 s at the median and 5.4 s at the
+    # third quartile. A hold is not a free parameter — it decides the finest structure a log can
+    # carry, because two shifts of a body closer together than the hold come back as one record.
+    pir_hold_milliseconds: float = Field(default=3_500, gt=0)
     pir_hold_log_sigma: float = Field(default=0.0, ge=0, le=2)
     pir_cooldown_milliseconds: float = Field(default=750, ge=0)
     # What a detector is taken to watch, once its reach has been worked out.

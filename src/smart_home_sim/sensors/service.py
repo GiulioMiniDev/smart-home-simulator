@@ -92,6 +92,44 @@ PIR_RETRIGGER_LOG_SIGMA = 0.6
 PIR_PRESENCE_MEAN_SECONDS = {"lying": 360.0, "sitting": 90.0}
 PIR_PRESENCE_DEFAULT_MEAN_SECONDS = 45.0
 PIR_PRESENCE_LOG_SIGMA = 0.7
+# Presence pulses arrive in clusters, because one shift of a still body is seen several times over
+# a few seconds and is then followed by a long quiet. Drawing them as a renewal process instead —
+# one lognormal interval after another — gets the *rate* right and the *shape* wrong, and the
+# difference is not cosmetic.
+#
+# Measured against the 401 annotated `Sleeping` spans of CASAS Aruba, on the interval between
+# consecutive activations of the same motion sensor:
+#
+#                          Aruba    renewal (mean 360, sigma 0.7)   clustered
+#     events / hour         10.4                             10.2        10.2
+#     median gap            14.2 s                          281.9 s      14.8 s
+#     first quartile         6.3 s                          175.8 s       6.1 s
+#     third quartile        85.2 s                          452.7 s      86.0 s
+#
+# The rate was already right — the renewal draw and Aruba agree to within 2% on events per hour of
+# occupancy, which is the number this model was originally checked against. What was wrong is that
+# a real sleeping body is bursty and ours was a metronome, and anything downstream that thresholds
+# on duration sees the difference: Leotta's action log discards a stay shorter than 30 s, which
+# throws away 77.4% of Aruba's sleep episodes and **99.8%** of ours, deleting the night from the
+# representation entirely.
+#
+# The three constants below are fitted to those Aruba quantiles with the mean held fixed, so the
+# change redistributes pulses in time without emitting more of them. The cluster size is geometric
+# with this mean, which is what makes the continuation a single Bernoulli draw. Only the lying rate
+# has an annotated benchmark; the same cluster shape is carried to the other postures because the
+# mechanism — one shift, several detections — does not depend on how the body is arranged.
+PIR_PRESENCE_BURST_PULSES = 4.0
+PIR_PRESENCE_BURST_GAP_SECONDS = 11.0
+PIR_PRESENCE_BURST_GAP_LOG_SIGMA = 0.55
+# Pulses inside a cluster can land closer together than a detector's hold, and then the two share
+# one ON: the pulse happened, the record did not. How much of a cluster survives is therefore a
+# property of the *detector*, not of the body — and this train is drawn once and shared by every
+# sensor that can see it, so nothing here can correct for it. It is left uncorrected on purpose.
+# What it means in practice is that a deployment whose hold is long cannot resolve a cluster at
+# all: at the 30 s this model still defaults to, four shifts a body makes over half a minute come
+# back as one record, and the events per hour of occupancy fall to a third. Aruba's own detectors
+# hold for 3.4 s at the median and 11.3 s at the 95th percentile, which is what lets its log show
+# the 14.2 s gaps this cluster is fitted to.
 # Floor on how close together two distinguishable shifts of one body can be. A property of the
 # person, not of any device, now that the pulse train is drawn once and shared: a sensor's own
 # hold only decides how long its output stays high afterwards.
@@ -240,6 +278,34 @@ class _MotionPulse:
     action_ids: tuple[str, ...]
 
 
+def _presence_interval(stream: random.Random, mean_seconds: float) -> float:
+    """Seconds to the next presence pulse, drawn from a clustered process of the given mean.
+
+    Each draw either continues the cluster the body is in — one shift seen again a few seconds
+    later — or opens the next one. The continuation probability is what makes the cluster size
+    geometric with mean `PIR_PRESENCE_BURST_PULSES`, and the between-cluster mean is solved so that
+    the mean of the mixture is exactly `mean_seconds`: the pulses move in time, they do not
+    multiply. See the note on the constants for the Aruba quantiles this is fitted to.
+    """
+    clustered = PIR_PRESENCE_BURST_PULSES
+    within = PIR_PRESENCE_BURST_GAP_SECONDS
+    between = clustered * mean_seconds - (clustered - 1) * within
+    if clustered <= 1 or between <= within:
+        # A posture so restless that the cluster would outlast the gap between clusters has no
+        # cluster structure left to model. Fall back to the plain renewal draw.
+        return stream.lognormvariate(
+            math.log(mean_seconds) - PIR_PRESENCE_LOG_SIGMA**2 / 2, PIR_PRESENCE_LOG_SIGMA
+        )
+    if stream.random() < (clustered - 1) / clustered:
+        return stream.lognormvariate(
+            math.log(within) - PIR_PRESENCE_BURST_GAP_LOG_SIGMA**2 / 2,
+            PIR_PRESENCE_BURST_GAP_LOG_SIGMA,
+        )
+    return stream.lognormvariate(
+        math.log(between) - PIR_PRESENCE_LOG_SIGMA**2 / 2, PIR_PRESENCE_LOG_SIGMA
+    )
+
+
 def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_MotionPulse]:
     """Every instant the resident moved, from manipulating something or from simply being there.
 
@@ -375,10 +441,7 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
                 _posture_at(postures_by_actor[dwell.actor_id], at),
                 PIR_PRESENCE_DEFAULT_MEAN_SECONDS,
             )
-            interval = stream.lognormvariate(
-                math.log(mean_seconds) - PIR_PRESENCE_LOG_SIGMA**2 / 2,
-                PIR_PRESENCE_LOG_SIGMA,
-            )
+            interval = _presence_interval(stream, mean_seconds)
             at += timedelta(seconds=max(PIR_MOTION_REFRACTORY_SECONDS, interval))
 
     pulses.sort(key=lambda item: (item.at, item.key))

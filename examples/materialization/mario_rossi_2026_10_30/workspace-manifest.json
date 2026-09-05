@@ -6,7 +6,7 @@
   "scenarioId": "mario_rossi_autonomous_elderly_2026_10_30",
   "bundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
   "traceId": "trace_49575c087f42ffc4",
-  "sensorLogId": "sensor_log_406cc5fd959e04c6",
+  "sensorLogId": "sensor_log_c9b1ba4269b3724d",
   "artifacts": [
     {
       "role": "scenario",
@@ -56,22 +56,22 @@
     {
       "role": "sensor_policy",
       "relativePath": "sensor-deployment-policy.json",
-      "sha256": "2fa84f22116e011cb9e95900e2e186b73730e5d1cf4e14c0a0b318be42f3281d"
+      "sha256": "b4195a60879b83a2bfea915c0f29d8d048ae3066f15ac01c8cf75b2f7158d75d"
     },
     {
       "role": "sensor_report",
       "relativePath": "sensor-deployment-report.json",
-      "sha256": "2395014bb413b24ad2cfb420d7bbc8d14ca02f1aaee2d194122881528cf8687a"
+      "sha256": "00ede0bbccc327f40bd6f4e3c8f28465a298a5ffc5de9b4fdf3184deb4f08512"
     },
     {
       "role": "sensor_model",
       "relativePath": "sensor-model.json",
-      "sha256": "d02a569b53e681249b3ea9755f4669c2b7cd031744e845cd64b8eb098f2ef595"
+      "sha256": "be7ecb40041799fd039db4657be71b406372a46cafcd3cc60ed1298ffee22604"
     },
     {
       "role": "plan_approval",
       "relativePath": "plan-approval.json",
-      "sha256": "50fbe371a0dffdbd37682cee1c75a8821ea95ad00fe6cf8db084670fcb393da4"
+      "sha256": "cd1933585c526584dfebe5bf50d7dc438bd8fc1b78f01e2e4db388d72fe264a0"
     },
     {
       "role": "simulation_report",
@@ -86,17 +86,17 @@
     {
       "role": "projection_report",
       "relativePath": "sensor-projection-report.json",
-      "sha256": "ccd72f1d715c6339509befa6ecfe61b485e9d75bae28c59a7dc68b1515b153a7"
+      "sha256": "51aa75ebc05abf66f06bcdfcfe30b69fde1d7e92875b2f9d0cc0d94934cfea0c"
     },
     {
       "role": "observable_sensor_log",
       "relativePath": "observable-sensor-log.json",
-      "sha256": "f4882640f578de4bff9d67ca510b79ee9db2b26de74dd61f35f6a6adecdb2682"
+      "sha256": "54e71c730d332af3867663db404618dbf7f0e9ed8408c1a6dcd90fb444fc6ffe"
     },
     {
       "role": "oracle_mapping",
       "relativePath": "oracle-mapping.json",
-      "sha256": "f2a0d6adca89a4a037a74012ad8426f0dc7bca783eb6f124f6ce539bb5d826ce"
+      "sha256": "1866d129c5438ceaa5dee97430fc61eb12b660fea5c89d620b00aa6a31f3dd0e"
     }
   ]
 }

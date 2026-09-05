@@ -1149,7 +1149,13 @@ def _polygon2d(shape: Polygon) -> Polygon2D:
 _DISC_SEGMENTS = 6
 
 
-def _reach(area: Polygon, seat: Point2D, shape: str, inside: Polygon) -> Polygon2D:
+def _reach(
+    area: Polygon,
+    seat: Point2D,
+    shape: str,
+    inside: Polygon,
+    minimum_radius: float = 0.0,
+) -> Polygon2D:
     """The floor a detector is taken to watch: the area worked out for it, or a disc of that reach.
 
     The rectangle is the room's floor shared out, which keeps every corner watched. The disc is
@@ -1157,13 +1163,21 @@ def _reach(area: Polygon, seat: Point2D, shape: str, inside: Polygon) -> Polygon
     leaves the corners to nobody, which is realistic and is a hole in the data. Neither is what the
     optics do: a Fresnel lens makes a fan of separate beams, and no polygon says that.
 
+    `minimum_radius` is what the caller already knows the disc has to reach. The disc's own radius
+    comes from the shorter side of the area shared out to it, which is a fact about the *room* and
+    says nothing about where that detector's furniture is. On a zone that is long and thin the two
+    disagree, and the disc then misses the very places it was positioned on: on one Florence flat
+    the bathroom node reached 0.95 m with its shower 1.40 m away, so five months of showering made a
+    third of the events per minute the toilet beside it made. Passing the reach in makes the radius
+    answer to the same furniture that chose the position.
+
     Falls back to the rectangle whenever the disc would not hold its own node, so a coverage that
     does not contain its sensor — which the M6 gate refuses — cannot be produced here.
     """
     if shape != "circle":
         return _polygon2d(area)
     minimum_x, minimum_y, maximum_x, maximum_y = area.bounds
-    radius = min(maximum_x - minimum_x, maximum_y - minimum_y) / 2
+    radius = max(min(maximum_x - minimum_x, maximum_y - minimum_y) / 2, minimum_radius)
     if radius <= 0:
         return _polygon2d(area)
     node = ShapelyPoint(seat.x, seat.y)
@@ -1209,8 +1223,14 @@ def _functional_zones(
     minimum_y, maximum_y = min(ys), max(ys)
 
     # Two objects sharing a position are one place to stand: the room anchor and its service point
-    # always do, and counting them twice would split a zone off nothing.
-    places = sorted({(round(item.position.x, 4), round(item.position.y, 4)) for item in points})
+    # always do, and counting them twice would split a zone off nothing. The approach radius rides
+    # along because a place to stand is not a dot: a node that reaches the middle of the shower
+    # still does not see the body standing in it.
+    approach: dict[tuple[float, float], float] = {}
+    for item in points:
+        key = (round(item.position.x, 4), round(item.position.y, 4))
+        approach[key] = max(approach.get(key, 0.0), item.approach_radius_meters)
+    places = sorted(approach)
     area = max(0.0, (maximum_x - minimum_x) * (maximum_y - minimum_y))
     affordable = max(1, int(area // _MINIMUM_ZONE_AREA_SQUARE_METRES))
     cap = max(1, min(_MAX_ZONES_PER_ROOM, affordable))
@@ -1219,17 +1239,31 @@ def _functional_zones(
         seat = _center(region.boundary)
         return [(seat, _reach(room, seat, shape, room))]
 
-    centres = [
-        (
+    # Each zone keeps the reach of the cluster that made it, not just the cluster's middle. The two
+    # are the same measurement read twice, so a detector placed on its furniture is now also sized
+    # by it; nothing new is consulted, and an inconsistency goes away.
+    seats: list[tuple[tuple[float, float], float]] = []
+    for group in _cluster_places(places, _zone_diameter(activity_count), cap):
+        centre = (
             round(sum(places[index][0] for index in group) / len(group), 4),
             round(sum(places[index][1] for index in group) / len(group), 4),
         )
-        for group in _cluster_places(places, _zone_diameter(activity_count), cap)
-    ]
-    centres.sort(key=lambda item: (item[1], item[0]))
-    if len(centres) == 1:
-        seat = Point2D(x=centres[0][0], y=centres[0][1])
-        return [(seat, _reach(room, seat, shape, room))]
+        seats.append(
+            (
+                centre,
+                max(
+                    math.hypot(places[index][0] - centre[0], places[index][1] - centre[1])
+                    + approach[places[index]]
+                    for index in group
+                ),
+            )
+        )
+    seats.sort(key=lambda item: (item[0][1], item[0][0]))
+    centres = [centre for centre, _ in seats]
+    if len(seats) == 1:
+        centre, cluster_reach = seats[0]
+        seat = Point2D(x=centre[0], y=centre[1])
+        return [(seat, _reach(room, seat, shape, room, cluster_reach))]
 
     # The detectors share the room out between them rather than each taking a box around its own
     # furniture. Boxes were tried first and left 60% of a living room unwatched, which is worse than
@@ -1245,7 +1279,7 @@ def _functional_zones(
     # the side or the middle of the room — a shape a person can point at and a reach a real cone
     # has. It is not a survey of what the optics would do, and it is not meant to be.
     placed: list[tuple[Point2D, Polygon2D]] = []
-    for centre in centres:
+    for centre, cluster_reach in seats:
         left, bottom, right, top = minimum_x, minimum_y, maximum_x, maximum_y
         for other in centres:
             if other == centre:
@@ -1277,7 +1311,7 @@ def _functional_zones(
             max(grown.geoms, key=lambda item: item.area) if grown.geom_type != "Polygon" else grown
         )
         seat = Point2D(x=centre[0], y=centre[1])
-        placed.append((seat, _reach(winner, seat, shape, room)))
+        placed.append((seat, _reach(winner, seat, shape, room, cluster_reach)))
     return placed or [(_center(region.boundary), region.boundary)]
 
 

@@ -15,9 +15,9 @@
   "sourceTraceSemanticDigest": "f397e82de6b33104c1d000f40ed00ed99ff128a90a2e98dfc0166d0cab4432e2",
   "sensorModelId": "mario_monteverde_ambient_sensors",
   "sensorModelVersion": "1.0.0",
-  "sensorModelSha256": "a0cbf833ab7a51b54a3b4d9e0115d6ba617ba7c15bab5a023e0950014538b106",
-  "observableLogSha256": "bb5ba8fd562784d63d67c13f174d9c831365dd5a32d5abbbe16313bea7cbcae4",
-  "oracleMappingSha256": "78a3d3be86a6f90b334cdb063672bdbd5cd38d7fb848c1e03235defb93b30dbd",
+  "sensorModelSha256": "4435af896fa298f21f238b8b5e33d6c01e891c811abb81d5ac514833064b23b0",
+  "observableLogSha256": "3c3604821ea05bd5a190449e35dde9b2f81a47f78c988228ae698981243aee62",
+  "oracleMappingSha256": "11ae299f189d493aae6443b24fc20f3f883d0bfecd8a0bb520bf05f049e937be",
   "projectedAt": "2026-10-19T07:44:25.688251+02:00",
   "issues": [],
   "sensors": [

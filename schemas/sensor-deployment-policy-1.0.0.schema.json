@@ -46,7 +46,7 @@
       "type": "string"
     },
     "pirHoldMilliseconds": {
-      "default": 5000,
+      "default": 3500,
       "exclusiveMinimum": 0,
       "title": "Pirholdmilliseconds",
       "type": "number"

@@ -92,7 +92,13 @@ class PirSensor(SensorBase):
     sensor_type: Literal["pir"] = "pir"
     region_ids: list[str] = Field(min_length=1)
     coverage: Polygon2D
-    hold_milliseconds: float = Field(default=30_000, gt=0)
+    # How long the output stays high after a detection. Measured on the ON/OFF pairs of CASAS
+    # Aruba's motion sensors: 3.4 s at the median, 5.4 s at the third quartile, 11.3 s at the 95th.
+    # This defaulted to 30 s, which no deployment ever asked for — every policy overrides it — and
+    # which quietly decides what a log can show: a hold that long cannot resolve two shifts of a
+    # body half a minute apart, so it folds a whole cluster of presence pulses into one record and
+    # a sleeping resident comes back as a third of the events per hour she should produce.
+    hold_milliseconds: float = Field(default=3_500, gt=0)
     hold_log_sigma: float = Field(default=0.0, ge=0, le=2)
 
     @model_validator(mode="after")
