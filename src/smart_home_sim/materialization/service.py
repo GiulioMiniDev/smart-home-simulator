@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from math import atan2, ceil, degrees, hypot
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 from shapely.geometry import Point as ShapelyPoint
@@ -20,6 +21,7 @@ from shapely.geometry import box as ShapelyBox
 from shapely.ops import unary_union
 
 from smart_home_sim.behavior.service import default_action_catalog_path
+from smart_home_sim.clock import localised
 from smart_home_sim.compiler import CompilationResult, compile_scenario
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
@@ -1336,6 +1338,7 @@ def _failure_windows(
     policy: SensorDeploymentPolicy,
     start: datetime,
     end: datetime,
+    zone: ZoneInfo,
 ) -> list[SensorFailureWindow]:
     """When this node is off the air, decided once per sensor from the seed.
 
@@ -1380,7 +1383,14 @@ def _failure_windows(
             merged[-1] = (merged[-1][0], max(merged[-1][1], closes))
         else:
             merged.append((opens, closes))
-    return [SensorFailureWindow(starts_at=opens, ends_at=closes) for opens, closes in merged]
+    # Both ends are the window start plus a fraction of the horizon, so on a run that begins in
+    # summer time they would announce a January outage in `+02:00`. Nothing behaves differently —
+    # `_in_failure` compares instants — but the model that explains a log should not be on a
+    # different clock from the log.
+    return [
+        SensorFailureWindow(starts_at=localised(opens, zone), ends_at=localised(closes, zone))
+        for opens, closes in merged
+    ]
 
 
 def _wall_span(
@@ -1741,6 +1751,7 @@ def deploy_sensors(
                         policy=policy,
                         start=window.start,
                         end=window.end,
+                        zone=ZoneInfo(bundle.scenario.time_zone),
                     )
                 }
             )

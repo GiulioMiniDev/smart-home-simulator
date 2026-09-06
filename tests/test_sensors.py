@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from collections import Counter
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
@@ -848,3 +850,41 @@ def test_pir_reports_a_resident_who_is_present_without_acting(
     linked = [item for item in result.oracle_mapping.links if item.observation_id in identifiers]
     assert len(linked) == len(during_night)
     assert all(item.cause_ids for item in linked if item.origin != "false_positive")
+
+
+def test_a_sample_taken_after_the_change_of_hour_wears_the_new_offset(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    """The projector builds two kinds of timestamp, and only one of them was safe.
+
+    A PIR pulse is a few milliseconds off a trace timestamp and inherits an offset that is right
+    because the trace's was. A temperature sample is `trace.started_at` plus a phase and then a
+    fixed interval for as long as the run lasts, and a false positive is `trace.started_at` plus
+    whole days: both carried the offset of the *first* day of the horizon to the last. On a
+    five-month run that put `+02:00` on all 440,427 observations, straight through 25 October.
+
+    The acceptance trace is one October week and never crosses, so its horizon is stretched into
+    November and a periodic thermometer is asked to sample the whole of it. The events do not
+    change — there are none after the 19th — but the sampling clock runs, which is the part that
+    used to freeze.
+    """
+    rome = ZoneInfo("Europe/Rome")
+    stretched = trace.model_copy(
+        update={"ended_at": datetime(2026, 11, 5, tzinfo=timezone(timedelta(hours=2)))}
+    )
+    sensor = _seasonal_temperature(sensor_model)
+    result = project_sensors(stretched, _realistic_model(sensor_model, sensor))
+    assert result.report.success
+    assert result.observable_log is not None
+    records = result.observable_log.records
+
+    offsets = Counter(item.observed_at.utcoffset() for item in records)
+    assert offsets[timedelta(hours=2)] > 0
+    assert offsets[timedelta(hours=1)] > 0
+    # Not merely present on both sides: right on both sides, for every single sample.
+    assert all(
+        item.observed_at.utcoffset() == item.observed_at.astimezone(rome).utcoffset()
+        for item in records
+    )
+    # And the instants stay one strictly ordered run: the offset moves, the clock never jumps back.
+    assert records == sorted(records, key=lambda item: item.observed_at)

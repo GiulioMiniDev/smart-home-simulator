@@ -613,16 +613,19 @@ def test_outage_counts_and_durations_are_drawn_rather_than_rounded() -> None:
     weekend.
     """
     from datetime import UTC, datetime, timedelta
+    from zoneinfo import ZoneInfo
 
     from smart_home_sim.materialization.service import _failure_windows
 
     policy = SensorDeploymentPolicy.realistic()
     start = datetime(2026, 8, 4, tzinfo=UTC)
     end = start + timedelta(days=243)
+    zone = ZoneInfo("Europe/Rome")
     identifiers = [f"pir_room_{index}" for index in range(12)]
 
     per_sensor = [
-        _failure_windows(name, seed=1, policy=policy, start=start, end=end) for name in identifiers
+        _failure_windows(name, seed=1, policy=policy, start=start, end=end, zone=zone)
+        for name in identifiers
     ]
     counts = {len(windows) for windows in per_sensor}
     durations = {
@@ -634,6 +637,18 @@ def test_outage_counts_and_durations_are_drawn_rather_than_rounded() -> None:
 
     assert len(counts) > 1, f"every sensor drew the same number of outages: {counts}"
     assert len(durations) > 1, "every outage lasted exactly as long as every other"
+
+    # Both ends are the horizon start plus a fraction of it, and this horizon runs from August to
+    # April: a window announced in `+02:00` in January would put the model that explains a log on a
+    # different clock from the log. Every moment wears the offset Rome was on at that instant.
+    moments = [
+        moment
+        for windows in per_sensor
+        for item in windows
+        for moment in (item.starts_at, item.ends_at)
+    ]
+    assert {moment.utcoffset() for moment in moments} == {timedelta(hours=1), timedelta(hours=2)}
+    assert all(moment.utcoffset() == moment.astimezone(zone).utcoffset() for moment in moments)
 
 
 def test_functional_zones_split_a_room_where_room_coverage_cannot() -> None:

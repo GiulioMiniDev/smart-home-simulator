@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import simpy
 from pydantic import JsonValue, ValidationError
@@ -22,6 +23,7 @@ from smart_home_sim.behavior.service import (
     default_action_catalog_path,
     default_variable_catalog_path,
 )
+from smart_home_sim.clock import localised
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
     ActionCatalog,
@@ -481,8 +483,8 @@ class TraceCollector:
         return f"{kind}_{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
 
 
-def _at(origin: datetime, microseconds: int | float) -> datetime:
-    return origin + timedelta(microseconds=int(round(microseconds)))
+def _at(origin: datetime, microseconds: int | float, zone: ZoneInfo) -> datetime:
+    return localised(origin + timedelta(microseconds=int(round(microseconds))), zone)
 
 
 def _offset(origin: datetime, value: datetime) -> int:
@@ -867,7 +869,10 @@ def trace_semantic_digest(payload: dict[str, Any]) -> str:
 class SimulationEngine:
     def __init__(self, bundle: SimulationBundle) -> None:
         self.bundle = bundle
-        self.origin = bundle.scenario.simulation_window.start
+        self.zone = ZoneInfo(bundle.scenario.time_zone)
+        # Normalised as well as read: the window start carries whatever offset its author wrote,
+        # and every timestamp in the trace is measured from it.
+        self.origin = localised(bundle.scenario.simulation_window.start, self.zone)
         self.env = simpy.Environment(initial_time=0)
         self.streams = NamedRandomStreams(bundle.seed)
         self.state = _initial_runtime(bundle)
@@ -1133,7 +1138,7 @@ class SimulationEngine:
         outcome = "not_sampled"
         if prepared.occurred:
             actor_id = next(iter(self.state.residents))
-            day = self._day_for(_at(self.origin, self.env.now).date())
+            day = self._day_for(_at(self.origin, self.env.now, self.zone).date())
             conditions_ok = all(
                 _scenario_condition(item, self.state, actor_id, day.context.facts)
                 for item in candidate.preconditions
@@ -1188,7 +1193,7 @@ class SimulationEngine:
                 event_id=candidate.event_id,
                 sampled=True,
                 occurred=prepared.occurred and outcome == "applied",
-                evaluated_at=_at(self.origin, self.env.now),
+                evaluated_at=_at(self.origin, self.env.now, self.zone),
                 trigger_activity_id=candidate.trigger_activity_id,
                 sampled_amounts=prepared.amounts,
                 outcome=outcome,
@@ -1211,7 +1216,7 @@ class SimulationEngine:
                 transition_id=self.trace.identifier(
                     "state", [len(self.trace.transitions), self.env.now, subject_id, fact]
                 ),
-                at=_at(self.origin, self.env.now),
+                at=_at(self.origin, self.env.now, self.zone),
                 subject_type=subject_type,
                 subject_id=subject_id,
                 fact=fact,
@@ -1359,7 +1364,7 @@ class SimulationEngine:
                 resource_event_id=self.trace.identifier(
                     "resource", [len(self.trace.resources), resource_id, activity_id, operation]
                 ),
-                at=_at(self.origin, self.env.now),
+                at=_at(self.origin, self.env.now, self.zone),
                 resource_id=resource_id,
                 activity_execution_id=self.trace.identifier("activity", [activity_id]),
                 actor_id=actor_id,
@@ -1704,8 +1709,8 @@ class SimulationEngine:
                 occurrence_index=0,
                 action_type="move_to",
                 actor_id=actor.resident_id,
-                started_at=_at(self.origin, started),
-                ended_at=_at(self.origin, self.env.now),
+                started_at=_at(self.origin, started, self.zone),
+                ended_at=_at(self.origin, self.env.now, self.zone),
                 status="completed",
                 resolved_arguments={"destination": destination},
                 provider_ids=[actor.resident_id],
@@ -2084,7 +2089,7 @@ class SimulationEngine:
         accumulated = 0.0
         waypoints = [
             TrajectoryWaypoint(
-                at=_at(self.origin, walk_started),
+                at=_at(self.origin, walk_started, self.zone),
                 region_id=path.waypoints[0].region_id,
                 position=Point2D(x=path.waypoints[0].x, y=path.waypoints[0].y),
                 traversal_mode=path.waypoints[0].traversal_mode,
@@ -2095,7 +2100,7 @@ class SimulationEngine:
             fraction = accumulated / path.distance_meters if path.distance_meters else 1
             waypoints.append(
                 TrajectoryWaypoint(
-                    at=_at(self.origin, walk_started + movement_us * fraction),
+                    at=_at(self.origin, walk_started + movement_us * fraction, self.zone),
                     region_id=waypoint.region_id,
                     position=Point2D(x=waypoint.x, y=waypoint.y),
                     traversal_mode=waypoint.traversal_mode,
@@ -2120,8 +2125,8 @@ class SimulationEngine:
                 ),
                 action_execution_id=action_id,
                 actor_id=actor.resident_id,
-                started_at=_at(self.origin, walk_started),
-                ended_at=_at(self.origin, self.env.now),
+                started_at=_at(self.origin, walk_started, self.zone),
+                ended_at=_at(self.origin, self.env.now, self.zone),
                 origin_region_id=origin_region,
                 destination_region_id=actor.region_id,
                 distance_meters=path.distance_meters,
@@ -2246,8 +2251,8 @@ class SimulationEngine:
                 occurrence_index=occurrence,
                 action_type=node.action_type or "",
                 actor_id=actor.resident_id,
-                started_at=_at(self.origin, started),
-                ended_at=_at(self.origin, self.env.now),
+                started_at=_at(self.origin, started, self.zone),
+                ended_at=_at(self.origin, self.env.now, self.zone),
                 status="completed",
                 resolved_arguments=binding.resolved_arguments,
                 provider_ids=[item.provider_id for item in binding.capability_bindings],
@@ -2370,8 +2375,8 @@ class SimulationEngine:
                         process_model_id=self._process_model_id(activity.source_activity_id),
                         planned_start=activity.scheduled_start,
                         planned_end=activity.scheduled_end,
-                        actual_start=_at(self.origin, dropped_at_us),
-                        actual_end=_at(self.origin, dropped_at_us),
+                        actual_start=_at(self.origin, dropped_at_us, self.zone),
+                        actual_end=_at(self.origin, dropped_at_us, self.zone),
                         status="dropped",
                         action_execution_ids=[returned] if returned is not None else [],
                         deviation_ids=[deviation_id],
@@ -2653,8 +2658,8 @@ class SimulationEngine:
                     process_model_id=process_model_id,
                     planned_start=activity.scheduled_start,
                     planned_end=activity.scheduled_end,
-                    actual_start=_at(self.origin, actual_start_us),
-                    actual_end=_at(self.origin, self.env.now),
+                    actual_start=_at(self.origin, actual_start_us, self.zone),
+                    actual_end=_at(self.origin, self.env.now, self.zone),
                     status=status,
                     action_execution_ids=action_ids,
                     deviation_ids=deviations,
@@ -2691,7 +2696,7 @@ class SimulationEngine:
         self.trace.runtime_events.sort(key=lambda item: (item.evaluated_at, item.event_id))
         self.trace.deviations.sort(key=lambda item: item.deviation_id)
         final_state = FinalWorldState(
-            at=_at(self.origin, trace_end_us),
+            at=_at(self.origin, trace_end_us, self.zone),
             residents=[
                 ResidentFinalState(
                     resident_id=item.resident_id,
@@ -2757,7 +2762,7 @@ class SimulationEngine:
             source_bundle_sha256=canonical_sha256(self.bundle),
             seed=self.bundle.seed,
             started_at=self.origin,
-            ended_at=_at(self.origin, trace_end_us),
+            ended_at=_at(self.origin, trace_end_us, self.zone),
             activity_executions=self.trace.activities,
             action_executions=self.trace.actions,
             movements=self.trace.movements,

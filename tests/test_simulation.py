@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 import simpy
@@ -41,6 +42,7 @@ from smart_home_sim.simulation.service import (
     ResidentRuntime,
     ResourceCoordinator,
     SimulationEngine,
+    _at,
     _initial_runtime,
     _known_scenario_fact,
     _operator_matches,
@@ -1073,3 +1075,41 @@ def test_giving_up_on_an_activity_walks_her_out_of_the_room_it_left_her_waiting_
         if item.fact == "posture" and item.at >= walk.ended_at
     ]
     assert postures and postures[0].value != "standing"
+
+
+def test_a_timestamp_wears_the_offset_its_zone_was_on(result) -> None:
+    """The change of hour reaches the trace, which for five months it did not.
+
+    `simulation_window.start` parses to a fixed offset, and adding a timedelta to a fixed offset
+    keeps it: a run begun in September wrote `+02:00` on all 440,427 observations of its five-month
+    export, straight through 25 October. The instants were right and the wall clock every consumer
+    reads off them was an hour late for 102 of 153 days, while the plan beside them was correct —
+    `2026-10-26T05:51:00+01:00` planned, `06:51:00+02:00` executed, one row, two clocks.
+
+    The golden week is October 12th to 19th and never crosses, so the crossing is asked of `_at`
+    directly and the invariant is then asserted over every timestamp the golden run produces.
+    """
+    rome = ZoneInfo("Europe/Rome")
+    origin = datetime(2026, 9, 4, tzinfo=timezone(timedelta(hours=2)))
+
+    before = _at(origin, 40 * 86_400 * 1_000_000, rome)
+    after = _at(origin, 60 * 86_400 * 1_000_000, rome)
+    assert before.utcoffset() == timedelta(hours=2)
+    assert after.utcoffset() == timedelta(hours=1)
+    # The same instant either way: the offset is what moves, never the moment.
+    assert after == origin + timedelta(days=60)
+
+    # A fixed offset rather than the zone itself, so that adding sensor latency to a trace
+    # timestamp stays instant arithmetic instead of becoming wall-clock arithmetic.
+    assert after.tzinfo == timezone(timedelta(hours=1))
+    assert after + timedelta(hours=1) == after.astimezone(UTC) + timedelta(hours=1)
+
+    trace = result.trace
+    moments = [item.actual_start for item in trace.activity_executions] + [
+        item.at for item in trace.state_transitions
+    ]
+    assert moments
+    for moment in moments:
+        assert moment.utcoffset() == moment.astimezone(rome).utcoffset()
+    assert trace.started_at.utcoffset() == trace.started_at.astimezone(rome).utcoffset()
+    assert trace.ended_at.utcoffset() == trace.ended_at.astimezone(rome).utcoffset()

@@ -11,12 +11,14 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import JsonValue, ValidationError
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as ShapelyPoint
 from shapely.ops import nearest_points, unary_union
 
+from smart_home_sim.clock import localised
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.environment import Point2D, SimulationBundle
 from smart_home_sim.domain.execution import (
@@ -1295,6 +1297,7 @@ def _project_sensor(
         realistic=realistic,
     )
     counters = Counters(candidate_count=len(candidates))
+    zone = ZoneInfo(bundle.scenario.time_zone)
     dropout = _stream(seed, sensor.sensor_id, "dropout")
     false_negative = _stream(seed, sensor.sensor_id, "false-negative")
     jitter = _stream(seed, sensor.sensor_id, "clock-jitter")
@@ -1348,9 +1351,21 @@ def _project_sensor(
             * sensor.timing.clock_drift_ppm
             / 1_000.0
         )
-        observed_at = candidate.at + timedelta(
-            milliseconds=max(0.0, latency + jitter.uniform(-jitter_bound, jitter_bound))
-            + drift_milliseconds
+        # Normalised here because this is the one place a candidate becomes an observation, and
+        # candidates reach it having been built from very different bases. A PIR pulse is a few
+        # milliseconds off a trace timestamp and inherits its offset harmlessly; a temperature
+        # sample is `trace.started_at` plus a phase and then a fixed interval for five months, and
+        # a false positive is `trace.started_at` plus whole days. Those last two would carry the
+        # offset of the *first* day of the horizon to the last, so the log would disagree with
+        # itself across a change of hour — worse than being uniformly wrong. One conversion here
+        # covers every path in.
+        observed_at = localised(
+            candidate.at
+            + timedelta(
+                milliseconds=max(0.0, latency + jitter.uniform(-jitter_bound, jitter_bound))
+                + drift_milliseconds
+            ),
+            zone,
         )
         value = candidate.value
         noisy = candidate.origin == "false_positive" or candidate.noise_applied
