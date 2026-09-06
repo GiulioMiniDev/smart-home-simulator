@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0.0",
   "documentType": "execution_trace",
-  "traceId": "trace_49575c087f42ffc4",
+  "traceId": "trace_bf15142282e5bd61",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "49575c087f42ffc484c4b379c4372a8ddf445baef35180031b9dee8d8422e082",
+  "sourceBundleSha256": "bf15142282e5bd616d1e7e112cf08c63b0a91825e9f5a85cac2d33e403e3e10f",
   "seed": 42,
   "engine": {
     "engineName": "smart-home-sim-engine",

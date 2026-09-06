@@ -333,6 +333,11 @@
           "title": "Climateprofile",
           "type": "string"
         },
+        "outdoor": {
+          "default": false,
+          "title": "Outdoor",
+          "type": "boolean"
+        },
         "roomOffsetCelsius": {
           "default": 0.0,
           "maximum": 10,
@@ -389,11 +394,23 @@
           "title": "Heartbeatseconds",
           "type": "number"
         },
+        "sampleIntervalSeconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sampleintervalseconds"
+        },
         "sources": {
           "items": {
             "$ref": "#/$defs/TemperatureSource"
           },
-          "minItems": 1,
           "title": "Sources",
           "type": "array"
         }
@@ -402,8 +419,7 @@
         "sensorId",
         "position",
         "regionId",
-        "baselineCelsius",
-        "sources"
+        "baselineCelsius"
       ],
       "title": "TemperatureSensor",
       "type": "object"

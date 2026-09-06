@@ -917,7 +917,7 @@ def _temperature_candidates(
     deltas = _temperature_deltas(trace, sensor)
     current = sensor.baseline_celsius
     if enhanced:
-        interval = min(source.sample_interval_seconds for source in sensor.sources)
+        interval = sensor.effective_sample_interval_seconds
         candidates: list[Candidate] = []
         delta_index = 0
         sample_at = trace.started_at + timedelta(seconds=sensor.sample_phase_seconds)
@@ -955,11 +955,24 @@ def _temperature_candidates(
                 # year. seasonalCoupling re-injects the share of the seasonal swing that a room
                 # actually follows.
                 # The envelope only: what the room drifts towards as the weather moves it.
+                #
+                # Outside the walls there is no envelope, and the reading *is* the weather plus
+                # whatever shade or sun this particular balcony sits in. Deployed as an interior
+                # room instead, a Florentine balcony read 16.3 to 25.3 degrees from September to
+                # February, stayed within 0.8 of the house mean and correlated 0.997 with the
+                # bathroom: a channel that could have said what season it was, saying nothing.
+                # Corrected it spans 1.0 to 25.0 and its monthly means walk 19.0, 15.6, 11.6, 8.1,
+                # 6.3. The lag below still applies to it -- a thermometer in a housing on a wall is
+                # not the air, it is a few minutes behind it -- so both kinds go through one target.
                 target = (
-                    sensor.baseline_celsius
-                    + sensor.room_offset_celsius
-                    + 0.32 * (outdoor - climate_mean)
-                    + sensor.seasonal_coupling * (climate_mean - annual_mean)
+                    outdoor + sensor.room_offset_celsius
+                    if sensor.outdoor
+                    else (
+                        sensor.baseline_celsius
+                        + sensor.room_offset_celsius
+                        + 0.32 * (outdoor - climate_mean)
+                        + sensor.seasonal_coupling * (climate_mean - annual_mean)
+                    )
                 )
                 if sensor.thermal_time_constant_hours > 0:
                     alpha = 1 - math.exp(-interval / (sensor.thermal_time_constant_hours * 3600))

@@ -5,8 +5,8 @@
   "success": true,
   "scenarioId": "mario_rossi_autonomous_elderly_2026_10_30",
   "bundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "traceId": "trace_49575c087f42ffc4",
-  "sensorLogId": "sensor_log_e38b8f18d6f0aa6e",
+  "traceId": "trace_bf15142282e5bd61",
+  "sensorLogId": "sensor_log_2699f5d7aaba8f0f",
   "artifacts": [
     {
       "role": "scenario",
@@ -26,12 +26,12 @@
     {
       "role": "home_report",
       "relativePath": "home-generation-report.json",
-      "sha256": "725c19c5e4cc65102fd2e8ea88f3c53aeaa549437330d6da7dfae7195cb3f306"
+      "sha256": "b29f203361538ebb39166acfaf38b462848fd23f9b4ea5f394100eebf66f0333"
     },
     {
       "role": "home",
       "relativePath": "home-model.json",
-      "sha256": "d64e73565fd7adfa5c6478fa76b811e1ad02d7e0ed885891b6522312169d979a"
+      "sha256": "504c07f6e99465a16c665b7ad6efab140d30c44d38bf46d6c7733378e2ba3717"
     },
     {
       "role": "compilation_report",
@@ -46,12 +46,12 @@
     {
       "role": "environment_report",
       "relativePath": "environment-report.json",
-      "sha256": "440e2cc9fa377ce0c3531a25b11381625c5655889c41c3e1d272fc068e1cac5d"
+      "sha256": "b1f48d7eacfbbdda88aa57194b70c647c9469066064b6567ee144ff2b61f3fdd"
     },
     {
       "role": "simulation_bundle",
       "relativePath": "simulation-bundle.json",
-      "sha256": "49575c087f42ffc484c4b379c4372a8ddf445baef35180031b9dee8d8422e082"
+      "sha256": "bf15142282e5bd616d1e7e112cf08c63b0a91825e9f5a85cac2d33e403e3e10f"
     },
     {
       "role": "sensor_policy",
@@ -61,42 +61,42 @@
     {
       "role": "sensor_report",
       "relativePath": "sensor-deployment-report.json",
-      "sha256": "00ede0bbccc327f40bd6f4e3c8f28465a298a5ffc5de9b4fdf3184deb4f08512"
+      "sha256": "aa60dfce329aee2ef2308c26857fec9ed619188a0efc370d20fd63387fa22b71"
     },
     {
       "role": "sensor_model",
       "relativePath": "sensor-model.json",
-      "sha256": "be7ecb40041799fd039db4657be71b406372a46cafcd3cc60ed1298ffee22604"
+      "sha256": "e6b9bad8b46bff268a0f43456c0dd0dda07b807666fcf728a7b27a79434012bd"
     },
     {
       "role": "plan_approval",
       "relativePath": "plan-approval.json",
-      "sha256": "cd1933585c526584dfebe5bf50d7dc438bd8fc1b78f01e2e4db388d72fe264a0"
+      "sha256": "d9606845ae101b54f4d3387508e2d902811c2f1afe1fdfcb9ace56c96c2145db"
     },
     {
       "role": "simulation_report",
       "relativePath": "simulation-report.json",
-      "sha256": "18ec5c58ea375171bb00fbaf5ea447fb7b8c67d97561965a05635bb24e61fdd9"
+      "sha256": "6050f414c7632de80af8cd264f5a0262a405a4b0c58af931d757bb6b6f3f7444"
     },
     {
       "role": "execution_trace",
       "relativePath": "execution-trace.json",
-      "sha256": "36d8d57555d0356cc8c6d4d1997b12dbc1e0d5ccc4ce17b746cad7aacecc5d24"
+      "sha256": "a084b9533ff293101609c3a7fad30be50106dc7271311c27a60fa05cfbe8bd87"
     },
     {
       "role": "projection_report",
       "relativePath": "sensor-projection-report.json",
-      "sha256": "3e0ed9683e8ae985f793a1407f151b3f858892371c2dee925faa93e667afb2ab"
+      "sha256": "d9d5d25f38a63a20c7db20c35bebfb3ce7546ed6105358afb97cd8f7be6991cb"
     },
     {
       "role": "observable_sensor_log",
       "relativePath": "observable-sensor-log.json",
-      "sha256": "639d201e1f1bebddf8016144e945836083922c67c7e2a148d4105c6e2104e21d"
+      "sha256": "45c04d1d8f1ee858e851122cf4081cdef9a85945869976ba626209a8cd8e2bfd"
     },
     {
       "role": "oracle_mapping",
       "relativePath": "oracle-mapping.json",
-      "sha256": "dc892dadfe511d097f9c04d390d1d25c21681559e28771c49b3924520ad339ae"
+      "sha256": "18d50da3e0468c1ecd60c5713ca1bb35628bd2d903ac940bfdc8d56237ec594f"
     }
   ]
 }

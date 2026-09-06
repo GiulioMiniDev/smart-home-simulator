@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from smart_home_sim.domain.environment import Point2D, Polygon2D, SimulationBundle
 from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.sensors import (
+    DEFAULT_TEMPERATURE_SAMPLE_SECONDS,
     ContactSensor,
     ObservableSensorLog,
     OracleMapping,
@@ -888,3 +889,72 @@ def test_a_sample_taken_after_the_change_of_hour_wears_the_new_offset(
     )
     # And the instants stay one strictly ordered run: the offset moves, the clock never jumps back.
     assert records == sorted(records, key=lambda item: item.observed_at)
+
+
+def test_a_thermometer_outside_the_walls_reads_the_weather(
+    trace: ExecutionTrace, sensor_model: SensorModel
+) -> None:
+    """A balcony is not a room the weather nudges: it *is* the weather.
+
+    Deployed as an interior room, a Florentine balcony spent September to February between 16.3 and
+    25.3 degrees, stayed within 0.8 of the house mean and correlated 0.997 with the bathroom. The
+    same five months read outdoors span 1.1 to 24.9, which is what makes the channel able to say
+    what season it is.
+    """
+    # Sources stripped from both: the question is what the envelope does, not what a shower does.
+    indoor = _seasonal_temperature(sensor_model).model_copy(
+        update={
+            "room_offset_celsius": 0.0,
+            "error_model": SensorErrorModel(),
+            "sources": [],
+            "sample_interval_seconds": 900.0,
+        }
+    )
+    outdoor = indoor.model_copy(
+        update={"outdoor": True, "seasonal_coupling": 1.0, "thermal_time_constant_hours": 0.25}
+    )
+
+    def readings(sensor: TemperatureSensor) -> list[float]:
+        result = project_sensors(trace, _realistic_model(sensor_model, sensor))
+        assert result.observable_log is not None
+        return [float(item.value) for item in result.observable_log.records]
+
+    inside, outside = readings(indoor), readings(outdoor)
+    # The acceptance trace is one October week, so this is the daily swing: a room follows a third
+    # of it through its walls, the balcony follows all of it.
+    assert max(outside) - min(outside) > 2.5 * (max(inside) - min(inside))
+    # And it is not the same series shifted: the room sits near its own baseline, the balcony near
+    # the city's mean.
+    assert min(outside) < min(inside) - 1.0
+
+
+def test_a_thermometer_with_nothing_to_watch_keeps_its_own_cadence(
+    sensor_model: SensorModel,
+) -> None:
+    """The interval belongs to the firmware; a source may only ask to be read faster.
+
+    Taking it from the sources alone was fine only while every sensor was required to have one. The
+    moment a hallway could say it holds nothing that makes heat, it fell back to the source default
+    of sixty seconds instead of the quarter-hour its deployment asked for, and three thermometers of
+    a five-month run went from 9,300 readings to 132,900.
+    """
+    base = _seasonal_temperature(sensor_model)
+    assert base.sources
+
+    quiet = base.model_copy(update={"sources": [], "sample_interval_seconds": 900.0})
+    assert quiet.effective_sample_interval_seconds == 900.0
+
+    # Unset, it defers to the sources entirely, which is what every model written before the field
+    # existed means and what keeps them reading exactly as they did.
+    deferring = base.model_copy(update={"sample_interval_seconds": None})
+    assert deferring.effective_sample_interval_seconds == min(
+        item.sample_interval_seconds for item in base.sources
+    )
+    # A source may make it faster, never slower.
+    eager = base.model_copy(update={"sample_interval_seconds": 900.0})
+    assert eager.effective_sample_interval_seconds == min(
+        [900.0] + [item.sample_interval_seconds for item in base.sources]
+    )
+
+    bare = base.model_copy(update={"sources": [], "sample_interval_seconds": None})
+    assert bare.effective_sample_interval_seconds == DEFAULT_TEMPERATURE_SAMPLE_SECONDS

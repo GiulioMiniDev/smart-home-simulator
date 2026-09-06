@@ -12870,7 +12870,7 @@
       },
       {
         "regionId": "balcony",
-        "kind": "room",
+        "kind": "outdoor",
         "boundary": {
           "vertices": [
             {
@@ -32723,7 +32723,7 @@
     {
       "artifactId": "synthetic_mario_rome_apartment_logical_v1",
       "version": "1.0.0",
-      "sha256": "d64e73565fd7adfa5c6478fa76b811e1ad02d7e0ed885891b6522312169d979a"
+      "sha256": "504c07f6e99465a16c665b7ad6efab140d30c44d38bf46d6c7733378e2ba3717"
     }
   ],
   "residentKinematics": [

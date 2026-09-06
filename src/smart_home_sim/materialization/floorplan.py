@@ -55,6 +55,10 @@ ROOM_PROFILES: dict[str, tuple[float, float]] = {
 DEFAULT_PROFILE = (12.0, 1.15)
 # Rooms that read as appendages of the flat and belong on its edge rather than in the middle.
 EDGE_ROOMS = frozenset({"balcony", "terrace", "storage"})
+# Rooms of the dwelling that are outside its walls. Furnished, walked and instrumented like any
+# other — a balcony is where the laundry gets hung — but not heated, so a thermometer in one reads
+# the weather instead of a room drifting towards it. `storage` is an edge room and an indoor one.
+OUTDOOR_ROOMS = frozenset({"balcony", "terrace", "loggia", "veranda", "patio", "garden"})
 # Rooms that in a real flat open onto exactly one other space.
 SINGLE_DOOR_ROOMS = frozenset(
     {"bathroom", "second_bathroom", "balcony", "terrace", "storage", "laundry_room"}
@@ -109,6 +113,11 @@ class SharedWall:
     y: float
     vertical: bool
     overlap_meters: float
+
+
+def is_outdoor(region_id: str) -> bool:
+    """Is this room of the dwelling outside its walls?"""
+    return region_id in OUTDOOR_ROOMS
 
 
 def room_area(region_id: str) -> float:

@@ -78,6 +78,7 @@ from smart_home_sim.materialization.service import (
 )
 from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle
+from smart_home_sim.summary.plan import dwelling_region_ids
 
 ROOT = Path(__file__).parents[1]
 SOURCE = ROOT / "generated/mario_rossi_2026_10_30_ingested"
@@ -1495,3 +1496,89 @@ def _polygon_area(vertices: list[Point2D]) -> float:
         following = vertices[(index + 1) % len(vertices)]
         total += point.x * following.y - following.x * point.y
     return abs(total) / 2
+
+
+def test_a_hob_and_a_television_are_not_the_same_event() -> None:
+    """What a thing does to the air of its room, by what the thing is.
+
+    Every source used to carry one number from the policy -- 0.7 degrees, no rise, no decay -- so a
+    hob and a television were the same event and the thermometers of a five-month run correlated
+    above 0.995 with each other, balcony included, leaving 0.10 degrees of room-specific signal
+    against a measurement noise of 0.12. Six sensors, one degree of freedom, and 12.7% of the log.
+
+    A source is also something that *makes heat and can be switched on*, which the selection did not
+    ask. It took every switchable entity and, failing that, whatever sorted first: the hallway was
+    warmed by its own front door, the balcony by a drying rack, the kitchen by the generator's own
+    catch-all provider. Measured on the trace, exactly four entities of that flat ever toggled
+    `active`, so most of those declarations were false and the readings pure envelope.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    result = deploy_sensors(bundle, SensorDeploymentPolicy(preset="room_coverage"))
+    assert result.sensor_model is not None
+    thermometers = {
+        item.region_id: item
+        for item in result.sensor_model.sensors
+        if isinstance(item, TemperatureSensor)
+    }
+
+    def source(region: str, entity: str) -> Any:
+        return next(item for item in thermometers[region].sources if item.entity_id == entity)
+
+    hob = source("kitchen", "stove")
+    television = source("living_room", "television")
+    shower = source("bathroom", "shower")
+    assert hob.delta_celsius > 8 * television.delta_celsius
+    # And the *shape* differs too, which is what tells two appliances of one room apart: steam
+    # arrives in a minute and a half and lingers, a hob climbs for five minutes and cools for
+    # half an hour.
+    assert shower.rise_duration_seconds < hob.rise_duration_seconds
+    assert shower.decay_duration_seconds < hob.decay_duration_seconds
+    assert all(item.rise_duration_seconds > 0 for item in thermometers["kitchen"].sources)
+
+    # A room may hold nothing that makes heat, and saying so is the point: the hallway's front door
+    # does not warm it, and the generator's own service provider is scaffolding, not an appliance.
+    assert thermometers["hallway"].sources == []
+    assert thermometers["bedroom"].sources == []
+    assert not any(
+        item.entity_id.startswith("service_")
+        for sensor in thermometers.values()
+        for item in sensor.sources
+    )
+
+    # Outside the walls nothing in the room matters, because the reading is the weather -- and the
+    # balcony keeps its detector, which is the only thing that says she went out to it.
+    balcony = thermometers["balcony"]
+    assert balcony.outdoor
+    assert balcony.sources == []
+    # Under a policy that gives rooms any thermal inertia at all, the balcony has far less of it:
+    # only its own housing stands between it and the air, not a building.
+    realistic = deploy_sensors(bundle, SensorDeploymentPolicy.realistic())
+    assert realistic.sensor_model is not None
+    lags = {
+        item.region_id: item.thermal_time_constant_hours
+        for item in realistic.sensor_model.sensors
+        if isinstance(item, TemperatureSensor)
+    }
+    assert 0 < lags["balcony"] < lags["kitchen"]
+    assert any(
+        isinstance(item, PirSensor) and "balcony" in item.region_ids
+        for item in result.sensor_model.sensors
+    )
+
+
+def test_a_balcony_is_a_room_of_the_flat_that_sits_outside_it() -> None:
+    """`RegionKind.outdoor` was in the enum since M4 and nothing ever produced one.
+
+    So a balcony was a room: instrumented as a heated interior, counted among the rooms, and
+    accepted by the editor as somewhere to start a staircase -- which its own error message already
+    said it was not. It stays part of the dwelling all the same, because membership is grown through
+    walkable connections rather than read off this field.
+    """
+    scenario, package = source_models()
+    home = generate_home(scenario, package).home
+    assert home is not None
+    kinds = {item.region_id: item.kind for item in home.regions}
+    assert kinds["balcony"] is RegionKind.outdoor
+    assert kinds["kitchen"] is RegionKind.room
+    assert floorplan.is_outdoor("terrace") and not floorplan.is_outdoor("storage")
+    assert "balcony" in dwelling_region_ids(home)

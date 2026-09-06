@@ -572,6 +572,73 @@ def _home_failure(
     )
 
 
+# What a thing does to the air of the room it is in, while it is on: how far the reading moves, how
+# long it takes to get there, and how long the room takes to give it back. Three numbers rather than
+# one because the *shape* is what tells two appliances apart — a moka is a four-minute blip and a
+# hob is a slow climb and a long cool — and telling appliances apart is the whole point of putting a
+# thermometer in a room that already has a detector in it.
+#
+# Every source used to carry the same 0.7 °C step with no rise and no decay, so a hob and a
+# television were the same event: on Filippo the six thermometers correlated above 0.995 with each
+# other, balcony included, and what was left after removing the house mean had a standard deviation
+# of 0.10 °C against a measurement noise of 0.12. Six sensors, one degree of freedom, 12.7% of the
+# log.
+#
+# Values are for the air a metre or two away in an ordinary flat, not at the appliance. A type that
+# is missing falls back to the policy's single number, so a new appliance still reads as something.
+THERMAL_SIGNATURES: dict[str, tuple[float, float, float]] = {
+    # type: (celsius, rise seconds, decay seconds)
+    "stove": (2.5, 300.0, 1800.0),
+    "oven": (2.2, 600.0, 2400.0),
+    "shower": (1.5, 90.0, 900.0),
+    "kettle": (0.4, 60.0, 300.0),
+    "dishwasher": (0.35, 480.0, 1200.0),
+    "moka_coffee_maker": (0.35, 120.0, 480.0),
+    "washing_machine": (0.3, 600.0, 1200.0),
+    "television": (0.3, 600.0, 1200.0),
+    "washbasin": (0.15, 60.0, 300.0),
+    "sink": (0.15, 60.0, 300.0),
+    "floor_lamp": (0.1, 180.0, 600.0),
+    "radio": (0.05, 300.0, 600.0),
+}
+
+# A room's catch-all provider: no footprint, no substance, and no heat. It is scaffolding the
+# generator adds so that an action with nowhere to happen still has somewhere, and treating it as an
+# appliance put half a degree into a kitchen every time anything at all happened there.
+_SERVICE_ENTITY_TYPE = "generated_environment_service"
+
+
+# What a thermometer outside the walls lags the air by: its own housing, not a building.
+OUTDOOR_THERMAL_TIME_CONSTANT_HOURS = 0.25
+
+
+def _temperature_source(entity: HomeEntity, policy: SensorDeploymentPolicy) -> TemperatureSource:
+    delta, rise, decay = THERMAL_SIGNATURES.get(
+        entity.entity_type,
+        (policy.temperature_source_delta_celsius, 0.0, 0.0),
+    )
+    return TemperatureSource(
+        entity_id=entity.entity_id,
+        fact="active",
+        delta_celsius=delta,
+        rise_duration_seconds=rise,
+        decay_duration_seconds=decay,
+        sample_interval_seconds=policy.temperature_sample_interval_seconds,
+    )
+
+
+def _dwelling_region_kind(region_id: str) -> RegionKind:
+    """A room of the flat, unless it is one of the flat's rooms that sits outside its walls.
+
+    `RegionKind.outdoor` has been in the enum since M4 and nothing ever produced one, so a balcony
+    was a room: instrumented as a heated interior, counted among the rooms of the summary, and
+    accepted by the editor as somewhere to start a staircase — which its own error message already
+    said it was not ("not on a balcony or out in the street"). It stays part of the dwelling, since
+    membership is grown through walkable connections and not read off this field.
+    """
+    return RegionKind.outdoor if floorplan.is_outdoor(region_id) else RegionKind.room
+
+
 def generate_home(
     scenario: Scenario,
     package: PersonalProcessPackage,
@@ -622,7 +689,7 @@ def generate_home(
             regions.append(
                 HomeRegion(
                     region_id=location.location_id,
-                    kind=RegionKind.room,
+                    kind=_dwelling_region_kind(location.location_id),
                     boundary=room_rects[location.location_id].to_polygon(),
                     level=levels[location.location_id],
                 )
@@ -632,7 +699,7 @@ def generate_home(
             regions.append(
                 HomeRegion(
                     region_id=location.location_id,
-                    kind=RegionKind.room,
+                    kind=_dwelling_region_kind(location.location_id),
                     boundary=_rectangle(
                         index * policy.room_width_meters,
                         0,
@@ -1522,7 +1589,11 @@ def deploy_sensors(
 ) -> SensorDeploymentResult:
     policy = policy or SensorDeploymentPolicy()
     home = bundle.home_model
-    local_regions = [item for item in home.regions if item.kind is RegionKind.room]
+    # A balcony is instrumented like any other room of the flat: it is walked to, hung laundry on,
+    # and a detector there is the only thing that says she went out to it.
+    local_regions = [
+        item for item in home.regions if item.kind in {RegionKind.room, RegionKind.outdoor}
+    ]
     if not local_regions:
         local_regions = home.regions[:1]
     selected = local_regions[:1] if policy.preset == "minimal" else local_regions
@@ -1692,10 +1763,28 @@ def deploy_sensors(
             entities_by_region[region.region_id],
             key=lambda item: (item.entity_id.startswith("service_"), item.entity_id),
         )
-        active_entities = [
-            entity for entity in region_entities if entity.entity_id in active_entity_ids
-        ]
-        source_entities = active_entities or region_entities[:1]
+        # Whether this room is outside. The home model says so when it was generated after outdoor
+        # rooms existed; the room's own name says so for every home generated before, and asking the
+        # name here is the same rule `_dwelling_region_kind` applies rather than a second opinion —
+        # without it a balcony keeps its interior thermometer until its whole house is regenerated,
+        # which costs the geometry.
+        outdoor = region.kind is RegionKind.outdoor or floorplan.is_outdoor(region.region_id)
+        # A source is something that makes heat *and* can be switched on, and a room may have
+        # neither. What was here took every switchable entity of the room and, failing that, the
+        # first one that sorted — so the hallway was warmed by its own front door and the balcony by
+        # a drying rack, neither of which emits anything and neither of which ever fired: over five
+        # months exactly four entities in the flat toggled `active`. Outside, nothing in the room
+        # matters at all, because the reading is the weather.
+        source_entities = (
+            []
+            if outdoor
+            else [
+                entity
+                for entity in region_entities
+                if entity.entity_id in active_entity_ids
+                and entity.entity_type != _SERVICE_ENTITY_TYPE
+            ]
+        )
         room_fraction = _stable_fraction(bundle.seed.__str__(), region.region_id, "temperature")
         room_offset = (room_fraction - 0.5) * 1.4 if policy.use_city_climate else 0.0
         sample_phase = (
@@ -1710,26 +1799,31 @@ def deploy_sensors(
                 region_id=region.region_id,
                 baseline_celsius=policy.temperature_baseline_celsius,
                 climate_profile="city_seasonal" if policy.use_city_climate else "fixed",
+                outdoor=outdoor,
                 room_offset_celsius=round(room_offset, 6),
-                thermal_time_constant_hours=policy.temperature_thermal_time_constant_hours,
+                sample_interval_seconds=policy.temperature_sample_interval_seconds,
+                # Four hours is a room behind its walls. A thermometer on a balcony has only its
+                # own housing between it and the air, which is minutes: left at zero it tracked the
+                # analytic curve exactly and crossed the reporting threshold on nearly every
+                # sample, and the document would also have been claiming an envelope it does not
+                # have.
+                thermal_time_constant_hours=(
+                    OUTDOOR_THERMAL_TIME_CONSTANT_HOURS
+                    if outdoor
+                    else policy.temperature_thermal_time_constant_hours
+                ),
                 quantization_celsius=policy.temperature_quantization_celsius,
                 sample_phase_seconds=round(sample_phase, 6),
                 seasonal_coupling=(
-                    policy.temperature_seasonal_coupling if policy.use_city_climate else 0.0
+                    (1.0 if outdoor else policy.temperature_seasonal_coupling)
+                    if policy.use_city_climate
+                    else 0.0
                 ),
                 reporting_mode=policy.temperature_reporting_mode,
                 report_threshold_celsius=policy.temperature_report_threshold_celsius,
                 heartbeat_seconds=policy.temperature_heartbeat_seconds,
                 timing=sensor_timing(f"temperature_{region.region_id}"),
-                sources=[
-                    TemperatureSource(
-                        entity_id=source.entity_id,
-                        fact="active",
-                        delta_celsius=policy.temperature_source_delta_celsius,
-                        sample_interval_seconds=policy.temperature_sample_interval_seconds,
-                    )
-                    for source in source_entities
-                ],
+                sources=[_temperature_source(source, policy) for source in source_entities],
                 error_model=SensorErrorModel(
                     dropout_probability=policy.dropout_probability,
                     false_negative_probability=policy.false_negative_probability,

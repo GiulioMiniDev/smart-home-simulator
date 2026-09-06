@@ -255,7 +255,10 @@ def _home_section(inputs: SummaryInputs) -> str:
         if entity.entity_type != SERVICE_ENTITY_TYPE:
             furniture.setdefault(entity.region_id, []).append(_plain(entity.entity_type))
 
-    rooms = [item for item in home.regions if item.kind == "room"]
+    # A balcony is a room of this flat that happens to be outside its walls, so it belongs in the
+    # table with the others. "Elsewhere" is for the supermarket and the bar, which are kilometres
+    # off; listing a balcony among them would say the resident leaves home to hang the laundry.
+    rooms = [item for item in home.regions if item.kind in {"room", "outdoor"}]
     table = _rows(
         ("Room", "Area", "Furniture", "Sensors"),
         (
@@ -269,7 +272,9 @@ def _home_section(inputs: SummaryInputs) -> str:
         ),
         numeric=(1,),
     )
-    elsewhere = sorted(item.region_id for item in home.regions if item.kind != "room")
+    elsewhere = sorted(
+        item.region_id for item in home.regions if item.kind not in {"room", "outdoor"}
+    )
     beyond = (
         f'<p class="note">The resident also leaves the flat: the scenario places '
         f"{len(elsewhere)} region(s) outside it — "
@@ -311,12 +316,17 @@ def _sensor_watches(sensor: Any) -> str:
             part for part in (f"<code>{_escape(sensor.entity_id)}</code>", fact, trigger) if part
         )
     if sensor.sensor_type == "temperature":
-        # What actually moves the reading: a thermometer with no sources is a flat line, and the
-        # deltas are the only thing in the model that says a shower is visible in the bathroom.
+        # What actually moves the reading. The deltas are the only thing in the model that says a
+        # shower is visible in the bathroom, and a room may legitimately have none of them: a
+        # hallway holds nothing that makes heat, and outside the walls the baseline does not apply
+        # at all because the reading is the weather.
+        if getattr(sensor, "outdoor", False):
+            return "outdoors · reads the weather"
         sources = ", ".join(
             f"{_plain(item.entity_id)} {item.delta_celsius:+.1f} °C" for item in sensor.sources
         )
-        return f"{sensor.baseline_celsius:.1f} °C baseline · {_escape(sources)}"
+        baseline = f"{sensor.baseline_celsius:.1f} °C baseline"
+        return f"{baseline} · {_escape(sources)}" if sources else f"{baseline} · nothing heats it"
     return "presence in " + _escape(", ".join(_plain(item) for item in sensor.region_ids))
 
 
@@ -325,7 +335,7 @@ def _sensor_tuning(sensor: Any) -> str:
         return f"holds {sensor.hold_milliseconds / 1000:.0f} s"
     if sensor.sensor_type == "contact":
         return f"pulses {sensor.pulse_milliseconds / 1000:.1f} s"
-    interval = min(item.sample_interval_seconds for item in sensor.sources)
+    interval = sensor.effective_sample_interval_seconds
     return f"samples every {interval / 60:.0f} min, {sensor.reporting_mode}"
 
 
@@ -685,7 +695,10 @@ def _metrics(inputs: SummaryInputs) -> str:
     items = [
         (f"{profile.day_count}", "days"),
         (_count(activities), "activities run"),
-        (str(len([x for x in home.regions if x.kind == "room"])) if home else "—", "rooms"),
+        (
+            str(len([x for x in home.regions if x.kind in {"room", "outdoor"}])) if home else "—",
+            "rooms",
+        ),
         (str(len(inputs.sensors.sensors)) if inputs.sensors else "—", "sensors"),
         (_count(observations) if observations else "—", "readings exported"),
         (str(bands) if bands else "—", "habit bands"),

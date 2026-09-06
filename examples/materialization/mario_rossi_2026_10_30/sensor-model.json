@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "49575c087f42ffc484c4b379c4372a8ddf445baef35180031b9dee8d8422e082",
+  "sourceBundleSha256": "bf15142282e5bd616d1e7e112cf08c63b0a91825e9f5a85cac2d33e403e3e10f",
   "seed": 42,
   "regionIds": [
     "balcony",
@@ -494,6 +494,7 @@
       "regionId": "bedroom",
       "baselineCelsius": 20.0,
       "climateProfile": "fixed",
+      "outdoor": false,
       "roomOffsetCelsius": 0.0,
       "thermalTimeConstantHours": 0.0,
       "quantizationCelsius": 0.5,
@@ -502,18 +503,8 @@
       "reportingMode": "periodic",
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
-      "sources": [
-        {
-          "entityId": "bed",
-          "fact": "active",
-          "activeValue": true,
-          "deltaCelsius": 0.5,
-          "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
-          "sampleIntervalSeconds": 900.0
-        }
-      ]
+      "sampleIntervalSeconds": 900.0,
+      "sources": []
     },
     {
       "sensorId": "temperature_bathroom",
@@ -538,6 +529,7 @@
       "regionId": "bathroom",
       "baselineCelsius": 20.0,
       "climateProfile": "fixed",
+      "outdoor": false,
       "roomOffsetCelsius": 0.0,
       "thermalTimeConstantHours": 0.0,
       "quantizationCelsius": 0.5,
@@ -546,25 +538,26 @@
       "reportingMode": "periodic",
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
+      "sampleIntervalSeconds": 900.0,
       "sources": [
         {
           "entityId": "shower",
           "fact": "active",
           "activeValue": true,
-          "deltaCelsius": 0.5,
+          "deltaCelsius": 1.5,
           "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
+          "riseDurationSeconds": 90.0,
+          "decayDurationSeconds": 900.0,
           "sampleIntervalSeconds": 900.0
         },
         {
           "entityId": "washbasin",
           "fact": "active",
           "activeValue": true,
-          "deltaCelsius": 0.5,
+          "deltaCelsius": 0.15,
           "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
+          "riseDurationSeconds": 60.0,
+          "decayDurationSeconds": 300.0,
           "sampleIntervalSeconds": 900.0
         }
       ]
@@ -592,6 +585,7 @@
       "regionId": "kitchen",
       "baselineCelsius": 20.0,
       "climateProfile": "fixed",
+      "outdoor": false,
       "roomOffsetCelsius": 0.0,
       "thermalTimeConstantHours": 0.0,
       "quantizationCelsius": 0.5,
@@ -600,25 +594,16 @@
       "reportingMode": "periodic",
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
+      "sampleIntervalSeconds": 900.0,
       "sources": [
         {
           "entityId": "stove",
           "fact": "active",
           "activeValue": true,
-          "deltaCelsius": 0.5,
+          "deltaCelsius": 2.5,
           "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
-          "sampleIntervalSeconds": 900.0
-        },
-        {
-          "entityId": "service_kitchen",
-          "fact": "active",
-          "activeValue": true,
-          "deltaCelsius": 0.5,
-          "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
+          "riseDurationSeconds": 300.0,
+          "decayDurationSeconds": 1800.0,
           "sampleIntervalSeconds": 900.0
         }
       ]
@@ -646,6 +631,7 @@
       "regionId": "living_room",
       "baselineCelsius": 20.0,
       "climateProfile": "fixed",
+      "outdoor": false,
       "roomOffsetCelsius": 0.0,
       "thermalTimeConstantHours": 0.0,
       "quantizationCelsius": 0.5,
@@ -654,15 +640,16 @@
       "reportingMode": "periodic",
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
+      "sampleIntervalSeconds": 900.0,
       "sources": [
         {
           "entityId": "television",
           "fact": "active",
           "activeValue": true,
-          "deltaCelsius": 0.5,
+          "deltaCelsius": 0.3,
           "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
+          "riseDurationSeconds": 600.0,
+          "decayDurationSeconds": 1200.0,
           "sampleIntervalSeconds": 900.0
         }
       ]
@@ -690,6 +677,7 @@
       "regionId": "hallway",
       "baselineCelsius": 20.0,
       "climateProfile": "fixed",
+      "outdoor": false,
       "roomOffsetCelsius": 0.0,
       "thermalTimeConstantHours": 0.0,
       "quantizationCelsius": 0.5,
@@ -698,18 +686,8 @@
       "reportingMode": "periodic",
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
-      "sources": [
-        {
-          "entityId": "entrance_door",
-          "fact": "active",
-          "activeValue": true,
-          "deltaCelsius": 0.5,
-          "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
-          "sampleIntervalSeconds": 900.0
-        }
-      ]
+      "sampleIntervalSeconds": 900.0,
+      "sources": []
     },
     {
       "sensorId": "temperature_balcony",
@@ -734,26 +712,17 @@
       "regionId": "balcony",
       "baselineCelsius": 20.0,
       "climateProfile": "fixed",
+      "outdoor": true,
       "roomOffsetCelsius": 0.0,
-      "thermalTimeConstantHours": 0.0,
+      "thermalTimeConstantHours": 0.25,
       "quantizationCelsius": 0.5,
       "samplePhaseSeconds": 0.0,
       "seasonalCoupling": 0.0,
       "reportingMode": "periodic",
       "reportThresholdCelsius": 0.5,
       "heartbeatSeconds": 0.0,
-      "sources": [
-        {
-          "entityId": "service_balcony",
-          "fact": "active",
-          "activeValue": true,
-          "deltaCelsius": 0.5,
-          "responseDelaySeconds": 0.0,
-          "riseDurationSeconds": 0.0,
-          "decayDurationSeconds": 0.0,
-          "sampleIntervalSeconds": 900.0
-        }
-      ]
+      "sampleIntervalSeconds": 900.0,
+      "sources": []
     }
   ]
 }

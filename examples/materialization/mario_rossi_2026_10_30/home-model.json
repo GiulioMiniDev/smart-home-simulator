@@ -141,7 +141,7 @@
     },
     {
       "regionId": "balcony",
-      "kind": "room",
+      "kind": "outdoor",
       "boundary": {
         "vertices": [
           {

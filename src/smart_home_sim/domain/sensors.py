@@ -158,6 +158,11 @@ class ContactSensor(SensorBase):
         return self
 
 
+# How often a thermometer reads itself when neither it nor any source says. Matches the default on
+# `TemperatureSource.sampleIntervalSeconds`, which is where the cadence used to live alone.
+DEFAULT_TEMPERATURE_SAMPLE_SECONDS = 60.0
+
+
 class TemperatureSource(ContractModel):
     entity_id: str = Field(min_length=1)
     fact: str = Field(min_length=1)
@@ -180,6 +185,13 @@ class TemperatureSensor(SensorBase):
     region_id: str = Field(min_length=1)
     baseline_celsius: float = Field(ge=-100, le=100)
     climate_profile: Literal["fixed", "city_seasonal"] = "fixed"
+    # A thermometer outside the walls: on a balcony or a terrace, which the dwelling walks out onto
+    # and instruments like any other room. It reads the weather rather than a room drifting towards
+    # it, so `baselineCelsius`, `seasonalCoupling` and the thermal lag do not apply to it. Without
+    # this a balcony sensor was deployed as an interior room and spent a Florentine September to
+    # February between 16.3 and 25.3 °C, within 0.8 °C of the house mean and correlated with the
+    # bathroom at 0.997 — a channel that could have said what season it was, saying nothing.
+    outdoor: bool = False
     room_offset_celsius: float = Field(default=0.0, ge=-10, le=10)
     thermal_time_constant_hours: float = Field(default=0.0, ge=0, le=72)
     quantization_celsius: float = Field(default=0.5, gt=0, le=10)
@@ -192,7 +204,34 @@ class TemperatureSensor(SensorBase):
     reporting_mode: Literal["periodic", "on_change"] = "periodic"
     report_threshold_celsius: float = Field(default=0.5, gt=0, le=10)
     heartbeat_seconds: float = Field(default=0.0, ge=0)
-    sources: list[TemperatureSource] = Field(min_length=1)
+    # How often the node reads itself. It used to be taken from the sources alone, which was fine
+    # only for as long as every sensor was required to have one: a source-less thermometer then
+    # fell back to the source default of sixty seconds instead of the quarter-hour its deployment
+    # asked for, and reported fifteen times as often as its neighbours. The cadence belongs to the
+    # firmware; a source may still ask to be read faster than this and the faster of the two wins.
+    # Left unset it defers to the sources entirely, which is what every model written before this
+    # field existed means and what keeps them reading exactly as they did.
+    sample_interval_seconds: float | None = Field(default=None, gt=0)
+    # A room may have nothing in it that makes heat, and that used to be inexpressible: requiring
+    # one source meant the deployment named whatever entity sorted first, so a hallway was warmed
+    # 0.7 °C by its own front door and a balcony by a drying rack. Neither ever fired — across five
+    # months exactly four entities in the flat ever toggled `active` — so the declaration was
+    # false and the reading was pure envelope anyway. Better to say there is nothing.
+    sources: list[TemperatureSource] = Field(default_factory=list)
+
+    @property
+    def effective_sample_interval_seconds(self) -> float:
+        """How often this node actually reads itself.
+
+        The firmware's cadence, and a source may only make it faster. Lives here because three
+        callers need the same answer — the projector, the summary page and anything that reasons
+        about a run's density — and they disagreed once already: the summary took the minimum over
+        the sources alone and raised on a thermometer that watches nothing.
+        """
+        cadences = [item.sample_interval_seconds for item in self.sources]
+        if self.sample_interval_seconds is not None:
+            cadences.append(self.sample_interval_seconds)
+        return min(cadences, default=DEFAULT_TEMPERATURE_SAMPLE_SECONDS)
 
     @model_validator(mode="after")
     def check_sources(self) -> TemperatureSensor:
