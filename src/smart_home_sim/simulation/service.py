@@ -94,6 +94,54 @@ EXECUTION_PACE_SIGMA = 0.10
 EXECUTION_PACE_LOG_LIMIT = 0.262
 EXECUTION_PACE_MIN_FACTOR = math.exp(-EXECUTION_PACE_LOG_LIMIT)
 EXECUTION_PACE_MAX_FACTOR = math.exp(EXECUTION_PACE_LOG_LIMIT)
+# How a body gets up to speed, and why a walk is not its distance over a cruising speed.
+#
+# Every one of the 8,131 movements of the five-month export was walked at exactly 1.20 m/s: p05,
+# median and p95 all the same number, because the duration was distance over the one speed the home
+# model declares. That is not only inhuman -- nobody crosses a kitchen at the pace they take a
+# hallway -- it is *structural*, because it makes the time a body spends inside a detector's cone a
+# deterministic function of the geometry of its path. Every crossing of one doorway then produces
+# the same signature, which is one of the things holding the log's 3-gram entropy at 6.87 against
+# CASAS Aruba's 9.44.
+#
+# A real walk accelerates to a cruising speed and decelerates out of it, and across a flat most
+# walks are too short to spend much time in between: the median is 2.37 m. With a trapezoid profile
+# the trip costs `distance / cruise + cruise / acceleration`, and a walk shorter than
+# `cruise^2 / acceleration` never reaches cruise at all and costs `2 * sqrt(distance /
+# acceleration)`. The effective speed then falls out of the distance rather than being declared:
+# 0.44 m/s over three quarters of a metre, 0.75 over the median, 1.09 over the longest walks of the
+# flat. 1.0 m/s^2 sits inside the range gait-initiation studies report for healthy adults, who reach
+# steady state in two or three steps.
+GAIT_ACCELERATION_METRES_PER_SECOND_SQUARED = 1.0
+# And one walk differs from the next. Same shape as the execution pace above and for the same
+# reason: lognormal so the declared speed stays the central tendency, tanh-squashed rather than
+# clamped so extreme draws do not pile onto one factor.
+GAIT_SPEED_SIGMA = 0.12
+GAIT_SPEED_LOG_LIMIT = 0.30
+
+
+def _walk_seconds(path: NavigationPath, cruise_speed: float) -> float:
+    """How long this path takes a body walking at `cruise_speed`, accelerating into it and out.
+
+    The transport part of a path is not walked -- it is five hundred metres of street crossed at the
+    frozen urban speed -- so it keeps the duration the router gave it and only the walked metres go
+    through the gait profile.
+    """
+    acceleration = GAIT_ACCELERATION_METRES_PER_SECOND_SQUARED
+    walked = path.walking_distance_meters
+    carried = max(0.0, path.duration_seconds - walked / cruise_speed) if cruise_speed > 0 else 0.0
+    if walked <= 0:
+        return carried
+    if acceleration <= 0:
+        return carried + walked / cruise_speed
+    # Below this the profile is a triangle: the body is still speeding up when it has to start
+    # slowing down, and never touches the cruising speed at all.
+    without_cruising = cruise_speed**2 / acceleration
+    if walked < without_cruising:
+        return carried + 2 * math.sqrt(walked / acceleration)
+    return carried + walked / cruise_speed + cruise_speed / acceleration
+
+
 # The postures a resident can cross a room in. Anything else has to be left first, and
 # `_execute_action` makes her leave it — see the note there.
 _STANDING_POSTURE = "standing"
@@ -1093,6 +1141,22 @@ class SimulationEngine:
         factor = math.exp(limit * math.tanh(drawn / limit))
         return max(1, int(round(intended_us * factor)))
 
+    def _walk_microseconds(
+        self, actor: ResidentRuntime, path: NavigationPath, action_id: str
+    ) -> int:
+        """How long *this* walk takes this body.
+
+        Drawn per walk rather than per resident, and keyed on the action that owns it so the run
+        stays reproducible under replay and independent of how many walks precede this one -- the
+        same rule `_execution_microseconds` follows for the length of an activity.
+        """
+        cruise = self.kinematics[actor.resident_id].walking_speed_meters_per_second
+        if GAIT_SPEED_SIGMA > 0:
+            drawn = self.streams.stream(f"gait:{action_id}").gauss(0.0, GAIT_SPEED_SIGMA)
+            limit = GAIT_SPEED_LOG_LIMIT
+            cruise *= math.exp(limit * math.tanh(drawn / limit))
+        return max(1, int(round(_walk_seconds(path, cruise) * 1_000_000)))
+
     def _gesture_seconds(
         self, activity_id: str, actor_id: str
     ) -> Callable[[ProcessNode], float | None]:
@@ -1692,7 +1756,7 @@ class SimulationEngine:
             "action", [activity.source_activity_id, RETURN_NODE_ID, 0]
         )
         started = self.env.now
-        movement_us = int(round(path.duration_seconds * 1_000_000))
+        movement_us = self._walk_microseconds(actor, path, action_id)
         yield from self._travel(actor, path, movement_us, action_id)
         # The action is written here rather than through `_execute_action`, so the catalog effects
         # it declares have to be applied here too. `move_to` declares exactly one —
@@ -1814,7 +1878,7 @@ class SimulationEngine:
         if path is None or path.distance_meters <= 1e-9:
             return
         yield from self._travel(
-            actor, path, int(round(path.duration_seconds * 1_000_000)), action_id
+            actor, path, self._walk_microseconds(actor, path, action_id), action_id
         )
         self._settle_onto(actor, kinds, lying=lying, action_id=action_id)
         self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
@@ -1857,7 +1921,7 @@ class SimulationEngine:
         if path is None or path.distance_meters <= 1e-9:
             return
         yield from self._travel(
-            actor, path, int(round(path.duration_seconds * 1_000_000)), action_id, tag="return"
+            actor, path, self._walk_microseconds(actor, path, action_id), action_id, tag="return"
         )
         kinds = _RECLINING_FURNITURE if actor.posture == _RECLINING_POSTURE else _SEATING_FURNITURE
         self._settle_onto(
@@ -2167,7 +2231,7 @@ class SimulationEngine:
             and any(item.role == _ITEM_ROLE for item in binding.capability_bindings)
         ):
             path = None
-        movement_us = int(round((path.duration_seconds if path else 0) * 1_000_000))
+        movement_us = self._walk_microseconds(actor, path, action_id) if path else 0
         actual_duration = max(duration_us, movement_us)
         if path and path.distance_meters > 1e-9:
             yield from self._travel(actor, path, movement_us, action_id)

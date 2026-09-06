@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
@@ -36,6 +37,7 @@ from smart_home_sim.simulation.service import (
     _TRANSIENT_REGIONS,
     EXECUTION_PACE_MAX_FACTOR,
     EXECUTION_PACE_MIN_FACTOR,
+    GAIT_ACCELERATION_METRES_PER_SECOND_SQUARED,
     PUNCTUAL_ACTION_SECONDS,
     RETURN_NODE_ID,
     NamedRandomStreams,
@@ -47,6 +49,7 @@ from smart_home_sim.simulation.service import (
     _known_scenario_fact,
     _operator_matches,
     _phase_durations,
+    _walk_seconds,
     replay_files,
     simulate_bundle,
     simulate_file,
@@ -85,8 +88,14 @@ def test_golden_week_executes_complete_vocabulary_and_closes_state(result) -> No
     # as somewhere to walk to, so two of the walks it recorded were not walks the code still plans.
     # The movement count below fell from 224 for the same reason, and both readings are what the
     # code at that commit already produced once the bundle was rebuilt from its own inputs.
-    assert len(trace.action_executions) == 796
-    assert len(trace.movements) == 205
+    #
+    # They moved again, by one each, when a walk stopped being its distance over one declared speed:
+    # a body now accelerates into its cruising pace and out of it, so every walk of this week takes
+    # a little longer and one gap that used to be wide enough for a walk out of a service room no
+    # longer is. The activity count above is untouched, which is the point -- this moves when a walk
+    # falls, not what the plan decides.
+    assert len(trace.action_executions) == 795
+    assert len(trace.movements) == 204
     assert all(item.status != "failed" for item in trace.activity_executions)
     expected_actions = {
         item["actionType"]
@@ -1113,3 +1122,58 @@ def test_a_timestamp_wears_the_offset_its_zone_was_on(result) -> None:
         assert moment.utcoffset() == moment.astimezone(rome).utcoffset()
     assert trace.started_at.utcoffset() == trace.started_at.astimezone(rome).utcoffset()
     assert trace.ended_at.utcoffset() == trace.ended_at.astimezone(rome).utcoffset()
+
+
+def test_a_walk_is_not_its_distance_over_one_speed(result) -> None:
+    """Every movement of the five-month export was walked at exactly 1.20 m/s.
+
+    p05, median and p95 were the same number, because the duration was the distance over the one
+    speed the home model declares. Beyond being inhuman it is *structural*: it makes the time a body
+    spends inside a detector's cone a deterministic function of the geometry of its path, so every
+    crossing of one doorway produces the same signature. A real body accelerates into its pace and
+    out of it, and across a flat most walks are too short to spend long in between.
+    """
+    cruise = 1.2
+    threshold = cruise**2 / GAIT_ACCELERATION_METRES_PER_SECOND_SQUARED
+
+    def walk(distance: float) -> float:
+        path = NavigationPath(
+            waypoints=(
+                NavigationWaypoint("kitchen", 0.0, 0.0, "walking"),
+                NavigationWaypoint("kitchen", distance, 0.0, "walking"),
+            ),
+            distance_meters=distance,
+            duration_seconds=distance / cruise,
+            walking_distance_meters=distance,
+        )
+        return _walk_seconds(path, cruise)
+
+    # Long enough to cruise: the distance over the speed, plus the once-per-walk cost of getting
+    # there and stopping.
+    assert walk(10.0) == pytest.approx(10.0 / cruise + cruise / 1.0)
+    # Too short to cruise at all: a triangle, and slower than the trapezoid would have been.
+    short = threshold / 2
+    assert walk(short) == pytest.approx(2 * math.sqrt(short / 1.0))
+    # Which is what makes the effective speed fall out of the distance rather than be declared.
+    assert short / walk(short) < 10.0 / walk(10.0) < cruise
+
+    # A carried leg is not walked: it keeps the duration the router gave it.
+    carried = NavigationPath(
+        waypoints=(
+            NavigationWaypoint("hallway", 0.0, 0.0, "walking"),
+            NavigationWaypoint("supermarket", 0.0, 0.0, "transport"),
+        ),
+        distance_meters=500.0,
+        duration_seconds=500.0 / 8.0,
+        walking_distance_meters=0.0,
+    )
+    assert _walk_seconds(carried, cruise) == pytest.approx(500.0 / 8.0)
+
+    # And on the golden week no two walks agree: the speed is a distribution, not a constant.
+    speeds = {
+        round(item.distance_meters / (item.duration_microseconds / 1e6), 4)
+        for item in result.trace.movements
+        if item.duration_microseconds > 0 and item.distance_meters > 0
+    }
+    assert len(speeds) > 20
+    assert max(speeds) - min(speeds) > 0.1

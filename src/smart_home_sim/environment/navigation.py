@@ -29,6 +29,10 @@ class NavigationPath:
     waypoints: tuple[NavigationWaypoint, ...]
     distance_meters: float
     duration_seconds: float
+    # The part of the distance a body actually walks, separate from the part it is carried over. A
+    # trip to the supermarket is five hundred metres of transport and a few of hallway, and only
+    # the few are subject to how a person starts and stops walking.
+    walking_distance_meters: float = 0.0
 
 
 def _polygon(vertices: list[Point2D]) -> Polygon:
@@ -193,4 +197,6 @@ def plan_path(
     waypoints.extend(NavigationWaypoint(end_region_id, x, y, "walking") for x, y in segment[1:])
     # Transport links declare metric distance but not a speed; 8 m/s is the frozen M4 urban default.
     duration = walking_distance / walking_speed_meters_per_second + transport_distance / 8.0
-    return NavigationPath(tuple(waypoints), walking_distance + transport_distance, duration)
+    return NavigationPath(
+        tuple(waypoints), walking_distance + transport_distance, duration, walking_distance
+    )

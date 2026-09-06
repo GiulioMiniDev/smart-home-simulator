@@ -3,8 +3,8 @@
   "success": true,
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
   "sourceBundleSha256": "bf15142282e5bd616d1e7e112cf08c63b0a91825e9f5a85cac2d33e403e3e10f",
-  "traceSha256": "a084b9533ff293101609c3a7fad30be50106dc7271311c27a60fa05cfbe8bd87",
-  "semanticDigest": "8280e014c2cb9fcbd92713fc699097edf8f81f066d46e8f236e07592ba9ced4d",
+  "traceSha256": "6ac8fe62491dc917f5bf770d9106c41d9faaac3a6e9f4a00465efa702cdf4a58",
+  "semanticDigest": "1c8b494a01b71e4dba4c1221347854bda9f9c2de72a3a98b507f56f05405e7d7",
   "issues": [],
   "summary": {
     "plannedActivityCount": 57,
