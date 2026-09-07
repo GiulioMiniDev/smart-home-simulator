@@ -56,12 +56,12 @@
     {
       "role": "sensor_policy",
       "relativePath": "sensor-deployment-policy.json",
-      "sha256": "b4195a60879b83a2bfea915c0f29d8d048ae3066f15ac01c8cf75b2f7158d75d"
+      "sha256": "a11b7d8e6211f90a1cae6fc44b95f723f6d2c2c351c9cd528ff6306e9ab5bbd7"
     },
     {
       "role": "sensor_report",
       "relativePath": "sensor-deployment-report.json",
-      "sha256": "aa60dfce329aee2ef2308c26857fec9ed619188a0efc370d20fd63387fa22b71"
+      "sha256": "fbb6661159e877fc86092cf979b0f832c49b1f0f77ac3f72f4dac7e1d410eb66"
     },
     {
       "role": "sensor_model",

@@ -842,7 +842,8 @@ function HomePage() {
   // The half of the deployment policy worth a control. The rest of `SensorDeploymentPolicy` is
   // forty numbers calibrated against CASAS, and a form for those is a form nobody can answer.
   const [deployment, setDeployment] = useState<DeploymentChoice>({
-    preset: "functional_zones", pirCoverageShape: "rectangle", observationProfile: "realistic",
+    preset: "functional_zones", pirCoverageShape: "rectangle", pirCoverageRadiusMeters: 0,
+    observationProfile: "realistic",
   });
   const [progress, setProgress] = useState<OperationProgress>();
   const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
@@ -1441,6 +1442,7 @@ function PipelineChoice({ depth, onDepth }: { depth: PipelineDepth; onDepth: (ne
 interface DeploymentChoice {
   preset: "room_coverage" | "functional_zones";
   pirCoverageShape: "rectangle" | "circle";
+  pirCoverageRadiusMeters: number;
   observationProfile: "ideal" | "realistic";
 }
 
@@ -1472,6 +1474,15 @@ function DeploymentChoiceFields({ choice, onChoice, disabled = false }: { choice
           <option value="circle">A circle of its reach, like a ceiling node</option>
         </select>
         <small>{choice.pirCoverageShape === "circle" ? "Closer to a real ceiling detector, and it leaves the corners of every room unwatched — around a quarter of the floor. Crossing that floor emits nothing, which is realistic and is a hole in the data." : "Every corner of every room is watched by something. Neither shape is what the optics do: a real lens makes a fan of separate beams."}</small>
+      </label>
+      <label>
+        <span>How far each one sees</span>
+        <select aria-label="How far each one sees" disabled={choice.pirCoverageShape !== "circle"} value={String(choice.pirCoverageRadiusMeters)} onChange={(event) => set("pirCoverageRadiusMeters", Number(event.target.value))}>
+          <option value="0">No further than its own share of the room</option>
+          <option value="1.5">A metre and a half, so neighbours just meet</option>
+          <option value="2.5">Two and a half metres, like a ceiling node</option>
+        </select>
+        <small>{choice.pirCoverageShape !== "circle" ? "Only a circle has a reach to set. A rectangle is the room's floor shared out, and widening it would mean overlapping walls." : choice.pirCoverageRadiusMeters > 0 ? "Detectors that see past their own zone watch some places together, which is what a real installation does and what a real log is mostly made of: in CASAS Aruba a second detector fires within two seconds 31.6% of the time. It roughly doubles the readings." : "Each detector stops where its neighbour begins, so a body standing still is seen by one of them and the log repeats that one name — 81% of the time on one flat, against 34% in CASAS Aruba."}</small>
       </label>
       <label>
         <span>Readings</span>

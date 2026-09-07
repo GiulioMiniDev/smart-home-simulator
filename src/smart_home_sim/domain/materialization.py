@@ -84,6 +84,34 @@ class SensorDeploymentPolicy(ContractModel):
     # walls — and it leaves the corners of a room unwatched, which is realistic and is a real hole
     # in the data. Choose it when the point of the study is what a plausible installation misses.
     pir_coverage_shape: Literal["rectangle", "circle"] = "rectangle"
+    # How far a detector sees on its own, in metres, regardless of how much floor it was given.
+    #
+    # A disc's radius is otherwise half the short side of the zone shared out to it, which is a fact
+    # about how the floor was divided and not about the device: it makes every detector stop exactly
+    # where its neighbour begins. A ceiling node on a 2.4 m ceiling reaches several metres, so real
+    # installations overlap heavily, and that turns out to be what a real log is made of. Measured
+    # on CASAS Aruba, a second detector fires within two seconds of the first **31.6%** of the time;
+    # on a Florence flat deployed by zones it was **2.4%**, because only 2 of its 33 interaction
+    # points were watched by more than one node. Since 68% of activations come from a body that is
+    # standing still, a body each detector sees alone can only repeat itself: 80.9% of consecutive
+    # activations named the same sensor, against Aruba's 34.2%.
+    #
+    # Re-projecting one unchanged trace at 2.5 m closes most of that: repeats 80.9% to 49.2%,
+    # all-same triples 73.9% to 31.5%, co-activation 2.4% to 8.1%, the busiest sensor's share 25.5%
+    # to 19.8% -- which is the first time the "under 20%" criterion has been met -- and the 3-gram
+    # entropy 6.08 to 6.70 against Aruba's 9.44, having refused to move through four engine
+    # corrections before it. The ceiling, measured by clipping every cone to 1.6x its zone instead,
+    # is 49.6 / 31.8 / 8.5 / 17.1 and an entropy of 7.13: the parameter reaches the whole of the
+    # repetition it was aimed at, and the rest of the entropy gap is elsewhere.
+    #
+    # Applies to `pirCoverageShape: circle` alone, which is the only shape that has a radius: a
+    # rectangle *is* the room's floor shared out, and widening it would mean overlapping walls.
+    #
+    # It is a floor and not a replacement: the zone radius and the cluster reach still apply, so
+    # this only ever widens. Zero keeps the deployment exactly as it was, which is why every model
+    # built before this field reads unchanged. It is not free -- at 2.5 m the same trace emits 49%
+    # more observations -- and the honest reading of that cost is in `README.md`.
+    pir_coverage_radius_meters: float = Field(default=0.0, ge=0, le=12)
     contact_pulse_milliseconds: float = Field(default=1000, gt=0)
     contact_pulse_log_sigma: float = Field(default=0.0, ge=0, le=2)
     latency_milliseconds: float = Field(default=0.0, ge=0)
@@ -263,6 +291,13 @@ class SensorDeploymentSummary(ContractModel):
     pir_count: int = Field(ge=0)
     contact_count: int = Field(ge=0)
     temperature_count: int = Field(ge=0)
+    # Where a body can stand and be watched by nobody, and by only one node. The first is a blind
+    # spot: a shower or a washing machine outside every coverage reports a third of the events per
+    # minute of the fixture beside it, and five months went by before anyone noticed. The second is
+    # not a fault but it decides what the log can look like -- a spot only one detector sees can
+    # only ever repeat that detector's name.
+    unwatched_interaction_points: int = Field(default=0, ge=0)
+    singly_watched_interaction_points: int = Field(default=0, ge=0)
     error_count: int = Field(ge=0)
 
 
@@ -290,6 +325,18 @@ class SensorDeploymentReport(ContractModel):
     sensor_model_version: str | None = None
     sensor_model_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     issues: list[MaterializationIssue] = Field(default_factory=list)
+    # What the installation cannot see, said before the horizon is simulated rather than after it is
+    # mined. Separate from `issues`, which are refusals: a balcony nobody watches may be a choice, a
+    # cupboard no activity ever opens may be furniture, and a deployment that stopped for either
+    # would stop for every house. These are the questions a researcher should be asked once.
+    #
+    # They exist because three defects of one flat survived every gate and were found five months
+    # later, by mining the dataset: a shower and a washing machine outside every coverage, an action
+    # cleaning a role the vocabulary does not define, and a table and a sink no activity ever
+    # touched. Each is a mismatch between three documents that until now nothing ever compared —
+    # what the process models name, what the home holds, and what the sensors watch — and the
+    # deployment is the first moment all three are in hand.
+    warnings: list[MaterializationIssue] = Field(default_factory=list)
     summary: SensorDeploymentSummary
 
     @model_validator(mode="after")

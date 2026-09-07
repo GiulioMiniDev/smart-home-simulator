@@ -5,7 +5,7 @@
   "success": true,
   "preset": "room_coverage",
   "policyVersion": "1.1.0",
-  "policySha256": "b4195a60879b83a2bfea915c0f29d8d048ae3066f15ac01c8cf75b2f7158d75d",
+  "policySha256": "a11b7d8e6211f90a1cae6fc44b95f723f6d2c2c351c9cd528ff6306e9ab5bbd7",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
   "sourceBundleSha256": "bf15142282e5bd616d1e7e112cf08c63b0a91825e9f5a85cac2d33e403e3e10f",
   "sourceHomeSha256": "504c07f6e99465a16c665b7ad6efab140d30c44d38bf46d6c7733378e2ba3717",
@@ -13,11 +13,161 @@
   "sensorModelVersion": "1.1.0",
   "sensorModelSha256": "e6b9bad8b46bff268a0f43456c0dd0dda07b807666fcf728a7b27a79434012bd",
   "issues": [],
+  "warnings": [
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'calendar', asked for by inspect, move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "calendar",
+        "actionTypes": [
+          "inspect",
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'communication_area', asked for by move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "communication_area",
+        "actionTypes": [
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'drying_area', asked for by move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "drying_area",
+        "actionTypes": [
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'exercise_area', asked for by move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "exercise_area",
+        "actionTypes": [
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'kitchen_dining_table', asked for by move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "kitchen_dining_table",
+        "actionTypes": [
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'kitchen_surfaces', asked for by clean. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "kitchen_surfaces",
+        "actionTypes": [
+          "clean"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'phone', asked for by communicate. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "phone",
+        "actionTypes": [
+          "communicate"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'stove_burner', asked for by activate, deactivate. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "stove_burner",
+        "actionTypes": [
+          "activate",
+          "deactivate"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'stovetop_coffee_preparation_area', asked for by move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "stovetop_coffee_preparation_area",
+        "actionTypes": [
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'tidy_living_room_and_hallway', asked for by organize. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "tidy_living_room_and_hallway",
+        "actionTypes": [
+          "organize"
+        ]
+      }
+    },
+    {
+      "code": "ROLE_NAMES_NO_FURNITURE",
+      "stage": "sensor",
+      "path": "$.behaviorPackage.processModels",
+      "message": "No furniture of this home answers 'tidying_area', asked for by move_to_capability. The binder falls back to the room's generated placeholder, so the action happens nowhere in particular.",
+      "details": {
+        "role": "tidying_area",
+        "actionTypes": [
+          "move_to_capability"
+        ]
+      }
+    },
+    {
+      "code": "ENTITY_NEVER_USED",
+      "stage": "sensor",
+      "path": "$.homeModel.entities",
+      "message": "2 furnished object(s) no activity ever touches: bedside_table, radio. Whatever detector watches them reports only passers-by.",
+      "details": {
+        "entityIds": [
+          "bedside_table",
+          "radio"
+        ]
+      }
+    }
+  ],
   "summary": {
     "sensorCount": 17,
     "pirCount": 6,
     "contactCount": 5,
     "temperatureCount": 6,
+    "unwatchedInteractionPoints": 0,
+    "singlyWatchedInteractionPoints": 30,
     "errorCount": 0
   }
 }

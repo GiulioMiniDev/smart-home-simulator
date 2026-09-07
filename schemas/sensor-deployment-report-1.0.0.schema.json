@@ -73,6 +73,18 @@
           "title": "Temperaturecount",
           "type": "integer"
         },
+        "unwatchedInteractionPoints": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Unwatchedinteractionpoints",
+          "type": "integer"
+        },
+        "singlyWatchedInteractionPoints": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Singlywatchedinteractionpoints",
+          "type": "integer"
+        },
         "errorCount": {
           "minimum": 0,
           "title": "Errorcount",
@@ -185,6 +197,13 @@
         "$ref": "#/$defs/MaterializationIssue"
       },
       "title": "Issues",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "$ref": "#/$defs/MaterializationIssue"
+      },
+      "title": "Warnings",
       "type": "array"
     },
     "summary": {

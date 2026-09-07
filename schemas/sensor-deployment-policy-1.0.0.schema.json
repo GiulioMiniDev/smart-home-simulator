@@ -73,6 +73,13 @@
       "title": "Pircoverageshape",
       "type": "string"
     },
+    "pirCoverageRadiusMeters": {
+      "default": 0.0,
+      "maximum": 12,
+      "minimum": 0,
+      "title": "Pircoverageradiusmeters",
+      "type": "number"
+    },
     "contactPulseMilliseconds": {
       "default": 1000,
       "exclusiveMinimum": 0,

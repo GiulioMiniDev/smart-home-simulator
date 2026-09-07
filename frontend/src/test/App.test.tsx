@@ -960,15 +960,21 @@ describe("complete application routes", () => {
 
     mount("/homes/home_1");
     await screen.findByText("Attach accepted authoring");
-    // The two questions about the field that are decisions rather than calibrations.
+    // The questions about the field that are decisions rather than calibrations.
     fireEvent.change(screen.getByLabelText("Detectors"), { target: { value: "room_coverage" } });
+    // Reach is a circle's question alone: a rectangle is the room's floor shared out.
+    expect(screen.getByLabelText("How far each one sees")).toBeDisabled();
     fireEvent.change(screen.getByLabelText("What each one watches"), { target: { value: "circle" } });
     expect(screen.getByText(/leaves the corners of every room unwatched/)).toBeInTheDocument();
+    expect(screen.getByLabelText("How far each one sees")).toBeEnabled();
+    expect(screen.getByText(/the log repeats that one name/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("How far each one sees"), { target: { value: "2.5" } });
+    expect(screen.getByText(/roughly doubles the readings/)).toBeInTheDocument();
     attachOutline(outline, /Build the home and sensors/);
     await waitFor(() => expect(built).toHaveBeenCalled());
     expect(JSON.parse(String(built.mock.calls[0]?.[0]?.body))).toEqual({
       scenario_artifact_id: "scenario", behavior_artifact_id: "behavior",
-      sensor_policy: { preset: "room_coverage", pirCoverageShape: "circle", observationProfile: "realistic" },
+      sensor_policy: { preset: "room_coverage", pirCoverageShape: "circle", pirCoverageRadiusMeters: 2.5, observationProfile: "realistic" },
     });
     expect(ran).not.toHaveBeenCalled();
     expect(await screen.findByText(/the home and its sensor field are being built/)).toBeInTheDocument();
@@ -1112,7 +1118,7 @@ describe("complete application routes", () => {
     const rebuilt = vi.fn((options?: RequestInit) => {
       expect(JSON.parse(String(options?.body))).toEqual({
         scenario_artifact_id: "scenario", behavior_artifact_id: "behavior",
-        sensor_policy: { preset: "functional_zones", pirCoverageShape: "rectangle", observationProfile: "realistic" },
+        sensor_policy: { preset: "functional_zones", pirCoverageShape: "rectangle", pirCoverageRadiusMeters: 0, observationProfile: "realistic" },
       });
       return response(job, { status: 202 });
     });

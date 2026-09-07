@@ -49,6 +49,13 @@ from smart_home_sim.domain.environment import (
     TraversalMode,
     capabilities_for_entity_type,
 )
+from smart_home_sim.domain.execution import (
+    ExecutionTrace,
+    FinalWorldState,
+    MovementExecution,
+    ResidentFinalState,
+    TrajectoryWaypoint,
+)
 from smart_home_sim.domain.materialization import (
     EnvironmentMaterializationManifest,
     HomeGenerationPolicy,
@@ -63,7 +70,12 @@ from smart_home_sim.domain.materialization import (
     SyntheticWorkspaceManifest,
     WorkspaceArtifact,
 )
-from smart_home_sim.domain.models import RESOURCE_ROLE_ALIASES, LocationKind, Scenario
+from smart_home_sim.domain.models import (
+    RESOURCE_ROLE_ALIASES,
+    LocationKind,
+    Scenario,
+    resource_types_for_role,
+)
 from smart_home_sim.domain.sensors import (
     ContactSensor,
     PirSensor,
@@ -76,9 +88,11 @@ from smart_home_sim.domain.sensors import (
     contact_instrumented_types,
 )
 from smart_home_sim.environment import build_bundle_files, validate_home_model
+from smart_home_sim.environment.navigation import plan_path
 from smart_home_sim.materialization import floorplan
 from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle
+from smart_home_sim.simulation.service import trace_semantic_digest
 
 
 class MaterializationFailure(RuntimeError):
@@ -606,6 +620,14 @@ THERMAL_SIGNATURES: dict[str, tuple[float, float, float]] = {
 # generator adds so that an action with nowhere to happen still has somewhere, and treating it as an
 # appliance put half a degree into a kitchen every time anything at all happened there.
 _SERVICE_ENTITY_TYPE = "generated_environment_service"
+# The capability role of a thing that is carried rather than stood at.
+_ITEM_ROLE = "item"
+
+# Furniture a body comes to rest on. The engine settles onto it by geometry rather than through an
+# action binding, so it is used even when no process model names it.
+_SETTLING_FURNITURE = frozenset(
+    {"chair", "sofa", "armchair", "stool", "bench", "bed", "recliner", "daybed"}
+)
 
 
 # What a thermometer outside the walls lags the air by: its own housing, not a building.
@@ -1224,6 +1246,7 @@ def _reach(
     shape: str,
     inside: Polygon,
     minimum_radius: float = 0.0,
+    device_radius: float = 0.0,
 ) -> Polygon2D:
     """The floor a detector is taken to watch: the area worked out for it, or a disc of that reach.
 
@@ -1240,13 +1263,21 @@ def _reach(
     third of the events per minute the toilet beside it made. Passing the reach in makes the radius
     answer to the same furniture that chose the position.
 
+    `device_radius` is the third floor, and the only one that is a property of the *device* rather
+    than of the floor plan: how far this model of detector sees, whatever it was given to watch.
+    The other two stop each node exactly where its neighbour begins, and an installation built that
+    way cannot produce the thing a real log is mostly made of — a still body seen by two nodes at
+    once. See `SensorDeploymentPolicy.pirCoverageRadiusMeters` for what that costs and buys.
+
     Falls back to the rectangle whenever the disc would not hold its own node, so a coverage that
     does not contain its sensor — which the M6 gate refuses — cannot be produced here.
     """
     if shape != "circle":
         return _polygon2d(area)
     minimum_x, minimum_y, maximum_x, maximum_y = area.bounds
-    radius = max(min(maximum_x - minimum_x, maximum_y - minimum_y) / 2, minimum_radius)
+    radius = max(
+        min(maximum_x - minimum_x, maximum_y - minimum_y) / 2, minimum_radius, device_radius
+    )
     if radius <= 0:
         return _polygon2d(area)
     node = ShapelyPoint(seat.x, seat.y)
@@ -1263,6 +1294,7 @@ def _functional_zones(
     points: list[InteractionPoint],
     activity_count: int = 0,
     shape: str = "rectangle",
+    device_radius: float = 0.0,
 ) -> list[tuple[Point2D, Polygon2D]]:
     """One motion sensor per group of places to stand, covering that group and its surroundings.
 
@@ -1306,7 +1338,7 @@ def _functional_zones(
     room = Polygon([(vertex.x, vertex.y) for vertex in region.boundary.vertices])
     if not places:
         seat = _center(region.boundary)
-        return [(seat, _reach(room, seat, shape, room))]
+        return [(seat, _reach(room, seat, shape, room, device_radius=device_radius))]
 
     # Each zone keeps the reach of the cluster that made it, not just the cluster's middle. The two
     # are the same measurement read twice, so a detector placed on its furniture is now also sized
@@ -1332,7 +1364,7 @@ def _functional_zones(
     if len(seats) == 1:
         centre, cluster_reach = seats[0]
         seat = Point2D(x=centre[0], y=centre[1])
-        return [(seat, _reach(room, seat, shape, room, cluster_reach))]
+        return [(seat, _reach(room, seat, shape, room, cluster_reach, device_radius))]
 
     # The detectors share the room out between them rather than each taking a box around its own
     # furniture. Boxes were tried first and left 60% of a living room unwatched, which is worse than
@@ -1380,7 +1412,7 @@ def _functional_zones(
             max(grown.geoms, key=lambda item: item.area) if grown.geom_type != "Polygon" else grown
         )
         seat = Point2D(x=centre[0], y=centre[1])
-        placed.append((seat, _reach(winner, seat, shape, room, cluster_reach)))
+        placed.append((seat, _reach(winner, seat, shape, room, cluster_reach, device_radius)))
     return placed or [(_center(region.boundary), region.boundary)]
 
 
@@ -1583,6 +1615,328 @@ def _threshold_sensors(
     return placed
 
 
+def _watch_counts(home: HomeModel, sensors: list[Any]) -> tuple[int, int]:
+    """How many places to stand no detector watches, and how many exactly one watches.
+
+    The first is a blind spot and a defect: on one five-month run the shower and the washing machine
+    sat outside every coverage, and `morning_toilet_and_shower` produced 3.13 events a minute where
+    `use_toilet` in the same bathroom produced 10.19. Nobody noticed until the dataset was mined.
+
+    The second is not a defect and is reported anyway, because it decides what the log can look
+    like. Two thirds of a run's activations come from a body standing still, and a spot that only
+    one node watches can only ever repeat that node's name — which is why one flat's log named the
+    same sensor twice running 80.9% of the time against CASAS Aruba's 34.2%.
+    """
+    discs = [
+        (Polygon([(v.x, v.y) for v in item.coverage.vertices]), set(item.region_ids))
+        for item in sensors
+        if isinstance(item, PirSensor)
+    ]
+    # The street is not instrumented and saying so every time would be noise: only the dwelling
+    # counts, which is rooms and the balcony it opens onto.
+    indoors = {
+        item.region_id
+        for item in home.regions
+        if item.kind in {RegionKind.room, RegionKind.outdoor}
+    }
+    unwatched = single = 0
+    for point in home.interaction_points:
+        if point.region_id not in indoors:
+            continue
+        here = ShapelyPoint(point.position.x, point.position.y)
+        seen = sum(
+            1 for polygon, regions in discs if point.region_id in regions and polygon.covers(here)
+        )
+        unwatched += seen == 0
+        single += seen == 1
+    return unwatched, single
+
+
+def _deployment_warnings(
+    bundle: SimulationBundle, sensors: list[Any]
+) -> list[MaterializationIssue]:
+    """Compare what the behaviour names, what the home holds and what the sensors watch.
+
+    Nothing compared those three before, and the deployment is the first moment all three are in
+    hand: the process package has been resolved against the home into `actionBindings`, and the
+    detectors have just been placed. Three defects of one Florence flat survived every gate and were
+    found five months later by mining the dataset, and each is a disagreement between two of the
+    three.
+
+    Warnings rather than refusals. A balcony nobody watches can be a choice and a cupboard nothing
+    opens can be furniture; a deployment that stopped for either would stop for every house.
+    """
+    found: list[MaterializationIssue] = []
+    home = bundle.home_model
+    by_id = {item.entity_id: item for item in home.entities}
+    points = {item.interaction_point_id: item for item in home.interaction_points}
+    discs = [
+        (Polygon([(v.x, v.y) for v in item.coverage.vertices]), set(item.region_ids))
+        for item in sensors
+        if isinstance(item, PirSensor)
+    ]
+
+    touched: set[str] = set()
+    for binding in bundle.action_bindings:
+        for capability in binding.capability_bindings:
+            if capability.provider_id in by_id:
+                touched.add(capability.provider_id)
+
+    dwelling = {
+        item.region_id
+        for item in home.regions
+        if item.kind in {RegionKind.room, RegionKind.outdoor}
+    }
+
+    # A role the house cannot answer. The binder then falls back to the catch-all provider the
+    # generator puts in every room so that an action with nowhere to happen still has somewhere, and
+    # nothing said so: `clean{targetRole: kitchen_counter}` cleaned that placeholder for a whole
+    # horizon because no entity type declares `kitchen_counter`.
+    #
+    # Both halves are needed. Landing on the placeholder alone is not a fault — a phone call has no
+    # telephone and shopping happens on the far side of the front door — and a role no furniture
+    # answers is not one either until something actually asks for it here. Placeholders outside the
+    # dwelling are left alone for the same reason.
+    undefined: dict[str, set[str]] = defaultdict(set)
+    for binding in bundle.action_bindings:
+        for capability in binding.capability_bindings:
+            # A carried thing legitimately has no furniture: a glass, a dose of medication, the
+            # shopping. The catalog says which is which by the role it asks for, and `item` is the
+            # one that names something a hand holds rather than something the room contains.
+            if capability.role == _ITEM_ROLE:
+                continue
+            entity = by_id.get(capability.provider_id)
+            if entity is None or entity.entity_type != _SERVICE_ENTITY_TYPE:
+                continue
+            if entity.region_id not in dwelling:
+                continue
+            # Only the argument that fills *this* slot names a place in the home. An action
+            # carries other words too — a posture, a meal kind, the sort of exercise — and reading
+            # them as roles said twelve times over that a home was missing furniture called
+            # `indoor_light_exercise`. The slot is `target`, the argument is `target` or
+            # `targetRole`, and nothing else is a role.
+            for key in (capability.role, f"{capability.role}Role"):
+                value = binding.resolved_arguments.get(key)
+                if isinstance(value, str) and value and not resource_types_for_role(value):
+                    undefined[value].add(binding.action_type)
+    for role in sorted(undefined):
+        found.append(
+            MaterializationIssue(
+                code="ROLE_NAMES_NO_FURNITURE",
+                stage="sensor",
+                path="$.behaviorPackage.processModels",
+                message=(
+                    f"No furniture of this home answers '{role}', asked for by "
+                    f"{', '.join(sorted(undefined[role]))}. The binder falls back to the room's "
+                    "generated placeholder, so the action happens nowhere in particular."
+                ),
+                details={"role": role, "actionTypes": sorted(undefined[role])},
+            )
+        )
+
+    # A bed and a sofa are used without any action naming them: the engine settles a body onto
+    # reclining and seating furniture by geometry, which is a second and equally real path to an
+    # object. Counting them as untouched said the resident never uses her own bed.
+    unused = sorted(
+        item.entity_id
+        for item in home.entities
+        if item.entity_id not in touched
+        and item.entity_type != _SERVICE_ENTITY_TYPE
+        and item.entity_type not in _SETTLING_FURNITURE
+        and item.region_id in dwelling
+    )
+    if unused:
+        found.append(
+            MaterializationIssue(
+                code="ENTITY_NEVER_USED",
+                stage="sensor",
+                path="$.homeModel.entities",
+                message=(
+                    f"{len(unused)} furnished object(s) no activity ever touches: "
+                    f"{', '.join(unused)}. Whatever detector watches them reports only passers-by."
+                ),
+                details={"entityIds": unused},
+            )
+        )
+
+    blind = []
+    for entity_id in sorted(touched):
+        entity = by_id[entity_id]
+        point = points.get(entity.interaction_point_id)
+        if point is None or point.region_id not in dwelling:
+            continue
+        here = ShapelyPoint(point.position.x, point.position.y)
+        if not any(
+            point.region_id in regions and polygon.covers(here) for polygon, regions in discs
+        ):
+            blind.append(entity_id)
+    if blind:
+        found.append(
+            MaterializationIssue(
+                code="USED_ENTITY_UNWATCHED",
+                stage="sensor",
+                path="$.sensors",
+                message=(
+                    f"{len(blind)} object(s) the resident uses stand outside every coverage: "
+                    f"{', '.join(blind)}. On one flat this was the shower and the washing machine, "
+                    "and showering produced 3.13 events a minute where the toilet beside it "
+                    "produced 10.19."
+                ),
+                details={"entityIds": blind},
+            )
+        )
+    return found
+
+
+# How long the probe stands at each place. Short enough that the whole walk is a few hours of
+# simulated time and a second of real one; long enough that a covered spot almost certainly fires.
+# At 120 s it did not: the presence train is a renewal process at roughly ten pulses an hour of
+# occupancy, so a quarter of the flat's places came back silent by luck alone and the check was a
+# coin toss. Half an hour makes a silence mean something.
+PROBE_DWELL_SECONDS = 1_800.0
+# The first stretch after arriving belongs to the walk, not to the place: a detector's hold and the
+# wake of the transit spill past the doorway, and counting them here would credit this spot with a
+# neighbour's sensor.
+PROBE_SETTLE_SECONDS = 20.0
+
+
+def probe_deployment(bundle: SimulationBundle, model: SensorModel) -> dict[str, list[str]]:
+    """Walk a body to every place it can stand and see which detectors actually report it.
+
+    The geometric check beside this one asks whether a point falls inside a polygon. This asks the
+    question a researcher actually has: *would standing here produce anything?* — and it asks it of
+    the real projector, so a hold that is too long, a cooldown that swallows a cluster, a failure
+    window or an error model all get their say. Two of them cannot be seen from the geometry at all.
+
+    It is deliberately the pipeline and not a reimplementation of it. Twice in one week the same
+    rule written twice came to mean two different things — a sampling cadence read from the sources
+    in three places, and a coverage clipped to the room in the deployment but not in the experiment
+    that judged it — and a gate that reimplements what it checks is a gate that can agree with
+    itself while both halves are wrong.
+
+    Returns each place and the detectors that reported it, empty where nothing did.
+    """
+    home = bundle.home_model
+    dwelling = {
+        item.region_id
+        for item in home.regions
+        if item.kind in {RegionKind.room, RegionKind.outdoor}
+    }
+    places = [item for item in home.interaction_points if item.region_id in dwelling]
+    if not places or not bundle.resident_kinematics:
+        return {}
+    kinetics = bundle.resident_kinematics[0]
+    actor = bundle.scenario.residents[0].resident_id
+
+    movements: list[MovementExecution] = []
+    windows: list[tuple[str, datetime, datetime]] = []
+    at = bundle.scenario.simulation_window.start
+    previous = places[0]
+    for index, place in enumerate(places):
+        try:
+            path = plan_path(
+                home,
+                start_region_id=previous.region_id,
+                start=previous.position,
+                end_region_id=place.region_id,
+                end=place.position,
+                walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+                body_radius_meters=kinetics.body_radius_meters,
+                mobility_profile=kinetics.mobility_profile,
+            )
+        except ValueError:
+            # Nowhere to walk is a different fault from nothing to see, and the home validator owns
+            # it. Reported as silent, because a place a body cannot reach reports nothing either.
+            windows.append((place.interaction_point_id, at, at))
+            continue
+        seconds = max(path.duration_seconds, 0.5)
+        arrived = at + timedelta(seconds=seconds)
+        legs = max(len(path.waypoints) - 1, 1)
+        movements.append(
+            MovementExecution(
+                movement_id=f"movement_probe_{index}",
+                action_execution_id=f"action_probe_{index}",
+                actor_id=actor,
+                started_at=at,
+                ended_at=arrived,
+                origin_region_id=previous.region_id,
+                destination_region_id=place.region_id,
+                distance_meters=max(path.distance_meters, 1e-6),
+                duration_microseconds=int(round(seconds * 1_000_000)),
+                waypoints=[
+                    TrajectoryWaypoint(
+                        at=at + timedelta(seconds=seconds * position / legs),
+                        region_id=waypoint.region_id,
+                        position=Point2D(x=waypoint.x, y=waypoint.y),
+                        traversal_mode=waypoint.traversal_mode,
+                    )
+                    for position, waypoint in enumerate(path.waypoints)
+                ],
+            )
+        )
+        windows.append(
+            (
+                place.interaction_point_id,
+                arrived + timedelta(seconds=PROBE_SETTLE_SECONDS),
+                arrived + timedelta(seconds=PROBE_DWELL_SECONDS),
+            )
+        )
+        at = arrived + timedelta(seconds=PROBE_DWELL_SECONDS)
+        previous = place
+
+    trace = ExecutionTrace(
+        trace_id="trace_deployment_probe",
+        source_bundle_id=bundle.bundle_id,
+        source_bundle_sha256=canonical_sha256(bundle),
+        seed=bundle.seed,
+        started_at=bundle.scenario.simulation_window.start,
+        ended_at=at,
+        activity_executions=[],
+        action_executions=[],
+        movements=movements,
+        state_transitions=[],
+        resource_events=[],
+        runtime_events=[],
+        plan_deviations=[],
+        daily_summaries=[],
+        final_state=FinalWorldState(
+            at=at,
+            residents=[
+                ResidentFinalState(
+                    resident_id=actor,
+                    region_id=previous.region_id,
+                    position=Point2D(x=previous.position.x, y=previous.position.y),
+                    posture="standing",
+                    execution_state="idle",
+                    facts={},
+                    held_resource_ids=[],
+                )
+            ],
+        ),
+        semantic_digest="0" * 64,
+    )
+    trace = trace.model_copy(
+        update={
+            "semantic_digest": trace_semantic_digest(
+                json.loads(trace.model_dump_json(by_alias=True))
+            )
+        }
+    )
+    projection = project_sensors(trace, bundle, model)
+    if projection.observable_log is None:
+        return {}
+    records = sorted(
+        (item for item in projection.observable_log.records if item.sensor_type == "pir"),
+        key=lambda item: item.observed_at,
+    )
+    reported: dict[str, list[str]] = {}
+    for point_id, opens, closes in windows:
+        reported[point_id] = sorted(
+            {item.sensor_id for item in records if opens <= item.observed_at <= closes}
+        )
+    return reported
+
+
 def deploy_sensors(
     bundle: SimulationBundle,
     policy: SensorDeploymentPolicy | None = None,
@@ -1638,6 +1992,7 @@ def deploy_sensors(
                 points_by_region.get(region.region_id, []),
                 activities_by_region.get(region.region_id, 0),
                 policy.pir_coverage_shape,
+                policy.pir_coverage_radius_meters,
             )
             for number, (position, coverage) in enumerate(zones, start=1):
                 sensor_id = (
@@ -1678,7 +2033,13 @@ def deploy_sensors(
                     sensor_id=f"pir_{region.region_id}{suffix}",
                     position=position,
                     region_ids=[region.region_id],
-                    coverage=_reach(floor, position, policy.pir_coverage_shape, floor),
+                    coverage=_reach(
+                        floor,
+                        position,
+                        policy.pir_coverage_shape,
+                        floor,
+                        device_radius=policy.pir_coverage_radius_meters,
+                    ),
                     hold_milliseconds=policy.pir_hold_milliseconds,
                     hold_log_sigma=policy.pir_hold_log_sigma,
                     timing=sensor_timing(
@@ -1865,7 +2226,25 @@ def deploy_sensors(
     counts = defaultdict(int)
     for sensor in sensors:
         counts[sensor.sensor_type] += 1
+    watched_counts = _watch_counts(home, sensors)
+    warnings = _deployment_warnings(bundle, sensors)
+    silent = sorted(name for name, seen in probe_deployment(bundle, model).items() if not seen)
+    if silent:
+        warnings.append(
+            MaterializationIssue(
+                code="POINT_EMITS_NOTHING",
+                stage="sensor",
+                path="$.sensors",
+                message=(
+                    f"{len(silent)} place(s) a body can stand produce no reading at all when it "
+                    f"does: {', '.join(silent)}. Asked of the projector rather than of the "
+                    "geometry, so a hold, a cooldown or a failure window counts against them too."
+                ),
+                details={"interactionPointIds": silent},
+            )
+        )
     report = SensorDeploymentReport(
+        warnings=warnings,
         success=True,
         preset=policy.preset,
         policy_version=policy.policy_version,
@@ -1881,6 +2260,8 @@ def deploy_sensors(
             pir_count=counts["pir"],
             contact_count=counts["contact"],
             temperature_count=counts["temperature"],
+            unwatched_interaction_points=watched_counts[0],
+            singly_watched_interaction_points=watched_counts[1],
             error_count=0,
         ),
     )

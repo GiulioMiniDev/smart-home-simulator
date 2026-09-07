@@ -47,7 +47,13 @@ from smart_home_sim.domain.materialization import (
     SyntheticWorkspaceManifest,
     WorkspaceArtifact,
 )
-from smart_home_sim.domain.models import Location, LocationKind, Resource, Scenario
+from smart_home_sim.domain.models import (
+    Location,
+    LocationKind,
+    Resource,
+    Scenario,
+    resource_types_for_role,
+)
 from smart_home_sim.domain.sensors import (
     ContactSensor,
     ObservableSensorLog,
@@ -72,9 +78,11 @@ from smart_home_sim.materialization.service import (
     _CompanionSeat,
     _functional_zones,
     _stair_pose,
+    _watch_counts,
     load_home_policy,
     load_sensor_policy,
     load_source_models,
+    probe_deployment,
 )
 from smart_home_sim.sensors import project_sensors
 from smart_home_sim.simulation import simulate_bundle
@@ -1582,3 +1590,205 @@ def test_a_balcony_is_a_room_of_the_flat_that_sits_outside_it() -> None:
     assert kinds["kitchen"] is RegionKind.room
     assert floorplan.is_outdoor("terrace") and not floorplan.is_outdoor("storage")
     assert "balcony" in dwelling_region_ids(home)
+
+
+def test_a_detector_may_see_further_than_the_floor_it_was_given() -> None:
+    """A disc's radius is otherwise a fact about how the floor was divided, not about the device.
+
+    Half the short side of its own zone stops every detector exactly where its neighbour begins, and
+    an installation built that way cannot produce the thing a real log is mostly made of: a still
+    body seen by two nodes at once. Measured on CASAS Aruba a second detector fires within two
+    seconds 31.6% of the time; on a flat deployed by zones, 2.4%, with 27 of its 31 indoor places to
+    stand watched by exactly one node. Since 68% of activations come from a body standing still,
+    that body can only repeat one name -- 80.9% of consecutive activations against Aruba's 34.2%.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    # Discs only: a rectangle is the room's floor shared out and has no radius to widen.
+    base = SensorDeploymentPolicy.realistic(preset="functional_zones").model_copy(
+        update={"pir_coverage_shape": "circle"}
+    )
+    plain = deploy_sensors(bundle, base)
+    assert plain.sensor_model is not None
+
+    # Zero is what every model built before this field means, so it may not move one vertex.
+    assert deploy_sensors(bundle, base.model_copy(update={"pir_coverage_radius_meters": 0.0}))
+    assert (
+        deploy_sensors(
+            bundle, base.model_copy(update={"pir_coverage_radius_meters": 0.0})
+        ).sensor_model
+        == plain.sensor_model
+    )
+
+    def watched(result: Any) -> tuple[int, int]:
+        return (
+            result.report.summary.unwatched_interaction_points,
+            result.report.summary.singly_watched_interaction_points,
+        )
+
+    wide = deploy_sensors(bundle, base.model_copy(update={"pir_coverage_radius_meters": 2.5}))
+    assert wide.sensor_model is not None
+    assert watched(wide)[1] < watched(plain)[1]
+
+    # It is a floor, never a ceiling: a reach smaller than what the zone already gave changes
+    # nothing, because the zone radius and the cluster reach still apply.
+    narrow = deploy_sensors(bundle, base.model_copy(update={"pir_coverage_radius_meters": 0.05}))
+    assert narrow.sensor_model == plain.sensor_model
+
+    # And the coverage still holds its own node and stays inside the room, which the M6 gate wants.
+    rooms = {item.region_id: item.boundary for item in bundle.home_model.regions}
+    for sensor in wide.sensor_model.sensors:
+        if not isinstance(sensor, PirSensor):
+            continue
+        disc = ShapelyPolygon([(v.x, v.y) for v in sensor.coverage.vertices])
+        assert disc.covers(ShapelyPoint(sensor.position.x, sensor.position.y))
+        floor = unary_union(
+            [ShapelyPolygon([(v.x, v.y) for v in rooms[r].vertices]) for r in sensor.region_ids]
+        )
+        assert disc.difference(floor.buffer(1e-6)).area < 1e-6
+
+
+def test_the_deployment_says_where_nobody_is_watching() -> None:
+    """The blind spot that took five months and a mining campaign to notice.
+
+    A shower and a washing machine sat outside every coverage of one flat, and
+    `morning_toilet_and_shower` produced 3.13 events a minute where `use_toilet` in the same
+    bathroom produced 10.19. Nothing in the deployment said so: the gate checked only that each
+    sensor contains its own node. Reported as a count so the answer arrives before the horizon is
+    simulated rather than after it is mined.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    result = deploy_sensors(bundle, SensorDeploymentPolicy.realistic(preset="functional_zones"))
+    assert result.sensor_model is not None
+    summary = result.report.summary
+
+    indoors = {
+        item.region_id
+        for item in bundle.home_model.regions
+        if item.kind in {RegionKind.room, RegionKind.outdoor}
+    }
+    inside = [p for p in bundle.home_model.interaction_points if p.region_id in indoors]
+    assert summary.unwatched_interaction_points + summary.singly_watched_interaction_points <= len(
+        inside
+    )
+
+    # The street is not instrumented and saying so every time would be noise, so it is left out:
+    # this home puts two interaction points outdoors and neither is counted as a blind spot.
+    outside = [p for p in bundle.home_model.interaction_points if p.region_id not in indoors]
+    assert outside
+    assert summary.unwatched_interaction_points == 0
+
+    # Take the bathroom's detector away and its places to stand become blind, which is the shape of
+    # the defect this exists to catch.
+    stripped = result.sensor_model.model_copy(
+        update={
+            "sensors": [
+                item
+                for item in result.sensor_model.sensors
+                if not (isinstance(item, PirSensor) and "bathroom" in item.region_ids)
+            ]
+        }
+    )
+    blind, _ = _watch_counts(bundle.home_model, list(stripped.sensors))
+    assert blind >= 3
+
+
+def test_the_deployment_compares_what_is_named_what_is_there_and_what_is_watched() -> None:
+    """Three documents that nothing ever compared, and the three defects that slipped between them.
+
+    The behaviour names roles, the home holds furniture, the sensors watch floor. Each was validated
+    on its own and no gate ever joined them, so a Florence flat shipped five months of data with a
+    shower and a washing machine outside every coverage, an action cleaning a role no furniture
+    answers, and a table and a sink no activity ever touched. All three were found by mining the
+    dataset afterwards. The deployment is the first moment all three documents are in hand.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    result = deploy_sensors(bundle, SensorDeploymentPolicy.realistic(preset="functional_zones"))
+    assert result.report.success
+    # Warnings never fail a deployment: a balcony nobody watches can be a choice.
+    assert result.report.issues == []
+
+    codes = {item.code for item in result.report.warnings}
+    assert codes <= {"ROLE_NAMES_NO_FURNITURE", "ENTITY_NEVER_USED", "USED_ENTITY_UNWATCHED"}
+    assert all(item.stage == "sensor" for item in result.report.warnings)
+
+    # A role no furniture answers, asked for inside the flat. Landing on the room's placeholder is
+    # not enough on its own — a phone call has no telephone and shopping happens outdoors — so the
+    # check wants both halves, and a role that does resolve must not be reported.
+    named = {
+        value
+        for binding in bundle.action_bindings
+        for value in binding.resolved_arguments.values()
+        if isinstance(value, str)
+    }
+    reported = {
+        item.details["role"]
+        for item in result.report.warnings
+        if item.code == "ROLE_NAMES_NO_FURNITURE"
+    }
+    assert reported <= named
+    assert all(not resource_types_for_role(str(role)) for role in reported)
+    assert "food_storage" in named and "food_storage" not in reported
+
+    # Furniture nothing ever touches. A bed and a sofa are used without any action naming them —
+    # the engine settles a body onto them by geometry — so counting those would say the resident
+    # never uses her own bed.
+    never = {
+        entity
+        for item in result.report.warnings
+        if item.code == "ENTITY_NEVER_USED"
+        for entity in item.details["entityIds"]
+    }
+    types = {item.entity_id: item.entity_type for item in bundle.home_model.entities}
+    assert all(types[entity] not in {"bed", "sofa", "armchair", "chair"} for entity in never)
+    assert all(types[entity] != "generated_environment_service" for entity in never)
+
+
+def test_the_deployment_walks_a_body_to_every_place_it_can_stand() -> None:
+    """The question the geometry cannot answer: would standing here produce anything?
+
+    A point inside a polygon is not the same as a point a detector reports. A hold that is too long
+    folds a cluster into one record, a cooldown swallows the rest, a failure window covers an
+    afternoon, and none of that is visible from the coverage. So the probe asks the real projector
+    instead of reimplementing it — which matters, because the same rule written twice has already
+    come to mean two different things twice in this codebase.
+    """
+    bundle = golden_model("simulation-bundle.json", SimulationBundle)
+    policy = SensorDeploymentPolicy.realistic(preset="functional_zones")
+    result = deploy_sensors(bundle, policy)
+    assert result.sensor_model is not None
+
+    reported = probe_deployment(bundle, result.sensor_model)
+    indoors = {
+        item.region_id
+        for item in bundle.home_model.regions
+        if item.kind in {RegionKind.room, RegionKind.outdoor}
+    }
+    assert reported.keys() == {
+        item.interaction_point_id
+        for item in bundle.home_model.interaction_points
+        if item.region_id in indoors
+    }
+    # Every place this home can put a body reports something, and the deployment says so by not
+    # warning about it.
+    assert all(reported.values())
+    assert not [item for item in result.report.warnings if item.code == "POINT_EMITS_NOTHING"]
+
+    # And it has teeth: take the bathroom's detectors away and exactly the bathroom falls silent.
+    blinded = result.sensor_model.model_copy(
+        update={
+            "sensors": [
+                item
+                for item in result.sensor_model.sensors
+                if not (isinstance(item, PirSensor) and "bathroom" in item.region_ids)
+            ]
+        }
+    )
+    after = probe_deployment(bundle, blinded)
+    silent = {name for name, seen in after.items() if not seen}
+    assert silent
+    bathroom = {
+        item.interaction_point_id
+        for item in bundle.home_model.interaction_points
+        if item.region_id == "bathroom"
+    }
+    assert silent <= bathroom

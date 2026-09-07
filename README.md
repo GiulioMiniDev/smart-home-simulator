@@ -39,6 +39,38 @@ Restano intenzionalmente assenti:
   simulazione e proiezione sensoriale non ne contengono alcuna, e un artefatto già accettato si
   simula e si riproduce senza LM Studio attivo.
 
+### Quanto vede ogni rivelatore, e perché decide com'è fatto il log
+
+Il preset `functional_zones` divide il pavimento fra i rivelatori e dà a ciascuno la sua fetta.
+È una scelta ordinata e ha una conseguenza misurabile: ogni cono si ferma dove comincia quello
+accanto, quindi un corpo fermo è visto da **un** sensore solo. Poiché il 68% delle accensioni
+nasce da un corpo fermo che esegue un'azione, il log che ne esce si ripete: su cinque mesi di un
+appartamento fiorentino l'**80,9%** delle accensioni consecutive nominava lo stesso sensore, dove
+CASAS Aruba sta al 34,4%; due rivelatori diversi entro due secondi erano il **2,4%** contro il
+31,6% di Aruba.
+
+Un'installazione reale non è fatta così: un nodo a soffitto a 2,4 m arriva a qualche metro e le
+coperture si sovrappongono di molto. `pirCoverageRadiusMeters` dà al rivelatore una portata
+propria, indipendente da quanto pavimento gli è toccato. Sulla **stessa traccia**, riproiettata a
+2,5 m:
+
+| | zone (r = 0) | r = 2,5 m | Aruba |
+|---|---:|---:|---:|
+| accensioni consecutive sullo stesso sensore | 80,9% | **49,2%** | 34,4% |
+| terne (X,X,X) | 73,9% | **31,5%** | 20,8% |
+| due sensori diversi entro 2 s | 2,4% | **8,1%** | 31,6% |
+| quota del sensore più attivo | 25,5% | **19,8%** | 15,3% |
+| entropia 3-gram | 6,08 | **6,70** | 9,44 |
+| eventi al giorno | 2.902 | 4.317 | 7.818 |
+
+Il costo è quello: **+49% di osservazioni** a parità di traccia, quindi export più grandi e
+campagne più lente. Il default resta **0**, che lascia ogni modello già costruito identico al
+byte; il raggio si sceglie, e la scelta va dichiarata quando si pubblica un dataset, perché
+cambia le statistiche del log molto più di quanto le cambi il comportamento simulato.
+
+Il valore si applica alla sola forma `circle` — un rettangolo *è* la fetta di pavimento, e
+allargarlo vorrebbe dire sfondare i muri — ed è un pavimento, non un rimpiazzo: allarga soltanto.
+
 Queste feature verranno sviluppate separatamente solo dopo il completamento dei rispettivi criteri di ingresso descritti in [ROADMAP.md](ROADMAP.md).
 
 ## Comandi disponibili

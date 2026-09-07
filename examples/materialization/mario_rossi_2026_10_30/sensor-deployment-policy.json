@@ -8,6 +8,7 @@
   "pirHoldLogSigma": 0.0,
   "pirCooldownMilliseconds": 750.0,
   "pirCoverageShape": "rectangle",
+  "pirCoverageRadiusMeters": 0.0,
   "contactPulseMilliseconds": 1000.0,
   "contactPulseLogSigma": 0.0,
   "latencyMilliseconds": 0.0,
