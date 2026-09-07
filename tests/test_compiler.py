@@ -515,9 +515,7 @@ def test_a_dependency_that_leaves_its_day_refuses_the_split() -> None:
     later = next(record for record in records if record.day_index > 0)
     crossed = later.activity.model_copy(
         update={
-            "dependency_groups": [
-                DependencyGroup(activity_ids=[first_day.activity.activity_id])
-            ]
+            "dependency_groups": [DependencyGroup(activity_ids=[first_day.activity.activity_id])]
         }
     )
     mutated = [
