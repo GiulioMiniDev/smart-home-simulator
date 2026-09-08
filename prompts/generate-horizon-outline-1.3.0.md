@@ -892,6 +892,155 @@ the ones that apply:
   that does not define an intent it binds is rejected, and so is one whose reference disagrees with
   the catalog actually loaded.
 
+### What a model of the right granularity looks like
+
+Rule 5 says to realize each component through its required action types, and read on its own it
+licenses a model that is *only* those. `consume_meal` requires `change_posture, consume,
+change_posture`, so `move_to -> change_posture(sitting) -> consume -> change_posture(standing)`
+passes every rule above — and describes a resident who crosses the kitchen, sits down and eats a
+meal she never picked up, in a kitchen whose cupboards nobody opened. Both horizons authored
+against this prompt wrote exactly that, for all three meals. Measured on the export that followed,
+the fridge was opened 0.81 times a day against the eight to fifteen of a real household, and the
+contact sensors — half the instrumentation of the home — observed almost nothing.
+
+The required action types are a floor, not a recipe. Below is the decomposition this project uses
+for each intent: the same action types, the same roles and the same argument shapes you are asked
+for, at the granularity the sensor layer is derived from. Take these as the shape and adapt the
+detail to your persona — a moka rather than a machine, a wardrobe rather than a chest — rather than
+writing a shorter model that validates.
+
+```text
+buy_groceries  [shop, carry_purchases]
+  move_to_capability(retail_area) -> shop(<intent>) -> move_to_capability(purchases) -> take_item(purchases)
+
+clean_kitchen  [clean_surface]
+  move_to_capability(cleaning_product_storage) -> open(cleaning_product_storage) -> take_item(cleaning_tool) -> close(cleaning_product_storage) ->
+  move_to(<activity location>) -> clean(kitchen_surfaces) -> move_to_capability(cleaning_product_storage) -> open(cleaning_product_storage) ->
+  put_item(cleaning_tool) -> close(cleaning_product_storage)
+
+eat_breakfast  [consume_meal]
+  move_to_capability(food_storage) -> open(food_storage) -> take_item(prepared_meal) -> close(food_storage) ->
+  move_to_capability(consumption_area) -> change_posture(sitting) -> consume(prepared_meal) -> change_posture(standing) ->
+  move_to_capability(washing_area) -> put_item(prepared_meal)
+
+eat_dinner  [consume_meal]
+  move_to_capability(food_storage) -> open(food_storage) -> take_item(prepared_meal) -> close(food_storage) ->
+  move_to_capability(consumption_area) -> change_posture(sitting) -> consume(prepared_meal) -> change_posture(standing) ->
+  move_to_capability(washing_area) -> put_item(prepared_meal)
+
+eat_lunch  [consume_meal]
+  move_to_capability(food_storage) -> open(food_storage) -> take_item(prepared_meal) -> close(food_storage) ->
+  move_to_capability(consumption_area) -> change_posture(sitting) -> consume(prepared_meal) -> change_posture(standing) ->
+  move_to_capability(washing_area) -> put_item(prepared_meal)
+
+evening_hygiene  [personal_hygiene]
+  move_to_capability(personal_care_fixture) -> personal_care(evening_hygiene)
+
+evening_walk  [walk]
+  move_to_capability(walking_area) -> exercise(walking)
+
+hang_laundry  [hang_laundry]
+  move_to_capability(drying_area) -> laundry_step(hang)
+
+indoor_light_exercise  [exercise]
+  move_to_capability(exercise_area) -> exercise(indoor_light_exercise)
+
+morning_toilet_and_shower  [use_toilet, shower]
+  move_to_capability(toilet) -> personal_care(use_toilet) -> move_to_capability(shower) -> activate(shower_water) ->
+  personal_care(shower) -> deactivate(shower_water)
+
+morning_toilet_and_wash  [use_toilet, wash_face]
+  move_to_capability(toilet) -> personal_care(use_toilet) -> move_to_capability(sink) -> activate(sink_faucet) ->
+  personal_care(wash_face) -> deactivate(sink_faucet)
+
+night_toilet_visit  [use_toilet, return_to_bed]
+  change_posture(standing) -> move_to(<activity location>) -> move_to_capability(toilet) -> personal_care(use_toilet) ->
+  move_to_capability(washing_area) -> personal_care(wash_hands) -> move_to(<activity location 1>) -> change_posture(lying)
+
+phone_call  [phone_call]
+  move_to_capability(communication_area) -> change_posture(sitting) -> communicate(phone) -> change_posture(standing)
+
+prepare_and_drink_hot_drink  [prepare_drink, consume_drink]
+  move_to(<activity location>) -> move_to_capability(coffee_and_breakfast_storage) -> open(coffee_and_breakfast_storage) -> take_item(ingredients) ->
+  close(coffee_and_breakfast_storage) -> move_to_capability(coffee_equipment) -> activate(coffee_equipment) -> prepare_food(hot_drink, drink) ->
+  deactivate(coffee_equipment) -> move_to_capability(consumption_area) -> change_posture(sitting) -> consume(drink) ->
+  change_posture(standing) -> put_item(ingredients)
+
+prepare_breakfast  [prepare_food]
+  move_to(<activity location>) -> move_to_capability(coffee_and_breakfast_storage) -> open(coffee_and_breakfast_storage) -> take_item(ingredients) ->
+  close(coffee_and_breakfast_storage) -> move_to_capability(cooking_appliance) -> activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) ->
+  deactivate(cooking_appliance) -> move_to_capability(coffee_and_breakfast_storage) -> open(coffee_and_breakfast_storage) -> put_item(ingredients) ->
+  close(coffee_and_breakfast_storage) -> move_to_capability(consumption_area) -> put_item(prepared_meal)
+
+prepare_light_dinner  [prepare_food]
+  move_to_capability(cooking_appliance) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
+  activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> open(food_storage) -> take_item(ingredients) ->
+  close(food_storage) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> move_to_capability(washing_area) ->
+  put_item(prepared_meal)
+
+prepare_simple_lunch  [prepare_food]
+  move_to_capability(cooking_appliance) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
+  activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> open(food_storage) -> take_item(ingredients) ->
+  close(food_storage) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> move_to_capability(washing_area) ->
+  put_item(prepared_meal)
+
+put_groceries_away  [store_purchases]
+  move_to_capability(household_storage) -> open(household_storage) -> put_item(purchases) -> close(household_storage)
+
+read_and_rest  [read, rest]
+  move_to(<activity location>) -> change_posture(sitting) -> wait(rest) -> move_to(<activity location>) ->
+  change_posture(sitting) -> leisure(read) -> change_posture(standing)
+
+rest_or_nap  [rest, nap]
+  move_to(<activity location>) -> change_posture(sitting) -> wait(rest) -> change_posture(lying) ->
+  wait(nap) -> change_posture(standing)
+
+sleep  [sleep]
+  move_to(<activity location>) -> change_posture(lying) -> wait(sleep)
+
+start_laundry  [collect_laundry, load_laundry, start_laundry]
+  move_to_capability(laundry_storage) -> open(laundry_storage) -> laundry_step(collect) -> close(laundry_storage) ->
+  move_to_capability(washing_machine) -> open(laundry_equipment) -> laundry_step(load) -> close(laundry_equipment) ->
+  laundry_step(start)
+
+take_morning_medication  [take_medication]
+  move_to_capability(medication_storage) -> open(medication_cabinet) -> take_item(medication_dose_container) -> close(medication_cabinet) ->
+  move_to_capability(drinking_water_source) -> take_item(drinking_glass) -> manage_medication(take) -> consume(drinking_water) ->
+  put_item(drinking_glass) -> move_to_capability(medication_storage) -> open(medication_cabinet) -> put_item(medication_dose_container) ->
+  close(medication_cabinet)
+
+tidy_living_room_and_hallway  [tidy_area]
+  move_to_capability(tidying_area) -> organize(<intent>)
+
+use_toilet  [use_toilet]
+  move_to(<activity location>) -> move_to_capability(toilet) -> personal_care(use_toilet) -> move_to_capability(washing_area) ->
+  personal_care(wash_hands)
+
+wake_up  [wake_up]
+  move_to(<activity location>) -> change_posture(standing)
+
+watch_television  [watch_media]
+  move_to_capability(television) -> change_posture(sitting) -> activate(television) -> leisure(<intent>) ->
+  deactivate(television) -> change_posture(standing)
+
+weekly_meal_preparation  [prepare_food, portion_food, store_food]
+  move_to_capability(cooking_appliance) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
+  activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> put_item(prepared_meal) ->
+  move_to_capability(food_preparation_area) -> organize(prepared_food_portions) -> move_to_capability(food_storage) -> open(food_storage) ->
+  put_item(prepared_food_portions) -> close(food_storage)
+
+work_from_home  [work]
+  move_to(<activity location>) -> move_to_capability(table) -> change_posture(sitting) -> perform_work(focused_work) ->
+  change_posture(standing)
+```
+
+Two habits in there are worth naming, because they are what a contact sensor in a kitchen mostly
+sees. Every process **fetches what it uses from the storage it is kept in and closes it again**:
+`move_to_capability(storage) -> open -> take_item -> close`, never a `take_item` on its own. And
+every process **puts back or clears up** what it finished with — the ingredients into the fridge,
+the plate to the washing area. A model that only takes leaves the resident carrying something for
+the rest of the horizon, and the fact never becomes false again.
+
 ## Required final consistency checks
 
 Before answering, verify all of the following:

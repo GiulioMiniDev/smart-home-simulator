@@ -20,6 +20,7 @@ from smart_home_sim.authoring.preflight import (
     validate_deterministic_preconditions,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
+    validate_meals_are_handled,
     validate_meals_are_prepared,
     validate_named_objects_can_do_what_is_asked,
     validate_rooms_are_furnished,
@@ -648,6 +649,19 @@ def validate_authoring_payload(
                         details=finding.details,
                     )
                 )
+                for finding in validate_meals_are_handled(parsed_package):
+                    issues.append(
+                        _authoring_issue(
+                            "MEAL_IS_NEVER_HANDLED",
+                            "behavior",
+                            _prefix_path("$.personalProcessPackage", finding.path),
+                            finding.message,
+                            # A warning: the model runs and the day it makes is coherent. It is
+                            # simply not observable, which is the point of generating it.
+                            severity="warning",
+                            details=finding.details,
+                        )
+                    )
             for finding in validate_meals_are_prepared(parsed_scenario):
                 issues.append(
                     _authoring_issue(

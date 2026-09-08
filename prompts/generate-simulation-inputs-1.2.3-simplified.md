@@ -352,7 +352,6 @@ clean_kitchen  [clean_surface]
 eat_breakfast  [consume_meal]
   move_to_capability(food_storage) -> open(food_storage) -> take_item(prepared_meal) -> close(food_storage) ->
   move_to_capability(consumption_area) -> change_posture(sitting) -> consume(prepared_meal) -> change_posture(standing) ->
-  move_to_capability(food_storage) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
   move_to_capability(washing_area) -> put_item(prepared_meal)
 
 eat_dinner  [consume_meal]
@@ -405,13 +404,13 @@ prepare_breakfast  [prepare_food]
   close(coffee_and_breakfast_storage) -> move_to_capability(consumption_area) -> put_item(prepared_meal)
 
 prepare_light_dinner  [prepare_food]
-  move_to_capability(food_preparation_area) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
+  move_to_capability(cooking_appliance) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
   activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> open(food_storage) -> take_item(ingredients) ->
   close(food_storage) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> move_to_capability(washing_area) ->
   put_item(prepared_meal)
 
 prepare_simple_lunch  [prepare_food]
-  move_to_capability(food_preparation_area) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
+  move_to_capability(cooking_appliance) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
   activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> open(food_storage) -> take_item(ingredients) ->
   close(food_storage) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> move_to_capability(washing_area) ->
   put_item(prepared_meal)
@@ -456,7 +455,7 @@ watch_television  [watch_media]
   deactivate(television) -> change_posture(standing)
 
 weekly_meal_preparation  [prepare_food, portion_food, store_food]
-  move_to_capability(food_preparation_area) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
+  move_to_capability(cooking_appliance) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
   activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> deactivate(cooking_appliance) -> put_item(prepared_meal) ->
   move_to_capability(food_preparation_area) -> organize(prepared_food_portions) -> move_to_capability(food_storage) -> open(food_storage) ->
   put_item(prepared_food_portions) -> close(food_storage)

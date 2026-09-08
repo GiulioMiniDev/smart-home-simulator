@@ -20,6 +20,7 @@ from smart_home_sim.authoring.preflight import (
     validate_habit_bands_hold_a_stable_stretch,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
+    validate_meals_are_handled,
     validate_meals_are_prepared,
     validate_named_objects_can_do_what_is_asked,
     validate_rooms_are_furnished,
@@ -95,7 +96,11 @@ def test_activity_location_argument_is_resolved_from_canonical_activity() -> Non
     assert activity.location_ids[0] in resolved.values()
 
 
-def _package_with(model_nodes: list[dict[str, object]], intent: str) -> PersonalProcessPackage:
+def _package_with(
+    model_nodes: list[dict[str, object]],
+    intent: str,
+    components: list[str] | None = None,
+) -> PersonalProcessPackage:
     """Smallest package that binds one intent to one model with the given actions."""
     nodes: list[dict[str, object]] = [{"nodeId": "start", "kind": "start"}]
     nodes.extend({**node, "durationWeight": 1.0} for node in model_nodes)
@@ -123,7 +128,7 @@ def _package_with(model_nodes: list[dict[str, object]], intent: str) -> Personal
                         "residentId": "resident",
                         "title": "Model",
                         "description": "Model",
-                        "implementedComponents": ["travel"],
+                        "implementedComponents": components or ["travel"],
                         "nodes": nodes,
                         "edges": [
                             {"sourceNodeId": left, "targetNodeId": right}
@@ -234,6 +239,50 @@ def test_a_resident_who_goes_out_weekly_is_left_alone() -> None:
     scenario = _scenario_with_outings(7)
 
     assert validate_the_resident_goes_out(scenario) == []
+
+
+def _eating_package(model_nodes: list[dict[str, object]]) -> PersonalProcessPackage:
+    return _package_with(model_nodes, "eat_dinner", ["consume_meal"])
+
+
+_SIT_AND_EAT: list[dict[str, object]] = [
+    {"nodeId": "a1", "kind": "action", "actionType": "move_to"},
+    {"nodeId": "a2", "kind": "action", "actionType": "change_posture"},
+    {"nodeId": "a3", "kind": "action", "actionType": "consume"},
+    {"nodeId": "a4", "kind": "action", "actionType": "change_posture"},
+]
+
+
+def test_a_meal_the_resident_never_picks_up_is_reported() -> None:
+    """`consume_meal` requires only `change_posture, consume, change_posture`.
+
+    A model that writes exactly those plus a walk satisfies every rule the authoring prompt
+    states, and both authored packages wrote it for all three meals: nothing is fetched, no
+    cupboard opens, no plate is carried to the sink. The export that followed opened the fridge
+    0.81 times a day against the eight to fifteen of a real household.
+    """
+    findings = validate_meals_are_handled(_eating_package(_SIT_AND_EAT))
+
+    assert len(findings) == 1
+    assert findings[0].details["intent"] == "eat_dinner"
+    assert "never picked up" in findings[0].message
+
+
+def test_a_meal_that_is_fetched_and_cleared_away_is_left_alone() -> None:
+    fetched = [
+        {"nodeId": "a0", "kind": "action", "actionType": "open"},
+        {"nodeId": "a0b", "kind": "action", "actionType": "take_item"},
+        {"nodeId": "a0c", "kind": "action", "actionType": "close"},
+        *_SIT_AND_EAT,
+        {"nodeId": "a5", "kind": "action", "actionType": "put_item"},
+    ]
+
+    assert validate_meals_are_handled(_eating_package(fetched)) == []
+
+
+def test_only_the_models_that_implement_a_meal_are_asked() -> None:
+    """A phone call is allowed to touch nothing. The check is about where food comes from."""
+    assert validate_meals_are_handled(_package_with(_SIT_AND_EAT, "phone_call")) == []
 
 
 def _scenario_with_intents(intents: list[str]) -> Scenario:

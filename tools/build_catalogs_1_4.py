@@ -184,6 +184,8 @@ def build_reference_models() -> None:
     }
     stand_up_after_resting(models["models"])
     ground_breakfast_preparation(models["models"])
+    stop_fetching_a_breakfast_that_is_now_made(models["models"])
+    cook_at_the_appliance(models["models"])
     models["models"] = dict(sorted(models["models"].items()))
     _write("reference-process-models-1.4.0.json", models)
 
@@ -307,6 +309,96 @@ def ground_breakfast_preparation(models: dict[str, Any]) -> None:
             for source, target in zip(node_ids, node_ids[1:], strict=False)
         ],
     }
+
+
+def _relink(model: dict[str, Any], actions: list[Any]) -> None:
+    """Rebuild a model as the linear chain of `actions`, renumbered, between its own terminals."""
+    for index, node in enumerate(actions, start=1):
+        node["nodeId"] = f"step_{index}"
+    terminals = [node for node in model["nodes"] if node["kind"] != "action"]
+    start = next(node for node in terminals if node["kind"] == "start")
+    end = next(node for node in terminals if node["kind"] == "end")
+    model["nodes"] = [start, *actions, end]
+    sequence = [node["nodeId"] for node in model["nodes"]]
+    model["edges"] = [
+        {"sourceNodeId": source, "targetNodeId": target, "condition": None, "isDefault": False}
+        for source, target in zip(sequence, sequence[1:], strict=False)
+    ]
+
+
+def stop_fetching_a_breakfast_that_is_now_made(models: dict[str, Any]) -> None:
+    """Take the second trip to the fridge out of `eat_breakfast`.
+
+    It was put there to buy contact events at a time when nothing else in the morning produced any:
+    the three eating processes were `move -> sit -> consume -> stand`, no intent existed that could
+    make a breakfast, and the fridge was opened 0.81 times a day. The trip is a `take_item` of
+    `ingredients` *after* the meal has been eaten, and nothing ever puts them back, so
+    `resident.carrying.ingredients` is true from the first morning of the horizon onwards.
+
+    `prepare_breakfast` now does properly what this was imitating, and does it twice over — out of
+    the storage and back into it — so the borrowed traffic is neither needed nor paid for with a
+    fact that never becomes false again. What is left is what lunch and dinner already do: fetch
+    the meal, eat it, carry the plate to the sink.
+    """
+    model = models["eat_breakfast"]
+    actions = [node for node in model["nodes"] if node["kind"] == "action"]
+    surplus = {"move_to_capability", "open", "take_item", "close"}
+    eaten = False
+    kept: list[Any] = []
+    for node in actions:
+        if node["actionType"] == "consume":
+            eaten = True
+        # Everything between standing up and the walk to the sink is the second trip.
+        if eaten and node["actionType"] in surplus and _target_role(node) != "washing_area":
+            continue
+        kept.append(node)
+    assert len(kept) == len(actions) - 4
+    _relink(model, kept)
+
+
+def _target_role(node: dict[str, Any]) -> str | None:
+    for name in ("targetRole", "target", "itemRole"):
+        argument = node["arguments"].get(name)
+        if argument is not None:
+            return str(argument.get("value"))
+    return None
+
+
+def cook_at_the_appliance(models: dict[str, Any]) -> None:
+    """Send the cooking processes to the hob rather than to `food_preparation_area`.
+
+    That role answers for the sink as well as the stove, and `_entity_candidates` breaks the tie by
+    entity id, so `kitchen_sink` wins it every time. The step is an approach and nothing else — the
+    `activate` below it names the appliance and walks the resident there regardless — so what the
+    role bought was a detour to the sink before the cooking began, on every lunch and every dinner
+    of every horizon. `prepare_breakfast` names the appliance for the same reason.
+
+    Only the approach that leads into the cooking is retargeted. `weekly_meal_preparation` makes a
+    second one before it portions the food, and `organize` names no object of its own, so that
+    approach is the only thing deciding where she stands — and a worktop beside the sink is where
+    portioning happens, not the hob she has just switched off.
+    """
+    for intent in ("prepare_simple_lunch", "prepare_light_dinner", "weekly_meal_preparation"):
+        actions = [node for node in models[intent]["nodes"] if node["kind"] == "action"]
+        for index, node in enumerate(actions):
+            if node["actionType"] != "move_to_capability":
+                continue
+            if _target_role(node) != "food_preparation_area":
+                continue
+            following = actions[index + 1 :]
+            reach = next(
+                (
+                    position
+                    for position, item in enumerate(following)
+                    if item["actionType"] == "move_to_capability"
+                ),
+                len(following),
+            )
+            if any(
+                item["actionType"] == "activate" and _target_role(item) == "cooking_appliance"
+                for item in following[:reach]
+            ):
+                node["arguments"]["targetRole"] = _literal("cooking_appliance")
 
 
 if __name__ == "__main__":

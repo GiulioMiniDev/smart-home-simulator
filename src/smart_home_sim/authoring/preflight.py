@@ -416,6 +416,57 @@ def validate_away_round_trips(package: PersonalProcessPackage) -> list[Preflight
     return findings
 
 
+# The component whose whole premise is that the food came from somewhere.
+_MEAL_COMPONENT = "consume_meal"
+# Any one of these is the model reaching for an object rather than only moving and sitting.
+_HANDLING_ACTIONS = frozenset({"take_item", "put_item", "open", "close"})
+
+
+def validate_meals_are_handled(package: PersonalProcessPackage) -> list[PreflightFinding]:
+    """Does the resident ever pick up the meal she eats, or put the plate down afterwards?
+
+    `consume_meal` requires `change_posture, consume, change_posture`, and a model that writes
+    exactly those plus a walk satisfies every rule the authoring prompt states. It also describes a
+    meal that materialises on the table: nothing is fetched, no cupboard opens, no plate is carried
+    to the sink. Both authored packages wrote that model for all three meals, and the export that
+    followed opened the fridge 0.81 times a day against the eight to fifteen of a real household —
+    the contact sensors, which are half of what the home is instrumented with, observed the cooking
+    and nothing else.
+
+    A warning rather than a rejection, because the model is executable and the day it produces is
+    coherent. What it is not is observable, and that is worth saying out loud before a horizon is
+    run for eight months.
+    """
+    models = {model.process_model_id: model for model in package.process_models}
+    findings: list[PreflightFinding] = []
+    for index, binding in enumerate(package.bindings):
+        model = models.get(binding.process_model_id)
+        if model is None or _MEAL_COMPONENT not in model.implemented_components:
+            continue
+        if any(node.action_type in _HANDLING_ACTIONS for node in model.nodes):
+            continue
+        findings.append(
+            PreflightFinding(
+                path=f"$.bindings[{index}].processModelId",
+                message=(
+                    f"Process model {model.process_model_id!r} implements {binding.intent!r} "
+                    "without touching a single object: the resident sits down and eats a meal she "
+                    "never picked up, and stands up leaving no plate. Fetch what is consumed from "
+                    "the storage it is kept in and clear it away afterwards — "
+                    "`move_to_capability(food_storage) -> open -> take_item -> close` before the "
+                    "meal and `move_to_capability(washing_area) -> put_item` after it. Without "
+                    "them the kitchen's contact sensors observe nothing of the meal at all."
+                ),
+                details={
+                    "intent": binding.intent,
+                    "processModelId": model.process_model_id,
+                    "component": _MEAL_COMPONENT,
+                },
+            )
+        )
+    return findings
+
+
 def validate_the_resident_goes_out(scenario: Scenario) -> list[PreflightFinding]:
     """Does this horizon ever take the resident through the front door on a routine?
 

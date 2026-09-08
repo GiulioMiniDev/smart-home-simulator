@@ -473,6 +473,32 @@ the ones that apply:
   that does not define an intent it binds is rejected, and so is one whose reference disagrees with
   the catalog actually loaded.
 
+### What a model of the right granularity looks like
+
+Rule 5 says to realize each component through its required action types, and read on its own it
+licenses a model that is *only* those. `consume_meal` requires `change_posture, consume,
+change_posture`, so `move_to -> change_posture(sitting) -> consume -> change_posture(standing)`
+passes every rule above — and describes a resident who crosses the kitchen, sits down and eats a
+meal she never picked up, in a kitchen whose cupboards nobody opened. Both horizons authored
+against this prompt wrote exactly that, for all three meals. Measured on the export that followed,
+the fridge was opened 0.81 times a day against the eight to fifteen of a real household, and the
+contact sensors — half the instrumentation of the home — observed almost nothing.
+
+The required action types are a floor, not a recipe. Below is the decomposition this project uses
+for each intent: the same action types, the same roles and the same argument shapes you are asked
+for, at the granularity the sensor layer is derived from. Take these as the shape and adapt the
+detail to your persona — a moka rather than a machine, a wardrobe rather than a chest — rather than
+writing a shorter model that validates.
+
+{{REFERENCE_PROCESS_MODELS}}
+
+Two habits in there are worth naming, because they are what a contact sensor in a kitchen mostly
+sees. Every process **fetches what it uses from the storage it is kept in and closes it again**:
+`move_to_capability(storage) -> open -> take_item -> close`, never a `take_item` on its own. And
+every process **puts back or clears up** what it finished with — the ingredients into the fridge,
+the plate to the washing area. A model that only takes leaves the resident carrying something for
+the rest of the horizon, and the fact never becomes false again.
+
 ## Required final consistency checks
 
 Before answering, verify all of the following:

@@ -902,6 +902,16 @@ def _render_outline_prompt(template_path: Path, destination: Path) -> None:
     prompt = prompt.replace("{{FURNITURE_CATALOG}}", _render_furniture_catalog())
     prompt = prompt.replace("{{FURNITURE_PALETTE}}", _render_furniture_palette())
     prompt = prompt.replace("{{RHYTHM_INTENTS}}", _render_rhythm_intents())
+    # The same block the simplified prompt has carried since it was written. The outline prompt
+    # taught the *rules* for a process model and never showed one, so what came back satisfied the
+    # rules and nothing else: `consume_meal` asks for `change_posture, consume, change_posture` and
+    # that is exactly what two authored packages wrote for all three meals.
+    prompt = prompt.replace(
+        "{{REFERENCE_PROCESS_MODELS}}",
+        _render_reference_models(
+            json.loads((CATALOG_DIR / SIMPLIFIED_REFERENCE_MODELS).read_text(encoding="utf-8"))
+        ),
+    )
     prompt = prompt.replace(
         "{{PROCESS_MODEL_SECTIONS}}",
         _retarget_action_state_contract(_section_span(frozen, *REUSED_FROM_1_3_0)),
