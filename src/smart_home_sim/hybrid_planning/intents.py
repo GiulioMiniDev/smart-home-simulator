@@ -71,6 +71,13 @@ INTENT_CATALOG: tuple[IntentSpec, ...] = (
     IntentSpec("eat_breakfast", "Eat breakfast", IntentCategory.meal, "kitchen"),
     IntentSpec("eat_lunch", "Eat lunch", IntentCategory.meal, "kitchen"),
     IntentSpec("eat_dinner", "Eat dinner", IntentCategory.meal, "kitchen"),
+    # The third preparation, and the last one to get here. Lunch and dinner have had one since
+    # 1.0.0; breakfast has been in the activity catalog just as long and had no reference model, so
+    # it never reached this tuple and never reached the authoring prompt, whose in-home list is
+    # rendered from it. An author could say the resident ate breakfast and had no way to say
+    # anybody made it — which is what two authored horizons did, 30 breakfasts and 132 of them,
+    # every one a meal that appeared on the table by itself.
+    IntentSpec("prepare_breakfast", "Prepare breakfast", IntentCategory.cooking, "kitchen"),
     IntentSpec("prepare_simple_lunch", "Prepare lunch", IntentCategory.cooking, "kitchen"),
     IntentSpec("prepare_light_dinner", "Prepare dinner", IntentCategory.cooking, "kitchen"),
     IntentSpec("weekly_meal_preparation", "Batch cook", IntentCategory.cooking, "kitchen"),

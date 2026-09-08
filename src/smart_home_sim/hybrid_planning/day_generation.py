@@ -55,6 +55,9 @@ _INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("eat_lunch", ("lunch",)),
     ("eat_dinner", ("dinner", "supper", "evening meal")),
     ("weekly_meal_preparation", ("batch cook", "meal prep", "weekly cook")),
+    # Longer than the bare "breakfast" that would otherwise claim these and record the making of a
+    # meal as the eating of it.
+    ("prepare_breakfast", ("prepare breakfast", "make breakfast", "breakfast prep")),
     ("prepare_simple_lunch", ("cook", "prepare food", "prepare meal")),
     ("buy_groceries", ("groceries", "grocery", "shopping", "market", "supermarket", "errand")),
     ("put_groceries_away", ("put away", "store groceries")),
@@ -131,6 +134,11 @@ _CATEGORY_DURATION_SHAPE: dict[IntentCategory, tuple[int, int, int, float]] = {
 _INTENT_DURATION_SHAPE: dict[str, tuple[int, int, int, float]] = {
     "use_toilet": (2, 6, 15, 0.35),
     "prepare_and_drink_hot_drink": (5, 13, 35, 0.35),
+    # Here for the same reason as the hot drink above it: the `cooking` category is sized for a
+    # dinner, and a breakfast is assembled rather than cooked. At the category's shape the shortest
+    # breakfast the solver could schedule was twelve minutes and the one it preferred was thirty,
+    # which is half of what an office morning has between the alarm and the door.
+    "prepare_breakfast": (5, 11, 30, 0.35),
 }
 
 # A nocturnal bathroom trip: short, and its own intent since activity catalog 1.4.0. It borrowed

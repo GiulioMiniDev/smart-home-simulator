@@ -92,8 +92,9 @@ in them does not exist no matter how ordinary it sounds. Expansion stops on the 
 and nothing is imported. The failures are always the same shape — a plausible compound the catalog
 happens to spell differently, or a household task the catalog simply does not model:
 
-- there is **no** generic cooking intent. A meal is `prepare_light_dinner`, `prepare_simple_lunch`
-  or `weekly_meal_preparation`, and eating it is `eat_breakfast`, `eat_lunch` or `eat_dinner`;
+- there is **no** generic cooking intent. Making a meal is `prepare_breakfast`,
+  `prepare_simple_lunch`, `prepare_light_dinner` or `weekly_meal_preparation`, and eating it is
+  `eat_breakfast`, `eat_lunch` or `eat_dinner`;
 - there is **no** bathroom-cleaning and **no** vacuuming intent. Housework inside the dwelling is
   `clean_kitchen` or `tidy_living_room_and_hallway`, and nothing else;
 - washing is `morning_toilet_and_wash`, `morning_toilet_and_shower` or `evening_hygiene`.
@@ -103,6 +104,20 @@ the **nearest listed intent** and say so in the activity's `note`, or leave it o
 entirely. Both are correct. Inventing an identifier is not, and neither is inventing one in the
 process package: a binding or process model for an intent the outline cannot declare is dead weight
 the import rejects.
+
+**A meal eaten at home is made at home.** The three eating intents only put the resident in a
+chair: nothing in them opens a cupboard or lights a hob, and what they consume is whatever the
+preparation before them left. So declare the preparation next to the meal — `prepare_breakfast`
+before `eat_breakfast`, `prepare_simple_lunch` before `eat_lunch`, `prepare_light_dinner` before
+`eat_dinner` — and the compiler will keep the two in that order on every day it schedules both.
+Give the preparation a `kind` at least as committed as the meal's: `anchor` and `contextual` are
+both kept, and only those are ordered. A preparation you mark `optional` or `rare` may be dropped
+on a crowded day, so it is deliberately left unordered — where the meal has to happen and the
+cooking does not, an uncooked meal is what you asked for.
+Omit it only where the case says the food came from somewhere else: a lunch eaten at the office, a
+coffee and a pastry at the bar on the way to work. That is a real answer and the `note` is where
+you say so. What is not an answer is a horizon in which the resident eats three meals a day for
+five months and never once makes one.
 
 {{ACTIVITY_LOCATION}}
 The catalog is deliberately **home-centred**: it describes what happens inside the dwelling. Time

@@ -28,6 +28,7 @@ from smart_home_sim.hybrid_planning.day_generation import (
     WAKE_CLEARANCE_MINUTES,
 )
 from smart_home_sim.hybrid_planning.expander import (
+    _MEAL_AFTER_PREPARATION,
     MINIMUM_FLEX_MINUTES,
     ExpansionError,
     _cook_before_eating,
@@ -1261,6 +1262,34 @@ def test_a_meal_waits_for_the_day_to_cook_it() -> None:
     # Only the meal waits. The cooking has nothing to wait for, and neither does the morning.
     assert not by_intent["prepare_simple_lunch"].dependency_groups
     assert not by_intent["wake_up"].dependency_groups
+
+
+def test_breakfast_waits_for_the_morning_to_make_it() -> None:
+    """The third meal, and the one that had no preparation to wait for until `prepare_breakfast`.
+
+    Lunch and dinner have had a cooking intent since the first catalog; breakfast had none an
+    outline could declare, so the row was unreachable rather than absent by choice. Two authored
+    horizons ate 30 and 132 breakfasts with nothing before any of them.
+    """
+    activities = _cook_before_eating([_meal("eat_breakfast", 8), _meal("prepare_breakfast", 7)])
+    by_intent = {item.intent: item for item in activities}
+
+    groups = by_intent["eat_breakfast"].dependency_groups
+    assert [group.activity_ids for group in groups] == [["2026-09-13_prepare_breakfast"]]
+    assert not by_intent["prepare_breakfast"].dependency_groups
+
+
+def test_every_meal_names_a_preparation_the_vocabulary_actually_has() -> None:
+    """A row naming an intent no outline can declare orders nothing and says nothing.
+
+    That is what a breakfast row would have been before `prepare_breakfast` had a reference
+    process model: `INTENT_CATALOG` is what the authoring prompt's in-home list is rendered from,
+    so an intent missing from it cannot appear in an outline and cannot appear in a day.
+    """
+    known = {spec.intent_id for spec in INTENT_CATALOG}
+    for meal, preparation in _MEAL_AFTER_PREPARATION.items():
+        assert meal in known
+        assert preparation in known
 
 
 def test_a_mandatory_meal_is_not_chained_to_cooking_the_author_made_optional() -> None:

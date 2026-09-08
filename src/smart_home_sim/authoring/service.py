@@ -20,6 +20,7 @@ from smart_home_sim.authoring.preflight import (
     validate_deterministic_preconditions,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
+    validate_meals_are_prepared,
     validate_named_objects_can_do_what_is_asked,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
@@ -643,6 +644,19 @@ def validate_authoring_payload(
                         finding.message,
                         # A warning for the same reason as the one below it: a resident who really
                         # does not get up is a case someone may want, but it is not a default.
+                        severity="warning",
+                        details=finding.details,
+                    )
+                )
+            for finding in validate_meals_are_prepared(parsed_scenario):
+                issues.append(
+                    _authoring_issue(
+                        "MEAL_IS_NEVER_PREPARED",
+                        "scenario",
+                        _prefix_path("$.scenario", finding.path),
+                        finding.message,
+                        # A warning: a meal eaten out of the house is ordinary, and the note is
+                        # where an author says so. A meal eaten in it that nobody ever made is not.
                         severity="warning",
                         details=finding.details,
                     )

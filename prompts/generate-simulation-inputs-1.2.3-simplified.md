@@ -398,6 +398,12 @@ prepare_and_drink_hot_drink  [prepare_drink, consume_drink]
   deactivate(coffee_equipment) -> move_to_capability(consumption_area) -> change_posture(sitting) -> consume(drink) ->
   change_posture(standing) -> put_item(ingredients)
 
+prepare_breakfast  [prepare_food]
+  move_to(<activity location>) -> move_to_capability(coffee_and_breakfast_storage) -> open(coffee_and_breakfast_storage) -> take_item(ingredients) ->
+  close(coffee_and_breakfast_storage) -> move_to_capability(cooking_appliance) -> activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) ->
+  deactivate(cooking_appliance) -> move_to_capability(coffee_and_breakfast_storage) -> open(coffee_and_breakfast_storage) -> put_item(ingredients) ->
+  close(coffee_and_breakfast_storage) -> move_to_capability(consumption_area) -> put_item(prepared_meal)
+
 prepare_light_dinner  [prepare_food]
   move_to_capability(food_preparation_area) -> open(food_storage) -> take_item(ingredients) -> close(food_storage) ->
   activate(cooking_appliance) -> prepare_food(<intent>, prepared_meal) -> open(food_storage) -> take_item(ingredients) ->

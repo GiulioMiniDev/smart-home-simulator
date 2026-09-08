@@ -20,6 +20,7 @@ from smart_home_sim.authoring.preflight import (
     validate_habit_bands_hold_a_stable_stretch,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
+    validate_meals_are_prepared,
     validate_named_objects_can_do_what_is_asked,
     validate_rooms_are_furnished,
     validate_the_resident_goes_out,
@@ -233,6 +234,58 @@ def test_a_resident_who_goes_out_weekly_is_left_alone() -> None:
     scenario = _scenario_with_outings(7)
 
     assert validate_the_resident_goes_out(scenario) == []
+
+
+def _scenario_with_intents(intents: list[str]) -> Scenario:
+    """The frozen week with its activities relabelled, one per day in the order given."""
+    payload = json.loads((ROOT / "examples/valid/mario_week.json").read_text(encoding="utf-8"))
+    remaining = list(intents)
+    for day in payload["days"]:
+        for activity in day["activities"]:
+            activity["intent"] = remaining.pop(0) if remaining else "read_and_rest"
+    return Scenario.model_validate_json(json.dumps(payload))
+
+
+def test_a_meal_nobody_ever_makes_is_flagged() -> None:
+    """Eating is sitting down and consuming; the food comes from the preparation before it.
+
+    Both horizons authored against prompt 1.3.0 declared breakfast and no preparation of it — 30
+    on one and 132 on the other — because until `prepare_breakfast` had a reference model the
+    vocabulary had no way to say anybody made it.
+    """
+    findings = validate_meals_are_prepared(_scenario_with_intents(["eat_breakfast"] * 6))
+
+    assert len(findings) == 1
+    assert findings[0].details["intent"] == "eat_breakfast"
+    assert findings[0].details["occurrences"] == 6
+    assert "prepare_breakfast" in findings[0].message
+
+
+def test_a_meal_with_its_preparation_is_left_alone() -> None:
+    scenario = _scenario_with_intents(["eat_breakfast"] * 6 + ["prepare_breakfast"])
+
+    assert validate_meals_are_prepared(scenario) == []
+
+
+def test_batch_cooking_answers_for_lunch_and_dinner_but_not_for_breakfast() -> None:
+    """A portion out of the freezer is a portion somebody cooked. A breakfast is not.
+
+    So `weekly_meal_preparation` clears the two meals a freezer can hold and leaves the one that
+    is made the morning it is eaten, which is the case where the absence really does mean nothing
+    ever made it.
+    """
+    scenario = _scenario_with_intents(
+        ["eat_lunch"] * 3 + ["eat_dinner"] * 3 + ["eat_breakfast"] * 3 + ["weekly_meal_preparation"]
+    )
+
+    assert [finding.details["intent"] for finding in validate_meals_are_prepared(scenario)] == [
+        "eat_breakfast"
+    ]
+
+
+def test_too_few_meals_to_read_anything_into() -> None:
+    """A horizon with two dinners in it is too short to say the resident never cooks."""
+    assert validate_meals_are_prepared(_scenario_with_intents(["eat_dinner"] * 2)) == []
 
 
 def test_a_furnished_scenario_passes_and_a_stripped_one_does_not() -> None:

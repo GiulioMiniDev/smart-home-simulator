@@ -455,6 +455,63 @@ def validate_the_resident_goes_out(scenario: Scenario) -> list[PreflightFinding]
     ]
 
 
+# What counts as having made each meal. Batch cooking answers for lunch and dinner — a portion out
+# of the freezer is a portion somebody cooked — and deliberately not for breakfast, which is made
+# the morning it is eaten or not at all.
+_MEAL_PREPARATIONS: dict[str, frozenset[str]] = {
+    "eat_breakfast": frozenset({"prepare_breakfast"}),
+    "eat_lunch": frozenset({"prepare_simple_lunch", "weekly_meal_preparation"}),
+    "eat_dinner": frozenset({"prepare_light_dinner", "weekly_meal_preparation"}),
+}
+# Below this the horizon is too short to read anything into the absence.
+_MEALS_BEFORE_ASKING = 3
+
+
+def validate_meals_are_prepared(scenario: Scenario) -> list[PreflightFinding]:
+    """Does anything in this horizon ever make the meals the resident eats?
+
+    The eating intents are `move -> sit -> consume -> stand`. They open nothing, cook nothing and
+    carry nothing: the food they consume is whatever the preparation before them left, and where
+    there is no preparation the meal simply appears on the table. Two authored horizons ate 30 and
+    132 breakfasts respectively without a single `prepare_breakfast` between them, which is what
+    this exists to catch — and which no author could have avoided until the intent had a reference
+    model and a place in the prompt.
+
+    A warning, and only for a meal whose preparation is missing from the *whole* horizon. Eating
+    somewhere the sensors cannot see is ordinary — the office canteen, a pastry at the bar — and a
+    horizon that says so on purpose is right to keep this finding. A resident who cooks dinner on
+    Sunday and eats it on Wednesday is not flagged at all: `weekly_meal_preparation` answers for
+    the meals a freezer can hold.
+    """
+    eaten: dict[str, int] = defaultdict(int)
+    declared: set[str] = set()
+    for day in scenario.days:
+        for activity in day.activities:
+            declared.add(activity.intent)
+            if activity.intent in _MEAL_PREPARATIONS:
+                eaten[activity.intent] += 1
+    return [
+        PreflightFinding(
+            path="$.days",
+            message=(
+                f"The resident eats '{meal}' {eaten[meal]} time(s) and the horizon never declares "
+                f"a preparation of it ({', '.join(sorted(_MEAL_PREPARATIONS[meal]))}). Eating is "
+                "sitting down and consuming: with nothing before it the meal is on the table by "
+                "itself, the kitchen's cupboards are never opened for it, and the contact sensors "
+                "record none of the traffic a real meal produces. Declare the preparation, or say "
+                "in the activity's note that the meal is eaten away from home."
+            ),
+            details={
+                "intent": meal,
+                "occurrences": eaten[meal],
+                "acceptedPreparations": sorted(_MEAL_PREPARATIONS[meal]),
+            },
+        )
+        for meal in sorted(eaten)
+        if eaten[meal] >= _MEALS_BEFORE_ASKING and not (_MEAL_PREPARATIONS[meal] & declared)
+    ]
+
+
 # The intent that puts paid work inside the dwelling. Named here rather than imported so this
 # module keeps depending on nothing in `hybrid_planning`.
 _HOME_WORK_INTENT = "work_from_home"

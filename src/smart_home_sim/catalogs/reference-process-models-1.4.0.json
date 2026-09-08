@@ -2858,6 +2858,414 @@
         }
       ]
     },
+    "prepare_breakfast": {
+      "processModelId": "reference__prepare_breakfast",
+      "processModelVersion": "1.4.0",
+      "residentId": "reference_resident",
+      "title": "reference prepare breakfast process",
+      "description": "Resident-specific executable decomposition: prepare_food. Coffee and breakfast come out of the storage they are kept in and go back into it, and what is made is left on the table rather than in the sink.",
+      "implementedComponents": [
+        "prepare_food"
+      ],
+      "nodes": [
+        {
+          "kind": "start",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null,
+          "nodeId": "start"
+        },
+        {
+          "nodeId": "step_1",
+          "kind": "action",
+          "actionType": "move_to",
+          "arguments": {
+            "destination": {
+              "source": "activity_location",
+              "value": null,
+              "variableId": null,
+              "index": 0
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.6,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_2",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "coffee_and_breakfast_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.2,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_3",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "coffee_and_breakfast_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_4",
+          "kind": "action",
+          "actionType": "take_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "ingredients",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_5",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "coffee_and_breakfast_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_6",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.2,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_7",
+          "kind": "action",
+          "actionType": "activate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_8",
+          "kind": "action",
+          "actionType": "prepare_food",
+          "arguments": {
+            "mealKind": {
+              "source": "activity_intent",
+              "value": null,
+              "variableId": null,
+              "index": null
+            },
+            "outputRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 3.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_9",
+          "kind": "action",
+          "actionType": "deactivate",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "cooking_appliance",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_10",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "coffee_and_breakfast_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.2,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_11",
+          "kind": "action",
+          "actionType": "open",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "coffee_and_breakfast_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_12",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "ingredients",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_13",
+          "kind": "action",
+          "actionType": "close",
+          "arguments": {
+            "target": {
+              "source": "literal",
+              "value": "coffee_and_breakfast_storage",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_14",
+          "kind": "action",
+          "actionType": "move_to_capability",
+          "arguments": {
+            "targetRole": {
+              "source": "literal",
+              "value": "consumption_area",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.2,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "nodeId": "step_15",
+          "kind": "action",
+          "actionType": "put_item",
+          "arguments": {
+            "itemRole": {
+              "source": "literal",
+              "value": "prepared_meal",
+              "variableId": null,
+              "index": null
+            }
+          },
+          "duration": null,
+          "durationWeight": 1.0,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null
+        },
+        {
+          "kind": "end",
+          "actionType": null,
+          "arguments": {},
+          "duration": null,
+          "durationWeight": null,
+          "preconditions": [],
+          "effects": [],
+          "maxIterations": null,
+          "nodeId": "end"
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "start",
+          "targetNodeId": "step_1",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_1",
+          "targetNodeId": "step_2",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_2",
+          "targetNodeId": "step_3",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_3",
+          "targetNodeId": "step_4",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_4",
+          "targetNodeId": "step_5",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_5",
+          "targetNodeId": "step_6",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_6",
+          "targetNodeId": "step_7",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_7",
+          "targetNodeId": "step_8",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_8",
+          "targetNodeId": "step_9",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_9",
+          "targetNodeId": "step_10",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_10",
+          "targetNodeId": "step_11",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_11",
+          "targetNodeId": "step_12",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_12",
+          "targetNodeId": "step_13",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_13",
+          "targetNodeId": "step_14",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_14",
+          "targetNodeId": "step_15",
+          "condition": null,
+          "isDefault": false
+        },
+        {
+          "sourceNodeId": "step_15",
+          "targetNodeId": "end",
+          "condition": null,
+          "isDefault": false
+        }
+      ]
+    },
     "prepare_light_dinner": {
       "processModelId": "reference__prepare_light_dinner",
       "processModelVersion": "1.2.0",

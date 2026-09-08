@@ -100,6 +100,7 @@ Every `intent` must be one of the canonical intents below, spelled exactly. The 
 - `night_toilet_visit` — bathroom
 - `phone_call` — living_room
 - `prepare_and_drink_hot_drink` — kitchen
+- `prepare_breakfast` — kitchen
 - `prepare_light_dinner` — kitchen
 - `prepare_simple_lunch` — kitchen
 - `put_groceries_away` — kitchen

@@ -1195,7 +1195,12 @@ def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> 
 # preferred 13:32. Twelve dinners of twenty-nine and five lunches of nine came out that way over
 # one generated month, and what the replay showed was a woman at the stove making a lunch she had
 # finished ninety minutes earlier.
+#
+# Breakfast joined the table when `prepare_breakfast` got a reference process model and with it a
+# place in the authoring vocabulary. Until then the row would have been unreachable: no outline
+# could declare a breakfast preparation, so there was never one to order the meal after.
 _MEAL_AFTER_PREPARATION: dict[str, str] = {
+    "eat_breakfast": "prepare_breakfast",
     "eat_lunch": "prepare_simple_lunch",
     "eat_dinner": "prepare_light_dinner",
 }
