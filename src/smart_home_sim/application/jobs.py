@@ -14,9 +14,11 @@ from smart_home_sim.application.horizon_run import _horizon_worker
 from smart_home_sim.application.plan_approval import (
     RECOMMENDED,
     RESEARCHER,
+    PlanReuse,
     approval_provenance,
     approved_home_model,
     approved_sensor_model,
+    reusable_compilation,
 )
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.domain.application import JobProgress, JobRecord, JobStatus
@@ -89,6 +91,22 @@ def _materialization_worker(root: str, job_id: str) -> None:
         # models through exactly the path a full run does — what a researcher then approves is what
         # a later run executes, with no second way of producing a plan to keep in agreement.
         environment_only = request.get("stopAfter") == "environment"
+        # Importing this bundle already cost a solve of this exact scenario, and so did any earlier
+        # job of this home. Either can be executed here instead of spending the six minutes again —
+        # but only against proof. Both job kinds may reuse: what a preview shows a researcher is a
+        # plan, not a *fresh* plan, and reuse is only ever granted for one proven to be the plan
+        # this scenario compiles to.
+        if home_id:
+            reuse = reusable_compilation(
+                workspace, home_id, Scenario.model_validate_json(scenario.read_bytes())
+            )
+        else:
+            reuse = PlanReuse(None, "compiled the horizon: this run belongs to no home")
+        # A `log` rather than a new event type: a published contract should not grow a variant to
+        # carry one diagnostic, and the payload marker is what makes the line findable. Recorded on
+        # both outcomes, because "this run took six minutes longer than the last one" is a question
+        # only the refusals can answer.
+        workspace.append_event(job_id, "log", reuse.reason, payload=reuse.event_payload())
         build = materialize_environment if environment_only else materialize_workspace
         build(
             scenario,
@@ -98,6 +116,7 @@ def _materialization_worker(root: str, job_id: str) -> None:
             sensor_policy=sensor_policy,
             approved_home=approved_home,
             approved_sensors=approved_sensors,
+            precompiled=reuse.compilation,
             progress=progress,
             cancelled=lambda: workspace.get_job(job_id).status is JobStatus.cancelled,
         )

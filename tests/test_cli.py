@@ -243,6 +243,139 @@ def test_ingest_authoring_output_writes_both_canonical_inputs(tmp_path: Path) ->
     assert (output_dir / "personal-process-package.json").is_file()
 
 
+def test_run_authoring_bundle_materializes_what_ingest_and_run_synthetic_would(
+    tmp_path: Path,
+) -> None:
+    """One command, one solve, and the same artifacts as the two-command route.
+
+    Ingesting a bundle and then running it compiles the scenario twice: once for the validation's
+    deterministic-precondition gate and once inside the materializer, which has no way to be
+    handed the first result across a process boundary. Chaining them here is only worth having if
+    what lands on disk is indistinguishable from the long way round.
+    """
+    bundle = EXAMPLES / "authoring/minimal.authoring-bundle.json"
+
+    ingested = tmp_path / "ingested"
+    ingest = runner.invoke(
+        app, ["ingest-authoring-output", str(bundle), "--output-dir", str(ingested)]
+    )
+    assert ingest.exit_code == 0, ingest.output
+    separately = tmp_path / "separately"
+    run = runner.invoke(
+        app,
+        [
+            "run-synthetic",
+            str(ingested / "scenario.json"),
+            str(ingested / "personal-process-package.json"),
+            "--output-dir",
+            str(separately),
+        ],
+    )
+    assert run.exit_code == 0, run.output
+
+    together = tmp_path / "together"
+    inputs = tmp_path / "inputs"
+    chained = runner.invoke(
+        app,
+        [
+            "run-authoring-bundle",
+            str(bundle),
+            "--output-dir",
+            str(together),
+            "--inputs-dir",
+            str(inputs),
+        ],
+    )
+    assert chained.exit_code == 0, chained.output
+    assert "VALID: authoring bundle" in chained.stdout
+    assert (inputs / "scenario.json").read_bytes() == (ingested / "scenario.json").read_bytes()
+    assert (inputs / "personal-process-package.json").read_bytes() == (
+        ingested / "personal-process-package.json"
+    ).read_bytes()
+
+    produced = sorted(item.name for item in together.iterdir())
+    assert produced == sorted(item.name for item in separately.iterdir())
+    for name in produced:
+        assert (together / name).read_bytes() == (separately / name).read_bytes(), name
+
+
+def test_run_authoring_bundle_writes_its_report_and_refuses_to_overwrite_a_run(
+    tmp_path: Path,
+) -> None:
+    """The report can go to a file, and a second run never lands on the first one's directory."""
+    bundle = EXAMPLES / "authoring/minimal.authoring-bundle.json"
+    report = tmp_path / "reports/ingestion.txt"
+    output = tmp_path / "environment"
+
+    first = runner.invoke(
+        app,
+        [
+            "run-authoring-bundle",
+            str(bundle),
+            "--output-dir",
+            str(output),
+            "--environment-only",
+            "--report-output",
+            str(report),
+        ],
+    )
+    assert first.exit_code == 0, first.output
+    assert "VALID: authoring bundle" in report.read_text(encoding="utf-8")
+    assert "VALID: authoring bundle" not in first.stdout
+    assert "Environment written to" in first.stdout
+    assert not (output / "execution-trace.json").exists()
+
+    again = runner.invoke(
+        app,
+        ["run-authoring-bundle", str(bundle), "--output-dir", str(output), "--environment-only"],
+    )
+    assert again.exit_code == 2
+
+
+def test_run_authoring_bundle_reports_a_transactional_failure_without_publishing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def explode(*args: object, **options: object) -> None:
+        raise RuntimeError("home generation failed")
+
+    monkeypatch.setattr("smart_home_sim.cli.materialize_workspace", explode)
+    result = runner.invoke(
+        app,
+        [
+            "run-authoring-bundle",
+            str(EXAMPLES / "authoring/minimal.authoring-bundle.json"),
+            "--output-dir",
+            str(tmp_path / "never"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "failed transactionally" in result.output
+    assert not (tmp_path / "never").exists()
+
+
+def test_run_authoring_bundle_refuses_a_bundle_no_gate_accepted(tmp_path: Path) -> None:
+    payload = json.loads(
+        (EXAMPLES / "authoring/minimal.authoring-bundle.json").read_text(encoding="utf-8")
+    )
+    payload["personalProcessPackage"]["bindings"] = []
+    bundle_path = tmp_path / "invalid.json"
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "run-authoring-bundle",
+            str(bundle_path),
+            "--output-dir",
+            str(tmp_path / "must-not-exist"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert not (tmp_path / "must-not-exist").exists()
+
+
 def test_ingest_authoring_output_emits_json_failure_report(tmp_path: Path) -> None:
     payload = json.loads(
         (EXAMPLES / "authoring/minimal.authoring-bundle.json").read_text(encoding="utf-8")

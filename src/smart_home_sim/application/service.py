@@ -18,6 +18,8 @@ from smart_home_sim.authoring.preflight import (
     validate_habit_bands_hold_a_stable_stretch,
 )
 from smart_home_sim.authoring.service import validate_authoring_payload
+from smart_home_sim.compiler import CompilationResult
+from smart_home_sim.compiler.fingerprint import compiler_fingerprint
 from smart_home_sim.compiler.service import CompilationProgress
 from smart_home_sim.domain.application import ApplicationIssue, GraphicalReference
 from smart_home_sim.domain.authoring import AuthoringIngestionIssue
@@ -283,6 +285,7 @@ class ApplicationService:
             status="valid",
             provenance={"ingestionReport": report, "sourceBundle": source_bundle},
         )
+        self._publish_import_compilation(home_id, result.compilation, source_bundle)
         return {
             "valid": True,
             "report": report,
@@ -295,6 +298,51 @@ class ApplicationService:
             "behaviorRevisionId": behavior_revision,
             "residents": [item.model_dump(mode="json", by_alias=True) for item in resident_results],
         }
+
+    def _publish_import_compilation(
+        self,
+        home_id: str,
+        compilation: CompilationResult | None,
+        source_bundle: dict[str, Any],
+    ) -> None:
+        """Keep the solve the import already paid for, instead of discarding it.
+
+        Validating a bundle compiles its scenario — the deterministic-precondition gate replays the
+        horizon against the canonical plan — and the result was thrown away here. The environment
+        preview then compiled the identical document, and the run after it a third time: on five
+        months that is roughly twenty minutes of CP-SAT to produce one plan.
+
+        Published as a `plan` revision rather than a run artifact, because that is what it is: no
+        run made it, and it is not part of any dataset. Its provenance carries the compiler that
+        produced it, which is what later jobs compare against before executing it — see
+        `plan_approval.reusable_compilation` for why a recorded fingerprint is the only one of the
+        reuse conditions the documents cannot answer by themselves.
+        """
+        if compilation is None or compilation.plan is None:
+            return
+        plan_artifact = self.workspace.put_object(
+            compilation.plan.model_dump_json(by_alias=True, indent=2).encode("utf-8"),
+            role="canonical_plan",
+            schema_version="1.0.0",
+            home_id=home_id,
+        )
+        report_artifact = self.workspace.put_object(
+            compilation.report.model_dump_json(by_alias=True, indent=2).encode("utf-8"),
+            role="compilation_report",
+            schema_version="1.0.0",
+            home_id=home_id,
+        )
+        self.workspace.create_revision(
+            home_id,
+            "plan",
+            plan_artifact.artifact_id,
+            status="valid",
+            provenance={
+                "sourceBundle": source_bundle,
+                "compilationReportArtifactId": report_artifact.artifact_id,
+                "compilerFingerprint": compiler_fingerprint(),
+            },
+        )
 
     def publish_home(
         self, home_id: str, payload: dict[str, Any], *, approval: Approval = RESEARCHER

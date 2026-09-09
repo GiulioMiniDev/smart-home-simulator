@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import tempfile
 from dataclasses import asdict
 from datetime import date
 from enum import StrEnum
@@ -12,7 +14,11 @@ from uuid import uuid4
 import typer
 from pydantic import ValidationError
 
-from smart_home_sim.authoring import ingest_authoring_file, prepare_authoring_repair_file
+from smart_home_sim.authoring import (
+    ingest_authoring_file,
+    prepare_authoring_repair_file,
+    validate_authoring_file,
+)
 from smart_home_sim.behavior import validate_behavior_files
 from smart_home_sim.compiler import compile_file
 from smart_home_sim.domain.application import (
@@ -95,7 +101,12 @@ from smart_home_sim.hybrid_planning import (
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
 from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
 from smart_home_sim.hybrid_planning.lmstudio import DEFAULT_BASE_URL, DEFAULT_MODEL
-from smart_home_sim.materialization import deploy_sensors, generate_home, materialize_workspace
+from smart_home_sim.materialization import (
+    deploy_sensors,
+    generate_home,
+    materialize_environment,
+    materialize_workspace,
+)
 from smart_home_sim.materialization.service import (
     load_home_policy,
     load_sensor_policy,
@@ -567,6 +578,84 @@ def run_synthetic_command(
         raise typer.Exit(code=1) from error
     typer.echo(
         f"Synthetic workspace written to: {output_directory.resolve()} "
+        f"({len(manifest.artifacts)} verified artifacts)"
+    )
+
+
+@app.command("run-authoring-bundle")
+def run_authoring_bundle_command(
+    bundle_path: Path,
+    output_directory: Annotated[Path, typer.Option("--output-dir", "-o")],
+    inputs_directory: Annotated[Path | None, typer.Option("--inputs-dir")] = None,
+    home_policy_path: Annotated[Path | None, typer.Option("--home-policy")] = None,
+    sensor_policy_path: Annotated[Path | None, typer.Option("--sensor-policy")] = None,
+    environment_only: Annotated[bool, typer.Option("--environment-only")] = False,
+    report_output: Annotated[Path | None, typer.Option("--report-output")] = None,
+) -> None:
+    """Validate an authoring bundle and materialize it, solving the horizon once instead of twice.
+
+    `ingest-authoring-output` followed by `run-synthetic` is the same work with the expensive part
+    done twice: validating the bundle compiles the scenario to check its deterministic
+    preconditions, the ingest then publishes only the scenario and the behaviour package, and the
+    run compiles the identical document again. On Filippo's five months that second solve is six
+    minutes spent reproducing bytes the first one already had.
+
+    Here the two steps share one process, so the compilation crosses between them as an object
+    rather than being re-derived from a file. `--inputs-dir` still publishes the canonical
+    scenario and package if they are wanted on their own; the run directory keeps its own copies
+    either way.
+    """
+    validation = validate_authoring_file(bundle_path)
+    content = format_authoring_text_report(validation.report)
+    if report_output is not None:
+        report_output.parent.mkdir(parents=True, exist_ok=True)
+        report_output.write_text(content + "\n", encoding="utf-8", newline="\n")
+        typer.echo(f"Authoring ingestion report written to: {report_output.resolve()}")
+    else:
+        typer.echo(content)
+    if not validation.report.valid:
+        raise typer.Exit(code=1)
+    assert validation.scenario_json is not None
+    assert validation.behavior_json is not None
+
+    staging = Path(tempfile.mkdtemp(prefix=".authoring-inputs."))
+    try:
+        scenario_path = staging / "scenario.json"
+        package_path = staging / "personal-process-package.json"
+        scenario_path.write_text(validation.scenario_json, encoding="utf-8", newline="\n")
+        package_path.write_text(validation.behavior_json, encoding="utf-8", newline="\n")
+        if inputs_directory is not None:
+            inputs_directory.mkdir(parents=True, exist_ok=True)
+            (inputs_directory / "scenario.json").write_text(
+                validation.scenario_json, encoding="utf-8", newline="\n"
+            )
+            (inputs_directory / "personal-process-package.json").write_text(
+                validation.behavior_json, encoding="utf-8", newline="\n"
+            )
+            typer.echo(f"Canonical authoring inputs written to: {inputs_directory.resolve()}")
+
+        build = materialize_environment if environment_only else materialize_workspace
+        try:
+            manifest = build(
+                scenario_path,
+                package_path,
+                output_directory,
+                home_policy=load_home_policy(home_policy_path),
+                sensor_policy=load_sensor_policy(sensor_policy_path),
+                precompiled=validation.compilation,
+            )
+        except FileExistsError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(code=2) from error
+        except (OSError, UnicodeDecodeError, ValueError, RuntimeError) as error:
+            typer.echo(f"Synthetic workflow failed transactionally: {error}", err=True)
+            raise typer.Exit(code=1) from error
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+    kind = "Environment" if environment_only else "Synthetic workspace"
+    typer.echo(
+        f"{kind} written to: {output_directory.resolve()} "
         f"({len(manifest.artifacts)} verified artifacts)"
     )
 

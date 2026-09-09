@@ -1075,6 +1075,65 @@ def test_a_reused_compilation_builds_the_same_environment_as_compiling_twice(
     assert reused.artifacts == fresh.artifacts
 
 
+def test_a_reused_compilation_solves_the_horizon_no_further_times(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A caller who already solved must not pay for a solve again.
+
+    `precompiled` skipped the compilation at the top of the materializer and then passed no digest
+    to the binder, whose M2 gate obtained one the only way it could — by compiling the identical
+    scenario. So the parameter moved the solve rather than removing it, and the six minutes its
+    docstring promised back were never actually returned to anyone. Counting is the only way to
+    see that: every artifact was already byte-identical while the duplicate was still being paid.
+    """
+    scenario, _ = source_models()
+    compiled = compile_scenario(scenario)
+
+    calls: list[str] = []
+
+    def counted(target: Scenario, on_progress: Any = None) -> CompilationResult:
+        calls.append(target.scenario_id)
+        return compile_scenario(target, on_progress)
+
+    monkeypatch.setattr("smart_home_sim.materialization.service.compile_scenario", counted)
+    monkeypatch.setattr("smart_home_sim.environment.service.compile_scenario", counted)
+    environment_service._compiled_plan_digest.cache_clear()
+
+    materialize_environment(
+        SOURCE / "scenario.json",
+        SOURCE / "personal-process-package.json",
+        tmp_path / "reused",
+        precompiled=compiled,
+    )
+
+    assert calls == []
+
+
+def test_a_plan_that_contradicts_its_own_report_is_refused(tmp_path: Path) -> None:
+    """The two halves of a compilation come from one solve and have to still agree.
+
+    The binder no longer re-derives the plan, so a `CompilationResult` whose plan and report have
+    drifted apart — the shape a truncated write or a half-applied edit takes — would otherwise be
+    materialized without anything noticing. The report records the digest of the plan it belongs
+    to, which makes the disagreement checkable without solving anything.
+    """
+    scenario, _ = source_models()
+    compiled = compile_scenario(scenario)
+    assert compiled.plan is not None
+    assert compiled.report.canonical_plan_sha256 == canonical_sha256(compiled.plan)
+
+    assert len(compiled.plan.days) > 1
+    drifted = compiled.plan.model_copy(update={"days": compiled.plan.days[:-1]})
+    with pytest.raises(RuntimeError, match="does not match the compilation report"):
+        materialize_environment(
+            SOURCE / "scenario.json",
+            SOURCE / "personal-process-package.json",
+            tmp_path / "drifted",
+            precompiled=CompilationResult(plan=drifted, report=compiled.report),
+        )
+    assert not (tmp_path / "drifted").exists()
+
+
 def test_a_plan_compiled_from_another_scenario_is_refused(tmp_path: Path) -> None:
     """The guard is an identity check, not a resemblance check.
 

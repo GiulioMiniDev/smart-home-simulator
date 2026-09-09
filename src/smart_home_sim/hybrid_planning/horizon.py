@@ -15,6 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from smart_home_sim.compiler import compile_scenario
+from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.base import ContractModel
 from smart_home_sim.domain.batch import SimulationBatchManifest, SimulationBatchRun
 from smart_home_sim.domain.behavior import PersonalProcessPackage
@@ -148,7 +149,17 @@ def build_horizon(
         plan_path = output_dir / "plans" / f"day-{day.date}.plan.json"
         _write(plan_path, compilation.plan)
 
-        bundle_result = build_bundle_files(scenario_path, plan_path, package_path, home_path)
+        # The plan written above is this loop's own compilation output, so the binder's M2 gate is
+        # answered from its digest rather than by compiling the same day a second time. One day is
+        # a cheap solve, but there is one per day of the horizon and the second one only ever
+        # reproduces `plan_path`.
+        bundle_result = build_bundle_files(
+            scenario_path,
+            plan_path,
+            package_path,
+            home_path,
+            compiled_plan_digest=canonical_sha256(compilation.plan),
+        )
         if bundle_result.bundle is None:
             failed.append(day.date)
             continue

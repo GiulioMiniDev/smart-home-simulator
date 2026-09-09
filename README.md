@@ -411,6 +411,38 @@ M6; se un gate fallisce rimuove lo staging. Il manifest finale verifica 17 artef
 digest canonici. I generatori possono essere usati separatamente con `generate-home` e
 `deploy-sensors`; home e sensor model manuali restano supportati dai comandi originali.
 
+Se si parte dal bundle di authoring invece che dai due JSON già ingeriti, `run-authoring-bundle`
+fa i due passi in un solo processo:
+
+```bash
+UV_NO_EDITABLE=1 uv run smart-home-sim run-authoring-bundle \
+  generated/mario_rossi_2026_10_30.authoring-bundle.json \
+  --output-dir generated/mario_rossi_2026_10_30_simulation \
+  --inputs-dir generated/mario_rossi_2026_10_30_ingested
+```
+
+Produce gli stessi artefatti, byte per byte, di `ingest-authoring-output` seguito da
+`run-synthetic`, ma compila l'orizzonte **una volta sola**: la validazione del bundle compila già
+lo scenario per il gate delle precondizioni deterministiche, e la catena in-process passa quella
+compilazione al materializzatore invece di lasciargliela rifare. Su un orizzonte di cinque mesi il
+secondo solve sono circa sei minuti. `--environment-only` si ferma prima dell'esecuzione, come
+l'anteprima di casa e sensori.
+
+Nell'applicazione lo stesso risparmio vale lungo tutto il flusso. L'import del bundle compila già
+lo scenario per validarlo, e da lì in poi il piano è pubblicato come revisione `plan` della casa:
+l'anteprima ambiente e la run lo eseguono invece di ricompilarlo, così un dataset costa **una sola
+compilazione** invece di tre. Sull'orizzonte di cinque mesi di Filippo: import 351 s, anteprima
+24 s, run 507 s.
+
+Il riuso è concesso solo quando il piano nomina *questo* scenario per digest, concorda con il
+proprio report, e porta l'impronta del compilatore in esecuzione — un digest dei sorgenti che
+decidono il piano, perché `CompilerMetadata` dichiara versioni fisse nello schema e non distingue
+una revisione del solver dall'altra. Se una qualsiasi delle tre non regge, il job compila come
+prima: il riuso è un'ottimizzazione e non può far fallire niente. Il registro eventi dice sempre
+quale dei due casi è avvenuto e da dove viene il piano; i file pubblicati sono identici byte per
+byte nei due casi, perché un artefatto che ricorda come è stato calcolato non può fare da controllo
+in un confronto di digest.
+
 Il layout generato è sintetico e controllato dalla policy: non ricostruisce una vera
 planimetria.
 

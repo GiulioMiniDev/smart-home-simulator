@@ -126,7 +126,11 @@ def test_build_horizon_skips_unbindable_days(monkeypatch: pytest.MonkeyPatch, tm
 
     import smart_home_sim.hybrid_planning.horizon as hz
 
-    monkeypatch.setattr(hz, "build_bundle_files", lambda *paths: types.SimpleNamespace(bundle=None))
+    monkeypatch.setattr(
+        hz,
+        "build_bundle_files",
+        lambda *paths, **options: types.SimpleNamespace(bundle=None),
+    )
     with pytest.raises(HorizonError, match="no simulatable days"):
         build_horizon(_world(), _package(), _calendar(), tmp_path)
 

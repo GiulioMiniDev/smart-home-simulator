@@ -2289,6 +2289,13 @@ def _accepted_compilation(precompiled: CompilationResult, scenario: Scenario) ->
     identity comparison rather than a judgement call: either the plan is the one this scenario
     compiles to, or it is somebody else's and reusing it would silently materialize a home for a
     document nobody supplied. There is no partial credit, and no way to pass by resembling.
+
+    The plan must also agree with the report it arrived with. Both halves of a `CompilationResult`
+    come out of one solve, so a plan whose digest is not the one its own report recorded did not
+    survive the trip intact — the realistic failure, now that the binder answers its M2 gate from
+    this plan's digest instead of re-deriving the plan and noticing. What this cannot detect is a
+    plan somebody assembled by hand with all three fields filled in to agree, which is why
+    `precompiled` is documented as a `compile_scenario` result and not as a plan a caller composes.
     """
     plan = precompiled.plan
     if plan is None:
@@ -2304,6 +2311,14 @@ def _accepted_compilation(precompiled: CompilationResult, scenario: Scenario) ->
             "The supplied canonical plan was compiled from a different scenario: "
             f"plan {plan.source_scenario_id}/{plan.source_scenario_sha256[:16]}, "
             f"scenario {scenario.scenario_id}/{digest[:16]}.",
+        )
+    plan_digest = canonical_sha256(plan)
+    recorded = precompiled.report.canonical_plan_sha256
+    if recorded is not None and recorded != plan_digest:
+        raise MaterializationFailure(
+            "compilation",
+            "The supplied canonical plan does not match the compilation report it came with: "
+            f"plan {plan_digest[:16]}, report {recorded[:16]}.",
         )
     return precompiled
 
@@ -2376,18 +2391,24 @@ def _build_environment(
             {"regions": home_result.report.summary.region_count},
         )
 
-    # The plan staged above is this function's own compilation output, so the binder's M2 gate can
-    # be answered from what we already hold instead of solving the horizon a second time to
-    # re-derive it — on a five-month horizon, roughly twenty minutes of CP-SAT that reproduces the
-    # bytes in `canonical-plan.json`. The gate is not skipped: the staged file still has to equal
-    # this digest. A plan handed in by a caller is a different matter — nothing here compiled it —
-    # so that path keeps re-compiling as its independent check.
+    # The plan staged above is a compilation of *this* scenario, so the binder's M2 gate can be
+    # answered from what we already hold instead of solving the horizon a second time to re-derive
+    # it — on a five-month horizon, roughly six minutes of CP-SAT that reproduces the bytes in
+    # `canonical-plan.json`. The gate is not skipped: the staged file still has to equal this
+    # digest, which is what catches a plan that failed to reach the disk intact.
+    #
+    # This holds for a caller's compilation too, and used not to: that path passed no digest, the
+    # binder re-compiled to obtain one, and `precompiled` therefore moved the solve from here to
+    # the binder rather than removing it — the saving its docstring promised was never actually
+    # collected by anyone. What makes the caller's plan admissible is `_accepted_compilation`,
+    # which ties it to this exact scenario document and to its own report; what the caller must
+    # supply is a `compile_scenario` result, not a plan of its own devising.
     bundle_result = build_bundle_files(
         staging / "scenario.json",
         staging / "canonical-plan.json",
         staging / "personal-process-package.json",
         staging / "home-model.json",
-        compiled_plan_digest=(canonical_sha256(compilation.plan) if precompiled is None else None),
+        compiled_plan_digest=canonical_sha256(compilation.plan),
     )
     _json(staging / "environment-report.json", bundle_result.report)
     if bundle_result.bundle is None:
@@ -2428,6 +2449,13 @@ def _build_environment(
             "Deployed and validated sensors",
             {"sensors": sensor_result.report.summary.sensor_count},
         )
+    # Deliberately silent about whether the horizon was solved for this run or handed to it already
+    # solved. Recording that here would make two runs of one scenario differ by a word depending on
+    # whether an optimisation happened to fire, and comparing artifact digests across a change is
+    # how everything in this pipeline is verified — an output that remembers how it was computed
+    # cannot serve as that control. Reuse is only ever permitted for a plan proven to be the one
+    # this scenario compiles to, so the two runs describe the same plan and the difference is in
+    # the compute, not in the dataset. Where the compute is described is the job's event log.
     _json_document(
         staging / "plan-approval.json",
         {
@@ -2484,7 +2512,8 @@ def materialize_environment(
     ``precompiled`` hands back a compilation the caller already paid for, which is what validating
     an authoring bundle produces on the way to its deterministic-precondition gate. It is accepted
     only when the plan's recorded source digest matches this scenario, so it saves the second solve
-    without widening what the run will execute.
+    without widening what the run will execute. As above, it must be the `compile_scenario` result
+    for this scenario: the plan inside it is what the environment is built on.
     """
     if output_directory.exists():
         raise FileExistsError(f"output directory already exists: {output_directory}")
@@ -2571,7 +2600,9 @@ def materialize_workspace(
     ``precompiled`` is different in kind: not a model to approve but a solve already done, which
     validating an authoring bundle produces on its way to the deterministic-precondition gate. It
     is accepted only when the plan's recorded source digest matches this scenario, so it removes a
-    duplicate solve without changing what runs.
+    duplicate solve without changing what runs. It must be the `compile_scenario` result for this
+    very scenario — the run executes the plan inside it rather than re-deriving one to compare
+    against, so a caller vouches for its provenance the way it vouches for the scenario file.
     """
     if output_directory.exists():
         raise FileExistsError(f"output directory already exists: {output_directory}")
