@@ -18,6 +18,7 @@ from smart_home_sim.authoring.preflight import (
     validate_away_round_trips,
     validate_declared_objects_are_reachable,
     validate_deterministic_preconditions,
+    validate_furniture_types_are_known,
     validate_home_work_is_fragmented,
     validate_instrumented_objects_are_opened,
     validate_meals_are_handled,
@@ -27,9 +28,12 @@ from smart_home_sim.authoring.preflight import (
     validate_the_resident_goes_out,
 )
 from smart_home_sim.behavior.service import (
+    action_catalog_payload,
+    activity_catalog_payload,
     default_action_catalog_path,
     default_activity_catalog_path,
     default_variable_catalog_path,
+    load_action_catalog,
     validate_behavior_payloads,
 )
 from smart_home_sim.compiler.service import (
@@ -144,16 +148,8 @@ def _declared_action_catalog(behavior_payload: Any) -> ActionCatalog:
     Reading a package against a different catalog asks it to satisfy preconditions no reader of its
     own catalog would expect.
     """
-    return ActionCatalog.model_validate_json(
-        json.dumps(
-            _load_catalog(
-                default_action_catalog_path(
-                    _declared_catalog_version(
-                        behavior_payload, "actionCatalog", default_action_catalog_path
-                    )
-                )
-            )
-        )
+    return load_action_catalog(
+        _declared_catalog_version(behavior_payload, "actionCatalog", default_action_catalog_path)
     )
 
 
@@ -385,9 +381,9 @@ def prepare_authoring_repair_file(
             simulation_authoring_bundle_schema=(
                 SimulationAuthoringBundle.model_json_schema(by_alias=True)
             ),
-            activity_catalog=_load_catalog(default_activity_catalog_path()),
+            activity_catalog=activity_catalog_payload(),
             variable_catalog=_load_catalog(default_variable_catalog_path()),
-            action_catalog=_load_catalog(default_action_catalog_path()),
+            action_catalog=action_catalog_payload(),
         ),
     )
     return AuthoringRepairPreparationResult(report=report, request=request)
@@ -501,19 +497,15 @@ def validate_authoring_payload(
         behavior_report = validate_behavior_payloads(
             behavior_payload,
             scenario_payload,
-            _load_catalog(
-                default_activity_catalog_path(
-                    _declared_catalog_version(
-                        behavior_payload, "activityCatalog", default_activity_catalog_path
-                    )
+            activity_catalog_payload(
+                _declared_catalog_version(
+                    behavior_payload, "activityCatalog", default_activity_catalog_path
                 )
             ),
             _load_catalog(default_variable_catalog_path()),
-            _load_catalog(
-                default_action_catalog_path(
-                    _declared_catalog_version(
-                        behavior_payload, "actionCatalog", default_action_catalog_path
-                    )
+            action_catalog_payload(
+                _declared_catalog_version(
+                    behavior_payload, "actionCatalog", default_action_catalog_path
                 )
             ),
         )
@@ -549,6 +541,17 @@ def validate_authoring_payload(
                 issues.append(
                     _authoring_issue(
                         "ROOM_HAS_NO_FURNITURE",
+                        "scenario",
+                        _prefix_path("$.scenario", finding.path),
+                        finding.message,
+                        severity="warning",
+                        details=finding.details,
+                    )
+                )
+            for finding in validate_furniture_types_are_known(parsed_scenario):
+                issues.append(
+                    _authoring_issue(
+                        "FURNITURE_TYPE_NOT_IN_VOCABULARY",
                         "scenario",
                         _prefix_path("$.scenario", finding.path),
                         finding.message,

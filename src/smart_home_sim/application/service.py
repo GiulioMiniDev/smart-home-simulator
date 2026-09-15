@@ -15,6 +15,7 @@ from smart_home_sim.application.plan_approval import (
 from smart_home_sim.application.workspace import WorkspaceError, WorkspaceService
 from smart_home_sim.authoring.preflight import (
     validate_habit_bands_are_inhabited,
+    validate_habit_bands_are_not_slept_through,
     validate_habit_bands_hold_a_stable_stretch,
 )
 from smart_home_sim.authoring.service import validate_authoring_payload
@@ -28,7 +29,10 @@ from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.sensors import SensorModel
 from smart_home_sim.environment import validate_home_model
 from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
-from smart_home_sim.hybrid_planning.outline import HorizonAuthoringBundle
+from smart_home_sim.hybrid_planning.outline import (
+    HorizonAuthoringBundle,
+    upgrade_authoring_bundle_payload,
+)
 
 
 def _reference(path: str) -> GraphicalReference | None:
@@ -132,7 +136,11 @@ class ApplicationService:
         self.workspace.get_home(home_id)
         stage("reading the outline")
         try:
-            bundle = HorizonAuthoringBundle.model_validate_json(json.dumps(payload))
+            # Outlines authored against the single-resident contract are lifted rather
+            # than refused; the shape moves, no value does.
+            bundle = HorizonAuthoringBundle.model_validate_json(
+                json.dumps(upgrade_authoring_bundle_payload(payload))
+            )
         except ValidationError as error:
             return {
                 "valid": False,
@@ -168,8 +176,12 @@ class ApplicationService:
             for code, check in (
                 ("HABIT_BAND_HOLDS_NO_STABLE_STRETCH", validate_habit_bands_hold_a_stable_stretch),
                 ("HABIT_BAND_IS_MOSTLY_UNACCOUNTED", validate_habit_bands_are_inhabited),
+                ("HABIT_BAND_IS_SLEPT_THROUGH", validate_habit_bands_are_not_slept_through),
             )
-            for finding in check(expansion.habit_ground_truth)
+            # Measured on the expanded plan, the only thing that exists before a run, and worded
+            # as such: a warning about how a band was drawn, not a claim about behaviour.
+            for truth in expansion.planned_bands
+            for finding in check(truth)
         ]
         stage(f"validating and compiling {expansion.day_count} days")
         imported = self.import_authoring_bundle(
@@ -186,7 +198,9 @@ class ApplicationService:
                 "skippedOccurrences": expansion.skipped_occurrences,
                 "rescheduledOccurrences": expansion.rescheduled_occurrences,
                 "droppedOccurrences": expansion.dropped_occurrences,
-                "habitBandCount": len(expansion.habit_ground_truth.habits),
+                "habitBandCount": sum(
+                    len(item.habits) for item in expansion.declared_habits.residents
+                ),
                 "seed": seed,
             },
         }

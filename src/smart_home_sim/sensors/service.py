@@ -6,7 +6,7 @@ import json
 import math
 import random
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -25,6 +25,7 @@ from smart_home_sim.domain.execution import (
     ExecutionTrace,
     MovementExecution,
     StateTransition,
+    semantic_activity_executions,
 )
 from smart_home_sim.domain.sensors import (
     ContactSensor,
@@ -192,6 +193,7 @@ def _canonical_digest(value: Any) -> str:
 
 def _trace_semantic_digest(trace: ExecutionTrace) -> str:
     payload = trace.model_dump(mode="json", by_alias=True)
+    payload["activityExecutions"] = semantic_activity_executions(payload["activityExecutions"])
     semantic = {
         key: payload[key]
         for key in (
@@ -1191,10 +1193,37 @@ def _false_positive_candidates(
     return candidates
 
 
+def _union(*groups: Sequence[str]) -> tuple[str, ...]:
+    """Every identifier seen, once, in the order it first appeared."""
+    seen: dict[str, None] = {}
+    for group in groups:
+        for item in group:
+            seen.setdefault(item, None)
+    return tuple(seen)
+
+
 def _reconcile_binary_candidates(
     candidates: list[Candidate], *, on_value: str, off_value: str
 ) -> list[Candidate]:
-    """Collapse overlapping pulses into one coherent state-machine transition stream."""
+    """Collapse overlapping pulses into one coherent state-machine transition stream.
+
+    A detector reports a state, not a census. Where several pulses overlap, the sensor was ON once
+    and the reader sees one ON and one OFF — which was already true for one resident, whose hands
+    at the fridge and whose body in the chair are two pulses in one cone.
+
+    With two bodies it becomes the property the dataset exists to have. A PIR says *something warm
+    moved here*, never *who*: two people crossing the same cone inside the retrigger window are one
+    observation, and a projector that emitted two would be inventing a discrimination the hardware
+    does not make. That is the same lesson this module learned once already — drawing each
+    detector's pulses independently made two overlapping cones fire at unrelated times, 5.1%
+    co-activation within two seconds against Aruba's 29.5%, and the note on `_MotionPulse` records
+    it. Summing two independent streams for two bodies repeats the error along another axis.
+
+    What must not be lost at the merge is the *answer*. The observable record stays one and stays
+    silent about identity; its oracle link names every resident, cause, activity and action that
+    held the sensor on for that stretch. That asymmetry is the whole design: the log does not know
+    who moved, and the ground truth does.
+    """
     if not candidates or not all(item.group_id is not None for item in candidates):
         result: list[Candidate] = []
         state: JsonValue = off_value
@@ -1211,9 +1240,47 @@ def _reconcile_binary_candidates(
     current_output_group: str | None = None
     sequence = 0
     result = []
+    # What has held the sensor on since it last switched. Accumulated across batches rather than
+    # read off the transition, because the second body arrives while the sensor is already on and
+    # produces no transition of its own to be read from.
+    open_index: int | None = None
+    causes: tuple[str, ...] = ()
+    residents: tuple[str, ...] = ()
+    activities: tuple[str, ...] = ()
+    actions: tuple[str, ...] = ()
+    # The first contributor that is not noise, whose origin a stretch takes once one has joined it.
+    # A false positive and a real body can hold the sensor on together; the reading is then the
+    # body's, since the detector would have fired for it anyway. Left as the noise pulse's, the
+    # fused link named simulated causes under a `false_positive` origin, which the oracle refuses
+    # outright — and with two residents in one flat that overlap is ordinary, not rare.
+    explained: Candidate | None = None
+
+    def fuse(candidate: Candidate) -> Candidate:
+        if explained is not None and candidate.origin == "false_positive":
+            candidate = replace(candidate, origin=explained.origin, cause_type=explained.cause_type)
+        return replace(
+            candidate,
+            cause_ids=causes,
+            # Sorted, where the causes keep the order they happened in: which body crossed the cone
+            # first is part of the story of the stretch, but who was there is a set, and a pair
+            # spelled two ways is two keys to anyone grouping observations by it.
+            resident_ids=tuple(sorted(residents)),
+            activity_ids=activities,
+            action_ids=actions,
+        )
+
     for at in sorted(by_time):
         batch = by_time[at]
         was_on = bool(active_groups)
+        for candidate in batch:
+            if candidate.value != on_value or candidate.group_id is None:
+                continue
+            causes = _union(causes, candidate.cause_ids)
+            residents = _union(residents, candidate.resident_ids)
+            activities = _union(activities, candidate.activity_ids)
+            actions = _union(actions, candidate.action_ids)
+            if explained is None and candidate.origin != "false_positive":
+                explained = candidate
         # Opens before closes, so a group that opens and closes on the same instant cancels itself
         # instead of leaking. With closes first, its close found nothing to remove and its open
         # stayed in the set for good: the sensor read ON for the rest of the horizon and every
@@ -1234,6 +1301,7 @@ def _reconcile_binary_candidates(
         if is_on:
             current_output_group = f"reconciled:{sequence}"
             sequence += 1
+            open_index = len(result)
             result.append(
                 replace(
                     representative,
@@ -1251,7 +1319,19 @@ def _reconcile_binary_candidates(
                     applies_false_negative=False,
                 )
             )
+            # The ON was emitted before the bodies that joined it were known, so it is answered
+            # for here, once the stretch it opened is over and nothing more can be added to it.
+            if open_index is not None:
+                result[open_index] = fuse(result[open_index])
+            result[-1] = fuse(result[-1])
+            open_index = None
             current_output_group = None
+            causes = residents = activities = actions = ()
+            explained = None
+    # A sensor still on when the horizon stops has an ON nobody closed; its link is still owed the
+    # bodies that held it.
+    if open_index is not None:
+        result[open_index] = fuse(result[open_index])
     return result
 
 

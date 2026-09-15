@@ -277,6 +277,7 @@ export interface NewActionDraft {
   capability: string;
   gestureSeconds: number | null;
   motionAtObject: boolean;
+  requiresUpright: boolean;
 }
 
 export function addAction(pack: VocabularyPack, draft: NewActionDraft): VocabularyPack {
@@ -313,6 +314,7 @@ export function addAction(pack: VocabularyPack, draft: NewActionDraft): Vocabula
     gestureSeconds: draft.gestureSeconds,
     observability: { motionAtObject: draft.motionAtObject, motionAlongPath: false },
     isTravel: false,
+    requiresUpright: draft.requiresUpright,
   };
   return { ...pack, actions: [...pack.actions, action] };
 }

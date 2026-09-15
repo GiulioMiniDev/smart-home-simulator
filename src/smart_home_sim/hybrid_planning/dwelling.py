@@ -26,6 +26,7 @@ What this module does *not* do is invent rooms the activity catalog cannot place
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from random import Random
 
@@ -249,6 +250,15 @@ class Dwelling:
     def room_ids(self) -> tuple[str, ...]:
         return tuple(room.location_id for room in self.rooms)
 
+    @property
+    def bedroom_ids(self) -> tuple[str, ...]:
+        """The rooms somebody sleeps in, the main bedroom first."""
+        return tuple(
+            room.location_id
+            for room in self.rooms
+            if room.location_id == "bedroom" or room.location_id.endswith("_bedroom")
+        )
+
     def summary(self) -> str:
         """One line for provenance and for the researcher reading a generation report."""
         return (
@@ -267,6 +277,49 @@ class Household:
     with_children: bool
     works_at_home: bool
     avoids_stairs: bool
+    # How many rooms the household sleeps in. One for a person or a couple, two for two friends
+    # splitting the rent. Read off a persona's free text it is always one, which is the reason a
+    # roster has its own constructor below.
+    bedrooms: int = 1
+
+    @classmethod
+    def from_roster(
+        cls,
+        ages: Mapping[str, int],
+        sharing_a_bedroom: Iterable[Iterable[str]] = (),
+        *,
+        works_at_home: bool = False,
+        avoids_stairs: bool = False,
+    ) -> Household:
+        """The home a declared household needs: the derivation the free-text persona only guessed.
+
+        `sharing_a_bedroom` names the pairs who sleep in one room — a couple, siblings who share —
+        and everybody else gets a room of their own. The number of bedrooms is the number of groups
+        those pairs join the roster into: two friends are two rooms, a couple is one, a couple with
+        a teenager is two. Beyond what an archetype holds, more bedrooms are added rather than
+        people doubled up, because that is a hard constraint and not a taste: a household whose
+        declared nights cannot fit in the house is infeasible, and the design wants that refused
+        before a solver spends hours on it.
+        """
+        groups = {who: {who} for who in ages}
+        for pair in sharing_a_bedroom:
+            members = [who for who in pair if who in groups]
+            if len(members) < 2:
+                continue
+            merged = set().union(*(groups[who] for who in members))
+            for who in merged:
+                groups[who] = merged
+        distinct = {frozenset(group) for group in groups.values()}
+        youngest = min(ages.values(), default=45)
+        oldest = max(ages.values(), default=45)
+        return cls(
+            age=oldest,
+            alone=len(ages) <= 1,
+            with_children=youngest < 18,
+            works_at_home=works_at_home,
+            avoids_stairs=avoids_stairs or oldest >= 80,
+            bedrooms=max(len(distinct), 1),
+        )
 
     @classmethod
     def from_persona(cls, persona: object | None) -> Household:
@@ -320,10 +373,16 @@ class Household:
         )
 
 
-def design_dwelling(persona: object | None = None, *, seed: int = 1) -> Dwelling:
-    """Choose a home for this persona: deterministic in the seed, plausible for the person."""
+def design_dwelling(
+    persona: object | None = None, *, seed: int = 1, household: Household | None = None
+) -> Dwelling:
+    """Choose a home for this persona: deterministic in the seed, plausible for the person.
+
+    `household` replaces what is read off the persona when the household is declared rather than
+    described: a roster says how many rooms the nights need, and a sentence can only guess.
+    """
     random = Random(f"dwelling:{seed}:{getattr(persona, 'persona_id', '')}")
-    household = Household.from_persona(persona)
+    household = household or Household.from_persona(persona)
     archetype = _choose_archetype(household, random)
     rooms = _choose_rooms(archetype, household, random)
     resources = _furnish(rooms, random)
@@ -371,7 +430,26 @@ def _choose_archetype(household: Household, random: Random) -> Archetype:
         weights["maisonette"] = 0.0
         weights["townhouse"] = 0.0
     ordered = [item for item in ARCHETYPES if weights[item.archetype_id] > 0]
+    # Enough bedrooms is a hard constraint, like the staircase. Where no archetype has that many,
+    # the largest that is allowed is taken and `_choose_rooms` adds the rest.
+    roomy = [item for item in ordered if _bedrooms_in(item) >= household.bedrooms]
+    if roomy:
+        ordered = roomy
+    elif household.bedrooms > 1:
+        most = max(_bedrooms_in(item) for item in ordered)
+        ordered = [item for item in ordered if _bedrooms_in(item) == most]
     return random.choices(ordered, weights=[weights[item.archetype_id] for item in ordered])[0]
+
+
+def _is_bedroom(room: str) -> bool:
+    return room == "bedroom" or room.endswith("_bedroom")
+
+
+def _bedrooms_in(archetype: Archetype) -> int:
+    return 1 + sum(1 for room in archetype.extras if _is_bedroom(room))
+
+
+_ORDINALS = ("second", "third", "fourth", "fifth", "sixth")
 
 
 def _choose_rooms(
@@ -386,6 +464,13 @@ def _choose_rooms(
         odds = min(chance * (2.0 if name == "study" and household.works_at_home else 1.0), 0.95)
         if random.random() < odds:
             names.append(name)
+    # A room for every night the household needs, beyond the ones the archetype already has.
+    for ordinal in _ORDINALS:
+        if sum(1 for name in names if _is_bedroom(name)) >= household.bedrooms:
+            break
+        extra = f"{ordinal}_bedroom"
+        if extra not in names:
+            names.append(extra)
     if archetype.storeys > 1:
         # A staircase needs somewhere to arrive. `landing` is in every two-storey archetype's
         # extras, but an archetype is a table and tables get edited, so the invariant is asserted
@@ -394,7 +479,10 @@ def _choose_rooms(
             names.append("landing")
         if "hallway" not in names:
             names.append("hallway")
-    levels = {name: (1 if archetype.storeys > 1 and name in _UPPER_ROOMS else 0) for name in names}
+    levels = {
+        name: (1 if archetype.storeys > 1 and (name in _UPPER_ROOMS or _is_bedroom(name)) else 0)
+        for name in names
+    }
     # A balcony belongs to the storey it opens off. On two floors that is the bedroom floor as often
     # as not, and putting it always downstairs is what would make every generated house identical
     # in the one place a plan is read first.
@@ -433,7 +521,11 @@ def _furnish(rooms: tuple[DwellingRoom, ...], random: Random) -> tuple[DwellingR
     used = {item.resource_id for item in resources}
     counters: dict[str, int] = {}
     for room in rooms:
-        for entity_type, chance, count in _OPTIONAL_FURNITURE.get(room.location_id, ()):
+        # A third bedroom is furnished like the second: a bed of its own is the point of it.
+        table = _OPTIONAL_FURNITURE.get(room.location_id) or (
+            _OPTIONAL_FURNITURE["second_bedroom"] if _is_bedroom(room.location_id) else ()
+        )
+        for entity_type, chance, count in table:
             if random.random() >= chance:
                 continue
             # How many of a thing a room gets is itself variable: four dining chairs in one house,

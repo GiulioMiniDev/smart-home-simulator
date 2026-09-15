@@ -38,6 +38,10 @@ from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenari
 WAKE_TIME = "06:00"
 SLEEP_TIME = "22:30"
 _WINDOW_FLEX = timedelta(minutes=15)
+# The first night of a horizon: it starts one window-flex after midnight, so its window does not
+# open before the simulation does, and is not written at all when the wake leaves under an hour.
+_OPENING_NIGHT_START_MINUTES = 15
+_OPENING_NIGHT_MINIMUM_MINUTES = 60
 DEFAULT_INTENT = "read_and_rest"
 
 # Substring keywords mapping a free-text activity label to a canonical intent. The *longest*
@@ -269,11 +273,18 @@ def plan_from_entries(
     timezone: str,
     actor_id: str,
     seed: int | None = None,
+    index_offset: int = 0,
 ) -> DayPlan:
     """Assemble a DayPlan from ordered intent entries (shared by deterministic and LLM sources).
 
     With ``seed`` set, each activity's preferred duration is drawn from its category's log-normal
     instead of being pinned to the category default.
+
+    ``index_offset`` is where this resident's activity identifiers start. A day plan holds every
+    resident of the household, identifiers are `<date>_<index>_<intent>`, and two people waking on
+    the same morning would otherwise both be `2026-03-02_00_wake_up`. The offset is the number of
+    activities the day already holds, so the first resident keeps the numbering a single-resident
+    horizon has always produced.
     """
     tz = ZoneInfo(timezone)
     activities = [
@@ -283,7 +294,7 @@ def plan_from_entries(
             entry.hhmm,
             tz,
             actor_id,
-            index=index,
+            index=index_offset + index,
             recurring_activity_id=entry.recurring_activity_id,
             truncatable=entry.truncatable,
             nested=entry.nested,
@@ -309,6 +320,7 @@ def build_day_plan(
     seed: int | None = None,
     busy_minutes: Sequence[tuple[int, int]] = (),
     activity_locations: Mapping[str, str] = MappingProxyType({}),
+    index_offset: int = 0,
 ) -> DayPlan:
     """Deterministic DayPlan: wake, the due recurring activities mapped to intents, then a terminal
     sleep.
@@ -337,6 +349,22 @@ def build_day_plan(
     morning = previous_rhythm if previous_rhythm is not None else rhythm
     if morning is not None:
         wake_time = morning.wake_hhmm
+        # And no yesterday also meant no night: the horizon opened with every resident in bed
+        # and nothing planned until she got up, so the first night was the one stretch of the
+        # dataset with no sleep in it and no motion from the bedroom at all — five hours of Giulia
+        # and eleven of Paolo on the Ferri month, against about seventy-five PIR events on any
+        # other night. The opening night runs from just inside the window to the borrowed wake.
+        if previous_rhythm is None:
+            opening = _to_minutes(wake_time) - _OPENING_NIGHT_START_MINUTES
+            if opening >= _OPENING_NIGHT_MINIMUM_MINUTES:
+                entries.append(
+                    TimelineEntry(
+                        "sleep",
+                        f"00:{_OPENING_NIGHT_START_MINUTES:02d}",
+                        truncatable=True,
+                        duration=_sleep_duration(opening),
+                    )
+                )
         # Lights-out after midnight happens on this day, so this is the list it belongs on, ahead
         # of the wake it leads to. `sleep_starts_next_day` is what routes it here.
         if morning.sleep_starts_next_day and morning is previous_rhythm:
@@ -413,6 +441,7 @@ def build_day_plan(
         timezone=timezone,
         actor_id=actor_id,
         seed=seed,
+        index_offset=index_offset,
     )
 
 
@@ -690,6 +719,7 @@ def activity_from_intent(
     duration_shape: tuple[int, int, int, float] | None = None,
     preconditions: tuple[Condition, ...] = (),
     seed: int | None = None,
+    location: str | None = None,
 ) -> Activity:
     """One optional occurrence of an intent, at a moment already decided.
 
@@ -711,6 +741,7 @@ def activity_from_intent(
         duration_shape=duration_shape,
         preconditions=preconditions,
         seed=seed,
+        location=location,
     )
 
 

@@ -174,6 +174,20 @@ def _infeasible_day_details(
     }
 
 
+def _resident_days(scenario: Scenario) -> int:
+    """How much life the horizon holds, which is what the threshold above was measured in.
+
+    Counted in days it was calibrated on one resident, and a household is not a longer day. One
+    month of a couple is 1 635 activities against 728 for one of them, and compiled in one solve
+    it never finished: the first canonicalisation probes alone exhausted their budget and the
+    month was reported `SOLVER_NOT_OPTIMAL` after twelve minutes. The residents live inside the
+    same days, so the coupling between them never crosses a day boundary and the window split
+    means for them what it means for one person; solved a week at a time the same month compiles.
+    For one resident this is the day count, and nothing about a single-resident horizon changes.
+    """
+    return len(scenario.days) * max(1, len(scenario.residents))
+
+
 def _windows_are_safe(records: list[SourceRecord]) -> bool:
     """Can this scenario be solved a window at a time without changing what the answer means?
 
@@ -334,7 +348,7 @@ def compile_scenario(
         main_records = [
             record for record in records if branch_by_activity[record.activity.activity_id] is None
         ]
-        if len(scenario.days) > COMPILATION_WINDOW_THRESHOLD_DAYS and _windows_are_safe(
+        if _resident_days(scenario) > COMPILATION_WINDOW_THRESHOLD_DAYS and _windows_are_safe(
             main_records
         ):
             main_outcome = _solve_in_windows(scenario, axis, main_records, on_progress)

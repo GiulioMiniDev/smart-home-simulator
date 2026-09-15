@@ -10,7 +10,14 @@ from zoneinfo import ZoneInfo
 
 from ortools.sat.python import cp_model
 
-from smart_home_sim.domain.models import Activity, DayPlan, DependencyMode, Scenario
+from smart_home_sim.domain.models import (
+    BRANCH_EXTENSION,
+    PRIVACY_EXTENSION,
+    Activity,
+    DayPlan,
+    DependencyMode,
+    Scenario,
+)
 from smart_home_sim.domain.plan import ObjectiveValues
 
 MICROSECONDS_PER_MINUTE = 60_000_000
@@ -293,6 +300,27 @@ def occupied_residents(activity: Activity, resident_ids: set[str]) -> set[str]:
     return occupied
 
 
+def excluded_residents(activity: Activity, resident_ids: set[str]) -> set[str]:
+    """Who this activity empties its room of.
+
+    Not a capacity, and that distinction is the whole of it. Capacity counts bodies, and no room
+    has a true one — two people fit in a shower cabin, and at the table one can sit in the other's
+    lap. What decides co-presence is a norm between two named people, and the norm is directional
+    and specific to what the subject is doing. An integer can express neither, and `capacity 1
+    exceeded` is not an error anybody can act on.
+
+    What genuinely is a count stays on the resource, where it always was: `Resource.capacity`
+    never counted bodies, it counts simultaneous *uses*. A shower taken by two is one use with two
+    participants and passes `add_cumulative`; two independent showers at the same instant are two
+    uses of one jet and are refused — without the model ever saying how many people are in the
+    cabin.
+    """
+    declared = activity.extensions.get(PRIVACY_EXTENSION)
+    if not isinstance(declared, list):
+        return set()
+    return {item for item in declared if isinstance(item, str)} & resident_ids
+
+
 class ScheduleSolver:
     def __init__(
         self,
@@ -327,6 +355,9 @@ class ScheduleSolver:
         self.resident_ids = {item.resident_id for item in scenario.residents}
         self.probe_count = 0
         self.commitments = {item.commitment_id: item for item in scenario.commitments}
+        # Each set of mutually exclusive arms, most valuable arm first, and who belongs to it.
+        self.branch_selectors: list[tuple[str, list[tuple[str, cp_model.IntVar]]]] = []
+        self.branch_members: dict[str, list[str]] = defaultdict(list)
 
     def solve(self) -> SolveOutcome:
         self._create_activity_variables()
@@ -334,6 +365,8 @@ class ScheduleSolver:
         self._add_resident_constraints()
         self._add_commitment_constraints()
         self._add_resource_constraints()
+        self._add_privacy_constraints()
+        self._add_exclusive_branch_constraints()
         objective_variables = self._create_objective_variables()
         self.model.add_decision_strategy(
             [item.presence for item in self.variables.values()],
@@ -404,17 +437,35 @@ class ScheduleSolver:
             self.model.add(variable == optimum)
             self.model.clear_objective()
 
+        # A choice between arms is decided once per group, on the arm's selector, before the
+        # optional activities one at a time. Locked activity by activity, the arm that loses is a
+        # guaranteed rejection every day it exists — exactly one of the two is ever present — and
+        # each rejection is found by bisection over every lock still pending. On a couple's week
+        # that was 36 of the 100 rejections and most of the probes. The last arm of a group is not
+        # locked at all: once the others are decided, `add_exactly_one` has already decided it.
+        branch_requests = [
+            LockRequest(selector, 1, f"canonical_branch__{group}__{branch}")
+            for group, arms in self.branch_selectors
+            for branch, selector in arms[:-1]
+        ]
+        in_a_choice = {
+            activity_id for group in self.branch_members.values() for activity_id in group
+        }
         optional_requests = [
-            LockRequest(
-                variables.presence,
-                1,
-                f"canonical_optional__{variables.record.activity.activity_id}",
-            )
-            for variables in sorted(
-                self.variables.values(),
-                key=lambda item: item.record.activity.activity_id,
-            )
-            if not variables.record.activity.mandatory
+            *branch_requests,
+            *(
+                LockRequest(
+                    variables.presence,
+                    1,
+                    f"canonical_optional__{variables.record.activity.activity_id}",
+                )
+                for variables in sorted(
+                    self.variables.values(),
+                    key=lambda item: item.record.activity.activity_id,
+                )
+                if not variables.record.activity.mandatory
+                and variables.record.activity.activity_id not in in_a_choice
+            ),
         ]
         aborted = self._lock_requests(optional_requests)
         if aborted is not None:
@@ -1004,6 +1055,119 @@ class ScheduleSolver:
         for resident_intervals in intervals.values():
             self.model.add_no_overlap(resident_intervals)
 
+    def _add_exclusive_branch_constraints(self) -> None:
+        """Schedule exactly one arm of each set of alternatives, and leave the others out.
+
+        The case this exists for: a couple usually has lunch together, one of them gets home half
+        an hour before the other, cooks, and waits. On most days the shared version fits and the
+        wait is the honest residue of anchoring it to the later arrival. On a day when the first
+        one has something at 13:30 it does not fit, and they should eat *separately* rather than
+        eat a forty-minute lunch in fifteen.
+
+        Who decides is the whole question. Not the author, who would have to guess a slack she
+        cannot compute. Not the expander, which would have to reproduce the compiler's feasibility
+        reasoning — the trap this project already knows, where a plan that looks right turns out
+        to be unsolvable and you find out by compiling it. The compiler is the only layer that
+        knows the slack, and this is how it is told there is a choice to make.
+
+        Mutually exclusive alternatives rather than a third fallback trigger, because the
+        selection variables are already reified: a branch is one boolean, every activity in it is
+        pinned to that boolean, and exactly one boolean of the group is true. Which branch wins
+        follows from `priority` through the objective's first stage, with no new objective term.
+
+        A branch's activities have to be optional. A mandatory one has its presence pinned to 1 at
+        creation, and pinning it to a selector as well is how a group becomes infeasible rather
+        than a choice.
+        """
+        groups: dict[str, dict[str, list[ActivityVariables]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+        for variables in self.variables.values():
+            declared = variables.record.activity.extensions.get(BRANCH_EXTENSION)
+            if not isinstance(declared, dict):
+                continue
+            group = declared.get("group")
+            branch = declared.get("branch")
+            if isinstance(group, str) and isinstance(branch, str):
+                groups[group][branch].append(variables)
+        for group, branches in sorted(groups.items()):
+            # One arm is not a choice, and forcing it present would turn a declaration nobody
+            # finished writing into an infeasible day.
+            if len(branches) < 2:
+                continue
+            selectors = []
+            arms: list[tuple[str, cp_model.IntVar]] = []
+            # The arm worth most is offered first when the choice is canonicalised, so the order
+            # the locks are tried in is the order of preference the objective already states.
+            ordered = sorted(
+                branches.items(),
+                key=lambda arm: (
+                    -sum(item.record.activity.priority for item in arm[1]),
+                    arm[0],
+                ),
+            )
+            for branch, items in ordered:
+                selector = self.model.new_bool_var(f"branch__{group}__{branch}")
+                selectors.append(selector)
+                arms.append((branch, selector))
+                for item in items:
+                    self.model.add(item.presence == selector)
+                    self.branch_members[group].append(item.record.activity.activity_id)
+            self.model.add_exactly_one(selectors)
+            self.branch_selectors.append((group, arms))
+
+    def _add_privacy_constraints(self) -> None:
+        """Keep the household out of the room while one of them is doing something private.
+
+        Pairwise, and deliberately not cumulative. A privacy rule is a statement about two named
+        people and one activity, so it becomes a two-interval `add_no_overlap` between the private
+        activity and every activity of an excluded resident that happens in the same room. It costs
+        more constraints than a capacity would, and it says the thing that is actually true — and
+        it is the only one of the two a preflight can put into a sentence a researcher reads.
+
+        Rooms are compared by intersection rather than equality because an activity may name
+        several, and being in one of them together is already being in it together. Composite
+        locations are not expanded here: an activity carries the primitive rooms it runs in.
+
+        Each pair is constrained once. A reciprocal rule reaches the same two activities from both
+        ends, and adding the constraint twice would double the model for no extra truth.
+        """
+        ordered = sorted(self.variables.values(), key=lambda item: item.record.activity.activity_id)
+        fixed_intervals: list[tuple[Activity, cp_model.IntervalVar]] = []
+        for fixed in self._included_fixed_values():
+            activity = fixed.record.activity
+            fixed_intervals.append(
+                (
+                    activity,
+                    self.model.new_fixed_size_interval_var(
+                        fixed.start,
+                        fixed.end - fixed.start,
+                        f"fixed_privacy__{activity.activity_id}",
+                    ),
+                )
+            )
+        movable = [(item.record.activity, item.interval) for item in ordered]
+        constrained: set[tuple[str, str]] = set()
+        for index, (activity, interval) in enumerate(movable):
+            excluded = excluded_residents(activity, self.resident_ids)
+            rooms = set(activity.location_ids)
+            for other, other_interval in [*movable[index + 1 :], *fixed_intervals]:
+                # Symmetric by construction: a rule reaching this pair from either end forbids the
+                # same overlap, so it is enough that one of the two declares it.
+                if not (
+                    excluded & occupied_residents(other, self.resident_ids)
+                    or excluded_residents(other, self.resident_ids)
+                    & occupied_residents(activity, self.resident_ids)
+                ):
+                    continue
+                if not rooms & set(other.location_ids):
+                    continue
+                key = tuple(sorted((activity.activity_id, other.activity_id)))
+                if key in constrained:
+                    continue
+                constrained.add(key)  # type: ignore[arg-type]
+                self.model.add_no_overlap([interval, other_interval])
+
     def _add_commitment_constraints(self) -> None:
         for variables in self.variables.values():
             activity = variables.record.activity
@@ -1028,11 +1192,24 @@ class ScheduleSolver:
         demands: dict[str, list[int]] = defaultdict(list)
         resources = {item.resource_id: item for item in self.scenario.resources}
         for variables in self.variables.values():
+            # A candidate that may overlap its own resident — the toilet trip, the filler — is
+            # arbitrated when it happens, not placed: it interrupts the block it lands in rather
+            # than competing with it for the hour, and the engine drops it when the object is
+            # taken. Serialised here, the solver kept those optional candidates and moved the
+            # author's habits out of their way instead: on a five-month horizon 66 activities,
+            # a mandatory toilet visit by three and a half hours.
+            if variables.record.activity.can_overlap_for_actor:
+                continue
             for requirement in variables.record.activity.required_resources:
                 intervals[requirement.resource_id].append(variables.interval)
                 demands[requirement.resource_id].append(requirement.units)
         for fixed in self._included_fixed_values():
-            if not fixed.record.activity.required_resources:
+            # The same exemption for a candidate carried in from the previous window, which was
+            # placed without it and would otherwise collide with the day it spills into.
+            if (
+                not fixed.record.activity.required_resources
+                or fixed.record.activity.can_overlap_for_actor
+            ):
                 continue
             interval = self.model.new_fixed_size_interval_var(
                 fixed.start,

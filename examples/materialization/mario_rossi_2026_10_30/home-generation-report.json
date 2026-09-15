@@ -12,12 +12,12 @@
   "sourceBehaviorPackageSha256": "a6861b68c8fb5592c972f71ff3e6aca0287abdbfd2bade3ded30ddebfa10a2af",
   "homeId": "synthetic_mario_rome_apartment_logical_v1",
   "homeVersion": "1.0.0",
-  "homeSha256": "504c07f6e99465a16c665b7ad6efab140d30c44d38bf46d6c7733378e2ba3717",
+  "homeSha256": "3fef87ada2882b101218e64326fa3c63c9a14a59a6e0c8ea9dc4e33db35b26cb",
   "issues": [],
   "summary": {
     "regionCount": 9,
     "connectionCount": 8,
-    "entityCount": 27,
+    "entityCount": 29,
     "locationBindingCount": 10,
     "resourceBindingCount": 17,
     "errorCount": 0

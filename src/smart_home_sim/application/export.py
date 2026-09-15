@@ -27,10 +27,14 @@ from smart_home_sim.domain.application import (
     utc_now,
 )
 from smart_home_sim.domain.environment import HomeModel
+from smart_home_sim.domain.execution import ExecutionTrace
+from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.profile import ResidentProfile
 from smart_home_sim.domain.sensors import SensorModel
+from smart_home_sim.hybrid_planning.habits import ground_truth_of_run
+from smart_home_sim.hybrid_planning.outline import HabitGroundTruth, HouseholdGroundTruth
 from smart_home_sim.profiling import (
-    profile_from_trace_file,
+    profile_from_trace,
     render_profile_html,
     write_heatmap_csv,
 )
@@ -47,10 +51,6 @@ ROLE_SOURCES: dict[str, tuple[str, str]] = {
     "runtime_events": ("execution_trace", "runtimeEvents.item"),
     "plan_deviations": ("execution_trace", "planDeviations.item"),
     "final_state": ("execution_trace", "finalState"),
-    # Outline-first horizons carry their habit bands in the scenario, because the application
-    # never sees the outline they came from. One row per band, with the activity mix measured
-    # across the horizon: the answer sheet for a segmentation algorithm.
-    "habit_ground_truth": ("scenario", "extensions.habitGroundTruth.habits.item"),
 }
 
 # The one role that is computed rather than projected. It reads the execution trace and answers a
@@ -65,7 +65,18 @@ PROFILE_ROLE = "resident_profile"
 # part of what it publishes is the index of everything else in the export.
 SUMMARY_ROLE = "summary"
 
-COMPUTED_ROLES = frozenset({PROFILE_ROLE, SUMMARY_ROLE})
+# The answer sheet for a segmentation algorithm, and the part of it only a household has. Computed
+# rather than projected, like the profile, and for the same reason: they are measured on this run's
+# trace. The bands come from the scenario, which carries the outline's declaration because nothing
+# downstream of ingestion sees the outline; everything measured inside them — the activity mix,
+# the unaccounted remainder, where the dominant activity really runs, the minutes another body
+# shared the room — is what this run did, so it is exact for the sensor log beside it. Until these
+# became computed they were projected from a measurement of the plan, made before compilation.
+HABIT_ROLE = "habit_ground_truth"
+CO_PRESENCE_ROLE = "household_co_presence"
+SHARING_ROLE = "household_sharing"
+
+COMPUTED_ROLES = frozenset({PROFILE_ROLE, SUMMARY_ROLE, HABIT_ROLE, CO_PRESENCE_ROLE, SHARING_ROLE})
 
 # Fields the pipeline keeps internally but must not publish, by export role.
 #
@@ -605,7 +616,6 @@ class ExportService:
         )
         scenario_path = path_of("scenario")
         scenario = None
-        habits: dict[str, Any] = {}
         if scenario_path is not None:
             scenario = ScenarioFacts(
                 title=_metadata(scenario_path, "title"),
@@ -613,13 +623,12 @@ class ExportService:
                 time_zone=_metadata(scenario_path, "timeZone"),
                 residents=list(_metadata(scenario_path, "residents") or []),
             )
-            habits = _metadata(scenario_path, "extensions.habitGroundTruth") or {}
         report_path = path_of("sensor_projection_report")
         stats: dict[str, Any] = {}
         if report_path is not None:
             counters = json.loads(report_path.read_text(encoding="utf-8")).get("sensors") or []
             stats = {item["sensorId"]: item for item in counters if "sensorId" in item}
-        return home, sensors, scenario, habits, stats
+        return home, sensors, scenario, stats
 
     def _summary_file(
         self,
@@ -631,9 +640,10 @@ class ExportService:
         manifest_files: Sequence[ExportManifestFile],
         seed: int,
         trace_digest: str,
+        habits: Sequence[HabitGroundTruth],
     ) -> ExportManifestFile:
         """The dataset summary: one page, written last so it can index the rest of the export."""
-        home, sensors, scenario, habits, stats = self._summary_sources(artifacts)
+        home, sensors, scenario, stats = self._summary_sources(artifacts)
         page = staging / "summary.html"
         page.write_text(
             render_summary_html(
@@ -646,7 +656,9 @@ class ExportService:
                     home=home,
                     sensors=sensors,
                     scenario=scenario,
-                    habits=habits,
+                    habits=tuple(
+                        json.loads(item.model_dump_json(by_alias=True)) for item in habits
+                    ),
                     sensor_stats=stats,
                     include_start=request.include_start,
                     include_end=request.include_end,
@@ -690,19 +702,51 @@ class ExportService:
         staging = Path(tempfile.mkdtemp(prefix=f".{export_id}.", dir=self.workspace.exports_path))
         files: list[ExportManifestFile] = []
         profile: ResidentProfile | None = None
+        parsed: ExecutionTrace | None = None
+        measured: tuple[list[HabitGroundTruth], HouseholdGroundTruth] | None = None
+        measured_once = False
+
+        def execution_trace() -> ExecutionTrace:
+            """Parsed once: every computed role reads it, and an eight-month trace is the most
+            expensive thing in the export to read."""
+            nonlocal parsed
+            if parsed is None:
+                parsed = ExecutionTrace.model_validate_json(trace_path.read_text(encoding="utf-8"))
+            return parsed
 
         def resident_profile() -> ResidentProfile:
             """Aggregated once and shared: both computed roles want the same document, and a second
             pass over an eight month trace costs more than everything else here put together."""
             nonlocal profile
             if profile is None:
-                profile = profile_from_trace_file(
-                    trace_path,
+                profile = profile_from_trace(
+                    execution_trace(),
                     run_id=request.run_id,
                     start=request.include_start,
                     end=request.include_end,
                 )
             return profile
+
+        def ground_truth() -> tuple[list[HabitGroundTruth], HouseholdGroundTruth] | None:
+            """This run's declared bands, measured on this run, inside the requested window."""
+            nonlocal measured, measured_once
+            if not measured_once:
+                measured_once = True
+                scenario_artifact = artifacts.get("scenario")
+                if scenario_artifact is not None:
+                    scenario = Scenario.model_validate_json(
+                        self.workspace.artifact_path(scenario_artifact.artifact_id).read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                    measured = ground_truth_of_run(
+                        scenario,
+                        execution_trace(),
+                        run_id=request.run_id,
+                        start=request.include_start,
+                        end=request.include_end,
+                    )
+            return measured
 
         try:
             # The computed roles come last whatever order they were requested in: the summary
@@ -737,6 +781,51 @@ class ExportService:
                             sha256=_digest(output),
                         )
                     )
+            for role in (HABIT_ROLE, CO_PRESENCE_ROLE, SHARING_ROLE):
+                if role not in request.roles:
+                    continue
+                truth = ground_truth()
+                if truth is None:
+                    raise WorkspaceError(
+                        f"run has no declared habit bands to measure for '{role}' export"
+                    )
+                habits, household = truth
+                rows = (
+                    [
+                        json.loads(band.model_dump_json(by_alias=True))
+                        for document in habits
+                        for band in document.habits
+                    ]
+                    if role == HABIT_ROLE
+                    else [
+                        json.loads(item.model_dump_json(by_alias=True))
+                        for item in (
+                            household.co_presence if role == CO_PRESENCE_ROLE else household.sharing
+                        )
+                    ]
+                )
+                for output_format in request.formats:
+                    output = staging / f"{role}.{output_format.value}"
+                    if output_format is ExportFormat.jsonl:
+                        count = _jsonl(output, iter(rows))
+                        media_type = "application/x-ndjson"
+                    elif output_format is ExportFormat.csv:
+                        count = _csv(output, iter(rows))
+                        media_type = "text/csv"
+                    else:
+                        count = _xes(output, role, iter(rows), request.run_id)
+                        media_type = "application/xml"
+                    files.append(
+                        ExportManifestFile(
+                            role=role,
+                            format=output_format,
+                            relative_path=f"{export_id}/{output.name}",
+                            media_type=media_type,
+                            record_count=count,
+                            size_bytes=output.stat().st_size,
+                            sha256=_digest(output),
+                        )
+                    )
             if PROFILE_ROLE in request.roles:
                 files.extend(self._profile_files(staging, export_id, resident_profile()))
             if SUMMARY_ROLE in request.roles:
@@ -750,6 +839,7 @@ class ExportService:
                         files,
                         seed,
                         trace_digest,
+                        (ground_truth() or ([], None))[0],
                     )
                 )
             manifest = ExportManifest(

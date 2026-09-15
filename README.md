@@ -636,12 +636,32 @@ La chiusura terminale della milestone, requisito per iniziare la M5, è document
 nell'[audit M4](docs/audits/milestone-4-closure.md).
 
 Il flusso di authoring consigliato usa un solo file:
-`prompts/generate-horizon-outline-1.3.0.md`, ed è l'unico che la guida integrata offre. Il
+`prompts/generate-horizon-outline-2.0.0.md`, ed è l'unico che la guida integrata offre. Il
 ricercatore sostituisce il marcatore `PERSON_AND_CASE_DESCRIPTION` con una descrizione libera
-della persona, invia l'intero prompt a un LLM esterno e salva il solo JSON restituito. Non
-deve allegare separatamente schemi o cataloghi. La risposta è un *outline* — abitudini,
-cadenze, fasi ed eventi — che `expand-outline` srotola nei giorni concreti pubblicando anche
-la ground truth delle abitudini.
+della persona — o della famiglia — invia l'intero prompt a un LLM esterno e salva il solo JSON
+restituito. Non deve allegare separatamente schemi o cataloghi. La risposta è un *outline* —
+abitudini, cadenze, fasi ed eventi — che `expand-outline` srotola nei giorni concreti,
+scrivendo accanto le fasce di abitudine dichiarate.
+
+La **ground truth delle abitudini** si misura su una run, non sul piano: le fasce vengono
+dall'outline, e tutto ciò che vi è misurato dentro — composizione, finestra effettiva, quota
+di ambiguità, co-presenza — viene dalla traccia di esecuzione, con gli orari effettivi e le
+stanze in cui i corpi erano davvero. La pubblica l'export di una run (ruoli
+`habit_ground_truth`, `household_co_presence` e `household_sharing`, che mette la propensione
+dichiarata di ogni attività condivisa accanto alla quota di giorni in cui la run l'ha condivisa) e,
+da riga di comando, `measure-habits`.
+Subito dopo l'import la stessa misura sul piano espanso produce solo avvisi, dichiarati come
+tali; il documento dice sempre su cosa è stato misurato (`measuredOn`).
+
+Dalla 2.0.0 il soggetto dell'outline è la **casa** e non la persona: `residents[]` sostituisce
+`residentId`, e un livello `household` dichiara ciò che vale su una coppia — le attività
+condivise, scritte una volta sola con i partecipanti, la propensione a condividerle indicizzata
+per classe di giorno, e le stanze private. Una casa di una persona è la stessa struttura con un
+elenco di uno. Le motivazioni sono in
+[ADR-026](docs/decisions/ADR-026-the-household-as-the-subject-of-an-outline.md); gli outline
+scritti per la 1.0.0 continuano a espandersi, perché vengono sollevati nella nuova forma senza
+che nessun valore cambi. La 1.3.0 resta in `prompts/` per la provenance dei bundle che la
+nominano.
 
 I due prompt `generate-simulation-inputs` qui sotto chiedevano invece ogni singolo giorno
 dell'orizzonte, e reggono solo su finestre brevi: la quota di giornate distinte scende da 1,00

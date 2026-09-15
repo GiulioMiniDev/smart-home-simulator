@@ -720,3 +720,40 @@ def test_a_rejected_bundle_still_reports_whatever_it_managed_to_compile() -> Non
         assert result.compilation.report.canonical_plan_sha256 == (
             result.report.canonical_plan_sha256
         )
+
+
+def test_the_household_prompt_is_self_contained_and_teaches_the_2_0_0_contract() -> None:
+    """2.0.0 embeds its own bundle schema and states the two rules a model reliably breaks.
+
+    Asked for "the family's routine", a language model over-synchronises — pinning dinner at 19:30
+    for both, narrowing the band exactly where the placement engine needs slack — and duplicates
+    instead of sharing, so the dataset gets two dinners where the house had one. Neither is a
+    stylistic lapse, and neither is catchable downstream, so the prompt has to forbid them in
+    words and the schema has to make the shared form the only one available.
+    """
+    prompt = (ROOT / "prompts/generate-horizon-outline-2.0.0.md").read_text(encoding="utf-8")
+
+    assert "{{PERSON_AND_CASE_DESCRIPTION}}" in prompt
+    assert "{{CATALOG_INTENTS}}" not in prompt
+    assert "{{OUTLINE_BUNDLE_SCHEMA_JSON}}" not in prompt
+    assert "`promptTemplateVersion`: `generate-horizon-outline-2.0.0`" in prompt
+    assert "**Do not write the days of the horizon.**" in prompt
+
+    # The schema is the 2.0.0 one, and it is embedded rather than described.
+    schema = json.loads(
+        (ROOT / "schemas/horizon-authoring-bundle-2.0.0.schema.json").read_text(encoding="utf-8")
+    )
+    assert json.dumps(schema, ensure_ascii=False, sort_keys=True, separators=(",", ":")) in prompt
+
+    # The household rules the contract cannot enforce on its own.
+    assert "A shared activity is declared once" in prompt
+    assert 'There is no "both" field anywhere in this contract' in prompt
+    assert "The propensity is a number, indexed by class of day" in prompt
+    assert "permissive settings are chosen rather than inherited" in prompt
+    assert "The portfolio gate applies to each resident" in prompt
+    assert "Identifiers are unique across the whole document" in prompt
+
+    # 1.3.0 stays frozen against the contract the bundles naming it were authored for.
+    frozen = (ROOT / "prompts/generate-horizon-outline-1.3.0.md").read_text(encoding="utf-8")
+    assert "household.jointActivities" not in frozen
+    assert "horizon-authoring-bundle:1.0.0" in frozen

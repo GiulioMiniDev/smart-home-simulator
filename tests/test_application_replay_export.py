@@ -1224,13 +1224,13 @@ def test_the_export_offers_every_role_the_backend_defines() -> None:
     """
     import re
 
-    from smart_home_sim.application.export import PROFILE_ROLE, ROLE_SOURCES, SUMMARY_ROLE
+    from smart_home_sim.application.export import COMPUTED_ROLES, ROLE_SOURCES
 
     source = (PROJECT_ROOT / "frontend/src/App.tsx").read_text(encoding="utf-8")
     match = re.search(r"roles: \[([^\]]+)\]", source)
     assert match is not None, "the export button no longer names its roles"
     requested = set(re.findall(r'"([a-z_]+)"', match.group(1)))
-    offered = set(ROLE_SOURCES) | {PROFILE_ROLE, SUMMARY_ROLE}
+    offered = set(ROLE_SOURCES) | COMPUTED_ROLES
 
     assert requested == offered, {
         "missing from the UI": sorted(offered - requested),

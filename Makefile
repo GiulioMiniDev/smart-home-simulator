@@ -136,13 +136,14 @@ schema:
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-authoring-bundle --output schemas/simulation-authoring-bundle-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-ingestion-report --output schemas/authoring-ingestion-report-1.1.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract authoring-repair-request --output schemas/authoring-repair-request-1.0.0.schema.json
-	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-outline --output schemas/horizon-outline-1.0.0.schema.json
-	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-authoring-bundle --output schemas/horizon-authoring-bundle-1.0.0.schema.json
-	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract habit-ground-truth --output schemas/habit-ground-truth-1.2.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-outline --output schemas/horizon-outline-2.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract horizon-authoring-bundle --output schemas/horizon-authoring-bundle-2.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract habit-ground-truth --output schemas/habit-ground-truth-1.3.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract household-ground-truth --output schemas/household-ground-truth-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract home-model --output schemas/home-model-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract environment-validation-report --output schemas/environment-validation-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-bundle --output schemas/simulation-bundle-1.0.0.schema.json
-	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract execution-trace --output schemas/execution-trace-1.0.0.schema.json
+	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract execution-trace --output schemas/execution-trace-1.1.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-report --output schemas/simulation-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract replay-report --output schemas/replay-report-1.0.0.schema.json
 	PYTHONPATH=src UV_NO_EDITABLE=1 uv run smart-home-sim schema --contract simulation-batch-manifest --output schemas/simulation-batch-manifest-1.0.0.schema.json

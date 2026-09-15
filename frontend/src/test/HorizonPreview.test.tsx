@@ -217,4 +217,82 @@ describe("the horizon preview", () => {
     fireEvent.click(screen.getByRole("button", { name: /expand and import/i }));
     expect(onImport).toHaveBeenCalledOnce();
   });
+
+  it("says nothing about living together when one person lives here", () => {
+    show();
+    expect(screen.queryByRole("heading", { name: "Living together" })).not.toBeInTheDocument();
+  });
+});
+
+describe("the horizon preview of a household", () => {
+  const { profile, habits, fixedCommitments, phases, events } = document_;
+  const household: RawOutline = {
+    documentType: document_.documentType,
+    timeZone: document_.timeZone,
+    startDate: document_.startDate,
+    months: document_.months,
+    world: document_.world,
+    provenance: document_.provenance,
+    schemaVersion: "2.0.0",
+    title: "Marco and Luca in Turin",
+    residents: [
+      { residentId: "marco", displayName: "Marco", profile, habits, fixedCommitments, phases, events, rhythm: { age: 34 } },
+      { residentId: "luca", displayName: "Luca", profile: { recurringActivities: [] }, habits: [{ habitId: "luca_night", label: "Night", windowStart: "23:30", windowEnd: "07:00" }] },
+    ],
+    household: {
+      relations: [{ between: ["marco", "luca"], kind: "housemates" }],
+      jointActivities: [{
+        activity: { recurringActivityId: "dinner", label: "Dinner", kind: "anchor", cadence: { period: "day", timesPerPeriod: 1, windowStart: "20:00", windowEnd: "21:00" } },
+        participantIds: ["marco", "luca"],
+        sharing: "joint",
+      }],
+    },
+  };
+
+  function showHousehold() {
+    const result = readOutline(household);
+    if (result.kind !== "outline") throw new Error(result.message);
+    render(<HorizonPreview reading={result.reading} fileName="turin.horizon-outline.json" busy={false} onImport={vi.fn()} />);
+  }
+
+  it("names everybody the horizon is for", () => {
+    showHousehold();
+    expect(screen.getByText(/243 days for a household of 2/)).toHaveTextContent("Marco and Luca");
+    expect(screen.getByText("residents")).toBeInTheDocument();
+  });
+
+  it("gives each resident their own day, titled with their name", () => {
+    showHousehold();
+    expect(screen.getByRole("heading", { level: 3, name: "Marco" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Marco · one day, from midnight to midnight" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Luca · one day, from midnight to midnight" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Morning run: 3 days a week on Mon, Wed and Fri, between 07:00 – 09:00" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Every day, in 1 band: Night, 23:30 – 07:00/ })).toBeInTheDocument();
+  });
+
+  it("draws what they do together once, with who takes part", () => {
+    showHousehold();
+    expect(screen.getByRole("heading", { name: "Living together" })).toBeInTheDocument();
+    expect(screen.getByText("Marco and Luca share the home as housemates")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Dinner, shared by Marco, Luca: Once a day, between 20:00 – 21:00" })).toBeInTheDocument();
+    expect(screen.getByText("Always together")).toBeInTheDocument();
+  });
+
+  it("says what a household left undeclared, and what a resident said about themselves", () => {
+    const result = readOutline({
+      ...household,
+      residents: [{ residentId: "anna", note: "Works nights." }, { residentId: "bea" }],
+      household: { sharedLocationIds: ["guest_toilet"] },
+      world: { locations: [] },
+    });
+    if (result.kind !== "outline") throw new Error(result.message);
+    render(<HorizonPreview reading={result.reading} fileName="pair.json" busy={false} onImport={vi.fn()} />);
+    expect(screen.getByText("Works nights.")).toBeInTheDocument();
+    expect(screen.getByText(/No relation is declared/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is declared as done together/)).toBeInTheDocument();
+    expect(screen.getByText(/No room is declared private/)).toBeInTheDocument();
+    expect(screen.getByText(/Declared shared: guest toilet/)).toBeInTheDocument();
+    expect(screen.getByText("nobody here ever leaves the flat")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /what each band is meant to hold/ })).not.toBeInTheDocument();
+  });
 });

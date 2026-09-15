@@ -21,7 +21,10 @@ from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.materialization import HomeGenerationPolicy
 from smart_home_sim.domain.models import SimulationWindow
 from smart_home_sim.hybrid_planning.expander import expand_outline
-from smart_home_sim.hybrid_planning.outline import HorizonOutline
+from smart_home_sim.hybrid_planning.outline import (
+    HorizonOutline,
+    upgrade_authoring_bundle_payload,
+)
 from smart_home_sim.materialization import materialize_workspace
 
 BUNDLE = Path(sys.argv[1])
@@ -30,10 +33,13 @@ SKIP = int(sys.argv[sys.argv.index("--skip") + 1]) if "--skip" in sys.argv else 
 POLICY = os.environ.get("HOME_POLICY")
 ROOT = Path(os.environ.get("DAYS_ROOT", tempfile.mkdtemp(prefix="days-")))
 
-raw = json.loads(BUNDLE.read_text(encoding="utf-8"))
+# Un bundle scritto per l'outline 1.x si solleva nella forma a casa; fasi ed eventi si tolgono per
+# residente, perche' da 2.0.0 appartengono a ciascuno.
+raw = upgrade_authoring_bundle_payload(json.loads(BUNDLE.read_text(encoding="utf-8")))
 raw["outline"]["months"] = 1
-raw["outline"]["phases"] = []
-raw["outline"]["events"] = []
+for resident in raw["outline"]["residents"]:
+    resident["phases"] = []
+    resident["events"] = []
 outline = HorizonOutline.model_validate_json(json.dumps(raw["outline"]))
 package = PersonalProcessPackage.model_validate_json(json.dumps(raw["personalProcessPackage"]))
 

@@ -70,6 +70,33 @@ def default_action_catalog_path(version: str = "1.0.0") -> Path:
     return _default_catalog_path(f"action-catalog-{version}.json")
 
 
+def action_catalog_payload(version: str = "1.0.0") -> dict[str, Any]:
+    """The bundled action catalog at `version`, with the actions the active vocabulary adds.
+
+    Every stage that executes or checks an action reads this rather than the file, so an action
+    added in the vocabulary editor is known to the validator, the materializer and the simulator
+    alike. Additions only: see `vocabulary.catalogs`.
+    """
+    from smart_home_sim.vocabulary.active import active_pack
+    from smart_home_sim.vocabulary.catalogs import with_vocabulary_actions
+
+    payload = json.loads(default_action_catalog_path(version).read_text(encoding="utf-8"))
+    return with_vocabulary_actions(payload, active_pack())
+
+
+def activity_catalog_payload(version: str = "1.0.0") -> dict[str, Any]:
+    """The bundled activity catalog at `version`, with the activities the active vocabulary adds."""
+    from smart_home_sim.vocabulary.active import active_pack
+    from smart_home_sim.vocabulary.catalogs import with_vocabulary_intents
+
+    payload = json.loads(default_activity_catalog_path(version).read_text(encoding="utf-8"))
+    return with_vocabulary_intents(payload, active_pack())
+
+
+def load_action_catalog(version: str = "1.0.0") -> ActionCatalog:
+    return ActionCatalog.model_validate_json(json.dumps(action_catalog_payload(version)))
+
+
 def _read_json(path: Path, artifact_name: str) -> tuple[Any | None, BehaviorValidationIssue | None]:
     try:
         encoded = path.read_bytes()

@@ -79,6 +79,11 @@ class VocabularyAction(ContractModel):
     # the planned path once the walk is known. The flag says so, rather than leaving a reader to
     # infer it from a suspicious zero.
     is_travel: bool = False
+    # Whether a body has to be on its feet to do this. A resident found sitting or lying when the
+    # action starts stands up first; everything else is done wherever the body already is — a
+    # television is switched on from the sofa. This is `UPRIGHT_ACTION_TYPES`, and it lives here so
+    # an action an author adds — watering the plants — does not get performed from the sofa.
+    requires_upright: bool = False
 
     @property
     def action_type(self) -> str:

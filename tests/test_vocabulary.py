@@ -23,7 +23,7 @@ from smart_home_sim.hybrid_planning.intents import (
     load_reference_models,
 )
 from smart_home_sim.sensors.service import PIR_ACTIVITY_ACTION_TYPES
-from smart_home_sim.simulation.service import PUNCTUAL_ACTION_SECONDS
+from smart_home_sim.simulation.service import PUNCTUAL_ACTION_SECONDS, UPRIGHT_ACTION_TYPES
 from smart_home_sim.vocabulary import views
 from smart_home_sim.vocabulary.active import use_pack
 from smart_home_sim.vocabulary.defaults import builtin_pack
@@ -40,6 +40,10 @@ def test_gesture_table_round_trips(pack: VocabularyPack) -> None:
 
 def test_motion_action_types_round_trip(pack: VocabularyPack) -> None:
     assert views.motion_action_types(pack) == PIR_ACTIVITY_ACTION_TYPES
+
+
+def test_upright_action_types_round_trip(pack: VocabularyPack) -> None:
+    assert views.upright_action_types(pack) == UPRIGHT_ACTION_TYPES
 
 
 def test_entity_capabilities_round_trip(pack: VocabularyPack) -> None:
@@ -164,6 +168,43 @@ def test_a_new_action_is_seen_by_the_motion_detector(pack: VocabularyPack) -> No
         assert "wait" in views.motion_action_types(active)
 
 
+def test_an_action_that_needs_the_resident_up_says_so_in_the_pack(pack: VocabularyPack) -> None:
+    """Watering the plants from the sofa is what an added action got while this was a Python set."""
+    from smart_home_sim.simulation.service import _upright_actions
+
+    assert "consume" not in _upright_actions()
+    edited = pack.model_copy(deep=True)
+    for action in edited.actions:
+        if action.action_type == "consume":
+            action.requires_upright = True
+    with use_pack(edited):
+        assert "consume" in _upright_actions()
+    assert "consume" not in _upright_actions()
+
+
+def test_a_pack_saved_before_upright_existed_keeps_its_standing_actions(tmp_path) -> None:
+    """An old customised pack is lifted, not read with a default that sits everybody down."""
+    from smart_home_sim.application import vocabulary_store
+
+    edited = builtin_pack().model_copy(deep=True)
+    edited.pack_id = "saved-last-month"
+    added = edited.actions[0].model_copy(deep=True)
+    added.definition.action_type = "water_plants"
+    edited.actions.append(added)
+    vocabulary_store.save(tmp_path, edited)
+    path = vocabulary_store.pack_path(tmp_path)
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    for action in stored["actions"]:
+        del action["requiresUpright"]
+    # One value the author did state survives the lift untouched.
+    stored["actions"][-1]["requiresUpright"] = True
+    path.write_text(json.dumps(stored), encoding="utf-8")
+
+    reloaded = vocabulary_store.load(tmp_path).pack
+
+    assert views.upright_action_types(reloaded) == UPRIGHT_ACTION_TYPES | {"water_plants"}
+
+
 def test_a_new_intent_is_resolvable_everywhere(pack: VocabularyPack) -> None:
     """Adding an activity used to require editing a frozen tuple. It must now be data alone."""
     from smart_home_sim.hybrid_planning.intents import intent_catalog, intent_spec
@@ -257,3 +298,109 @@ def test_an_unreadable_stored_pack_is_never_silently_ignored(tmp_path) -> None:
     path.write_text("{ this is not a pack", encoding="utf-8")
     with pytest.raises(vocabulary_store.VocabularyStoreError):
         vocabulary_store.load(tmp_path)
+
+
+def test_the_builtin_vocabulary_adds_nothing_to_the_bundled_catalogs(pack: VocabularyPack) -> None:
+    """The overlay must be invisible until somebody adds something."""
+    from smart_home_sim.behavior.service import (
+        action_catalog_payload,
+        activity_catalog_payload,
+        default_action_catalog_path,
+        default_activity_catalog_path,
+    )
+
+    with use_pack(pack):
+        for version in ("1.0.0", "1.1.0"):
+            on_disk = json.loads(default_action_catalog_path(version).read_text(encoding="utf-8"))
+            assert action_catalog_payload(version) == on_disk
+        # Every version: the built-in pack is derived from the newest catalog, and an older one must
+        # not quietly gain what arrived after it — `phone_call` exists only from 1.2.0.
+        for version in ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"):
+            on_disk = json.loads(default_activity_catalog_path(version).read_text(encoding="utf-8"))
+            assert activity_catalog_payload(version) == on_disk
+
+
+def test_an_activity_added_in_the_editor_is_known_to_the_behaviour_validator(
+    pack: VocabularyPack,
+) -> None:
+    """It used to expand into days and then be refused as `UNKNOWN_INTENT`."""
+    from smart_home_sim.behavior.service import activity_catalog_payload
+    from smart_home_sim.domain.behavior import ActivityCatalog
+    from smart_home_sim.vocabulary.catalogs import AUTHORED_COMPONENT_PREFIX
+
+    extended = pack.model_copy(deep=True)
+    phone = next(item for item in extended.intents if item.intent_id == "phone_call")
+    guest = phone.model_copy(deep=True)
+    guest.intent_id = "host_guest"
+    guest.label = "Host a guest"
+    # Written in the editor: no components, which a catalog entry is not allowed to have.
+    authored = phone.model_copy(deep=True)
+    authored.intent_id = "water_the_plants"
+    authored.label = "Water the plants"
+    authored.components = []
+    extended.intents.extend([guest, authored])
+
+    with use_pack(extended):
+        catalog = ActivityCatalog.model_validate_json(json.dumps(activity_catalog_payload("1.4.0")))
+
+    by_intent = {item.intent: item for item in catalog.activities}
+    assert by_intent["host_guest"].components == phone.components
+    assert by_intent["water_the_plants"].components == [
+        f"{AUTHORED_COMPONENT_PREFIX}water_the_plants"
+    ]
+    defined = {item.component_id: item for item in catalog.components}
+    first_action = next(node.action_type for node in phone.process_model.nodes if node.action_type)
+    assert defined[f"{AUTHORED_COMPONENT_PREFIX}water_the_plants"].required_action_types == [
+        first_action
+    ]
+    # The bundled definition of an activity the file already has is never replaced.
+    assert by_intent["phone_call"].components == phone.components
+
+
+def test_an_action_added_in_the_editor_reaches_every_stage_that_loads_the_catalog(
+    pack: VocabularyPack,
+) -> None:
+    from smart_home_sim.behavior.service import load_action_catalog
+
+    extended = pack.model_copy(deep=True)
+    water = extended.actions[0].model_copy(deep=True)
+    water.definition.action_type = "water_plants"
+    extended.actions.append(water)
+
+    with use_pack(extended):
+        assert "water_plants" in {item.action_type for item in load_action_catalog("1.1.0").actions}
+    assert "water_plants" not in {item.action_type for item in load_action_catalog("1.1.0").actions}
+
+
+def test_the_prompt_is_told_what_the_workspace_adds_and_nothing_else(pack: VocabularyPack) -> None:
+    """What the prompt says is available is exactly what the import will accept."""
+    from smart_home_sim.vocabulary.additions import NOTHING_ADDED, render_additions
+
+    assert render_additions(pack) == NOTHING_ADDED
+
+    extended = pack.model_copy(deep=True)
+    extended.entity_types.append(
+        VocabularyEntityType(
+            entity_type="exercise_mat",
+            display_name="Exercise mat",
+            capabilities=["exercise_support"],
+        )
+    )
+    phone = next(item for item in extended.intents if item.intent_id == "phone_call")
+    guest = phone.model_copy(deep=True)
+    guest.intent_id = "host_guest"
+    guest.label = "Host a guest"
+    guest.components = []
+    extended.intents.append(guest)
+    water = extended.actions[0].model_copy(deep=True)
+    water.definition.action_type = "water_plants"
+    extended.actions.append(water)
+
+    rendered = render_additions(extended)
+
+    assert "- `exercise_mat` (Exercise mat) — `exercise_support`" in rendered
+    assert "`host_guest` — Host a guest" in rendered
+    assert '`implementedComponents`: ["authored__host_guest"]' in rendered
+    assert "- `water_plants` — " in rendered
+    # The built-in entries are the prompt's own lists already; repeating them would be noise.
+    assert "phone_call" not in rendered

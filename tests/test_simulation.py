@@ -366,6 +366,39 @@ def _resource_contention_bundle(bundle, high_priority_delay: timedelta):
     )
 
 
+def test_a_candidate_whose_object_is_taken_is_given_up_not_queued(bundle) -> None:
+    """The toilet trip or filler that finds the object in use lets it go.
+
+    A candidate that may overlap its own resident is left out of the compiler's resource model —
+    it interrupts a block rather than competing for the hour — so it is arbitrated here. Waiting
+    would hold its resident back from the day she planned, and pre-empting would pull somebody
+    else off the object for a candidate the engine may turn down anyway.
+    """
+    contended = _resource_contention_bundle(bundle, timedelta(minutes=1))
+    day = contended.canonical_plan.days[0]
+    candidate = day.activities[1].model_copy(
+        update={"can_overlap_for_actor": True, "mandatory": False}
+    )
+    plan_day = day.model_copy(update={"activities": [day.activities[0], candidate]})
+    contended = contended.model_copy(
+        update={"canonical_plan": contended.canonical_plan.model_copy(update={"days": [plan_day]})}
+    )
+
+    result = simulate_bundle(contended)
+
+    assert result.report.success, result.report.issues
+    assert result.trace is not None
+    executions = {item.source_activity_id: item for item in result.trace.activity_executions}
+    assert executions["test_high_priority_wake"].status == "dropped"
+    assert any(
+        item.cause_id == "object_in_use"
+        and item.activity_execution_id
+        == executions["test_high_priority_wake"].activity_execution_id
+        for item in result.trace.plan_deviations
+    )
+    assert not any(item.operation == "preempted" for item in result.trace.resource_events)
+
+
 def test_engine_traces_resource_preemption_during_initial_acquisition(bundle) -> None:
     result = simulate_bundle(_resource_contention_bundle(bundle, timedelta()))
     assert result.report.success, result.report.issues
@@ -1177,3 +1210,39 @@ def test_a_walk_is_not_its_distance_over_one_speed(result) -> None:
     }
     assert len(speeds) > 20
     assert max(speeds) - min(speeds) > 0.1
+
+
+def test_what_a_process_model_never_puts_down_is_still_put_down(result) -> None:
+    """Hands empty again: the ingredients as their activity ends, the coffee within its time.
+
+    Before, `resident.carrying.*` only became false through `put_item`, so a model that took the
+    ingredients and put back only the dish held them for the rest of the horizon.
+    """
+    from smart_home_sim.domain.hands import PORTABLE_MINUTES, carried_role
+
+    trace = result.trace
+    activity_of_action = {item.action_execution_id: item for item in trace.action_executions}
+    activities = {item.activity_execution_id: item for item in trace.activity_executions}
+    held: dict[str, tuple[datetime, ActivityExecution]] = {}
+    released_by_engine = 0
+    for transition in trace.state_transitions:
+        role = carried_role(transition.fact)
+        if transition.subject_type != "resident" or role is None:
+            continue
+        if transition.value is True:
+            action = activity_of_action[transition.causality.cause_id]
+            held[role] = (transition.at, activities[action.activity_execution_id])
+            continue
+        if transition.previous_value is not True:
+            continue
+        taken_at, activity = held.pop(role)
+        if transition.causality.cause_type == "plan":
+            released_by_engine += 1
+        if role not in PORTABLE_MINUTES:
+            # A microsecond after the activity: its last step may have been the pick-up itself.
+            latest = activity.actual_end + timedelta(microseconds=1)
+            assert transition.at <= latest, (role, taken_at)
+    assert released_by_engine > 0
+    assert not held
+    facts = trace.final_state.residents[0].facts
+    assert not [fact for fact, value in facts.items() if carried_role(fact) and value is True]

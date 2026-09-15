@@ -1,0 +1,475 @@
+{
+  "$defs": {
+    "AuthorType": {
+      "enum": [
+        "human",
+        "external_llm",
+        "rule_generator",
+        "import"
+      ],
+      "title": "AuthorType",
+      "type": "string"
+    },
+    "CoPresenceSpan": {
+      "additionalProperties": false,
+      "description": "A stretch during which more than one resident was in the same room.\n\nThe measurement a per-resident document structurally cannot make. A habit ground truth answers\n\"what was *she* doing between these hours\"; nothing in N of those says the two of them were in\nthe kitchen together at the time, and an experiment running on a shared sensor log needs that\nto tell a confounder apart from an error.",
+      "properties": {
+        "day": {
+          "format": "date",
+          "title": "Day",
+          "type": "string"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "title": "End",
+          "type": "string"
+        },
+        "minutes": {
+          "minimum": 0,
+          "title": "Minutes",
+          "type": "number"
+        },
+        "residentIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Residentids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "day",
+        "location",
+        "start",
+        "end",
+        "minutes",
+        "residentIds"
+      ],
+      "title": "CoPresenceSpan",
+      "type": "object"
+    },
+    "HouseholdDay": {
+      "additionalProperties": false,
+      "description": "One day of the household, as the plan has it.\n\n`at_home_minutes` counts planned minutes in a room of the dwelling, so time at work or out\nwalking is absent by construction rather than by subtraction. `shared_minutes` is the part of\nthat spent in a room another resident was also in \u2014 the daily total of the spans above, and the\ndenominator anybody comparing two residents' recoverability will want first.",
+      "properties": {
+        "day": {
+          "format": "date",
+          "title": "Day",
+          "type": "string"
+        },
+        "atHomeMinutes": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Athomeminutes",
+          "type": "object"
+        },
+        "sharedMinutes": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Sharedminutes",
+          "type": "object"
+        },
+        "sharedActivityCount": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Sharedactivitycount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "day"
+      ],
+      "title": "HouseholdDay",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "authorType": {
+          "$ref": "#/$defs/AuthorType"
+        },
+        "generatorName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorname"
+        },
+        "generatorVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatorversion"
+        },
+        "modelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modelname"
+        },
+        "promptTemplateVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompttemplateversion"
+        },
+        "generatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generatedat"
+        },
+        "humanReviewed": {
+          "default": false,
+          "title": "Humanreviewed",
+          "type": "boolean"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorType"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "SharedEpisode": {
+      "additionalProperties": false,
+      "description": "One planned activity that more than one resident took part in.\n\nEmitted once with every participant named, exactly as the plan holds it. A reader counting\ndinners in this household counts these rows and gets the number of dinners, not the number of\npeople who ate one.",
+      "properties": {
+        "day": {
+          "format": "date",
+          "title": "Day",
+          "type": "string"
+        },
+        "activityId": {
+          "minLength": 1,
+          "title": "Activityid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "title": "End",
+          "type": "string"
+        },
+        "minutes": {
+          "minimum": 0,
+          "title": "Minutes",
+          "type": "number"
+        },
+        "participantIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Participantids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "day",
+        "activityId",
+        "intent",
+        "location",
+        "start",
+        "end",
+        "minutes",
+        "participantIds"
+      ],
+      "title": "SharedEpisode",
+      "type": "object"
+    },
+    "SharingMode": {
+      "description": "How two residents stand towards one activity.\n\nFour values and not two, because \"together or not\" hides two different questions. Whether a\ndinner is one event with two participants or two events at the same table is a question about\nthe *occurrence*. Whether the other may be in the room at all while this one washes is a\nquestion about the *room*. Collapsing them loses the bathroom, which is the case that made the\ndistinction necessary in the first place.",
+      "enum": [
+        "joint",
+        "optional_joint",
+        "independent",
+        "exclusive"
+      ],
+      "title": "SharingMode",
+      "type": "string"
+    },
+    "SharingRealisation": {
+      "additionalProperties": false,
+      "description": "One shared activity and one class of day: the share declared, and the share realised.\n\n`days_with_occurrence` counts the days the activity ran at all for any of its participants,\ntogether or apart; `days_shared` the days it ran as one sitting with more than one of them.\nTheir ratio is `realised_share`, measured on the run, beside `declared_propensity` from the\noutline. A `joint` activity declares no propensity \u2014 it is shared whenever it fits \u2014 so its\nrealised share is what the days allowed: co-presence, and the compiler's choice to degrade.",
+      "properties": {
+        "recurringActivityId": {
+          "minLength": 1,
+          "title": "Recurringactivityid",
+          "type": "string"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "participantIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Participantids",
+          "type": "array"
+        },
+        "sharing": {
+          "$ref": "#/$defs/SharingMode"
+        },
+        "dayClass": {
+          "enum": [
+            "weekday",
+            "weekend"
+          ],
+          "title": "Dayclass",
+          "type": "string"
+        },
+        "declaredPropensity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Declaredpropensity"
+        },
+        "daysWithOccurrence": {
+          "minimum": 0,
+          "title": "Dayswithoccurrence",
+          "type": "integer"
+        },
+        "daysShared": {
+          "minimum": 0,
+          "title": "Daysshared",
+          "type": "integer"
+        },
+        "realisedShare": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Realisedshare"
+        }
+      },
+      "required": [
+        "recurringActivityId",
+        "intent",
+        "participantIds",
+        "sharing",
+        "dayClass",
+        "daysWithOccurrence",
+        "daysShared"
+      ],
+      "title": "SharingRealisation",
+      "type": "object"
+    }
+  },
+  "$id": "urn:smart-home-simulator:schema:household-ground-truth:1.0.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What the house did, as opposed to what any one person in it did.\n\nOne dataset per dwelling, with one shared sensor log, N per-resident habit ground truths and\nthis. A dataset per resident would duplicate the same observable log N times and lose the only\nthing that makes the case interesting, which is that there is one log and more than one body\nproducing it.\n\nMeasured on the execution trace, like the per-resident documents beside it: co-presence is\nwhere the bodies actually were, from their movements, and a shared episode is an activity the\nrun executed with more than one resident in it.",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "documentType": {
+      "const": "household_ground_truth",
+      "default": "household_ground_truth",
+      "title": "Documenttype",
+      "type": "string"
+    },
+    "outlineId": {
+      "minLength": 1,
+      "title": "Outlineid",
+      "type": "string"
+    },
+    "residentIds": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Residentids",
+      "type": "array"
+    },
+    "timeZone": {
+      "minLength": 1,
+      "title": "Timezone",
+      "type": "string"
+    },
+    "startDate": {
+      "format": "date",
+      "title": "Startdate",
+      "type": "string"
+    },
+    "endDate": {
+      "format": "date",
+      "title": "Enddate",
+      "type": "string"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "measuredOn": {
+      "enum": [
+        "execution_trace",
+        "expanded_plan"
+      ],
+      "title": "Measuredon",
+      "type": "string"
+    },
+    "runId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runid"
+    },
+    "traceId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Traceid"
+    },
+    "sourceTraceSemanticDigest": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcetracesemanticdigest"
+    },
+    "days": {
+      "items": {
+        "$ref": "#/$defs/HouseholdDay"
+      },
+      "title": "Days",
+      "type": "array"
+    },
+    "coPresence": {
+      "items": {
+        "$ref": "#/$defs/CoPresenceSpan"
+      },
+      "title": "Copresence",
+      "type": "array"
+    },
+    "sharedEpisodes": {
+      "items": {
+        "$ref": "#/$defs/SharedEpisode"
+      },
+      "title": "Sharedepisodes",
+      "type": "array"
+    },
+    "sharing": {
+      "items": {
+        "$ref": "#/$defs/SharingRealisation"
+      },
+      "title": "Sharing",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "outlineId",
+    "residentIds",
+    "timeZone",
+    "startDate",
+    "endDate",
+    "seed",
+    "measuredOn",
+    "provenance"
+  ],
+  "title": "Smart Home Household Ground Truth 1.0.0",
+  "type": "object"
+}

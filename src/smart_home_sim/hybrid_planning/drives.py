@@ -28,7 +28,7 @@ from __future__ import annotations
 import hashlib
 import math
 import random
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -79,6 +79,23 @@ _ALARM_LEAD_MINUTES = 90
 # An alarm may cut the night, but not past the point where the resident would simply have gone to
 # bed earlier instead.
 _ALARM_MINIMUM_SLEEP_FRACTION = 0.45
+# Only a commitment in the morning sets an alarm. One at 00:00 is the second half of a night shift
+# that began the evening before, and one in the afternoon leaves the night alone either way.
+_ALARM_COMMITMENT_WINDOW = (3 * 60, 14 * 60)
+
+# Shift work. A night is *worked* when fixed commitments take at least this share of the hours the
+# resident would usually sleep through; the main sleep then moves to the day after the shift.
+_WORKED_NIGHT_FRACTION = 0.5
+# From the end of the shift to lights-out: getting home, and winding down in a bright morning.
+_DAY_SLEEP_DELAY_MINUTES = 40.0
+# Day sleep after a night shift is shorter than a night's, and it is the main source of a shift
+# worker's chronic debt: light, noise and the circadian low all end it early.
+_DAY_SLEEP_FRACTION = 0.78
+# Two commitments this close are one stretch at work: 22:00-23:59 and 00:00-06:00 are one shift.
+_CONTIGUOUS_COMMITMENT_MINUTES = 5.0
+# A day sleep must start before midday, or the day it lands on reads it as that evening's night.
+_LATEST_DAY_SLEEP_START_MINUTES = 11 * 60
+_MINUTES_PER_DAY = 24 * 60
 
 # Appetite and the wish for company both build daily and are spent by doing the thing. Without a
 # consumption term they only ever climb: hunger saturated in about seventeen days and social need
@@ -230,6 +247,7 @@ def plan_rhythms(
     meals_by_day: Mapping[date, int] | None = None,
     social_by_day: Mapping[date, int] | None = None,
     first_commitment_by_day: Mapping[date, int] | None = None,
+    commitment_spans_by_day: Mapping[date, Sequence[tuple[int, int]]] | None = None,
 ) -> dict[str, DayRhythm]:
     """Walk the horizon in order, carrying drive state, and shape every day.
 
@@ -238,6 +256,9 @@ def plan_rhythms(
     corresponding drives are spent as well as accumulated; omitting them leaves both climbing.
     ``first_commitment_by_day`` carries the start of the earliest fixed commitment, in minutes after
     midnight, so the day the resident is expected somewhere gets an alarm.
+    ``commitment_spans_by_day`` carries every fixed commitment as (start, end) minutes after
+    midnight. It is what lets a night be recognised as worked, and, when the first map is not given,
+    the morning alarm is derived from it.
 
     Both that map and ``rest_days`` are keyed by calendar day, which is how a caller thinks about
     them, and both are read here for the day **after** the one being shaped. A `DayRhythm` is a
@@ -249,19 +270,37 @@ def plan_rhythms(
     state = initial_state(profile, seed)
     rhythms: dict[str, DayRhythm] = {}
     for day in days:
+        tomorrow = day + timedelta(days=1)
+        spans: list[tuple[float, float]] = []
+        if commitment_spans_by_day is not None:
+            # On the evening's own axis: tomorrow's commitments sit a day further along, so a shift
+            # written as 22:00-23:59 today and 00:00-06:00 tomorrow reads as the one stretch it is.
+            spans.extend(
+                (float(start), float(end)) for start, end in commitment_spans_by_day.get(day, ())
+            )
+            spans.extend(
+                (float(start) + _MINUTES_PER_DAY, float(end) + _MINUTES_PER_DAY)
+                for start, end in commitment_spans_by_day.get(tomorrow, ())
+            )
+        if first_commitment_by_day is not None:
+            first = first_commitment_by_day.get(tomorrow)
+        else:
+            mornings = [
+                start
+                for start, _ in (commitment_spans_by_day or {}).get(tomorrow, ())
+                if _ALARM_COMMITMENT_WINDOW[0] <= start <= _ALARM_COMMITMENT_WINDOW[1]
+            ]
+            first = min(mornings) if mornings else None
         rhythm, state = advance(
             profile,
             day,
             state,
             seed=seed,
-            rest_day=day + timedelta(days=1) in rest_days,
+            rest_day=tomorrow in rest_days,
             meals=0 if meals_by_day is None else meals_by_day.get(day, 0),
             social_contacts=0 if social_by_day is None else social_by_day.get(day, 0),
-            first_commitment_minutes=(
-                None
-                if first_commitment_by_day is None
-                else first_commitment_by_day.get(day + timedelta(days=1))
-            ),
+            first_commitment_minutes=first,
+            commitments=spans,
         )
         rhythms[day.isoformat()] = rhythm
     return rhythms
@@ -277,6 +316,7 @@ def advance(
     meals: int = 0,
     social_contacts: int = 0,
     first_commitment_minutes: int | None = None,
+    commitments: Sequence[tuple[float, float]] = (),
 ) -> tuple[DayRhythm, DriveState]:
     """Turn today's incoming drive state into a day shape and tomorrow's state.
 
@@ -289,6 +329,12 @@ def advance(
     09:38 on a day whose shift began at 08:30, which is not a late morning but an unschedulable
     day. ``rest_day`` is read the same way, for the same reason: what makes an evening a late one
     is having nowhere to be the morning after.
+
+    ``commitments`` are the fixed commitments of this evening and of the following day, as (start,
+    end) minutes on this evening's axis, tomorrow's shifted by a day. When they take most of the
+    night the resident usually sleeps through, the night is worked: the main sleep is laid in the
+    morning after the shift instead, shorter than a night's, and the debt it leaves is carried the
+    same way as any short night's.
     """
     key = day.isoformat()
     rng = _rng(seed, profile.persona_id, "rhythm", key)
@@ -311,6 +357,24 @@ def advance(
     bedtime = fold_into(
         bedtime, float(_EARLIEST_LIGHTS_OUT_MINUTES), float(_LATEST_LIGHTS_OUT_MINUTES)
     )
+    if first_commitment_minutes is not None:
+        # A night before a commitment ends by the alarm, so it may not begin later than the alarm
+        # less the least sleep the alarm is allowed to leave. Without this bound the late tail of
+        # the lights-out draw could cancel the alarm outright: a 03:41 lights-out before a 06:30
+        # shift left 209 minutes of sleep, under the fraction the alarm refuses to cut below, so
+        # nothing moved the wake and it landed at 06:59 — after the shift had started, on a day the
+        # compiler then could not schedule. Folded like the bound above, so the tail is kept as
+        # noise inside the interval rather than piled up at its edge. A commitment so early that
+        # the bound falls before the earliest lights-out is a night shift's second half, not an
+        # alarm, and is left to the rule below.
+        latest = (
+            24 * 60
+            + first_commitment_minutes
+            - _ALARM_LEAD_MINUTES
+            - profile.sleep_need_minutes * _ALARM_MINIMUM_SLEEP_FRACTION
+        )
+        if latest > _EARLIEST_LIGHTS_OUT_MINUTES:
+            bedtime = fold_into(bedtime, float(_EARLIEST_LIGHTS_OUT_MINUTES), latest)
     usual_bedtime = profile.chronotype_bedtime_minutes + (
         profile.weekend_shift_minutes if relaxed else 0.0
     )
@@ -334,7 +398,29 @@ def advance(
             wake -= overshoot
             sleep_minutes -= overshoot
 
-    visits = _night_visits(profile, state, rng, wake % (24 * 60))
+    worked = _worked_shift_end(commitments, usual_bedtime, need)
+    earliest_visit = 0.0
+    if worked is not None:
+        # Every draw above is still taken, so a night that is not worked sees exactly the sequence
+        # it always did; only a worked night spends the extra ones below.
+        bedtime = worked + _DAY_SLEEP_DELAY_MINUTES + abs(rng.gauss(0, 10.0))
+        sleep_minutes = _clip(
+            need * _DAY_SLEEP_FRACTION * math.exp(rng.gauss(0, 0.12)),
+            need * _ALARM_MINIMUM_SLEEP_FRACTION,
+            need * 0.95,
+        )
+        wake = bedtime + sleep_minutes
+        # The next commitment after the sleep is an alarm like any other: a resident due somewhere
+        # that afternoon is up in time for it.
+        following = [start for start, _ in _merged(commitments) if start >= bedtime]
+        if following:
+            alarm = min(following) - _ALARM_LEAD_MINUTES
+            if wake > alarm:
+                wake = max(bedtime + need * _ALARM_MINIMUM_SLEEP_FRACTION, alarm)
+                sleep_minutes = wake - bedtime
+        # The trips wake the resident from this sleep, so they fall inside it, not in the shift.
+        earliest_visit = bedtime - _MINUTES_PER_DAY
+    visits = _night_visits(profile, state, rng, wake % (24 * 60), earliest_visit)
     # Each awakening costs some restorative sleep even when total time in bed is unchanged.
     effective_sleep = sleep_minutes - 12.0 * len(visits)
 
@@ -383,7 +469,8 @@ def advance(
         night_visits=visits,
         state_at_start=state,
         meal_shift_minutes=meal_shift,
-        bedtime_shift_minutes=int(round(bedtime - usual_bedtime)),
+        # A worked night's evening ends at the shift, not at a late lights-out, so it is not moved.
+        bedtime_shift_minutes=0 if worked is not None else int(round(bedtime - usual_bedtime)),
         unplanned_social_contact=unplanned_social,
     )
     following = DriveState(
@@ -395,11 +482,46 @@ def advance(
     return rhythm, following
 
 
+def _merged(spans: Sequence[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Commitments joined into the stretches the resident is actually away for."""
+    merged: list[tuple[float, float]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1] + _CONTIGUOUS_COMMITMENT_MINUTES:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def _worked_shift_end(
+    commitments: Sequence[tuple[float, float]], usual_bedtime: float, need: float
+) -> float | None:
+    """When the shift covering tonight ends, on the evening's axis, or nothing on a slept night.
+
+    Measured against the hours this resident usually sleeps, not against a fixed 23:00-07:00: a
+    shift that ends at 01:00 takes a sliver of an early sleeper's night and most of nothing for a
+    late one. A shift ending so late in the morning that the sleep after it would start after
+    midday is left to the ordinary night, because that day's plan would read it as its evening.
+    """
+    night = (usual_bedtime, usual_bedtime + need)
+    covering = [
+        (start, end) for start, end in _merged(commitments) if start < night[1] and end > night[0]
+    ]
+    worked = sum(min(end, night[1]) - max(start, night[0]) for start, end in covering)
+    if worked < need * _WORKED_NIGHT_FRACTION:
+        return None
+    end = max(end for _, end in covering)
+    if end + _DAY_SLEEP_DELAY_MINUTES > _MINUTES_PER_DAY + _LATEST_DAY_SLEEP_START_MINUTES:
+        return None
+    return end
+
+
 def _night_visits(
     profile: RhythmProfile,
     state: DriveState,
     rng: random.Random,
     wake_minutes_of_day: float,
+    earliest_minutes_of_day: float = 0.0,
 ) -> tuple[str, ...]:
     """Nocturnal bathroom trips: the signal missing entirely from the zone log overnight.
 
@@ -411,7 +533,8 @@ def _night_visits(
     trips squarely at the window the observable log was silent through.
     """
     latest = wake_minutes_of_day - _NIGHT_VISIT_MARGIN_MINUTES
-    if latest <= _NIGHT_VISIT_MARGIN_MINUTES:
+    earliest = max(0.0, earliest_minutes_of_day) + _NIGHT_VISIT_MARGIN_MINUTES
+    if latest <= earliest:
         return ()
     probability = _clip(profile.nocturia_base_probability + 0.2 * state.fatigue, 0.0, 0.98)
     if rng.random() >= probability:
@@ -419,7 +542,7 @@ def _night_visits(
     count = 1
     while count < _MAX_NIGHT_VISITS and rng.random() < probability * 0.45:
         count += 1
-    offsets = sorted(rng.uniform(_NIGHT_VISIT_MARGIN_MINUTES, latest) for _ in range(count))
+    offsets = sorted(rng.uniform(earliest, latest) for _ in range(count))
     # Two trips in the same minute would collide once they become scheduled activities.
     spaced: list[float] = []
     for offset in offsets:

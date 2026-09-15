@@ -41,6 +41,11 @@ def motion_action_types(pack: VocabularyPack) -> frozenset[str]:
     )
 
 
+def upright_action_types(pack: VocabularyPack) -> frozenset[str]:
+    """`UPRIGHT_ACTION_TYPES`: the actions a seated or lying body stands up for first."""
+    return frozenset(action.action_type for action in pack.actions if action.requires_upright)
+
+
 def travel_action_types(pack: VocabularyPack) -> frozenset[str]:
     """The actions whose evidence is the path they walk rather than the action itself."""
     return frozenset(action.action_type for action in pack.actions if action.is_travel)

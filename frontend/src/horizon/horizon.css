@@ -28,7 +28,23 @@
 .horizon-section { display: grid; gap: .75rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .horizon-section > header { display: flex; align-items: flex-start; gap: .6rem; }
 .horizon-section > header > svg { flex: none; margin-top: .15rem; color: var(--teal); }
-.horizon-section h3 { margin: 0 0 .2rem; font-size: 1rem; }
+.horizon-section h3, .horizon-section h4 { margin: 0 0 .2rem; font-size: 1rem; }
+
+/* --- a household: one block per person, then what they share --- */
+
+.horizon-resident { display: grid; gap: .9rem; padding: .9rem 1rem 1rem; border: 1px solid var(--line); border-left: 3px solid var(--teal); border-radius: var(--radius); }
+.horizon-resident > header { display: flex; align-items: flex-start; gap: .6rem; }
+.horizon-resident > header > svg { flex: none; margin-top: .2rem; color: var(--teal); }
+.horizon-resident > header h3 { margin: 0 0 .2rem; font-size: 1.1rem; }
+.horizon-resident > header p { margin: 0 0 .3rem; font-size: .82rem; color: var(--text-soft); }
+.horizon-resident > header code { margin-right: .45rem; font-size: .75rem; }
+.horizon-resident > .horizon-section:first-of-type { border-top: 0; padding-top: 0; }
+
+.horizon-household-group { display: grid; gap: .45rem; }
+.horizon-household-group > strong { font-size: .84rem; }
+.horizon-household-group > small { color: var(--text-faint); font-size: .73rem; }
+.horizon-sentences { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.horizon-sentences li { padding: .4rem .6rem; border-radius: 6px; background: var(--surface-raised); font-size: .82rem; }
 .horizon-section header p { margin: 0; font-size: .84rem; max-width: 72ch; }
 .horizon-empty { margin: 0; padding: .55rem .7rem; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: .83rem; }
 
@@ -149,3 +165,41 @@
 /* A file name is one unbreakable token and the researcher's are long: `miriam_ferrari_12_mesi_
    corretto.json` overflowed the card by 47px and pushed the whole page sideways on a phone. */
 .horizon-headline .eyebrow { overflow-wrap: anywhere; }
+
+/* --- what an outline asks to add to the vocabulary --- */
+
+.vocab-review { border-top-color: color-mix(in oklch, var(--amber) 45%, var(--line)); }
+.vocab-review > header > svg { color: color-mix(in oklch, var(--amber) 80%, var(--text)); }
+.vocab-review-group { display: grid; gap: .4rem; }
+.vocab-review-group > strong { font-size: .84rem; }
+.vocab-review-group > ul { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.vocab-review-item { display: grid; gap: .55rem; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-raised); }
+.vocab-review-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem .8rem; }
+.vocab-review-head > div:first-child { display: grid; gap: .15rem; min-width: 0; flex: 1 1 280px; }
+.vocab-review-head strong { font-size: .84rem; overflow-wrap: anywhere; }
+.vocab-review-head small { color: var(--text-soft); font-size: .76rem; line-height: 1.45; }
+.vocab-review-why { font-style: italic; }
+.vocab-review-done { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; font-size: .8rem; color: color-mix(in oklch, var(--green) 75%, var(--text)); }
+.vocab-review-form { padding-top: .5rem; border-top: 1px dashed var(--line); }
+.vocab-review-capabilities { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .2rem .8rem; }
+.vocab-review-failure { margin: 0; color: var(--red); font-size: .8rem; }
+.vocab-review .vocab-svg-input { font-family: var(--font-mono, ui-monospace, monospace); font-size: .76rem; }
+
+.vocab-review-summary { display: grid; gap: .35rem; min-width: 0; flex: 1 1 320px; }
+.vocab-review-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; }
+.vocab-review-title strong { font-size: .92rem; }
+.vocab-review-title code { font-size: .74rem; color: var(--text-soft); }
+.vocab-review-title small { flex-basis: 100%; color: var(--text-faint); font-size: .74rem; }
+.vocab-kind { align-self: center; padding: .08rem .45rem; border-radius: 99px; font-size: .68rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.vocab-kind-object { background: var(--teal-soft); color: color-mix(in oklch, var(--teal) 75%, var(--text)); }
+.vocab-kind-activity { background: var(--indigo-soft); color: color-mix(in oklch, var(--indigo) 75%, var(--text)); }
+.vocab-review-facts { display: grid; gap: .15rem; margin: 0; font-size: .78rem; }
+.vocab-review-facts > div { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: .5rem; }
+.vocab-review-facts dt { color: var(--text-faint); }
+.vocab-review-facts dd { margin: 0; color: var(--text-soft); overflow-wrap: anywhere; }
+.vocab-review-advice { margin: .1rem 0 0; padding: .35rem .55rem; border-radius: 5px; font-size: .78rem; line-height: 1.45; }
+.vocab-review-advice.advice-add { background: var(--green-soft); color: color-mix(in oklch, var(--green) 70%, var(--text)); }
+.vocab-review-advice.advice-remove { background: var(--red-soft); color: color-mix(in oklch, var(--red) 70%, var(--text)); }
+.vocab-review-advice.advice-check { background: var(--amber-soft); color: color-mix(in oklch, var(--amber) 60%, var(--text)); }
+.vocab-review-advice.advice-none { background: var(--surface-cool); color: var(--text-soft); }
+.vocab-review-actions { align-self: flex-start; }

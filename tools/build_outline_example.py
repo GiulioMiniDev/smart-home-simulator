@@ -29,6 +29,7 @@ from smart_home_sim.hybrid_planning.outline import (
     HorizonOutline,
     OutlineEvent,
     OutlinePhase,
+    OutlineResident,
     OutlineWorld,
 )
 from smart_home_sim.hybrid_planning.recurring_activities import (
@@ -272,136 +273,149 @@ def build_outline() -> HorizonOutline:
     return HorizonOutline(
         outline_id="meredith-merrino-long-island-8-months-2026-2027",
         title="Meredith Merrino eight-month smart-home routine",
-        resident_id="meredith",
         time_zone="America/New_York",
         start_date=date(2026, 8, 3),
         months=8,
         world=build_world(),
-        profile=build_profile(),
-        habits=build_habits(),
-        fixed_commitments=[
-            FixedCommitment(
-                commitment_id="hair_salon_shift",
-                label="Hair salon",
-                intent="work_shift",
-                weekdays=WEEKDAYS,
-                start_time="09:00",
-                end_time="17:00",
-                note="Fixed by the employer, so the clock times are a fact about the world.",
-            )
-        ],
-        phases=[
-            OutlinePhase(
-                phase_id="late_summer_heat",
-                label="Late-summer heat",
-                start_date=date(2026, 8, 3),
-                end_date=date(2026, 9, 6),
-                activity_overrides=[
-                    ActivityOverride(
-                        recurring_activity_id="morning_run",
-                        cadence=ActivityCadence(
-                            period=CadencePeriod.day,
-                            times_per_period=1,
-                            window_start="05:30",
-                            window_end="07:00",
-                            jitter_minutes=20,
+        residents=[
+            OutlineResident(
+                resident_id="meredith",
+                display_name="Meredith Merrino",
+                profile=build_profile(),
+                habits=build_habits(),
+                fixed_commitments=[
+                    FixedCommitment(
+                        commitment_id="hair_salon_shift",
+                        label="Hair salon",
+                        intent="work_shift",
+                        weekdays=WEEKDAYS,
+                        start_time="09:00",
+                        end_time="17:00",
+                        note=(
+                            "Fixed by the employer, so the clock times are a fact about the world."
                         ),
                     )
                 ],
-                note="Runs earlier to beat the heat.",
-            ),
-            OutlinePhase(
-                phase_id="winter_indoors",
-                label="Winter",
-                start_date=date(2026, 12, 1),
-                end_date=date(2027, 2, 28),
-                activity_overrides=[
-                    ActivityOverride(
-                        recurring_activity_id="morning_run",
-                        cadence=ActivityCadence(
-                            period=CadencePeriod.week,
-                            times_per_period=3,
-                            window_start="06:30",
-                            window_end="08:00",
-                            jitter_minutes=30,
+                phases=[
+                    OutlinePhase(
+                        phase_id="late_summer_heat",
+                        label="Late-summer heat",
+                        start_date=date(2026, 8, 3),
+                        end_date=date(2026, 9, 6),
+                        activity_overrides=[
+                            ActivityOverride(
+                                recurring_activity_id="morning_run",
+                                cadence=ActivityCadence(
+                                    period=CadencePeriod.day,
+                                    times_per_period=1,
+                                    window_start="05:30",
+                                    window_end="07:00",
+                                    jitter_minutes=20,
+                                ),
+                            )
+                        ],
+                        note="Runs earlier to beat the heat.",
+                    ),
+                    OutlinePhase(
+                        phase_id="winter_indoors",
+                        label="Winter",
+                        start_date=date(2026, 12, 1),
+                        end_date=date(2027, 2, 28),
+                        activity_overrides=[
+                            ActivityOverride(
+                                recurring_activity_id="morning_run",
+                                cadence=ActivityCadence(
+                                    period=CadencePeriod.week,
+                                    times_per_period=3,
+                                    window_start="06:30",
+                                    window_end="08:00",
+                                    jitter_minutes=30,
+                                ),
+                            ),
+                            ActivityOverride(
+                                recurring_activity_id="aperitivo_with_friends", suspended=True
+                            ),
+                        ],
+                        note="Running drops to three times a week; the outdoor aperitivo stops.",
+                    ),
+                ],
+                events=[
+                    OutlineEvent(
+                        event_id="dentist_autumn",
+                        label="Dentist appointment",
+                        intent="evening_walk",
+                        earliest_date=date(2026, 10, 5),
+                        latest_date=date(2026, 10, 30),
+                        window_start="09:00",
+                        window_end="12:00",
+                        minimum_minutes=45,
+                        maximum_minutes=90,
+                        weekdays=WEEKDAYS,
+                        displaces=[ActivityDisplacement(recurring_activity_id="morning_run")],
+                    ),
+                    OutlineEvent(
+                        event_id="christmas_with_family",
+                        label="Christmas at her family's",
+                        intent="evening_walk",
+                        earliest_date=date(2026, 12, 24),
+                        latest_date=date(2026, 12, 26),
+                        occurrences=3,
+                        window_start="10:00",
+                        window_end="22:00",
+                        minimum_minutes=300,
+                        maximum_minutes=600,
+                        displaces=[
+                            ActivityDisplacement(recurring_activity_id="dinner_at_home"),
+                            ActivityDisplacement(recurring_activity_id="evening_television"),
+                        ],
+                        note=(
+                            "Three consecutive days away; the home routine is "
+                            "displaced, not varied."
                         ),
                     ),
-                    ActivityOverride(
-                        recurring_activity_id="aperitivo_with_friends", suspended=True
+                    OutlineEvent(
+                        event_id="flu_week",
+                        label="A week of flu",
+                        intent="rest_or_nap",
+                        earliest_date=date(2027, 1, 11),
+                        latest_date=date(2027, 1, 17),
+                        occurrences=5,
+                        window_start="08:00",
+                        window_end="20:00",
+                        minimum_minutes=240,
+                        maximum_minutes=600,
+                        displaces=[
+                            ActivityDisplacement(recurring_activity_id="morning_run"),
+                            ActivityDisplacement(
+                                recurring_activity_id="grocery_shopping",
+                                policy=Displacement.reschedule,
+                            ),
+                        ],
+                        note=(
+                            "The kind of disruption a recogniser should survive without unlearning."
+                        ),
+                    ),
+                    OutlineEvent(
+                        event_id="spring_weekend_away",
+                        label="Weekend away",
+                        intent="evening_walk",
+                        earliest_date=date(2027, 3, 5),
+                        latest_date=date(2027, 3, 28),
+                        occurrences=2,
+                        window_start="09:00",
+                        window_end="21:00",
+                        minimum_minutes=480,
+                        maximum_minutes=720,
+                        weekdays=[Weekday.saturday, Weekday.sunday],
+                        displaces=[
+                            ActivityDisplacement(recurring_activity_id="dinner_at_home"),
+                            ActivityDisplacement(
+                                recurring_activity_id="laundry", policy=Displacement.reschedule
+                            ),
+                        ],
                     ),
                 ],
-                note="Running drops to three times a week; the outdoor aperitivo stops.",
-            ),
-        ],
-        events=[
-            OutlineEvent(
-                event_id="dentist_autumn",
-                label="Dentist appointment",
-                intent="evening_walk",
-                earliest_date=date(2026, 10, 5),
-                latest_date=date(2026, 10, 30),
-                window_start="09:00",
-                window_end="12:00",
-                minimum_minutes=45,
-                maximum_minutes=90,
-                weekdays=WEEKDAYS,
-                displaces=[ActivityDisplacement(recurring_activity_id="morning_run")],
-            ),
-            OutlineEvent(
-                event_id="christmas_with_family",
-                label="Christmas at her family's",
-                intent="evening_walk",
-                earliest_date=date(2026, 12, 24),
-                latest_date=date(2026, 12, 26),
-                occurrences=3,
-                window_start="10:00",
-                window_end="22:00",
-                minimum_minutes=300,
-                maximum_minutes=600,
-                displaces=[
-                    ActivityDisplacement(recurring_activity_id="dinner_at_home"),
-                    ActivityDisplacement(recurring_activity_id="evening_television"),
-                ],
-                note="Three consecutive days away; the home routine is displaced, not varied.",
-            ),
-            OutlineEvent(
-                event_id="flu_week",
-                label="A week of flu",
-                intent="rest_or_nap",
-                earliest_date=date(2027, 1, 11),
-                latest_date=date(2027, 1, 17),
-                occurrences=5,
-                window_start="08:00",
-                window_end="20:00",
-                minimum_minutes=240,
-                maximum_minutes=600,
-                displaces=[
-                    ActivityDisplacement(recurring_activity_id="morning_run"),
-                    ActivityDisplacement(
-                        recurring_activity_id="grocery_shopping", policy=Displacement.reschedule
-                    ),
-                ],
-                note="The kind of disruption a recogniser should survive without unlearning.",
-            ),
-            OutlineEvent(
-                event_id="spring_weekend_away",
-                label="Weekend away",
-                intent="evening_walk",
-                earliest_date=date(2027, 3, 5),
-                latest_date=date(2027, 3, 28),
-                occurrences=2,
-                window_start="09:00",
-                window_end="21:00",
-                minimum_minutes=480,
-                maximum_minutes=720,
-                weekdays=[Weekday.saturday, Weekday.sunday],
-                displaces=[
-                    ActivityDisplacement(recurring_activity_id="dinner_at_home"),
-                    ActivityDisplacement(
-                        recurring_activity_id="laundry", policy=Displacement.reschedule
-                    ),
-                ],
-            ),
+            )
         ],
         provenance=Provenance(
             author_type=AuthorType.external_llm,

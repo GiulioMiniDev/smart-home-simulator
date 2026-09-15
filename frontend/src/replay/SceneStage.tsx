@@ -5,6 +5,7 @@ import { FurnitureGlyph } from "../furniture-glyph";
 import { FurnitureSymbols } from "../furniture-symbols";
 import { CustomFurnitureSymbols } from "../vocabulary/CustomFurnitureSymbols";
 import type { HomeModel, Point } from "../types";
+import { RESIDENT_TONES } from "./replay-cast";
 import type { SceneWorld, WorldResident } from "./replay-world";
 import type { SceneMotion } from "./scene-motion";
 
@@ -262,15 +263,23 @@ export function SceneStage({
   motion,
   activeRegionId,
   usingEntityId,
+  activeRegionIds,
+  usingEntityIds,
 }: {
   home: HomeModel | undefined;
   world: SceneWorld;
   motion?: SceneMotion;
   activeRegionId?: string;
   usingEntityId?: string;
+  /** Every room somebody is in, when there is more than one somebody. */
+  activeRegionIds?: readonly string[];
+  /** Every object somebody is using. */
+  usingEntityIds?: readonly string[];
 }) {
+  const occupied = new Set([activeRegionId, ...(activeRegionIds ?? [])].filter((item): item is string => !!item));
+  const inUse = new Set([usingEntityId, ...(usingEntityIds ?? [])].filter((item): item is string => !!item));
   const storey = occupiedStorey(home, [
-    activeRegionId,
+    ...occupied,
     ...world.residents.map((resident) => resident.regionId),
   ]);
   const set = useSet(home, storey);
@@ -326,7 +335,7 @@ export function SceneStage({
         <g className="scene-set" key={storey}>
         <g className="scene-rooms">
           {set.regions.map((region) => (
-            <g key={region.regionId} data-region-id={region.regionId} className={region.regionId === activeRegionId ? "is-occupied" : undefined}>
+            <g key={region.regionId} data-region-id={region.regionId} className={occupied.has(region.regionId) ? "is-occupied" : undefined}>
               <polygon className="scene-floor" points={polygonPoints(region.boundary.vertices)} />
             </g>
           ))}
@@ -370,11 +379,11 @@ export function SceneStage({
               state?.active ? "is-active" : "",
               state?.open ? "is-open" : "",
               // The thing somebody is standing at, so "watching television" has a referent.
-              item.entityId && item.entityId === usingEntityId ? "is-in-use" : "",
+              item.entityId && inUse.has(item.entityId) ? "is-in-use" : "",
             ].filter(Boolean).join(" ");
             return (
               <g key={item.obstacleId} className={classes} aria-hidden="true">
-                {item.entityId === usingEntityId && <rect
+                {item.entityId !== undefined && inUse.has(item.entityId) && <rect
                   className="scene-thing-use"
                   x={item.box.minX - .1} y={item.box.minY - .1}
                   width={item.box.maxX - item.box.minX + .2}
@@ -406,7 +415,7 @@ export function SceneStage({
             const box = bounds(region.boundary.vertices);
             return <text
               key={region.regionId}
-              className={region.regionId === activeRegionId ? "scene-room-name is-occupied" : "scene-room-name"}
+              className={occupied.has(region.regionId) ? "scene-room-name is-occupied" : "scene-room-name"}
               x={(box.minX + box.maxX) / 2}
               y={box.minY + .42}
             >{words(region.regionId)}</text>;
@@ -415,20 +424,23 @@ export function SceneStage({
 
         </g>
         <g className="scene-trails">
-          {world.residents.map((resident) => (
+          {world.residents.map((resident, index) => (
             <polyline
               key={resident.residentId}
               ref={(node) => { trails.current.set(resident.residentId, node); }}
-              className="scene-trail"
+              className={`scene-trail scene-tone-${String(index % RESIDENT_TONES)}`}
               points=""
             />
           ))}
         </g>
 
         <g className="scene-people">
-          {world.residents.map((resident) => resident.position ? (
+          {world.residents.map((resident, index) => resident.position ? (
             <g
               key={resident.residentId}
+              // The same tone the resident's card and day ribbon carry, so two figures on one plan
+              // can be told apart and matched to what is said about them.
+              className={`scene-tone-${String(index % RESIDENT_TONES)}`}
               ref={(node) => { markers.current.set(resident.residentId, node); }}
               transform={`translate(${String(resident.position.x)} ${String(resident.position.y)})`}
               style={seatStyle(seatPose(set.furniture, resident))}

@@ -65,8 +65,13 @@ ROLE_PURPOSE: dict[str, str] = {
     "runtime_events": "The disturbances the run injected, and what each of them displaced.",
     "plan_deviations": "Where execution departed from the compiled plan, and by how much.",
     "final_state": "The world as the horizon left it.",
-    "habit_ground_truth": "The declared habit bands with the activity mix each one holds. The "
-    "target a segmentation algorithm is scored against.",
+    "habit_ground_truth": "The declared habit bands, with the activity mix each one held in this "
+    "run, measured on its execution trace. The target a segmentation algorithm is scored against.",
+    "household_co_presence": "Every stretch in which more than one resident was in the "
+    "same room in this run, from where their bodies were. What the per-resident answer sheets "
+    "cannot say, and what tells a confounder apart from an error.",
+    "household_sharing": "For each activity the household declared shared, weekdays and weekends "
+    "apart: the propensity the outline declared beside the share of days this run shared it.",
     "resident_profile": "The realized behaviour aggregated onto the clock: document, page and "
     "heatmap matrix.",
     "summary": "This page.",
@@ -156,11 +161,30 @@ class SummaryInputs:
     # model: this page must render for every run in the workspace, including ones written against
     # an earlier version of that contract, and a summary that refuses to build is worse than one
     # that says a field is missing.
-    habits: Mapping[str, Any] | None = None
+    # One document per resident. A shared sensor log has one log and N answer sheets,
+    # because a habit band divides one person's day and not the dwelling's.
+    habits: Sequence[Mapping[str, Any]] = ()
     # Per-sensor counters from the projection report, by sensor identifier.
     sensor_stats: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     include_start: datetime | None = None
     include_end: datetime | None = None
+
+
+def _who(resident_count: int) -> str:
+    """The opening line, for the household the run actually had.
+
+    It said "one synthetic resident, the flat she lives in" on the Ferri export too, a page about
+    two people.
+    """
+    if resident_count > 1:
+        return (
+            f"{resident_count} synthetic residents, the flat they share, the sensors that watched "
+            "them and the routines they were given."
+        )
+    return (
+        "One synthetic resident, the flat she lives in, the sensors that watched her and the "
+        "routine she was given."
+    )
 
 
 def _escape(value: object) -> str:
@@ -603,9 +627,8 @@ def _band_card(band: Mapping[str, Any], hues: Mapping[str, int]) -> str:
 
 
 def _habits_section(inputs: SummaryInputs) -> str:
-    habits = inputs.habits
-    bands = list((habits or {}).get("habits") or [])
-    if not bands:
+    documents = [item for item in inputs.habits if item.get("habits")]
+    if not documents:
         return (
             '<section><h2>The declared habits</h2><p class="empty">This run declares no habit '
             "bands. They exist only for horizons expanded from an outline; for every other run the "
@@ -619,14 +642,26 @@ def _habits_section(inputs: SummaryInputs) -> str:
         if inputs.include_start or inputs.include_end
         else ""
     )
-    hues = _hue_by_intent(bands)
-    cards = "".join(_band_card(band, hues) for band in bands)
+    # Hues are assigned across the whole household, so the same intent is the same
+    # colour in two residents' bands and the reader can see where their days touch.
+    hues = _hue_by_intent([band for item in documents for band in item["habits"]])
+    cards = "".join(
+        (
+            f'<h3 class="resident">{_escape(str(item.get("residentId", "—")))}</h3>'
+            if len(documents) > 1
+            else ""
+        )
+        + "".join(_band_card(band, hues) for band in item["habits"])
+        for item in documents
+    )
+    total = sum(len(item["habits"]) for item in documents)
+    first = documents[0]
     return (
         '<section><h2>The declared habits</h2><p class="meta">'
-        f"{len(bands)} band(s) · outline "
-        f"<code>{_escape((habits or {}).get('outlineId', '—'))}</code>"
-        f" · {_escape((habits or {}).get('startDate', ''))} → "
-        f"{_escape((habits or {}).get('endDate', ''))}</p>"
+        f"{total} band(s) · {len(documents)} resident(s) · outline "
+        f"<code>{_escape(first.get('outlineId', '—'))}</code>"
+        f" · {_escape(first.get('startDate', ''))} → "
+        f"{_escape(first.get('endDate', ''))}</p>"
         "<p>A habit here is a band of the day, in the sense the smart-home literature uses the "
         "word: a stretch of hours in which a recognisable process runs. This is what a "
         "segmentation algorithm is asked to recover from the sensor log alone, stated in the open "
@@ -691,7 +726,7 @@ def _metrics(inputs: SummaryInputs) -> str:
         default=0,
     )
     activities = sum(item.activity_count for item in profile.residents)
-    bands = len(list((inputs.habits or {}).get("habits") or []))
+    bands = sum(len(list(item.get("habits") or [])) for item in inputs.habits)
     items = [
         (f"{profile.day_count}", "days"),
         (_count(activities), "activities run"),
@@ -731,7 +766,10 @@ def render_summary_html(inputs: SummaryInputs) -> str:
     header = _definition(
         (
             ("Home", f"<code>{_escape(inputs.home.home_id)}</code>" if inputs.home else "—"),
-            ("Resident", _escape(resident_names or "—")),
+            (
+                "Residents" if len(profile.residents) > 1 else "Resident",
+                _escape(resident_names or "—"),
+            ),
             (
                 "Horizon",
                 f"{profile.start_date} → {profile.end_date} ({profile.day_count} days)",
@@ -750,16 +788,16 @@ def render_summary_html(inputs: SummaryInputs) -> str:
         f"<title>{_escape(title)}</title>"
         f"<style>{PROFILE_STYLE}{PLAN_STYLE}{SUMMARY_STYLE}</style></head><body><main>"
         f"<header><h1>{_escape(title)}</h1>"
-        '<p class="meta">One synthetic resident, the flat she lives in, the sensors that watched '
-        "her and the routine she was given. Everything here is read from the artifacts of a "
-        "single run.</p>"
+        f'<p class="meta">{_escape(_who(len(profile.residents)))} Everything here is read from '
+        "the artifacts of a single run.</p>"
         f"{header}{_metrics(inputs)}</header>"
         f"{_home_section(inputs)}"
         f"{_sensor_section(inputs)}"
         f"{_resident_section_declared(inputs)}"
         f"{_habits_section(inputs)}"
         "<section><h2>The behaviour that actually happened</h2>"
-        "<p>Aggregated from the execution trace and nothing else, so it describes the resident "
+        "<p>Aggregated from the execution trace and nothing else, so it describes "
+        f"{'the residents' if len(profile.residents) > 1 else 'the resident'} as they lived it — "
         "deviations, failures and dropped activities included — the same run the sensor log beside "
         "it was projected from. Comparing it to the declared bands above is an evaluation someone "
         "performs; neither document makes that claim about the other.</p>"

@@ -314,3 +314,117 @@ def test_the_alarm_shortens_the_night_rather_than_moving_lights_out() -> None:
     assert alarmed.sleep_hhmm == free.sleep_hhmm
     assert alarmed.sleep_minutes < free.sleep_minutes
     assert after.sleep_debt_minutes > 0
+
+
+def test_a_late_night_cannot_cancel_the_alarm() -> None:
+    """The lights-out tail used to reach past the point the alarm would cut back to.
+
+    A 03:41 lights-out before a 06:30 shift left 209 minutes of sleep, below the fraction an alarm
+    refuses to cut under, so nothing moved the wake: it landed at 06:59, after the shift began, and
+    the compiler could not schedule the day. Before a commitment the night now starts early enough
+    for the alarm to hold, on every night of a year and whichever way the draws fall.
+    """
+    profile = _profile(chronotype_bedtime_minutes=_minutes("22:30"))
+    shift = _minutes("06:30")
+    for seed in range(6):
+        rhythms = plan_rhythms(
+            profile,
+            LONG_HORIZON,
+            seed=seed,
+            first_commitment_by_day={day: shift for day in LONG_HORIZON},
+        )
+        for day in LONG_HORIZON[:-1]:
+            rhythm = rhythms[day.isoformat()]
+            assert _minutes(rhythm.wake_hhmm) < shift, (
+                seed,
+                day,
+                rhythm.sleep_hhmm,
+                rhythm.wake_hhmm,
+            )
+
+
+def _night_shifts(days: list[date]) -> dict[date, list[tuple[int, int]]]:
+    """Monday, Wednesday and Friday nights at the hospital, written the way the prompt asks."""
+    spans: dict[date, list[tuple[int, int]]] = {}
+    for day in days:
+        if day.weekday() in (0, 2, 4):
+            spans.setdefault(day, []).append((_minutes("22:00"), _minutes("23:59")))
+            spans.setdefault(day + timedelta(days=1), []).append((0, _minutes("06:00")))
+    return spans
+
+
+def test_a_worked_night_is_slept_the_morning_after_the_shift() -> None:
+    """The night used to be laid over the shift: asleep at 22:00 while at work until 06:00.
+
+    Shift work moves the main sleep, it does not delete it. The sleep begins once the resident is
+    home from the shift, is shorter than a night's, and leaves debt; the nights between shifts are
+    ordinary nights.
+    """
+    profile = _profile(chronotype_bedtime_minutes=_minutes("22:30"))
+    spans = _night_shifts(HORIZON)
+    rhythms = plan_rhythms(profile, HORIZON, seed=3, commitment_spans_by_day=spans)
+    free = plan_rhythms(profile, HORIZON, seed=3)
+
+    worked = [day for day in HORIZON[:-1] if day.weekday() in (0, 2, 4)]
+    for day in worked:
+        rhythm = rhythms[day.isoformat()]
+        lights_out, wake = _minutes(rhythm.sleep_hhmm), _minutes(rhythm.wake_hhmm)
+        assert rhythm.sleep_starts_next_day
+        assert _minutes("06:40") <= lights_out <= _minutes("08:00"), (day, rhythm.sleep_hhmm)
+        assert lights_out < wake <= _minutes("16:00"), (day, rhythm.wake_hhmm)
+        assert rhythm.sleep_minutes < profile.sleep_need_minutes
+        # The trips wake the resident from this sleep, so none of them is at work.
+        assert all(lights_out < _minutes(visit) < wake for visit in rhythm.night_visits)
+        # The evening before the shift ends at the shift, so it is not slid by a late lights-out.
+        assert rhythm.bedtime_shift_minutes == 0
+    slept = [day for day in HORIZON[:-1] if day.weekday() not in (0, 2, 4)]
+    for day in slept:
+        rhythm = rhythms[day.isoformat()]
+        assert _minutes(rhythm.wake_hhmm) < _minutes("12:00"), (day, rhythm.wake_hhmm)
+
+    # The debt is real: the same resident without the shifts carries less of it.
+    def mean_debt(plan: dict[str, object]) -> float:
+        return statistics.mean(item.state_at_start.sleep_debt_minutes for item in plan.values())  # type: ignore[attr-defined]
+
+    assert mean_debt(rhythms) > mean_debt(free)
+
+
+def test_a_commitment_at_midnight_is_not_an_alarm() -> None:
+    """00:00 is the second half of last night's shift, not a reason to be up at 22:30."""
+    profile = _profile(chronotype_bedtime_minutes=_minutes("22:30"))
+    day = date(2026, 10, 20)
+    derived = plan_rhythms(
+        profile, [day - timedelta(days=1), day], seed=5, commitment_spans_by_day={day: [(0, 30)]}
+    )
+    plain = plan_rhythms(profile, [day - timedelta(days=1), day], seed=5)
+    assert derived == plain
+
+
+def test_a_sleep_after_a_night_shift_ends_in_time_for_the_next_commitment() -> None:
+    profile = _profile(chronotype_bedtime_minutes=_minutes("22:30"))
+    day = date(2026, 10, 19)
+    spans = {
+        day: [(_minutes("22:00"), _minutes("23:59"))],
+        day + timedelta(days=1): [(0, _minutes("06:00")), (_minutes("11:30"), _minutes("13:00"))],
+    }
+    rhythm = plan_rhythms(
+        profile, [day, day + timedelta(days=1)], seed=2, commitment_spans_by_day=spans
+    )[day.isoformat()]
+    # The alarm is ninety minutes ahead, but like any alarm it does not cut below the least sleep it
+    # is allowed to leave: the resident is up late for the lead, and still before the commitment.
+    assert _minutes(rhythm.wake_hhmm) < _minutes("11:30")
+    assert rhythm.sleep_minutes >= int(profile.sleep_need_minutes * 0.45)
+    assert rhythm.sleep_minutes < profile.sleep_need_minutes * 0.78 * 0.9
+
+
+def test_a_shift_ending_near_midday_is_left_to_the_ordinary_night() -> None:
+    """A sleep starting after midday would be read as that day's evening by the day plan."""
+    profile = _profile(chronotype_bedtime_minutes=_minutes("22:30"))
+    day = date(2026, 10, 19)
+    spans = {
+        day: [(_minutes("20:00"), _minutes("23:59"))],
+        day + timedelta(days=1): [(0, _minutes("11:00"))],
+    }
+    rhythm = plan_rhythms(profile, [day], seed=2, commitment_spans_by_day=spans)[day.isoformat()]
+    lights_out = _minutes(rhythm.sleep_hhmm)
+    assert not (_minutes("06:00") <= lights_out <= _minutes("16:00")), rhythm.sleep_hhmm

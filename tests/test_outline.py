@@ -18,17 +18,31 @@ from smart_home_sim.domain.models import (
     VersionedReference,
 )
 from smart_home_sim.hybrid_planning.cadence import add_months, build_cadence_calendar
+from smart_home_sim.hybrid_planning.intents import IntentCategory
 from smart_home_sim.hybrid_planning.outline import (
     ActivityDisplacement,
     ActivityOverride,
+    ActivityProposal,
     Displacement,
     FixedCommitment,
+    FurnitureProposal,
     HabitSegment,
     HorizonAuthoringBundle,
     HorizonOutline,
+    Household,
+    HouseholdRelation,
+    JointActivity,
+    LocationPrivacy,
     OutlineEvent,
     OutlinePhase,
+    OutlineResident,
     OutlineWorld,
+    RelationKind,
+    SharingMode,
+    SharingPolicy,
+    SharingPropensity,
+    VocabularyProposals,
+    upgrade_outline_payload,
 )
 from smart_home_sim.hybrid_planning.recurring_activities import (
     ActivityCadence,
@@ -98,19 +112,34 @@ def _world() -> OutlineWorld:
     )
 
 
+def _resident(**overrides: Any) -> OutlineResident:
+    fields: dict[str, Any] = {"resident_id": "meredith", "profile": _profile()}
+    fields.update(overrides)
+    return OutlineResident(**fields)
+
+
+# Routed down to the single resident by `_outline`, so a test about phases or habits reads the way
+# it did before the household existed. `note` is deliberately absent: both levels have one.
+_PERSONAL_FIELDS = frozenset(
+    {"resident_id", "display_name", "profile", "rhythm", "habits", "fixed_commitments"}
+    | {"phases", "events", "start_location_id"}
+)
+
+
 def _outline(**overrides: Any) -> HorizonOutline:
+    """A household of one unless the test says otherwise."""
+    personal = {key: value for key, value in overrides.items() if key in _PERSONAL_FIELDS}
     fields: dict[str, Any] = {
         "outline_id": "meredith-8-months",
         "title": "Meredith Merrino eight-month routine",
-        "resident_id": "meredith",
         "time_zone": "America/New_York",
         "start_date": _START,
         "months": _MONTHS,
         "world": _world(),
-        "profile": _profile(),
+        "residents": [_resident(**personal)],
         "provenance": Provenance(author_type=AuthorType.external_llm, generated_at=_NOW),
     }
-    fields.update(overrides)
+    fields.update({key: value for key, value in overrides.items() if key not in _PERSONAL_FIELDS})
     return HorizonOutline(**fields)
 
 
@@ -140,7 +169,7 @@ def test_minimal_outline_is_accepted() -> None:
     outline = _outline()
 
     assert outline.document_type == "horizon_outline"
-    assert outline.schema_version == "1.0.0"
+    assert outline.schema_version == "2.0.0"
     assert outline.end_date == add_months(_START, _MONTHS)
 
 
@@ -149,7 +178,7 @@ def test_end_date_agrees_with_the_cadence_calendar() -> None:
     outline = _outline()
 
     calendar = build_cadence_calendar(
-        outline.profile, start_date=outline.start_date, months=outline.months, seed=0
+        outline.residents[0].profile, start_date=outline.start_date, months=outline.months, seed=0
     ).calendar
 
     assert len(calendar.days) == (outline.end_date - outline.start_date).days
@@ -262,7 +291,7 @@ def test_disjoint_phases_may_override_the_same_habit() -> None:
         activity_overrides=[ActivityOverride(recurring_activity_id="optional_0", suspended=True)],
     )
 
-    assert len(_outline(phases=[first, second]).phases) == 2
+    assert len(_outline(phases=[first, second]).residents[0].phases) == 2
 
 
 def test_event_window_narrower_than_its_occurrences_is_rejected() -> None:
@@ -485,7 +514,7 @@ def test_reference_example_is_valid_and_small() -> None:
 
     outline = HorizonOutline.model_validate_json(path.read_text(encoding="utf-8"))
 
-    assert outline.resident_id == "meredith"
+    assert outline.resident_ids == ["meredith"]
     assert outline.months == 8
     assert outline.end_date == date(2027, 4, 3)
     assert outline.provenance.human_reviewed is True
@@ -562,10 +591,10 @@ def test_habit_bands_may_share_hours_on_disjoint_days() -> None:
         ]
     )
 
-    assert [segment.habit_id for segment in outline.habits] == ["work", "errands"]
-    assert outline.habits[0].applies_on(date(2026, 8, 11))  # a Tuesday
-    assert not outline.habits[0].applies_on(date(2026, 8, 15))  # a Saturday
-    assert outline.habits[1].applies_on(date(2026, 8, 15))
+    assert [segment.habit_id for segment in outline.residents[0].habits] == ["work", "errands"]
+    assert outline.residents[0].habits[0].applies_on(date(2026, 8, 11))  # a Tuesday
+    assert not outline.residents[0].habits[0].applies_on(date(2026, 8, 15))  # a Saturday
+    assert outline.residents[0].habits[1].applies_on(date(2026, 8, 15))
 
 
 def test_habit_bands_still_may_not_overlap_on_a_shared_day() -> None:
@@ -643,5 +672,380 @@ def test_the_reference_example_declares_habit_bands() -> None:
 
     outline = HorizonOutline.model_validate_json(path.read_text(encoding="utf-8"))
 
-    assert len(outline.habits) >= 3
-    assert any(segment.crosses_midnight for segment in outline.habits)
+    assert len(outline.residents[0].habits) >= 3
+    assert any(segment.crosses_midnight for segment in outline.residents[0].habits)
+
+
+# --- the household ------------------------------------------------------------------------------
+
+
+def _renamed(profile: BehavioralProfile, suffix: str) -> BehavioralProfile:
+    return profile.model_copy(
+        update={
+            "profile_id": f"{profile.profile_id}_{suffix}",
+            "recurring_activities": [
+                item.model_copy(
+                    update={"recurring_activity_id": f"{item.recurring_activity_id}_{suffix}"}
+                )
+                for item in profile.recurring_activities
+            ],
+        }
+    )
+
+
+def _two_residents() -> list[OutlineResident]:
+    return [
+        _resident(resident_id="r1", profile=_renamed(_profile(), "r1")),
+        _resident(resident_id="r2", profile=_renamed(_profile(), "r2")),
+    ]
+
+
+def _joint(**overrides: Any) -> JointActivity:
+    fields: dict[str, Any] = {
+        "activity": _recurring("household_dinner"),
+        "participant_ids": ["r1", "r2"],
+    }
+    fields.update(overrides)
+    return JointActivity(**fields)
+
+
+def test_a_household_of_one_declares_nothing_about_pairs() -> None:
+    """N=1 is the same contract with an empty household, not a different document."""
+    outline = _outline()
+
+    assert outline.resident_ids == ["meredith"]
+    assert outline.household.relations == []
+    assert outline.household.joint_activities == []
+    assert outline.joint_activities_for("meredith") == []
+
+
+def test_two_residents_may_not_share_an_identifier() -> None:
+    with pytest.raises(ValidationError, match="resident identifiers must be unique"):
+        _outline(residents=[_resident(resident_id="r1"), _resident(resident_id="r1")])
+
+
+def test_two_residents_may_not_declare_the_same_recurring_activity() -> None:
+    """Identifiers are document-wide: the expander merges both days into one scenario."""
+    with pytest.raises(ValidationError, match="is declared by both"):
+        _outline(
+            residents=[
+                _resident(resident_id="r1", profile=_profile()),
+                _resident(resident_id="r2", profile=_profile()),
+            ]
+        )
+
+
+def test_a_shared_activity_may_not_also_be_declared_privately() -> None:
+    """The rule that prevents two dinners: it is declared once, at the household level."""
+    clash = _renamed(_profile(), "r1").recurring_activities[0].recurring_activity_id
+    with pytest.raises(ValidationError, match="is also declared individually"):
+        _outline(
+            residents=_two_residents(),
+            household=Household(joint_activities=[_joint(activity=_recurring(clash))]),
+        )
+
+
+def test_a_joint_activity_naming_a_stranger_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="names unknown participant"):
+        _outline(
+            residents=_two_residents(),
+            household=Household(joint_activities=[_joint(participant_ids=["r1", "the_neighbour"])]),
+        )
+
+
+def test_an_optional_joint_activity_must_declare_a_propensity() -> None:
+    """`optional_joint` without a number is a coin nobody said how to weight."""
+    with pytest.raises(ValidationError, match="must declare a propensity"):
+        _joint(sharing=SharingMode.optional_joint)
+
+
+def test_a_joint_activity_may_not_also_carry_a_propensity() -> None:
+    with pytest.raises(ValidationError, match="cannot also declare a propensity"):
+        _joint(propensity=SharingPropensity(default=0.5))
+
+
+def test_a_shared_activity_cannot_be_declared_independent() -> None:
+    with pytest.raises(ValidationError, match="a shared activity is joint or optional_joint"):
+        _joint(sharing=SharingMode.independent)
+
+
+def test_a_sharing_policy_may_not_claim_an_activity_is_shared() -> None:
+    """It would say the two of them share dinner while two dinners sit in two profiles."""
+    with pytest.raises(ValidationError, match="declared once in household.jointActivities"):
+        SharingPolicy(between=["r1", "r2"], intent="eat_dinner", sharing=SharingMode.joint)
+
+
+def test_a_sharing_policy_narrows_an_intent_for_one_pair() -> None:
+    policy = SharingPolicy(
+        between=["r1", "r2"], intent="take_shower", sharing=SharingMode.exclusive
+    )
+
+    outline = _outline(residents=_two_residents(), household=Household(sharing_policies=[policy]))
+
+    assert outline.household.sharing_policies[0].pair == {"r1", "r2"}
+
+
+def test_one_pair_may_not_declare_one_intent_twice() -> None:
+    policy = SharingPolicy(
+        between=["r1", "r2"], intent="take_shower", sharing=SharingMode.exclusive
+    )
+    with pytest.raises(ValidationError, match="more than once"):
+        Household(sharing_policies=[policy, policy.model_copy(update={"between": ["r2", "r1"]})])
+
+
+def test_a_relation_needs_two_different_people() -> None:
+    with pytest.raises(ValidationError, match="two distinct residents"):
+        HouseholdRelation(between=["r1", "r1"], kind=RelationKind.couple)
+
+
+def test_a_pair_is_related_in_one_way_only() -> None:
+    with pytest.raises(ValidationError, match="related more than once"):
+        Household(
+            relations=[
+                HouseholdRelation(between=["r1", "r2"], kind=RelationKind.couple),
+                HouseholdRelation(between=["r2", "r1"], kind=RelationKind.housemates),
+            ]
+        )
+
+
+def test_privacy_is_declared_about_a_room_that_exists() -> None:
+    with pytest.raises(ValidationError, match="unknown location"):
+        _outline(
+            residents=_two_residents(),
+            household=Household(
+                location_privacy=[LocationPrivacy(location_id="sauna", subject_id="r1")]
+            ),
+        )
+
+
+def test_privacy_may_not_exclude_its_own_subject() -> None:
+    with pytest.raises(ValidationError, match="excludes its own subject"):
+        LocationPrivacy(location_id="home_bathroom", subject_id="r1", excluded_resident_ids=["r1"])
+
+
+def test_a_propensity_reads_the_class_of_day() -> None:
+    """The whole argument for indexing it: one number would average two regimes."""
+    propensity = SharingPropensity(default=0.25, weekend=0.85)
+
+    assert propensity.on(date(2026, 8, 5)) == 0.25  # a Wednesday
+    assert propensity.on(date(2026, 8, 8)) == 0.85  # a Saturday
+
+
+def test_a_weekday_override_is_read_separately_from_the_default() -> None:
+    propensity = SharingPropensity(default=0.4, weekday=0.1)
+
+    assert propensity.on(date(2026, 8, 5)) == 0.1
+    assert propensity.on(date(2026, 8, 8)) == 0.4
+
+
+def test_a_resident_may_start_the_horizon_in_her_own_room() -> None:
+    """Housemates have two bedrooms; a couple that shares one leaves the field alone."""
+    outline = _outline(
+        residents=[
+            _resident(resident_id="r1", profile=_renamed(_profile(), "r1")),
+            _resident(
+                resident_id="r2",
+                profile=_renamed(_profile(), "r2"),
+                start_location_id="home_kitchen",
+            ),
+        ]
+    )
+
+    assert outline.start_location_of(outline.residents[0]) == "home_bedroom"
+    assert outline.start_location_of(outline.residents[1]) == "home_kitchen"
+
+
+def test_a_resident_starting_in_a_room_that_is_not_there_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="starts in unknown location"):
+        _outline(start_location_id="the_garage")
+
+
+def test_a_phase_may_suspend_a_shared_activity_the_resident_takes_part_in() -> None:
+    """A fortnight away has to be able to stop the household's dinner, not only her own."""
+    outline = _outline(
+        residents=[
+            _resident(
+                resident_id="r1",
+                profile=_renamed(_profile(), "r1"),
+                phases=[
+                    _phase(
+                        activity_overrides=[
+                            ActivityOverride(
+                                recurring_activity_id="household_dinner", suspended=True
+                            )
+                        ]
+                    )
+                ],
+            ),
+            _resident(resident_id="r2", profile=_renamed(_profile(), "r2")),
+        ],
+        household=Household(joint_activities=[_joint()]),
+    )
+
+    assert outline.residents[0].phases[0].activity_overrides[0].suspended
+
+
+def test_a_phase_may_not_suspend_a_shared_activity_somebody_else_has() -> None:
+    """`participantIds` is the list of people it is about, and she is not on it."""
+    with pytest.raises(ValidationError, match="overrides unknown activity"):
+        _outline(
+            residents=[
+                _resident(resident_id="r1", profile=_renamed(_profile(), "r1")),
+                _resident(resident_id="r2", profile=_renamed(_profile(), "r2")),
+                _resident(
+                    resident_id="r3",
+                    profile=_renamed(_profile(), "r3"),
+                    phases=[
+                        _phase(
+                            activity_overrides=[
+                                ActivityOverride(
+                                    recurring_activity_id="household_dinner", suspended=True
+                                )
+                            ]
+                        )
+                    ],
+                ),
+            ],
+            household=Household(joint_activities=[_joint()]),
+        )
+
+
+def test_two_residents_divide_their_own_days_and_not_the_house() -> None:
+    """A household-wide partition would forbid one of them sleeping while the other eats."""
+    band = HabitSegment(
+        habit_id="morning", label="Morning", window_start="07:00", window_end="10:00"
+    )
+
+    outline = _outline(
+        residents=[
+            _resident(
+                resident_id="r1",
+                profile=_renamed(_profile(), "r1"),
+                habits=[band.model_copy(update={"habit_id": "morning_r1"})],
+            ),
+            _resident(
+                resident_id="r2",
+                profile=_renamed(_profile(), "r2"),
+                habits=[band.model_copy(update={"habit_id": "morning_r2"})],
+            ),
+        ]
+    )
+
+    assert [item.habits[0].window_start for item in outline.residents] == ["07:00", "07:00"]
+
+
+def test_a_single_resident_outline_is_lifted_rather_than_refused() -> None:
+    """The break is real and mechanical: refusing it would discard the horizons already written."""
+    legacy: dict[str, Any] = {
+        "schemaVersion": "1.0.0",
+        "documentType": "horizon_outline",
+        "outlineId": "legacy",
+        "title": "A one-person horizon",
+        "residentId": "meredith",
+        "timeZone": "America/New_York",
+        "startDate": "2026-08-03",
+        "months": 8,
+        "world": json.loads(_world().model_dump_json(by_alias=True)),
+        "profile": json.loads(_profile().model_dump_json(by_alias=True)),
+        "rhythm": {"age": 61, "health": ["arthritis"], "chronotypeBedtime": "23:15"},
+        "habits": [],
+        "provenance": json.loads(
+            Provenance(author_type=AuthorType.external_llm, generated_at=_NOW).model_dump_json(
+                by_alias=True
+            )
+        ),
+    }
+
+    lifted = HorizonOutline.model_validate_json(json.dumps(upgrade_outline_payload(legacy)))
+
+    assert lifted.schema_version == "2.0.0"
+    assert lifted.resident_ids == ["meredith"]
+    assert lifted.residents[0].rhythm.age == 61
+    assert lifted.residents[0].rhythm.chronotype_bedtime == "23:15"
+    assert lifted.household.joint_activities == []
+
+
+def test_a_document_already_at_2_0_0_is_left_alone() -> None:
+    """Safe in front of every door, so no caller has to remember which version it is holding."""
+    payload = json.loads(_outline().model_dump_json(by_alias=True))
+
+    assert upgrade_outline_payload(payload) == payload
+
+
+def test_lifting_the_frozen_1_0_0_example_reproduces_the_2_0_0_one() -> None:
+    """The migration's acceptance criterion, checked against the document it was written for.
+
+    The reference example was authored against 1.0.0 and is committed at 2.0.0. Lifting the frozen
+    original has to reproduce it field for field: the shape moves, no value does. Anything else and
+    re-expanding a migrated horizon could not be expected to yield the same plan, which is what
+    makes the break safe to take at all.
+    """
+    original = json.loads(
+        (Path(__file__).parents[1] / "tests/golden/meredith.horizon-outline-1.0.0.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    published = json.loads(
+        (Path(__file__).parents[1] / "examples/authoring/meredith.horizon-outline.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    lifted = HorizonOutline.model_validate_json(json.dumps(upgrade_outline_payload(original)))
+
+    # The builder names the resident, which the 1.0.0 document had no field for; everything else
+    # has to match exactly.
+    expected = {**published, "residents": [{**published["residents"][0], "displayName": ""}]}
+    assert json.loads(lifted.model_dump_json(by_alias=True)) == expected
+
+
+def _mat(**overrides: Any) -> FurnitureProposal:
+    fields: dict[str, Any] = {
+        "entity_type": "exercise_mat",
+        "display_name": "Exercise mat",
+        "capabilities": ["exercise_support"],
+        "rationale": "No listed type offers exercise_support in the living room.",
+    }
+    fields.update(overrides)
+    return FurnitureProposal(**fields)
+
+
+def _guest(**overrides: Any) -> ActivityProposal:
+    fields: dict[str, Any] = {
+        "intent_id": "host_guest",
+        "label": "Host a guest",
+        "category": IntentCategory.social,
+        "default_location": "home_kitchen",
+        "rationale": "A dinner guest is not a phone call.",
+    }
+    fields.update(overrides)
+    return ActivityProposal(**fields)
+
+
+def test_an_outline_proposes_what_the_vocabulary_lacks_without_changing_anything_else() -> None:
+    plain = _outline()
+    proposing = _outline(
+        vocabulary_proposals=VocabularyProposals(furniture=[_mat()], activities=[_guest()])
+    )
+
+    assert plain.vocabulary_proposals == VocabularyProposals()
+    assert proposing.vocabulary_proposals.furniture[0].entity_type == "exercise_mat"
+    dumped = json.loads(proposing.model_dump_json(by_alias=True))["vocabularyProposals"]
+    assert dumped["activities"][0]["intentId"] == "host_guest"
+
+
+def test_a_proposal_is_refused_when_it_cannot_be_what_it_claims() -> None:
+    with pytest.raises(ValidationError, match="shares an entityType|share an entityType"):
+        VocabularyProposals(furniture=[_mat(), _mat()])
+    with pytest.raises(ValidationError, match="share an intentId"):
+        VocabularyProposals(activities=[_guest(), _guest()])
+    with pytest.raises(ValidationError, match="repeats a capability"):
+        _mat(capabilities=["exercise_support", "exercise_support"])
+    with pytest.raises(ValidationError):
+        _mat(entity_type="Exercise Mat")
+    with pytest.raises(ValidationError):
+        _mat(capabilities=[])
+    with pytest.raises(ValidationError, match="happens in unknown location 'garden'"):
+        _outline(
+            vocabulary_proposals=VocabularyProposals(activities=[_guest(default_location="garden")])
+        )

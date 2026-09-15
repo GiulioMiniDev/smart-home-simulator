@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
+import { substituteResourceTypes } from "../horizon/review";
+import { fixturePack } from "./vocabulary-fixture";
 import type { BehaviourSlice, HomeModel, IntentRhythm, JobRecord, ResidentProfile, SensorModel } from "../types";
 
 const now = "2026-07-22T10:00:00Z";
@@ -242,6 +244,74 @@ describe("complete application routes", () => {
     expect(screen.getByRole("button", { name: /^Validate/ })).toBeEnabled();
   });
 
+  it("reviews what an outline adds before importing it, and imports what the reader decided", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    let stored = { pack: fixturePack(), customised: false, digest: "digest-1", labelSpaceDigest: "labels-1" };
+    const saves: Array<{ pack: ReturnType<typeof fixturePack>; expected_digest: string }> = [];
+    overrides["/vocabulary"] = (init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        const body = JSON.parse(String(init.body)) as { pack: ReturnType<typeof fixturePack>; expected_digest: string };
+        saves.push(body);
+        stored = { ...stored, pack: body.pack, customised: true, digest: "digest-2" };
+      }
+      return response(stored);
+    };
+    const imported: unknown[] = [];
+    overrides["/homes/home_1/horizon-outline?seed=1"] = (init?: RequestInit) => {
+      imported.push(JSON.parse(String(init?.body)));
+      return response({ valid: true, issues: [{ code: "FURNITURE_TYPE_NOT_IN_VOCABULARY", severity: "warning", message: "exercise_mat is not in the vocabulary" }] });
+    };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const text = JSON.stringify({
+      documentType: "horizon_authoring_bundle",
+      outline: {
+        documentType: "horizon_outline", title: "Ferri", startDate: "2026-10-01", months: 1,
+        world: { locations: [{ locationId: "kitchen", kind: "room" }], resources: [{ resourceId: "mat_1", resourceType: "exercise_mat", locationId: "kitchen" }, { resourceId: "tank_1", resourceType: "aquarium", locationId: "kitchen" }] },
+        residents: [{ residentId: "giulia" }],
+        vocabularyProposals: { furniture: [{ entityType: "aquarium", displayName: "Fish tank", capabilities: ["openable"], rationale: "Feeds the fish." }] },
+      },
+      personalProcessPackage: { processModels: [], bindings: [] },
+    });
+    const outline = new File([text], "ferri.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve(text) });
+    fireEvent.change(screen.getByLabelText("Horizon outline and processes"), { target: { files: [outline] } });
+    expect(await screen.findByRole("heading", { name: "Additions to the vocabulary — review before importing" })).toBeInTheDocument();
+
+    // The fish tank is proposed: added to the vocabulary with what the author said it is for.
+    fireEvent.click(screen.getAllByRole("button", { name: /Add to the vocabulary/ })[1]!);
+    fireEvent.click(screen.getByRole("button", { name: "Add “Fish tank”" }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0]!.expected_digest).toBe("digest-1");
+    expect(saves[0]!.pack.entityTypes.filter((item) => item.entityType === "aquarium")).toEqual([
+      expect.objectContaining({ displayName: "Fish tank", capabilities: ["openable"] }),
+    ]);
+    await waitFor(() => expect(screen.queryByText("aquarium")).not.toBeInTheDocument());
+
+    // The mat is imported as a type that exists.
+    fireEvent.click(screen.getByRole("button", { name: /Use a known type/ }));
+    fireEvent.change(screen.getByLabelText(/Import every/), { target: { value: "refrigerator" } });
+    fireEvent.click(screen.getByRole("button", { name: "Use this type" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Attach it and stop/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Validate/ }));
+    await waitFor(() => expect(imported).toHaveLength(1));
+    const sent = imported[0] as { outline: { world: { resources: Array<{ resourceType: string }> } } };
+    expect(sent.outline.world.resources.map((item) => item.resourceType)).toEqual(["refrigerator", "aquarium"]);
+    expect(await screen.findByText(/1 warning to read below/)).toBeInTheDocument();
+  });
+
+  it("replaces only the resource types the reader chose, in either shape of the file", () => {
+    const bare = { world: { resources: [{ resourceType: "exercise_mat" }, { resourceType: "sofa" }, { resourceId: "x" }] } };
+    expect(substituteResourceTypes(bare, { exercise_mat: "refrigerator" })).toEqual({ world: { resources: [{ resourceType: "refrigerator" }, { resourceType: "sofa" }, { resourceId: "x" }] } });
+    expect(substituteResourceTypes(bare, {})).toBe(bare);
+    const envelope = { documentType: "horizon_authoring_bundle", outline: { title: "t", world: { resources: [{ resourceType: "exercise_mat" }] } } };
+    expect(substituteResourceTypes(envelope, { exercise_mat: "sofa" })).toEqual({ documentType: "horizon_authoring_bundle", outline: { title: "t", world: { resources: [{ resourceType: "sofa" }] } } });
+    // An empty replacement is the reader's "remove from this import".
+    expect(substituteResourceTypes(bare, { exercise_mat: "" })).toEqual({ world: { resources: [{ resourceType: "sofa" }, { resourceId: "x" }] } });
+    const worldless = { outline: { title: "t" } };
+    expect(substituteResourceTypes(worldless, { exercise_mat: "sofa" })).toBe(worldless);
+  });
+
   it("shows the single sentence when an outline is refused before any day exists", async () => {
     overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
     overrides["/homes/home_1/horizon-outline?seed=1"] = { valid: false, message: "the rhythm emits these intents on its own and the process package must implement them too: sleep, wake_up" };
@@ -251,6 +321,24 @@ describe("complete application routes", () => {
     Object.defineProperty(outline, "text", { value: () => Promise.resolve("{}") });
     attachOutline(outline);
     expect(await screen.findAllByText(/the rhythm emits these intents on its own/)).not.toHaveLength(0);
+  });
+
+  it("lists where the outline is wrong, by the names in the file, instead of only saying that it is", async () => {
+    overrides["/homes/home_1"] = { home: { ...home, residentCount: 0 }, residents: [], models: {}, jobs: [] };
+    overrides["/homes/home_1/horizon-outline?seed=1"] = {
+      valid: false,
+      stage: "outline",
+      message: "The document is not a valid horizon authoring bundle.",
+      details: [{ loc: ["outline", "residents", 0, "fixedCommitments", 0], msg: "Value error, commitment 'giu_night_shift' start must be before end", type: "value_error" }],
+    };
+    mount("/homes/home_1");
+    await screen.findByText("Attach accepted authoring");
+    const text = JSON.stringify({ documentType: "horizon_authoring_bundle", outline: { residents: [{ residentId: "giulia_ferri", fixedCommitments: [{ commitmentId: "giu_night_shift" }] }] } });
+    const outline = new File([text], "ferri.json", { type: "application/json" });
+    Object.defineProperty(outline, "text", { value: () => Promise.resolve(text) });
+    attachOutline(outline);
+    expect(await screen.findByText("The document is not a valid horizon authoring bundle. 1 problem:")).toBeInTheDocument();
+    expect(screen.getByText("outline › residents › giulia_ferri › fixedCommitments › giu_night_shift: commitment 'giu_night_shift' start must be before end")).toBeInTheDocument();
   });
 
   it("reports an import the server is still working on, and then one it has lost", async () => {
@@ -335,6 +423,22 @@ describe("complete application routes", () => {
     vi.useRealTimers();
   });
 
+  it("tells the author what this workspace has added to the vocabulary", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
+    const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    overrides["/vocabulary/additions"] = { markdown: "- `exercise_mat` (Exercise mat) — `exercise_support`\n" };
+    mount("/help");
+    await screen.findByRole("heading", { name: "Generate one authoring bundle" });
+    await waitFor(() => expect(screen.getByText(/exercise_mat` \(Exercise mat\)/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Copy prompt" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const prompt = writeText.mock.calls[0]?.[0] ?? "";
+    expect(prompt).toContain("## What this workspace adds to the vocabulary");
+    expect(prompt).toContain("- `exercise_mat` (Exercise mat) — `exercise_support`");
+    expect(prompt).not.toContain("{{WORKSPACE_VOCABULARY}}");
+  });
+
   it("offers the horizon outline prompt and no other, since the day-by-day ones do not survive a long horizon", async () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed arg keeps mock.calls tuples
     const writeText = vi.fn(async (_text: string): Promise<void> => undefined);
@@ -349,9 +453,12 @@ describe("complete application routes", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const prompt = writeText.mock.calls[0]?.[0] ?? "";
     expect(prompt).toContain("Nicoletta Palmi, 8 months");
-    expect(prompt).toContain("generate-horizon-outline-1.3.0");
+    expect(prompt).toContain("generate-horizon-outline-2.0.0");
     expect(prompt).toContain("Do not write the days of the horizon.");
     expect(prompt).not.toContain("{{PERSON_AND_CASE_DESCRIPTION}}");
+    // The additions could not be read in this test, and the prompt says so rather than going quiet.
+    expect(prompt).not.toContain("{{WORKSPACE_VOCABULARY}}");
+    expect(prompt).toContain("additions to the vocabulary could not be read");
     // The guide must say the response cannot be imported as it stands, or a reader will try.
     expect(screen.getByText(/Its response is expanded, not imported as it stands/)).toBeInTheDocument();
     // Twice now: beside the prompt, and again where the guide says the outline is the one document

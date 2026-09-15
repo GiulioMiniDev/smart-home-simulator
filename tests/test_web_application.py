@@ -686,3 +686,63 @@ def test_the_plan_is_marked_as_a_recommendation_until_the_researcher_answers(
         refused = client.post(f"/api/homes/{empty['homeId']}/plan-approval", headers=headers)
         assert refused.status_code == 409
         assert refused.json()["error"]["code"] == "WORKSPACE_OPERATION_FAILED"
+
+
+def test_an_import_checks_against_the_vocabulary_the_editor_saved(tmp_path: Path) -> None:
+    """The import ran in the API process, which never adopted the workspace vocabulary.
+
+    A job worker adopts it before it does anything, so a run used the researcher's furniture; the
+    import that came before it did not, and warned about furniture the editor had already defined.
+    """
+    from smart_home_sim.vocabulary.active import set_active_pack
+
+    app = create_app(tmp_path / "workspace", workspace_name="Vocabulary adoption")
+    try:
+        with TestClient(app) as client:
+            headers = {"X-Workspace-Token": _token(client)}
+            home_id = client.post(
+                "/api/homes", headers=headers, json={"name": "Yoga", "description": "Fixture"}
+            ).json()["homeId"]
+            payload = json.loads(
+                (PROJECT_ROOT / "examples/authoring/minimal.authoring-bundle.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            payload["scenario"]["resources"].append(
+                {"resourceId": "mat_1", "resourceType": "exercise_mat", "locationId": "kitchen"}
+            )
+
+            def warned() -> bool:
+                imported = client.post(
+                    f"/api/homes/{home_id}/authoring-bundle", headers=headers, json=payload
+                ).json()
+                assert imported["valid"] is True
+                return any(
+                    issue["code"] == "FURNITURE_TYPE_NOT_IN_VOCABULARY"
+                    for issue in imported["issues"]
+                )
+
+            assert warned()
+            view = client.get("/api/vocabulary", headers=headers).json()
+            pack = view["pack"]
+            pack["entityTypes"].append(
+                {
+                    "entityType": "exercise_mat",
+                    "displayName": "Exercise mat",
+                    "capabilities": ["exercise_support"],
+                    "roleAliases": [],
+                    "contactInstrumented": False,
+                    "symbolId": None,
+                    "symbolBody": None,
+                }
+            )
+            saved = client.put(
+                "/api/vocabulary",
+                headers=headers,
+                json={"pack": pack, "expected_digest": view["digest"]},
+            )
+            assert saved.status_code == 200
+            assert not warned()
+    finally:
+        # Adoption is process state; the rest of the suite runs on the built-in vocabulary.
+        set_active_pack(None)

@@ -140,7 +140,7 @@ describe("reading a whole outline", () => {
   });
 
   it("shows the night band as two pieces and marks it as wrapping", () => {
-    const night = read(outline()).bands.find((band) => band.id === "night");
+    const night = read(outline()).residents[0].bands.find((band) => band.id === "night");
     expect(night?.wraps).toBe(true);
     expect(night?.pieces).toHaveLength(2);
     expect(night?.activityLabels).toEqual(["Sleep"]);
@@ -154,7 +154,7 @@ describe("reading a whole outline", () => {
         { habitId: "weekend", label: "A slow weekend", windowStart: "09:00", windowEnd: "18:30", weekdays: ["saturday", "sunday"] },
       ],
     });
-    const rows = read(scoped).bandRows;
+    const rows = read(scoped).residents[0].bandRows;
     expect(rows.map((row) => row.label)).toEqual(["Every day", "on Wed", "at the weekend"]);
     expect(rows.map((row) => row.bands.length)).toEqual([1, 1, 1]);
   });
@@ -166,36 +166,36 @@ describe("reading a whole outline", () => {
         { habitId: "afternoon", label: "Afternoon", windowStart: "14:00", windowEnd: "18:00", weekdays: ["saturday", "sunday"] },
         { habitId: "broken", label: "Broken", windowStart: "half six", windowEnd: "09:00" },
       ],
-    })).bands);
+    })).residents[0].bands);
     expect(rows).toHaveLength(1);
     expect(rows[0].bands.map((band) => band.label)).toEqual(["Morning", "Afternoon"]);
   });
 
   it("orders the day by when each window opens", () => {
-    expect(read(outline()).activities.map((activity) => activity.label)).toEqual(["Morning run", "Sleep"]);
+    expect(read(outline()).residents[0].activities.map((activity) => activity.label)).toEqual(["Morning run", "Sleep"]);
   });
 
   it("collects only what is tied to particular weekdays", () => {
     const reading = read(outline());
-    expect(reading.weekVaries).toBe(true);
-    const monday = reading.week[0];
-    const sunday = reading.week[6];
+    expect(reading.residents[0].weekVaries).toBe(true);
+    const monday = reading.residents[0].week[0];
+    const sunday = reading.residents[0].week[6];
     expect(monday.entries.map((entry) => entry.label).sort()).toEqual(["Hair salon", "Morning run"]);
     expect(sunday.entries).toEqual([]);
   });
 
   it("says so when nothing distinguishes one day of the week from another", () => {
     const flat = outline({ fixedCommitments: [], profile: { recurringActivities: [{ recurringActivityId: "sleep", label: "Sleep", kind: "anchor", cadence: { period: "day", timesPerPeriod: 1, windowStart: "22:30", windowEnd: "06:30" } }] } });
-    expect(read(flat).weekVaries).toBe(false);
+    expect(read(flat).residents[0].weekVaries).toBe(false);
   });
 
   it("places stretches and one-offs as fractions of the horizon", () => {
     const reading = read(outline());
-    expect(reading.phases[0].fromFraction).toBe(0);
-    expect(reading.phases[0].toFraction).toBeCloseTo(35 / 243, 5);
-    expect(reading.phases[0].changes[0]).toContain("Morning run changes to:");
-    expect(reading.events[0].sentence).toBe("Once between 5 Oct 2026 and 30 Oct 2026, on any day, between 09:00 – 12:00");
-    expect(reading.events[0].displaces).toEqual(["Morning run is skipped that day"]);
+    expect(reading.residents[0].phases[0].fromFraction).toBe(0);
+    expect(reading.residents[0].phases[0].toFraction).toBeCloseTo(35 / 243, 5);
+    expect(reading.residents[0].phases[0].changes[0]).toContain("Morning run changes to:");
+    expect(reading.residents[0].events[0].sentence).toBe("Once between 5 Oct 2026 and 30 Oct 2026, on any day, between 09:00 – 12:00");
+    expect(reading.residents[0].events[0].displaces).toEqual(["Morning run is skipped that day"]);
   });
 
   it("stacks overlapping stretches into separate lanes", () => {
@@ -206,7 +206,7 @@ describe("reading a whole outline", () => {
         { phaseId: "c", label: "C", startDate: "2026-12-03", endDate: "2026-12-20" },
       ],
     });
-    expect(read(overlapping).phases.map((phase) => phase.lane)).toEqual([0, 1, 0]);
+    expect(read(overlapping).residents[0].phases.map((phase) => phase.lane)).toEqual([0, 1, 0]);
   });
 
   it("names what it could not place instead of dropping it", () => {
@@ -215,8 +215,8 @@ describe("reading a whole outline", () => {
       phases: [{ phaseId: "heat", label: "Late-summer heat", startDate: "next August", endDate: "2026-09-06" }],
     });
     const reading = read(broken);
-    expect(reading.bands[0].pieces).toEqual([]);
-    expect(reading.phases).toEqual([]);
+    expect(reading.residents[0].bands[0].pieces).toEqual([]);
+    expect(reading.residents[0].phases).toEqual([]);
     expect(reading.gaps).toHaveLength(2);
     expect(reading.gaps[0]).toContain("“Night”");
     expect(reading.gaps[1]).toContain("not drawn on the calendar");
@@ -225,6 +225,11 @@ describe("reading a whole outline", () => {
   it("warns when a stretch falls outside the horizon it belongs to", () => {
     const stray = outline({ phases: [{ phaseId: "old", label: "Last winter", startDate: "2025-01-01", endDate: "2025-02-01" }] });
     expect(read(stray).gaps.join(" ")).toContain("falls outside the horizon");
+  });
+
+  it("does not count a grouping of rooms as somewhere the resident travels to", () => {
+    const grouped = outline({ world: { locations: [{ locationId: "kitchen", kind: "room" }, { locationId: "home", kind: "composite" }, { locationId: "park", kind: "external" }] } });
+    expect(read(grouped).elsewhere).toEqual(["park"]);
   });
 
   it("separates the rooms of the flat from the places the resident travels to", () => {
@@ -244,7 +249,7 @@ describe("reading a whole outline", () => {
   it("survives an outline that is missing nearly everything", () => {
     const reading = read({ documentType: "horizon_outline" });
     expect(reading.title).toBe("Untitled horizon");
-    expect(reading.activities).toEqual([]);
+    expect(reading.residents[0].activities).toEqual([]);
     expect(reading.dayCount).toBeGreaterThan(27);
     expect(reading.gaps[0]).toContain("no readable start date");
   });
@@ -266,10 +271,10 @@ describe("an outline the model half-filled in", () => {
 
   it("falls back to positions where the model gave no identity", () => {
     const reading = read(bare);
-    expect(reading.bands[0].id).toBe("band-0");
-    expect(reading.commitments[0].label).toBe("commitment-0");
-    expect(reading.activities[0].label).toBe("activity-0");
-    expect(reading.activities[0].kind).toBe("contextual");
+    expect(reading.residents[0].bands[0].id).toBe("band-0");
+    expect(reading.residents[0].commitments[0].label).toBe("commitment-0");
+    expect(reading.residents[0].activities[0].label).toBe("activity-0");
+    expect(reading.residents[0].activities[0].kind).toBe("contextual");
   });
 
   it("still says what it could not read, one line per thing", () => {
@@ -282,8 +287,8 @@ describe("an outline the model half-filled in", () => {
     expect(reading.rooms).toEqual(["?"]);
     expect(reading.elsewhere).toEqual(["?"]);
     expect(reading.people).toEqual(["neighbour"]);
-    expect(reading.age).toBeUndefined();
-    expect(reading.bedtime).toBeUndefined();
+    expect(reading.residents[0].age).toBeUndefined();
+    expect(reading.residents[0].bedtime).toBeUndefined();
   });
 
   it("credits the author it was told about rather than assuming a model", () => {
@@ -296,7 +301,7 @@ describe("an outline the model half-filled in", () => {
       { recurringActivityId: "b", label: "Second", kind: "rare" },
       { recurringActivityId: "a", label: "First", kind: "rare" },
     ] } });
-    expect(read(unplaceable).activities.map((activity) => activity.label)).toEqual(["First", "Second"]);
+    expect(read(unplaceable).residents[0].activities.map((activity) => activity.label)).toEqual(["First", "Second"]);
   });
 });
 
@@ -308,10 +313,10 @@ describe("the parts an outline may say more precisely", () => {
       events: [{ eventId: "flu", label: "A week of flu", earliestDate: "2027-01-11", latestDate: "2027-01-17", occurrences: 5, displaces: [{ recurringActivityId: "run", policy: "reschedule" }, { policy: "skip" }] }],
     });
     const reading = read(detailed);
-    expect(reading.commitments[0].sentence).toBe("18:00 – 20:00 on Tue, only from 1 Sep 2026 to 15 Dec 2026");
-    expect(reading.phases[0].changes).toEqual(["Morning run stops"]);
-    expect(reading.events[0].sentence).toContain("5 times between 11 Jan 2027 and 17 Jan 2027");
-    expect(reading.events[0].displaces).toEqual(["Morning run moves to another day", "an activity is skipped that day"]);
+    expect(reading.residents[0].commitments[0].sentence).toBe("18:00 – 20:00 on Tue, only from 1 Sep 2026 to 15 Dec 2026");
+    expect(reading.residents[0].phases[0].changes).toEqual(["Morning run stops"]);
+    expect(reading.residents[0].events[0].sentence).toContain("5 times between 11 Jan 2027 and 17 Jan 2027");
+    expect(reading.residents[0].events[0].displaces).toEqual(["Morning run moves to another day", "an activity is skipped that day"]);
   });
 
   it("keeps quiet about dates that only restate the horizon", () => {
@@ -320,27 +325,27 @@ describe("the parts an outline may say more precisely", () => {
     const stamped = outline({
       fixedCommitments: [{ commitmentId: "office", label: "Office", weekdays: ["monday"], startTime: "09:00", endTime: "17:00", startDate: "2026-08-03", endDate: "2027-04-02" }],
     });
-    expect(read(stamped).commitments[0].sentence).toBe("09:00 – 17:00 on Mon");
+    expect(read(stamped).residents[0].commitments[0].sentence).toBe("09:00 – 17:00 on Mon");
   });
 
   it("reports an open-ended restriction from whichever side it has", () => {
     const opensLate = outline({ fixedCommitments: [{ commitmentId: "a", label: "A", weekdays: ["monday"], startTime: "09:00", endTime: "17:00", startDate: "2026-10-01" }] });
     const endsEarly = outline({ fixedCommitments: [{ commitmentId: "b", label: "B", weekdays: ["monday"], startTime: "09:00", endTime: "17:00", endDate: "2026-10-01" }] });
-    expect(read(opensLate).commitments[0].sentence).toContain("only from 1 Oct 2026");
-    expect(read(endsEarly).commitments[0].sentence).toContain("only until 1 Oct 2026");
+    expect(read(opensLate).residents[0].commitments[0].sentence).toContain("only from 1 Oct 2026");
+    expect(read(endsEarly).residents[0].commitments[0].sentence).toContain("only until 1 Oct 2026");
   });
 
   it("folds a cadence into a longer sentence without lowercasing the days inside it", () => {
     const phased = outline({
       phases: [{ phaseId: "summer", label: "Summer", startDate: "2027-01-01", endDate: "2027-02-01", activityOverrides: [{ recurringActivityId: "run", cadence: { period: "week", timesPerPeriod: 2, weekdays: ["wednesday", "sunday"], windowStart: "20:15", windowEnd: "22:15" } }] }],
     });
-    expect(read(phased).phases[0].changes[0]).toBe("Morning run changes to: 2 days a week on Wed and Sun, between 20:15 – 22:15");
+    expect(read(phased).residents[0].phases[0].changes[0]).toBe("Morning run changes to: 2 days a week on Wed and Sun, between 20:15 – 22:15");
   });
 
   it("says how far a start time may drift, and when it may not", () => {
     const reading = read(outline());
-    expect(reading.activities.find((activity) => activity.id === "sleep")?.spread).toContain("give or take 25 minutes");
-    expect(reading.activities.find((activity) => activity.id === "run")?.spread).toContain("the same point in the window");
+    expect(reading.residents[0].activities.find((activity) => activity.id === "sleep")?.spread).toContain("give or take 25 minutes");
+    expect(reading.residents[0].activities.find((activity) => activity.id === "run")?.spread).toContain("the same point in the window");
   });
 });
 
@@ -426,5 +431,205 @@ describe("refusing what is not an outline", () => {
     expect(readOutline({ hello: "world" }).kind).toBe("other");
     expect(readOutline([1, 2, 3]).kind).toBe("other");
     expect(readOutline(null).kind).toBe("other");
+  });
+});
+
+describe("an outline about a household (2.0.0)", () => {
+  // Two people, one home: each with their own day, and one dinner declared once for both.
+  function household(overrides: Partial<RawOutline> = {}): RawOutline {
+    const lone = outline();
+    return {
+      documentType: "horizon_outline",
+      schemaVersion: "2.0.0",
+      outlineId: "case-2",
+      title: "Marco and Luca in Turin",
+      timeZone: "Europe/Rome",
+      startDate: lone.startDate,
+      months: lone.months,
+      world: lone.world,
+      residents: [
+        {
+          residentId: "marco", displayName: "Marco",
+          profile: { recurringActivities: [{ recurringActivityId: "marco_run", label: "Morning run", kind: "optional", intent: "go_for_a_run", cadence: { period: "week", timesPerPeriod: 3, weekdays: ["monday"], windowStart: "07:00", windowEnd: "08:00" } }] },
+          rhythm: { age: 34, chronotypeBedtime: "23:00" },
+          habits: [{ habitId: "night", label: "Night", windowStart: "23:00", windowEnd: "07:00" }],
+          phases: [{ phaseId: "summer", label: "Summer", startDate: "2026-08-03", endDate: "2026-08-30", activityOverrides: [{ recurringActivityId: "dinner", suspended: true }] }],
+        },
+        {
+          residentId: "luca",
+          profile: { recurringActivities: [] },
+          habits: [{ habitId: "night", label: "Night", windowStart: "half ten", windowEnd: "06:30" }],
+        },
+      ],
+      household: {
+        relations: [{ between: ["marco", "luca"], kind: "couple" }],
+        jointActivities: [{
+          activity: { recurringActivityId: "dinner", label: "Dinner", kind: "anchor", intent: "have_dinner", cadence: { period: "day", timesPerPeriod: 1, windowStart: "19:30", windowEnd: "21:00" } },
+          participantIds: ["marco", "luca"],
+          sharing: "optional_joint",
+          propensity: { default: 0.5, weekday: 0.2, weekend: 0.9 },
+          minimumSharedMinutes: 20,
+        }],
+        sharingPolicies: [{ between: ["marco", "luca"], intent: "shower", sharing: "exclusive" }],
+        locationPrivacy: [{ locationId: "bath_room", subjectId: "luca", intents: ["shower"], symmetric: false }],
+        sharedLocationIds: ["guest_toilet"],
+      },
+      provenance: lone.provenance,
+      ...overrides,
+    };
+  }
+
+  it("reads every resident, named the way the model named them", () => {
+    const reading = read(household());
+    expect(reading.residents.map((resident) => resident.name)).toEqual(["Marco", "luca"]);
+    expect(reading.residents[0].age).toBe(34);
+    expect(reading.residents[0].activities.map((activity) => activity.label)).toEqual(["Morning run"]);
+    expect(reading.dayCount).toBe(243);
+  });
+
+  it("resolves a resident's stretch against an activity the household does together", () => {
+    expect(read(household()).residents[0].phases[0].changes).toEqual(["Dinner stops"]);
+  });
+
+  it("writes the shared dinner once, with who takes part and how often it is really shared", () => {
+    const [dinner] = read(household()).household.joint;
+    expect(dinner.participants).toEqual(["Marco", "luca"]);
+    expect(dinner.clock).toBe("19:30 – 21:00");
+    expect(dinner.together).toBe("Together on 20% of weekdays and 90% of weekend days if they overlap for at least 20 minutes");
+    expect(dinner.fallback).toContain("Done separately");
+  });
+
+  it("puts relations, turns and private rooms into sentences", () => {
+    const { household: view } = read(household());
+    expect(view.relations).toEqual(["Marco and luca are a couple"]);
+    expect(view.policies).toEqual(["When Marco or luca does shower, the other leaves the room"]);
+    expect(view.privacy).toEqual(["Nobody else may be in the bath room while luca uses it for shower"]);
+    const reciprocal = household();
+    reciprocal.household!.locationPrivacy = [{ locationId: "bath_room", subjectId: "marco", excludedResidentIds: ["luca"] }];
+    expect(read(reciprocal).household.privacy).toEqual(["luca may not be in the bath room while Marco uses it, and the other way round"]);
+    expect(view.sharedRooms).toEqual(["guest toilet"]);
+  });
+
+  it("says whose line it is when a household's outline cannot be read somewhere", () => {
+    expect(read(household()).gaps).toEqual(["luca: The band “Night” has no readable start and end time, so it is not drawn on the day."]);
+  });
+
+  it("reports a participant who does not live here", () => {
+    const stray = household();
+    stray.household!.jointActivities![0].participantIds = ["marco", "giulia"];
+    expect(read(stray).gaps.join(" ")).toContain("names “giulia”, who is not among the residents");
+  });
+
+  it("checks the intents of shared activities against the process package too", () => {
+    const behaviour = read({
+      documentType: "horizon_authoring_bundle",
+      outline: household(),
+      personalProcessPackage: { processModels: [{ processModelId: "pm_run" }], bindings: [{ intent: "go_for_a_run", processModelId: "pm_run" }] },
+    }).behaviour;
+    expect(behaviour?.unimplemented).toEqual(["have_dinner"]);
+  });
+
+  it("reads a household of one exactly as the older outline about the same person", () => {
+    const lone = outline();
+    const lifted = read({ ...household(), residents: [{ residentId: lone.residentId, profile: lone.profile, rhythm: lone.rhythm, habits: lone.habits, fixedCommitments: lone.fixedCommitments, phases: lone.phases, events: lone.events }], household: {} });
+    const legacy = read(lone);
+    expect(lifted.residents).toEqual(legacy.residents);
+    expect(lifted.household).toEqual({ relations: [], joint: [], policies: [], privacy: [], sharedRooms: [] });
+  });
+
+  it("says so when the roster is empty instead of drawing nobody", () => {
+    const reading = read(household({ residents: [] }));
+    expect(reading.residents).toHaveLength(1);
+    expect(reading.gaps[0]).toContain("declares no resident");
+  });
+});
+
+describe("a household the model half-filled in", () => {
+  const base: RawOutline = { documentType: "horizon_outline", schemaVersion: "2.0.0", startDate: "2026-08-03", months: 1 };
+
+  it("phrases every kind of relation, reading the parent first", () => {
+    const reading = read({
+      ...base,
+      residents: [{ residentId: "anna" }, { residentId: "bea" }, { residentId: "carlo" }, { residentId: "dario" }],
+      household: {
+        relations: [
+          { between: ["anna", "bea"], kind: "parent_child", note: "Bea is eight." },
+          { between: ["bea", "carlo"], kind: "siblings" },
+          { between: ["carlo", "dario"], kind: "housemates" },
+          { between: ["anna", "dario"], kind: "other" },
+          { between: ["anna", "carlo"] },
+        ],
+      },
+    });
+    expect(reading.household.relations).toEqual([
+      "anna is bea’s parent — Bea is eight.",
+      "bea and carlo are siblings",
+      "carlo and dario share the home as housemates",
+      "anna and dario live together",
+      "anna and carlo live together",
+    ]);
+  });
+
+  it("keeps going when shared things arrive without names, participants or numbers", () => {
+    const reading = read({
+      ...base,
+      residents: [{ residentId: "anna" }, {}, "not a person" as never],
+      household: {
+        relations: [{ between: ["anna"] }],
+        jointActivities: [
+          { participantIds: ["anna"], sharing: "optional_joint", degradeToIndependent: false, note: "Declared by hand." },
+          { activity: { label: "Lunch", cadence: { period: "day", windowStart: "13:00", windowEnd: "14:00" } }, participantIds: ["anna", "resident 2"], sharing: "optional_joint", propensity: { default: 0.5 } },
+        ],
+        sharingPolicies: [{ between: ["anna", "resident 2"], sharing: "independent", note: "Two kettles." }, {}],
+        locationPrivacy: [{ subjectId: "anna", excludedResidentIds: ["resident 2"], note: "Door locks." }],
+      },
+    });
+    expect(reading.residents.map((resident) => resident.name)).toEqual(["anna", "resident 2"]);
+    const [lunch, unnamed] = reading.household.joint;
+    expect(lunch.together).toBe("Together on 50% of days");
+    expect(unnamed.label).toBe("joint-activity-0");
+    expect(unnamed.together).toBe("Sometimes together, in a proportion the outline does not state");
+    expect(unnamed.fallback).toContain("Never done apart");
+    expect(unnamed.note).toBe("Declared by hand.");
+    expect(reading.household.relations).toEqual(["anna and someone live together"]);
+    expect(reading.household.policies).toEqual([
+      "anna and resident 2 each do an unnamed intent on their own, and only contend for what they both use — Two kettles.",
+      "someone and someone each do an unnamed intent on their own, and only contend for what they both use",
+    ]);
+    expect(reading.household.privacy).toEqual(["resident 2 may not be in an unnamed room while anna uses it, and the other way round — Door locks."]);
+    const gaps = reading.gaps.join(" ");
+    expect(gaps).toContain("names a resident without an identifier");
+    expect(gaps).toContain("names fewer than two participants");
+  });
+});
+
+describe("what the outline asks to add to the vocabulary", () => {
+  it("reads proposals with the package's own process beside each activity, and every intent it uses", () => {
+    const result = readOutline({
+      documentType: "horizon_authoring_bundle",
+      outline: outline({
+        events: [{ eventId: "guest", label: "Guest", earliestDate: "2026-10-01", latestDate: "2026-10-05", intent: "host_guest" }],
+        vocabularyProposals: {
+          furniture: [{ entityType: "exercise_mat", capabilities: ["exercise_support", 7 as unknown as string] }, { displayName: "nameless" }],
+          activities: [{ intentId: "host_guest" }, { label: "no id" }],
+        },
+      }),
+      personalProcessPackage: {
+        processModels: [{ processModelId: "pm_guest", nodes: [{ kind: "start" }, { kind: "action", actionType: "wait" }] }, { title: "no id" }],
+        bindings: [{ intent: "host_guest", processModelId: "pm_guest" }, { intent: "host_guest", processModelId: "pm_other" }, { intent: "sleep", processModelId: "missing" }],
+      },
+    });
+    if (result.kind !== "outline") throw new Error(result.message);
+    const { proposals, usedIntents } = result.reading;
+    expect(proposals.furniture).toEqual([{ entityType: "exercise_mat", displayName: "exercise mat", capabilities: ["exercise_support"], contactInstrumented: false, rationale: "" }]);
+    expect(proposals.activities).toHaveLength(1);
+    expect(proposals.activities[0]).toMatchObject({ intentId: "host_guest", label: "host guest", category: "leisure", defaultLocation: "living_room", steps: 1 });
+    expect(Object.keys(proposals.modelsByIntent)).toEqual(["host_guest"]);
+    expect(usedIntents).toContain("host_guest");
+  });
+
+  it("reads an outline with no package and no proposals as asking for nothing", () => {
+    const reading = read(outline());
+    expect(reading.proposals).toEqual({ furniture: [], activities: [], modelsByIntent: {} });
   });
 });

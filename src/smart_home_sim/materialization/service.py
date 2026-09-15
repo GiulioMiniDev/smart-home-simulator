@@ -20,12 +20,11 @@ from shapely.geometry import Polygon
 from shapely.geometry import box as ShapelyBox
 from shapely.ops import unary_union
 
-from smart_home_sim.behavior.service import default_action_catalog_path
+from smart_home_sim.behavior.service import load_action_catalog
 from smart_home_sim.clock import localised
 from smart_home_sim.compiler import CompilationResult, compile_scenario
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
-    ActionCatalog,
     PersonalProcessPackage,
     ProcessNodeKind,
     ValueSource,
@@ -422,6 +421,8 @@ _SEAT_WANTED_BY = {"desk", "table", "dining_table", "kitchen_table", "writing_de
 # exactly the room this exists for. The split is the placer's own — `chair` and `stool` are in its
 # `dine` group and travel to a table, an armchair is `lounge` and stays where the room wants it.
 _PULLED_UP_SEATS = frozenset({"chair", "stool", "bench"})
+# The surfaces people eat at together, which seat more than one.
+_DINING_SURFACES = frozenset({"table", "dining_table", "kitchen_table"})
 
 
 @dataclass(frozen=True)
@@ -439,24 +440,98 @@ class _CompanionSeat:
     location_id: str
 
 
-def _companion_seats(resources_by_region: dict[str, list[Any]]) -> list[_CompanionSeat]:
-    """One chair for each room that has something to sit at and nothing to pull up to it."""
+def _table_places(resource_id: str) -> int:
+    """How many people this table seats: two to four, fixed by the table rather than drawn per run.
+
+    A table is not a one-person object, whoever lives in the flat. An outline furnishes a kitchen
+    with a table and the one chair its author was thinking of, and every home generated from one
+    had exactly that: a person living alone with a single chair at her own table, and nowhere for
+    anybody else to sit. Two to four is the range a kitchen or dining table actually comes in, and
+    reading it off the table's id keeps the same home the same home on every rebuild.
+    """
+    return 2 + int(hashlib.sha256(resource_id.encode("utf-8")).hexdigest(), 16) % 3
+
+
+def _companion_seats(
+    resources_by_region: dict[str, list[Any]], residents: int = 1
+) -> list[_CompanionSeat]:
+    """The chairs a room's surfaces need and nobody named.
+
+    Each desk needs one seat. Each table needs its places, and never fewer than the people living
+    in the home, so a couple is not sharing a chair at their own dinner. Seats already in the room
+    count towards it: an author who wrote four chairs gets no fifth.
+    """
     taken = {item.resource_id for items in resources_by_region.values() for item in items}
     seats: list[_CompanionSeat] = []
     for region_id, items in sorted(resources_by_region.items()):
-        types = {item.resource_type for item in items}
-        if types & _PULLED_UP_SEATS or not (types & _SEAT_WANTED_BY):
-            continue
-        resource_id = f"{region_id}_chair"
-        suffix = 1
-        while resource_id in taken:
-            suffix += 1
-            resource_id = f"{region_id}_chair_{suffix:02d}"
-        taken.add(resource_id)
-        seats.append(
-            _CompanionSeat(resource_id=resource_id, resource_type="chair", location_id=region_id)
+        tables = sorted(
+            item.resource_id for item in items if item.resource_type in _DINING_SURFACES
         )
+        desks = sum(
+            1
+            for item in items
+            if item.resource_type in _SEAT_WANTED_BY and item.resource_type not in _DINING_SURFACES
+        )
+        wanted = desks
+        if tables:
+            wanted += max(sum(_table_places(item) for item in tables), residents)
+        present = sum(1 for item in items if item.resource_type in _PULLED_UP_SEATS)
+        for _ in range(max(0, wanted - present)):
+            resource_id = f"{region_id}_chair"
+            suffix = 1
+            while resource_id in taken:
+                suffix += 1
+                resource_id = f"{region_id}_chair_{suffix:02d}"
+            taken.add(resource_id)
+            seats.append(
+                _CompanionSeat(
+                    resource_id=resource_id, resource_type="chair", location_id=region_id
+                )
+            )
     return seats
+
+
+# How far from a surface a chair may stand and still be one of its seats.
+_SEAT_REACH_METERS = 0.3
+
+
+def _stray_companions(entries: list[Any], placed: list[Any], residents: int) -> set[str]:
+    """The supplied chairs that did not end up at any table or desk, most dispensable first.
+
+    Only chairs the generator supplied, never one the scenario named; and never so many that the
+    room holds fewer seats than the home has residents, because a chair against the wall is still
+    somewhere to sit when there are more people than places round the table.
+    """
+    surfaces = {item.resource_id for item in entries if item.resource_type in _SEAT_WANTED_BY}
+    if not surfaces:
+        return set()
+    footprints = {item.entity_id: item.footprint for item in placed}
+    tables = [footprints[item] for item in sorted(surfaces) if item in footprints]
+
+    def seated(resource_id: str) -> bool:
+        seat = footprints.get(resource_id)
+        return seat is not None and any(
+            _rect_gap(seat, table) <= _SEAT_REACH_METERS for table in tables
+        )
+
+    seats = [item for item in entries if item.resource_type in _PULLED_UP_SEATS]
+    spare = len(seats) - max(residents, 1)
+    stray = sorted(
+        (
+            item.resource_id
+            for item in seats
+            if isinstance(item, _CompanionSeat) and not seated(item.resource_id)
+        ),
+        reverse=True,
+    )
+    return set(stray[: max(spare, 0)])
+
+
+def _rect_gap(first: Any, second: Any) -> float:
+    """The distance between two axis-aligned rectangles, zero where they touch or overlap."""
+    dx = max(second.x - first.max_x, first.x - second.max_x, 0.0)
+    dy = max(second.y - first.max_y, first.y - second.max_y, 0.0)
+    return math.hypot(dx, dy)
 
 
 def _resource_roles(resource: Any) -> set[str]:
@@ -509,11 +584,7 @@ def _expanded_regions(scenario: Scenario, location_id: str) -> list[str]:
 def _required_capabilities(
     scenario: Scenario, package: PersonalProcessPackage
 ) -> list[EntityCapability]:
-    catalog = ActionCatalog.model_validate_json(
-        default_action_catalog_path(package.catalogs.action_catalog.version).read_text(
-            encoding="utf-8"
-        )
-    )
+    catalog = load_action_catalog(package.catalogs.action_catalog.version)
     used_actions = {
         node.action_type
         for model in package.process_models
@@ -855,7 +926,7 @@ def generate_home(
     resources_by_region: dict[str, list[Any]] = defaultdict(list)
     for resource in scenario.resources:
         resources_by_region[_expanded_regions(scenario, resource.location_id)[0]].append(resource)
-    companions = _companion_seats(resources_by_region)
+    companions = _companion_seats(resources_by_region, len(scenario.residents))
     for seat in companions:
         resources_by_region[seat.location_id].append(seat)
     for region_resources in resources_by_region.values():
@@ -871,18 +942,34 @@ def generate_home(
         rect = room_rects.get(region_id)
         if rect is None:
             continue
-        for item in floorplan.place_furniture(
-            rect,
-            [(entry.resource_id, entry.resource_type) for entry in region_resources],
-            room_portals[region_id],
-            body_radius=_placement_clearance(policy),
-            doorway_width=policy.doorway_width_meters,
-            # The arrangement is a function of the room and the scenario's own seed: the same
-            # scenario always furnishes the same way, and two scenarios do not have to.
-            region_id=region_id,
-            seed=scenario.seed,
-            reserved=reserved.get(region_id),
-        ):
+
+        def arrange(entries: list[Any], room: Any = rect, region: str = region_id) -> list[Any]:
+            return floorplan.place_furniture(
+                room,
+                [(entry.resource_id, entry.resource_type) for entry in entries],
+                room_portals[region],
+                body_radius=_placement_clearance(policy),
+                doorway_width=policy.doorway_width_meters,
+                # The arrangement is a function of the room and the scenario's own seed: the same
+                # scenario always furnishes the same way, and two scenarios do not have to.
+                region_id=region,
+                seed=scenario.seed,
+                reserved=reserved.get(region),
+            )
+
+        arranged = arrange(region_resources)
+        stray = _stray_companions(region_resources, arranged, len(scenario.residents))
+        if stray:
+            # A table's places are the ones that fit round it. In a small kitchen with the table
+            # against the counter run two seats reach it, and the chairs past that were stood
+            # along the far wall: furniture nobody would own. Those are taken back out and the
+            # room is furnished again without them.
+            region_resources[:] = [
+                item for item in region_resources if item.resource_id not in stray
+            ]
+            companions = [item for item in companions if item.resource_id not in stray]
+            arranged = arrange(region_resources)
+        for item in arranged:
             furniture[item.entity_id] = item
             furniture_by_region[region_id].append(item)
             obstacles.append(

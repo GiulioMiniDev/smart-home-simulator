@@ -84,6 +84,19 @@
           "minimum": 0,
           "title": "Unaccountedshare",
           "type": "number"
+        },
+        "ambiguousMinutes": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Ambiguousminutes",
+          "type": "number"
+        },
+        "ambiguousShare": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Ambiguousshare",
+          "type": "number"
         }
       },
       "required": [
@@ -103,6 +116,11 @@
         "habitId": {
           "minLength": 1,
           "title": "Habitid",
+          "type": "string"
+        },
+        "residentId": {
+          "minLength": 1,
+          "title": "Residentid",
           "type": "string"
         },
         "label": {
@@ -224,10 +242,24 @@
           },
           "title": "Daytypes",
           "type": "array"
+        },
+        "ambiguousMinutes": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Ambiguousminutes",
+          "type": "number"
+        },
+        "ambiguousShare": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Ambiguousshare",
+          "type": "number"
         }
       },
       "required": [
         "habitId",
+        "residentId",
         "label",
         "windowStart",
         "windowEnd",
@@ -341,14 +373,14 @@
       "type": "string"
     }
   },
-  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.2.0",
+  "$id": "urn:smart-home-simulator:schema:habit-ground-truth:1.3.0",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer: the bands the outline\ndeclared, and the activity mix the generated horizon actually produced in each. It is derived\nfrom the plan, not from an execution, so it is the *planned* truth \u2014 deviations introduced by\nthe simulator belong to the execution trace.\n\n1.1.0 adds three things a segmentation experiment could not otherwise get without re-deriving\nthem from the activity log: the days each band applies to, where the band's dominant activity\nactually runs as opposed to where the window allows it, and the same measurement split by\nclass of day.\n\n1.2.0 adds the room. A recurring activity may now declare the room it happens in, so the same\nintent can be two behaviours in two places, and a composition keyed by intent alone reported\nthem as one row \u2014 averaging away exactly the distinction the author had declared. Composition\nis per (intent, room) and the band names the room its dominant activity holds it in.",
+  "description": "What a habit-segmentation algorithm is supposed to recover, published as evidence.\n\nThe researcher's algorithm sees only a sensor log and must discover both where the day divides\nand what runs in each division. This document states the answer, and it is two different kinds\nof statement that must not be confused:\n\n- **the bands** \u2014 windows, days, the activities expected in them \u2014 are the outline's\n  declaration. They are true by definition: they are what the author said the day is divided\n  into;\n- **everything measured inside them** \u2014 composition, the unaccounted remainder, where the\n  dominant activity really runs, the ambiguity share \u2014 is measured on the execution trace of\n  the run, with actual start and end times and the rooms the bodies were in. It is exactly what\n  happened in the run the sensor log was projected from.\n\nUntil 1.3.0 the measured half was taken from the expanded plan, before compilation: preferred\ntimes instead of scheduled ones, candidates the engine could still turn down counted as if they\nhad happened, and nothing the compiler or the run changed. The contract said so, and it was\nstill the wrong thing to publish as the answer to a sensor log.\n\n1.1.0 adds three things a segmentation experiment could not otherwise get without re-deriving\nthem from the activity log: the days each band applies to, where the band's dominant activity\nactually runs as opposed to where the window allows it, and the same measurement split by\nclass of day.\n\n1.2.0 adds the room. A recurring activity may now declare the room it happens in, so the same\nintent can be two behaviours in two places, and a composition keyed by intent alone reported\nthem as one row \u2014 averaging away exactly the distinction the author had declared. Composition\nis per (intent, room) and the band names the room its dominant activity holds it in.\n\n1.3.0 measures on the execution trace and says so in `measuredOn`, names the run it answers\nto, adds the share of each band another resident spent in the same room, and says on every band\nwhose it is. A household publishes one of these per person \u2014 segmentation is defined over a\nperson, and a dwelling-wide document would not be comparable with the literature it answers to\n\u2014 beside one `HouseholdGroundTruth` for what none of them can say alone.",
   "properties": {
     "schemaVersion": {
-      "const": "1.2.0",
-      "default": "1.2.0",
+      "const": "1.3.0",
+      "default": "1.3.0",
       "title": "Schemaversion",
       "type": "string"
     },
@@ -387,6 +419,50 @@
       "title": "Seed",
       "type": "integer"
     },
+    "measuredOn": {
+      "enum": [
+        "execution_trace",
+        "expanded_plan"
+      ],
+      "title": "Measuredon",
+      "type": "string"
+    },
+    "runId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runid"
+    },
+    "traceId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Traceid"
+    },
+    "sourceTraceSemanticDigest": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sourcetracesemanticdigest"
+    },
     "habits": {
       "items": {
         "$ref": "#/$defs/HabitObservation"
@@ -405,8 +481,9 @@
     "startDate",
     "endDate",
     "seed",
+    "measuredOn",
     "provenance"
   ],
-  "title": "Smart Home Habit Ground Truth 1.2.0",
+  "title": "Smart Home Habit Ground Truth 1.3.0",
   "type": "object"
 }

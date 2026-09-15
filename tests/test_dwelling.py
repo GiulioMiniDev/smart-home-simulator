@@ -155,3 +155,38 @@ def test_a_household_reads_what_the_persona_says_about_itself() -> None:
     assert household.with_children and household.works_at_home and not household.avoids_stairs
     # No persona at all is the fixture case, and it must not blow up.
     assert Household.from_persona(None).alone
+
+
+def test_the_house_follows_the_family() -> None:
+    """Two friends get two bedrooms and a couple one: a roster says it, a sentence only guessed it.
+
+    Enough bedrooms is a hard constraint, like the staircase. A household of four with the children
+    in rooms of their own needs three, which no archetype holds, and the rooms are added rather than
+    the children doubled up with somebody.
+    """
+    friends = Household.from_roster({"ada": 25, "bea": 27})
+    couple = Household.from_roster({"ada": 34, "bea": 36}, [("ada", "bea")])
+    family = Household.from_roster({"ada": 41, "bea": 43, "cai": 12, "dan": 9}, [("ada", "bea")])
+
+    assert (friends.bedrooms, couple.bedrooms, family.bedrooms) == (2, 1, 3)
+    assert not couple.alone and family.with_children
+    for seed in _seeds():
+        assert len(design_dwelling(seed=seed, household=friends).bedroom_ids) >= 2
+        homes = design_dwelling(seed=seed, household=family)
+        assert len(homes.bedroom_ids) >= 3
+        # Every added bedroom is furnished with a bed of its own.
+        beds = {
+            item.location_id
+            for item in homes.resources
+            if item.resource_type in {"bed", "single_bed"}
+        }
+        assert set(homes.bedroom_ids) <= beds
+
+
+def test_a_persona_without_a_roster_is_housed_as_before() -> None:
+    """The roster is an addition: the free-text path draws the same homes it always drew."""
+    persona = _Persona(age=52, household="lives alone")
+    for seed in _seeds(10):
+        assert design_dwelling(persona, seed=seed) == design_dwelling(
+            persona, seed=seed, household=Household.from_persona(persona)
+        )

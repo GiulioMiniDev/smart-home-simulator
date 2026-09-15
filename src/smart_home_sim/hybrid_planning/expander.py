@@ -33,17 +33,27 @@ from __future__ import annotations
 import hashlib
 import json
 import random
-from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from smart_home_sim.behavior.service import default_action_catalog_path
+from smart_home_sim.behavior.service import load_action_catalog
 from smart_home_sim.domain.authoring import SimulationAuthoringBundle
-from smart_home_sim.domain.behavior import ActionCatalog, PersonalProcessPackage
+from smart_home_sim.domain.behavior import (
+    PersonalProcessPackage,
+    ProcessModel,
+    ProcessNodeKind,
+    ValueSource,
+)
 from smart_home_sim.domain.environment import capabilities_for_entity_type
 from smart_home_sim.domain.models import (
+    BRANCH_EXTENSION,
+    JOINT_BRANCH,
+    PRIVACY_EXTENSION,
+    RESOURCE_ROLE_ALIASES,
+    SEPARATE_BRANCH,
     Activity,
     AuthorType,
     Condition,
@@ -56,9 +66,11 @@ from smart_home_sim.domain.models import (
     Provenance,
     Resident,
     ResidentInitialState,
+    ResourceRequirement,
     SimulationWindow,
     VersionedReference,
 )
+from smart_home_sim.environment.service import _BODY_SUPPORTING_TYPES, _standing_roles
 from smart_home_sim.hybrid_planning.cadence import (
     ActivityOccurrence,
     CadenceCalendar,
@@ -77,22 +89,36 @@ from smart_home_sim.hybrid_planning.day_generation import (
     window_around,
 )
 from smart_home_sim.hybrid_planning.drives import DayRhythm, RhythmProfile, plan_rhythms
+from smart_home_sim.hybrid_planning.habits import (
+    DECLARED_HABITS_EXTENSION,
+    evidence_from_plan,
+    measure_habits,
+)
 from smart_home_sim.hybrid_planning.horizon import _scheduled_drive_load
-from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG, intent_spec
+from smart_home_sim.hybrid_planning.intents import (
+    INTENT_CATALOG,
+    IntentCategory,
+    intent_spec,
+)
 from smart_home_sim.hybrid_planning.irregularity import (
     EXCEPTION_WIDTH_MULTIPLE,
     stray_minutes,
 )
 from smart_home_sim.hybrid_planning.outline import (
+    DeclaredHabits,
+    DeclaredJointActivity,
+    DeclaredResidentHabits,
     Displacement,
     FixedCommitment,
-    HabitComposition,
-    HabitDayTypeObservation,
     HabitGroundTruth,
-    HabitObservation,
     HorizonOutline,
+    JointActivity,
     OutlineEvent,
+    OutlinePhase,
+    OutlineResident,
     OutlineWorld,
+    RelationKind,
+    SharingMode,
 )
 from smart_home_sim.hybrid_planning.package_authoring import ACTIVITY_CATALOG_VERSION
 from smart_home_sim.hybrid_planning.recurring_activities import (
@@ -101,6 +127,7 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     CadencePeriod,
     RecurringActivity,
     RecurringActivityKind,
+    Weekday,
 )
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
 
@@ -166,7 +193,13 @@ class ExpansionError(ValueError):
 @dataclass(frozen=True)
 class ExpansionResult:
     bundle: SimulationAuthoringBundle
-    habit_ground_truth: HabitGroundTruth
+    # The bands as the outline declared them, per resident: the half of the habit ground truth that
+    # is true by definition, and the half a run's export measures against.
+    declared_habits: DeclaredHabits
+    # The same bands measured on the expanded plan, `measuredOn: expanded_plan`. Only for telling
+    # the author, before any run exists, that a band she drew holds nothing; never published,
+    # because the plan is not what the residents did.
+    planned_bands: list[HabitGroundTruth]
     day_count: int
     activity_count: int
     # Occurrences an event pushed off their day, by policy, for the report the researcher reads.
@@ -190,9 +223,29 @@ def _to_hhmm(total: int) -> str:
     return f"{clamped // 60:02d}:{clamped % 60:02d}"
 
 
-def _phase_profile(outline: HorizonOutline, phase_index: int) -> BehavioralProfile:
+def _resident_profile(outline: HorizonOutline, resident: OutlineResident) -> BehavioralProfile:
+    """One resident's own recurring activities plus the shared ones she takes part in.
+
+    The joint activities are folded into every participant's profile rather than rolled in a
+    household calendar of their own, and that is what makes the participants agree without anyone
+    negotiating. `_due_times` is keyed by the activity identifier and the horizon seed, so the same
+    joint activity folded into two profiles falls due on the same days, at the same target time,
+    in both — and it keeps every phase, displacement and cadence mechanism working on a shared
+    activity exactly as it works on a private one.
+
+    Whether an occurrence is then emitted once for the household or once per participant is decided
+    in one place, per day, by `_plan_sharing`.
+    """
+    shared = [item.activity for item in outline.joint_activities_for(resident.resident_id)]
+    if not shared:
+        return resident.profile
+    return resident.profile.model_copy(
+        update={"recurring_activities": [*resident.profile.recurring_activities, *shared]}
+    )
+
+
+def _phase_profile(profile: BehavioralProfile, phase: OutlinePhase) -> BehavioralProfile:
     """The profile as it stands during one phase, with that phase's overrides applied."""
-    phase = outline.phases[phase_index]
     replacements = {
         item.recurring_activity_id: item.cadence
         for item in phase.activity_overrides
@@ -202,12 +255,14 @@ def _phase_profile(outline: HorizonOutline, phase_index: int) -> BehavioralProfi
         activity.model_copy(update={"cadence": replacements[activity.recurring_activity_id]})
         if activity.recurring_activity_id in replacements
         else activity
-        for activity in outline.profile.recurring_activities
+        for activity in profile.recurring_activities
     ]
-    return outline.profile.model_copy(update={"recurring_activities": recurring_activities})
+    return profile.model_copy(update={"recurring_activities": recurring_activities})
 
 
-def _effective_calendar(outline: HorizonOutline, seed: int) -> CadenceCalendar:
+def _effective_calendar(
+    outline: HorizonOutline, resident: OutlineResident, seed: int
+) -> CadenceCalendar:
     """One calendar for the horizon, taking each phase's overridden activities from its own
     variant.
 
@@ -215,8 +270,9 @@ def _effective_calendar(outline: HorizonOutline, seed: int) -> CadenceCalendar:
     swapped leaves every other habit's schedule identical. That is what makes splicing sound:
     the baseline and the variant agree everywhere the override does not apply.
     """
+    profile = _resident_profile(outline, resident)
     baseline = build_cadence_calendar(
-        outline.profile,
+        profile,
         start_date=outline.start_date,
         months=outline.months,
         seed=seed,
@@ -230,7 +286,7 @@ def _effective_calendar(outline: HorizonOutline, seed: int) -> CadenceCalendar:
     # the original cadence running untouched wherever the new one is silent.
     overridden_by_date: dict[str, set[str]] = {}
     variant_by_date: dict[str, list[ActivityOccurrence]] = {}
-    for index, phase in enumerate(outline.phases):
+    for phase in resident.phases:
         overridden = {item.recurring_activity_id for item in phase.activity_overrides}
         if not overridden:
             continue
@@ -238,7 +294,7 @@ def _effective_calendar(outline: HorizonOutline, seed: int) -> CadenceCalendar:
             item.recurring_activity_id for item in phase.activity_overrides if item.suspended
         }
         variant = build_cadence_calendar(
-            _phase_profile(outline, index),
+            _phase_profile(profile, phase),
             start_date=outline.start_date,
             months=outline.months,
             seed=seed,
@@ -269,7 +325,7 @@ def _effective_calendar(outline: HorizonOutline, seed: int) -> CadenceCalendar:
     return baseline.model_copy(update={"days": days})
 
 
-def _event_dates(outline: HorizonOutline, event: OutlineEvent, seed: int) -> list[date]:
+def _event_dates(event: OutlineEvent, seed: int) -> list[date]:
     """Deterministically pick the days an event lands on inside its declared window."""
     span = [
         event.earliest_date + timedelta(days=offset)
@@ -293,15 +349,15 @@ class _PlacedEvent:
     day: date
 
 
-def _place_events(outline: HorizonOutline, seed: int) -> dict[str, list[_PlacedEvent]]:
+def _place_events(resident: OutlineResident, seed: int) -> dict[str, list[_PlacedEvent]]:
     placed: dict[str, list[_PlacedEvent]] = {}
-    for event in outline.events:
-        for day in _event_dates(outline, event, seed):
+    for event in resident.events:
+        for day in _event_dates(event, seed):
             placed.setdefault(day.isoformat(), []).append(_PlacedEvent(event=event, day=day))
     return placed
 
 
-def _daily_capacity(outline: HorizonOutline) -> dict[str, int]:
+def _daily_capacity(profile: BehavioralProfile, phases: Sequence[OutlinePhase]) -> dict[str, int]:
     """How many occurrences of each habit one day may legitimately hold.
 
     One, for everything that recurs weekly or monthly. For a daily habit it is whatever the cadence
@@ -311,9 +367,9 @@ def _daily_capacity(outline: HorizonOutline) -> dict[str, int]:
     """
     capacity: dict[str, int] = {}
     cadences: dict[str, list[ActivityCadence]] = defaultdict(list)
-    for activity in outline.profile.recurring_activities:
+    for activity in profile.recurring_activities:
         cadences[activity.recurring_activity_id].append(activity.cadence)
-    for phase in outline.phases:
+    for phase in phases:
         for override in phase.activity_overrides:
             if override.cadence is not None:
                 cadences[override.recurring_activity_id].append(override.cadence)
@@ -413,7 +469,7 @@ def _activities_by_id(profile: BehavioralProfile) -> dict[str, RecurringActivity
 
 
 def _effective_activities(
-    outline: HorizonOutline, baseline: dict[str, RecurringActivity], day: date
+    phases: Sequence[OutlinePhase], baseline: dict[str, RecurringActivity], day: date
 ) -> dict[str, RecurringActivity]:
     """The habits as they stand on one day, with the cadence any active phase replaced.
 
@@ -425,7 +481,7 @@ def _effective_activities(
     there is never a choice to make here.
     """
     replacements: dict[str, ActivityCadence] = {}
-    for phase in outline.phases:
+    for phase in phases:
         if not phase.start_date <= day <= phase.end_date:
             continue
         for override in phase.activity_overrides:
@@ -693,6 +749,168 @@ FILL_LABEL = "unclaimed_hours"
 FILL_SHAPE = (8, 22, 55, 0.40)
 
 
+# The two arms of a degradable shared activity. `joint` is worth more than both halves of
+# `separate` put together, which is how the objective's first stage — the sum of `priority` over
+# present optional activities — expresses "share it if it fits" without a new objective term.
+JOINT_BRANCH_PRIORITY = 90
+SEPARATE_BRANCH_PRIORITY = 40
+
+
+def _separate_priority(participants: int) -> int:
+    """What one meal of the separate arm is worth, so that all of them still lose to the shared one.
+
+    Forty is right for two people and wrong for three: three separate dinners at forty outweigh one
+    shared at ninety, and a family would never eat together however well the day fitted. Nothing in
+    a household is binary, so the halves are sized by how many there are.
+    """
+    return min(SEPARATE_BRANCH_PRIORITY, (JOINT_BRANCH_PRIORITY - 1) // max(1, participants))
+
+
+def _other_participants(participants: Sequence[str], actor_id: str) -> list[str]:
+    """The participants other than the one the activity belongs to.
+
+    `participantIds` names the people taking part *besides* the actor; repeating the actor there is
+    a validation failure, and `occupied_residents()` adds the actor back anyway, so the two readings
+    occupy exactly the same set of people.
+    """
+    return [item for item in participants if item != actor_id]
+
+
+# How long a stretch has to be before it is worth calling a wait rather than a gap between two
+# things. Below this the resident has not settled anywhere and the room she is about to be in says
+# nothing useful about where she is.
+WAIT_MINIMUM_MINUTES = 10
+
+
+def _waiting_rooms(activities: Sequence[Activity]) -> list[tuple[datetime, datetime, str]]:
+    """The stretches that end in a shared activity, and the room it is about to happen in.
+
+    The wait is a residue rather than a mechanism: anchoring a shared activity to the last
+    participant who becomes free is what produces it. One of them finishes cooking at 12:40, the
+    table is not laid until 13:05, and nobody wrote those twenty-five minutes.
+
+    They are nonetheless *something*. Left alone they are exactly what `simulation/behaviour.py`
+    counts as long idle — the family that already accounts for 402 minutes a day and for 22.7% of
+    the sensor log being emitted by a motionless body. A wait has a shape a reader recognises: it
+    happens where the shared activity is about to happen, it is interruptible, and it ends the
+    moment the other one arrives. So no `wait_for_resident` intent is coined — the catalogue is
+    closed, and in any case nobody waits, they tidy the kitchen and look at the clock. The filler
+    that was going there anyway is simply put in the right room.
+    """
+    shared = [
+        item
+        for item in activities
+        if item.participant_ids and item.start_window is not None and item.duration is not None
+    ]
+    stretches: list[tuple[datetime, datetime, str]] = []
+    for activity in shared:
+        assert activity.start_window is not None
+        begins = activity.start_window.preferred
+        ends_before = [
+            other.start_window.preferred + timedelta(minutes=other.duration.preferred_minutes)
+            for other in activities
+            if other is not activity
+            and other.start_window is not None
+            and other.duration is not None
+            and other.start_window.preferred + timedelta(minutes=other.duration.preferred_minutes)
+            <= begins
+        ]
+        if not ends_before:
+            continue
+        opens = max(ends_before)
+        if begins - opens >= timedelta(minutes=WAIT_MINIMUM_MINUTES):
+            stretches.append((opens, begins, activity.location_ids[0]))
+    return stretches
+
+
+def _offer_both_arms(
+    activities: list[Activity],
+    degradable: Mapping[str, tuple[tuple[str, ...], int]],
+    day_date: date,
+) -> list[Activity]:
+    """Write the shared version and the separate one, and let the compiler pick.
+
+    Each participant keeps the occurrence her own calendar already holds — that is the separate
+    arm, one meal each — and the host gains a second copy naming every participant, which is the
+    shared arm. Both are optional, both belong to one exclusive group, and exactly one of them is
+    scheduled.
+
+    The shared arm cannot be shorter than `minimumSharedMinutes`. Without that floor the choice was
+    never made: the objective prefers the shared arm, a twelve-minute dinner is still a dinner, and
+    the compiler served a couple a shared meal squeezed to its catalogue minimum rather than two
+    ordinary ones — with degradation on or off, the same twelve minutes. The floor is the author's
+    own statement that below it the occasion is not a shared one, which is exactly the point at
+    which the separate arm should win.
+
+    The trap, from the comment on `_cook_before_eating`: the solver reads a dependency as
+    `presence(meal) <= presence(cooking)`, so the separate meals must each keep their own
+    preparation rather than inherit the shared one. They do, because they are the activities the
+    day already had; nothing is re-pointed at the shared copy.
+    """
+    if not degradable:
+        return activities
+    offered: list[Activity] = []
+    for activity in activities:
+        recurring = _recurring_activity_id_of(activity) or ""
+        declared = degradable.get(recurring)
+        if declared is None or activity.participant_ids:
+            offered.append(activity)
+            continue
+        participants, floor = declared
+        group = f"{day_date.isoformat()}:{recurring}"
+        offered.append(
+            activity.model_copy(
+                update={
+                    "mandatory": False,
+                    "priority": _separate_priority(len(participants)),
+                    "extensions": {
+                        **activity.extensions,
+                        BRANCH_EXTENSION: {"group": group, "branch": SEPARATE_BRANCH},
+                    },
+                }
+            )
+        )
+        if activity.actor_id != participants[0]:
+            continue
+        duration = activity.duration
+        if duration is not None and floor > duration.minimum_minutes:
+            shortest = min(float(floor), duration.maximum_minutes)
+            duration = DurationRange(
+                minimum_minutes=shortest,
+                preferred_minutes=max(duration.preferred_minutes, shortest),
+                maximum_minutes=duration.maximum_minutes,
+            )
+        offered.append(
+            activity.model_copy(
+                update={
+                    "activity_id": f"{activity.activity_id}__joint",
+                    "duration": duration,
+                    "participant_ids": _other_participants(participants, activity.actor_id),
+                    "mandatory": False,
+                    "priority": JOINT_BRANCH_PRIORITY,
+                    "extensions": {
+                        **activity.extensions,
+                        BRANCH_EXTENSION: {"group": group, "branch": JOINT_BRANCH},
+                    },
+                }
+            )
+        )
+    return offered
+
+
+# Fillers that need nothing the room holds: a phone call is made wherever she is.
+_FILL_ANYWHERE = frozenset({"phone_call"})
+
+
+def _can_happen_in(intent: str, room: str) -> bool:
+    if intent in _FILL_ANYWHERE:
+        return True
+    try:
+        return intent_spec(intent).default_location == room
+    except KeyError:
+        return False
+
+
 def _seed_filler_candidates(
     activities: list[Activity],
     available: tuple[str, ...],
@@ -701,6 +919,7 @@ def _seed_filler_candidates(
     day_date: date,
     actor_id: str,
     seed: int,
+    index_offset: int = 0,
 ) -> list[Activity]:
     """Chances to do something with a stretch of day the plan left empty.
 
@@ -723,16 +942,26 @@ def _seed_filler_candidates(
         return activities
     step = room / FILL_CANDIDATES_PER_DAY
     precondition = (Condition(fact="the_hours_are_unclaimed", operator=ConditionOperator.truthy),)
+    waits = _waiting_rooms(activities)
     added: list[Activity] = []
     for slot in range(FILL_CANDIDATES_PER_DAY):
-        index = len(activities) + len(added)
+        index = index_offset + len(activities) + len(added)
         rng = _rng(seed, "filler", day_date.isoformat(), index)
         offset = step * (slot + 0.5) + rng.uniform(-step / 3, step / 3)
+        moment = opens + timedelta(minutes=offset)
+        # A candidate that falls inside a wait is put in the room the wait is for, when it can
+        # happen there. Everything else is left where the catalog puts it: moved regardless, the
+        # Ferri month had fifteen television evenings in a kitchen with no television, the set
+        # switched on in the living room and watched from the kitchen's service point.
+        where = next((location for start, end, location in waits if start <= moment < end), None)
+        intent = available[rng.randrange(len(available))]
+        if where is not None and not _can_happen_in(intent, where):
+            where = None
         added.append(
             activity_from_intent(
-                available[rng.randrange(len(available))],
+                intent,
                 day_date,
-                opens + timedelta(minutes=offset),
+                moment,
                 actor_id,
                 index=index,
                 label=FILL_LABEL,
@@ -740,6 +969,7 @@ def _seed_filler_candidates(
                 duration_shape=FILL_SHAPE,
                 preconditions=precondition,
                 seed=seed,
+                location=where,
             )
         )
     return activities + added
@@ -929,39 +1159,41 @@ def _commitment_active_on(commitment: FixedCommitment, day: date) -> bool:
     return not (commitment.end_date is not None and day > commitment.end_date)
 
 
-def _commitment_spans(outline: HorizonOutline, day: date) -> list[tuple[int, int]]:
+def _commitment_spans(resident: OutlineResident, day: date) -> list[tuple[int, int]]:
     """The day's fixed commitments as (start, end) minutes after midnight."""
     return [
         (_to_minutes(commitment.start_time), _to_minutes(commitment.end_time))
-        for commitment in outline.fixed_commitments
+        for commitment in resident.fixed_commitments
         if _commitment_active_on(commitment, day)
     ]
 
 
-def _first_commitment_by_day(
-    outline: HorizonOutline, days: Sequence[CalendarDay]
-) -> dict[date, int]:
-    """When the earliest fixed commitment starts on each day, in minutes after midnight.
+def _commitment_spans_by_day(
+    resident: OutlineResident, days: Sequence[CalendarDay]
+) -> dict[date, list[tuple[int, int]]]:
+    """Every fixed commitment of each day, as (start, end) minutes after midnight.
 
     The drive model shapes the night from the resident's chronotype alone, which is right for a day
-    she owns and wrong for a day someone else has already claimed part of. Handing it the start of
-    the first commitment is what turns a free-running wake into an alarm.
+    she owns and wrong for a day someone else has already claimed part of. The first morning
+    commitment turns a free-running wake into an alarm; the whole spans are what let a night shift
+    be recognised as one, so that the sleep moves to the morning after it instead of being laid
+    over the hours the resident is at work.
     """
-    starts: dict[date, int] = {}
+    spans: dict[date, list[tuple[int, int]]] = {}
     for calendar_day in days:
         day = date.fromisoformat(calendar_day.date)
-        minutes = [
-            _to_minutes(commitment.start_time)
-            for commitment in outline.fixed_commitments
+        today = [
+            (_to_minutes(commitment.start_time), _to_minutes(commitment.end_time))
+            for commitment in resident.fixed_commitments
             if _commitment_active_on(commitment, day)
         ]
-        if minutes:
-            starts[day] = min(minutes)
-    return starts
+        if today:
+            spans[day] = sorted(today)
+    return spans
 
 
 def _commitment_activities(
-    outline: HorizonOutline, day: date, tz: ZoneInfo, index: int
+    resident: OutlineResident, day: date, tz: ZoneInfo, index: int
 ) -> list[Activity]:
     """Materialise the fixed commitments that fall on this day.
 
@@ -971,7 +1203,8 @@ def _commitment_activities(
     a shift that cannot move. Everything else on the day gives way to it instead.
     """
     activities: list[Activity] = []
-    for offset, commitment in enumerate(outline.fixed_commitments):
+    emitted: dict[str, tuple[FixedCommitment, Activity]] = {}
+    for offset, commitment in enumerate(resident.fixed_commitments):
         if not _commitment_active_on(commitment, day):
             continue
         assert commitment.intent is not None  # guaranteed by _check_intents
@@ -983,7 +1216,7 @@ def _commitment_activities(
             Activity(
                 activity_id=f"{day.isoformat()}_{index + offset:02d}_commitment_"
                 f"{commitment.commitment_id}",
-                actor_id=outline.resident_id,
+                actor_id=resident.resident_id,
                 intent=commitment.intent,
                 location_ids=[location],
                 start_window=window_around(start, timedelta(minutes=MINIMUM_FLEX_MINUTES)),
@@ -994,197 +1227,46 @@ def _commitment_activities(
                 labels=[f"commitment:{commitment.commitment_id}"],
             )
         )
-    return activities
+        emitted[commitment.commitment_id] = (commitment, activities[-1])
+    return _back_to_back(list(emitted.values()), activities)
 
 
-# A band's dominant activity has to hold a minute on at least this share of the applicable days
-# before that minute counts as part of the band's effective window. Half is the weakest claim
-# worth publishing — "on most days, this is what is happening here" — and it keeps a rare late
-# night from stretching the window.
-EFFECTIVE_DAY_SHARE = 0.5
+def _back_to_back(
+    emitted: list[tuple[FixedCommitment, Activity]], activities: list[Activity]
+) -> list[Activity]:
+    """A commitment that ends when another begins is followed by it, with nothing in between.
 
-
-def _band_minutes_in_order(spans: list[tuple[int, int]]) -> list[int]:
-    """The band's minutes in traversal order, so a band that wraps reads 21:30 -> 06:29."""
-    return [minute for start, end in spans for minute in range(start, end)]
-
-
-def _longest_run(minutes: list[int], occupied: set[int]) -> list[int]:
-    best: list[int] = []
-    current: list[int] = []
-    for minute in minutes:
-        if minute in occupied:
-            current.append(minute)
-            if len(current) > len(best):
-                best = current
-        else:
-            current = []
-    return best
-
-
-def _compose(measured: dict[tuple[str, str], float], total: float) -> list[HabitComposition]:
-    """One row per activity *and room*, largest first, ties broken by name so it is reproducible."""
-    return [
-        HabitComposition(
-            intent=intent,
-            location=location,
-            minutes=round(minutes, 1),
-            share=round(minutes / total, 4) if total else 0.0,
-        )
-        for (intent, location), minutes in sorted(
-            measured.items(), key=lambda item: (-item[1], item[0])
-        )
-    ]
-
-
-def _clock(minute: int) -> str:
-    return f"{minute // 60 % 24:02d}:{minute % 60:02d}"
-
-
-def _measure_habits(outline: HorizonOutline, days: list[DayPlan], seed: int) -> HabitGroundTruth:
-    """Measure what each declared habit band actually contains across the generated horizon.
-
-    For every applicable day and every band, each planned activity contributes the minutes its
-    interval overlaps the band. An activity that starts before the band or runs past its end
-    counts only for the part inside — the night band and a sleep block that crosses midnight are
-    the case that forces this. The remainder of the band, during which the plan has the resident
-    doing nothing the outline named, is reported as `unaccounted` rather than silently dropped:
-    the same "other" column the habit-segmentation paper prints beside its own results.
-
-    Three measurements beyond that, all of them things an evaluation would otherwise have to
-    reconstruct from the activity log:
-
-    - a band scoped to particular weekdays is measured over those days only, so its shares are not
-      diluted by the days it does not claim;
-    - a band that is *not* scoped is additionally measured over weekdays and weekend separately,
-      because that is where an undeclared split hides;
-    - the band's dominant activity is tracked minute by minute, so the window the author declared
-      can be compared against the stretch the behaviour actually occupies.
+    The author wrote the commute as ending at 07:00 and the shift as starting at 07:00. Each got the
+    tight window every commitment gets, and the compiler used the slack between them: three
+    mornings in a month it moved the shift to 07:12 and put breakfast at home in the gap, so the
+    resident travelled to the hospital, came back to eat and left again. A zero-lag dependency says
+    what the declaration already meant. Only between commitments of one day: the two halves of a
+    night shift sit either side of midnight, and the engine joins those.
     """
-    observations: list[HabitObservation] = []
-    for segment in outline.habits:
-        spans = segment.minute_spans()
-        band_minutes = sum(end - start for start, end in spans)
-        applicable = [day for day in days if segment.applies_on(day.date)]
-
-        # Keyed by (intent, room): the same activity in two rooms is two behaviours sharing a
-        # label, and a band that holds both has to be able to say so.
-        by_intent: dict[tuple[str, str], float] = {}
-        by_class: dict[str, dict[tuple[str, str], float]] = {"weekday": {}, "weekend": {}}
-        class_days = {"weekday": 0, "weekend": 0}
-        occupancy: dict[tuple[str, str], Counter[int]] = defaultdict(Counter)
-
-        for day in applicable:
-            day_class = "weekend" if day.date.weekday() >= 5 else "weekday"
-            class_days[day_class] += 1
-            for activity in day.activities:
-                if activity.start_window is None or activity.duration is None:
-                    continue
-                begin = activity.start_window.preferred
-                minutes = float(activity.duration.preferred_minutes)
-                # Minutes since the start of the activity's own day, so an interval running past
-                # midnight is measured against the following day's copy of the band as well.
-                offset = begin.hour * 60 + begin.minute
-                for shift in (0, -24 * 60):
-                    lo = offset + shift
-                    hi = lo + minutes
-                    for start, end in spans:
-                        first = max(lo, start)
-                        last = min(hi, end)
-                        overlap = last - first
-                        if overlap <= 0:
-                            continue
-                        key = (activity.intent, activity.location_ids[0])
-                        by_intent[key] = by_intent.get(key, 0.0) + overlap
-                        bucket = by_class[day_class]
-                        bucket[key] = bucket.get(key, 0.0) + overlap
-                        occupancy[key].update(range(int(first), int(last)))
-
-        total = float(band_minutes * len(applicable))
-        covered = sum(by_intent.values())
-        unaccounted = max(0.0, total - covered)
-
-        # Ties broken by name, so a band split evenly between two rooms names the same one twice.
-        dominant = max(sorted(by_intent), key=lambda key: by_intent[key]) if by_intent else None
-        effective: list[int] = []
-        if dominant is not None and applicable:
-            floor = EFFECTIVE_DAY_SHARE * len(applicable)
-            held = {minute for minute, count in occupancy[dominant].items() if count >= floor}
-            effective = _longest_run(_band_minutes_in_order(spans), held)
-
-        day_types = [
-            HabitDayTypeObservation(
-                day_type=day_class,  # type: ignore[arg-type]
-                day_count=class_days[day_class],
-                total_minutes=round(float(band_minutes * class_days[day_class]), 1),
-                composition=_compose(
-                    by_class[day_class], float(band_minutes * class_days[day_class])
-                ),
-                unaccounted_minutes=round(
-                    max(
-                        0.0,
-                        float(band_minutes * class_days[day_class])
-                        - sum(by_class[day_class].values()),
+    follows: dict[str, str] = {}
+    for first, first_activity in emitted:
+        for second, second_activity in emitted:
+            if first is not second and first.end_time == second.start_time:
+                follows[second_activity.activity_id] = first_activity.activity_id
+    if not follows:
+        return activities
+    return [
+        item.model_copy(
+            update={
+                "dependency_groups": [
+                    *item.dependency_groups,
+                    DependencyGroup(
+                        activity_ids=[follows[item.activity_id]],
+                        minimum_lag_minutes=0,
+                        maximum_lag_minutes=0,
                     ),
-                    1,
-                ),
-                unaccounted_share=round(
-                    max(
-                        0.0,
-                        1
-                        - sum(by_class[day_class].values())
-                        / (band_minutes * class_days[day_class]),
-                    ),
-                    4,
-                )
-                if class_days[day_class]
-                else 0.0,
-            )
-            for day_class in ("weekday", "weekend")
-            if class_days[day_class]
-        ]
-        # Restating `composition` under another name helps nobody: the split is published only
-        # when the band actually spans both kinds of day.
-        if len(day_types) < 2:
-            day_types = []
-
-        observations.append(
-            HabitObservation(
-                habit_id=segment.habit_id,
-                label=segment.label,
-                window_start=segment.window_start,
-                window_end=segment.window_end,
-                crosses_midnight=segment.crosses_midnight,
-                weekdays=list(segment.weekdays),
-                day_count=len(applicable),
-                total_minutes=round(total, 1),
-                composition=_compose(by_intent, total),
-                unaccounted_minutes=round(unaccounted, 1),
-                unaccounted_share=round(unaccounted / total, 4) if total else 0.0,
-                dominant_intent=dominant[0] if dominant else None,
-                dominant_location=dominant[1] if dominant else None,
-                effective_start=_clock(effective[0]) if effective else None,
-                effective_end=_clock(effective[-1] + 1) if effective else None,
-                effective_minutes=float(len(effective)),
-                effective_share=round(len(effective) / band_minutes, 4) if band_minutes else 0.0,
-                day_types=day_types,
-            )
+                ]
+            }
         )
-    return HabitGroundTruth(
-        outline_id=outline.outline_id,
-        resident_id=outline.resident_id,
-        time_zone=outline.time_zone,
-        start_date=outline.start_date,
-        end_date=outline.end_date,
-        seed=seed,
-        habits=observations,
-        provenance=Provenance(
-            author_type=AuthorType.rule_generator,
-            generator_name=GENERATOR_NAME,
-            generator_version=GENERATOR_VERSION,
-            parameters={"outlineId": outline.outline_id, "seed": seed},
-        ),
-    )
+        if item.activity_id in follows
+        else item
+        for item in activities
+    ]
 
 
 # A meal has to be cooked before it is eaten, and nothing said so. Preparing lunch and eating it
@@ -1246,7 +1328,10 @@ def _planning_world(outline: HorizonOutline) -> PlanningWorld:
     world: OutlineWorld = outline.world
     return PlanningWorld(
         world_id=f"{outline.outline_id}-world",
-        persona_id=outline.profile.persona_id,
+        # The persona identifier picks the rhythm archetype and names the world; with a
+        # household it is the first resident's, because the field holds one and a house does not
+        # have a persona. Every resident's own rhythm is built from her own `OutlineRhythm`.
+        persona_id=outline.residents[0].profile.persona_id,
         scenario_id=outline.outline_id,
         title=outline.title,
         time_zone=outline.time_zone,
@@ -1255,14 +1340,19 @@ def _planning_world(outline: HorizonOutline) -> PlanningWorld:
         activity_catalog=VersionedReference(
             reference_id="activity_catalog", version=ACTIVITY_CATALOG_VERSION
         ),
-        residents=[Resident(resident_id=outline.resident_id)],
+        residents=[
+            Resident(resident_id=item.resident_id, display_name=item.display_name or None)
+            for item in outline.residents
+        ],
         external_people=world.external_people,
         locations=world.locations,
         resources=world.resources,
         resident_placements=[
             ResidentInitialState(
-                resident_id=outline.resident_id,
-                location_id=world.start_location_id,
+                resident_id=item.resident_id,
+                # Housemates have two bedrooms and are asleep in different ones; a couple sharing
+                # a room leaves the field alone and both start where the household starts.
+                location_id=outline.start_location_of(item),
                 # A horizon opens at midnight of its first day, and the night that would have put
                 # her to bed belongs to the evening before, which is outside it. Without saying so,
                 # `awake` defaults true and the engine stands her up: the run began with six hours
@@ -1271,11 +1361,38 @@ def _planning_world(outline: HorizonOutline) -> PlanningWorld:
                 # this path never did.
                 facts={"awake": False, **world.resident_facts},
             )
+            for item in outline.residents
         ],
         resource_facts=world.resource_facts,
         environment_facts=world.environment_facts,
         provenance=outline.provenance,
     )
+
+
+def _declared_activities(outline: HorizonOutline) -> list[RecurringActivity]:
+    """Every recurring activity in the document, private and shared alike.
+
+    The checks below are about the *horizon*, not about any one person, so they read the household
+    flat. A joint dinner whose intent the package does not implement is exactly as fatal as a
+    private one, and reporting it once rather than once per participant is what keeps the repair a
+    single regeneration.
+    """
+    return [
+        *(
+            activity
+            for resident in outline.residents
+            for activity in resident.profile.recurring_activities
+        ),
+        *(item.activity for item in outline.household.joint_activities),
+    ]
+
+
+def _declared_events(outline: HorizonOutline) -> list[OutlineEvent]:
+    return [event for resident in outline.residents for event in resident.events]
+
+
+def _declared_commitments(outline: HorizonOutline) -> list[FixedCommitment]:
+    return [item for resident in outline.residents for item in resident.fixed_commitments]
 
 
 def _check_intents(outline: HorizonOutline) -> None:
@@ -1290,7 +1407,8 @@ def _check_intents(outline: HorizonOutline) -> None:
     """
     unknown: list[str] = []
     unresolved: list[str] = []
-    for activity in outline.profile.recurring_activities:
+    declared_activities = _declared_activities(outline)
+    for activity in declared_activities:
         if activity.intent is None:
             inferred = label_to_intent(activity.label, activity.kind.value)
             if inferred == DEFAULT_INTENT:
@@ -1300,10 +1418,10 @@ def _check_intents(outline: HorizonOutline) -> None:
             continue
         if _intent_location(activity.intent) is None:
             unknown.append(f"activity {activity.recurring_activity_id!r} -> {activity.intent!r}")
-    for event in outline.events:
+    for event in _declared_events(outline):
         if event.intent is not None and _intent_location(event.intent) is None:
             unknown.append(f"event {event.event_id!r} -> {event.intent!r}")
-    for commitment in outline.fixed_commitments:
+    for commitment in _declared_commitments(outline):
         if commitment.intent is None:
             unresolved.append(f"commitment {commitment.commitment_id!r}")
         elif _intent_location(commitment.intent) is None:
@@ -1312,6 +1430,19 @@ def _check_intents(outline: HorizonOutline) -> None:
     # everything it has to change rather than one item per attempt.
     problems: list[str] = []
     if unknown:
+        # A proposed intent is refused like any other until a researcher adds it, but the refusal
+        # says where the fix is: in the vocabulary, not in the outline.
+        proposed = [
+            item.intent_id
+            for item in outline.vocabulary_proposals.activities
+            if _intent_location(item.intent_id) is None
+        ]
+        if proposed:
+            unknown.append(
+                "proposed and not yet in the vocabulary: "
+                + ", ".join(repr(item) for item in proposed)
+                + " (add them from the import preview, then import again)"
+            )
         problems.append(
             "declare an intent the activity catalog does not define: " + "; ".join(unknown)
         )
@@ -1322,7 +1453,7 @@ def _check_intents(outline: HorizonOutline) -> None:
         )
     owned = [
         f"activity {activity.recurring_activity_id!r} -> {activity.intent!r}"
-        for activity in outline.profile.recurring_activities
+        for activity in declared_activities
         if activity.intent in RHYTHM_OWNED_INTENTS
     ]
     if owned:
@@ -1335,7 +1466,7 @@ def _check_intents(outline: HorizonOutline) -> None:
 
 
 def _check_package_covers(outline: HorizonOutline, package: PersonalProcessPackage) -> None:
-    """Refuse a package that does not implement every intent the horizon will contain.
+    """Refuse a package that does not implement, for each resident, every intent her days contain.
 
     The days carry more intents than the outline declares: the rhythm always adds a wake and a
     night, and adds a debt nap, a nocturnal bathroom trip or an unplanned reach-out when the drive
@@ -1343,32 +1474,45 @@ def _check_package_covers(outline: HorizonOutline, package: PersonalProcessPacka
     those days referencing behaviour nobody authored — which ingestion reports as one
     `MISSING_PROCESS_BINDING` per activity. On the first real eight-month case that was 628
     errors for five missing models, so the check belongs here, before the days exist.
+
+    Per resident, because a binding is. A package that implements dinner for one of two people has
+    implemented it for one person, and read as a set of intents it looked complete. The shared
+    activities count for every participant rather than only for whoever hosts them: the host is the
+    first participant still in on the day, which changes with the calendar, and an activity allowed
+    to degrade is performed by each of them separately.
     """
-    implemented = {binding.intent for binding in package.bindings}
-    declared = {
-        activity.intent
-        for activity in outline.profile.recurring_activities
-        if activity.intent is not None
-    }
-    declared |= {event.intent for event in outline.events if event.intent is not None}
-    declared |= {
-        commitment.intent
-        for commitment in outline.fixed_commitments
-        if commitment.intent is not None
-    }
-    missing_declared = sorted(declared - implemented)
-    missing_rhythm = sorted(RHYTHM_EMITTED_INTENTS - implemented)
+    bound: dict[str, set[str]] = defaultdict(set)
+    for binding in package.bindings:
+        bound[binding.resident_id].add(binding.intent)
     problems: list[str] = []
-    if missing_declared:
-        problems.append(
-            "the outline declares intents the process package does not implement: "
-            + ", ".join(missing_declared)
-        )
-    if missing_rhythm:
-        problems.append(
-            "the rhythm emits these intents on its own and the process package must implement "
-            "them too: " + ", ".join(missing_rhythm)
-        )
+    for resident in outline.residents:
+        who = resident.resident_id
+        declared = {
+            activity.intent
+            for activity in [
+                *resident.profile.recurring_activities,
+                *(item.activity for item in outline.joint_activities_for(who)),
+            ]
+            if activity.intent is not None
+        }
+        declared |= {event.intent for event in resident.events if event.intent is not None}
+        declared |= {
+            commitment.intent
+            for commitment in resident.fixed_commitments
+            if commitment.intent is not None
+        }
+        missing_declared = sorted(declared - bound[who])
+        missing_rhythm = sorted(RHYTHM_EMITTED_INTENTS - bound[who])
+        if missing_declared:
+            problems.append(
+                f"the outline declares intents the process package does not implement for "
+                f"{who!r}: " + ", ".join(missing_declared)
+            )
+        if missing_rhythm:
+            problems.append(
+                f"the rhythm emits these intents on its own and the process package must implement "
+                f"them for {who!r} too: " + ", ".join(missing_rhythm)
+            )
     if problems:
         raise ExpansionError(" | ".join(problems))
 
@@ -1415,21 +1559,25 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
         item.location_id for item in outline.world.locations if item.kind is LocationKind.external
     }
     by_room: dict[str, set[str]] = {}
+    # A type the vocabulary does not know offers every capability, as it does for the binder
+    # (`_offers`), the materializer and the preflight. Read here as offering none, it refused the
+    # one way an outline can furnish what the vocabulary lacks: a yoga mat, in a vocabulary where
+    # no piece of furniture declares `exercise_support`, was rejected by this check and would
+    # have been bound to by every stage after it.
+    permissive: set[str] = set()
     for resource in outline.world.resources:
-        by_room.setdefault(resource.location_id, set()).update(
-            capabilities_for_entity_type(resource.resource_type) or ()
-        )
+        known = capabilities_for_entity_type(resource.resource_type)
+        if known is None:
+            permissive.add(resource.location_id)
+        else:
+            by_room.setdefault(resource.location_id, set()).update(known)
     models = {item.process_model_id: item for item in package.process_models}
     by_intent = {item.intent: models.get(item.process_model_id) for item in package.bindings}
-    actions = ActionCatalog.model_validate_json(
-        default_action_catalog_path(package.catalogs.action_catalog.version).read_text(
-            encoding="utf-8"
-        )
-    )
+    actions = load_action_catalog(package.catalogs.action_catalog.version)
     definitions = {item.action_type: item for item in actions.actions}
 
     problems: list[str] = []
-    for activity in outline.profile.recurring_activities:
+    for activity in _declared_activities(outline):
         room = activity.location
         if room is None:
             continue
@@ -1440,6 +1588,8 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
                 f"recurring activity {activity.recurring_activity_id!r} happens in {room!r}, "
                 "which the outline world does not declare as a room"
             )
+            continue
+        if room in permissive:
             continue
         intent = activity.intent or label_to_intent(activity.label, activity.kind.value)
         model = by_intent.get(intent)
@@ -1465,6 +1615,910 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
         raise ExpansionError(" | ".join(problems))
 
 
+# The fixtures that make a room a bathroom. A room holding exactly one of them is private by
+# default: two people cannot use one toilet or one shower at once, and the norm that keeps the
+# second one outside while the first is in there is the ordinary one rather than the exception.
+# Washbasins are absent on purpose — a basin is the fixture people *do* share a bathroom over.
+_SANITARY_RESOURCE_TYPES = frozenset({"toilet", "shower", "bathtub"})
+
+
+@dataclass(frozen=True)
+class _PrivacyRule:
+    """One resolved statement: while `subject` does `intents` in `location`, `excluded` stay out."""
+
+    subject_id: str
+    location_id: str
+    excluded: frozenset[str]
+    # Empty means the room is private whatever the subject is doing in it.
+    intents: frozenset[str]
+
+    def covers(self, resident_id: str, location_ids: Sequence[str], intent: str) -> bool:
+        if resident_id != self.subject_id or self.location_id not in location_ids:
+            return False
+        return not self.intents or intent in self.intents
+
+
+def _default_private_locations(outline: HorizonOutline) -> list[str]:
+    """The rooms nobody had to declare, because getting this default wrong is not symmetric.
+
+    Declared nothing, two residents are independent and a room with a single sanitary fixture is
+    private. The two mistakes do not cost the same: a wrong permissive default is two people in one
+    shower cabin — physically impossible, and silently false everywhere downstream of the plan —
+    while a wrong restrictive default is a slightly formal cohabitation that a reader can see in
+    the trace and correct in one line. Permissive settings are chosen, never inherited.
+
+    A room the household explicitly shares is left alone, which is the one line.
+    """
+    fixtures: dict[str, int] = defaultdict(int)
+    for resource in outline.world.resources:
+        if resource.resource_type in _SANITARY_RESOURCE_TYPES:
+            fixtures[resource.location_id] += 1
+    shared = set(outline.household.shared_location_ids)
+    return sorted(
+        location_id
+        for location_id, count in fixtures.items()
+        if count == 1 and location_id not in shared
+    )
+
+
+def _privacy_rules(outline: HorizonOutline) -> list[_PrivacyRule]:
+    """Every declared and defaulted privacy statement, resolved onto ordered pairs.
+
+    Three sources, all of them ending in the same shape so the marking pass reads one list:
+
+    - `location_privacy`, the directional form, plus its mirror where the author took the symmetric
+      shorthand. Between two adults the norm is almost always reciprocal and is written once;
+      between a parent and a small child it is not, and a symmetric-only contract could not say so;
+    - a `sharing_policy` of `exclusive`, which is the same statement keyed by intent instead of by
+      room: whichever room that intent happens in, the other member of the pair is not in it;
+    - the sanitary default above.
+    """
+    roster = set(outline.resident_ids)
+    rules: list[_PrivacyRule] = []
+
+    def add(subject: str, location: str, excluded: set[str], intents: set[str]) -> None:
+        narrowed = (excluded or roster) - {subject}
+        if narrowed:
+            rules.append(
+                _PrivacyRule(
+                    subject_id=subject,
+                    location_id=location,
+                    excluded=frozenset(narrowed),
+                    intents=frozenset(intents),
+                )
+            )
+
+    for declared in outline.household.location_privacy:
+        excluded = set(declared.excluded_resident_ids)
+        add(declared.subject_id, declared.location_id, excluded, set(declared.intents))
+        if declared.symmetric:
+            for other in excluded or (roster - {declared.subject_id}):
+                add(other, declared.location_id, {declared.subject_id}, set(declared.intents))
+
+    for policy in outline.household.sharing_policies:
+        if policy.sharing is not SharingMode.exclusive:
+            continue
+        first, second = policy.between
+        for subject, other in ((first, second), (second, first)):
+            location = _intent_location(policy.intent)
+            if location is not None:
+                add(subject, location, {other}, {policy.intent})
+
+    for location_id in _default_private_locations(outline):
+        for subject in sorted(roster):
+            add(subject, location_id, set(), set())
+    return rules
+
+
+def _mark_privacy(activities: list[Activity], rules: Sequence[_PrivacyRule]) -> list[Activity]:
+    """Write on each activity who may not be in its room while it runs.
+
+    The compiler never sees the outline, so the declaration has to travel with the day. It rides in
+    `Activity.extensions` rather than in a new field because the scenario contract is frozen at
+    1.0.0 and this is exactly what the escape hatch is for; the solver turns it into a pairwise
+    non-overlap and a scenario that never heard of a household carries nothing and compiles as it
+    always did.
+    """
+    if not rules:
+        return activities
+    marked: list[Activity] = []
+    for activity in activities:
+        excluded: set[str] = set()
+        for rule in rules:
+            if rule.covers(activity.actor_id, activity.location_ids, activity.intent):
+                excluded |= rule.excluded
+        # Whoever is taking part is, by definition, welcome: a shared shower is one use with two
+        # participants, and the rule that empties the room is about the people who are not in it.
+        excluded -= {*activity.participant_ids, activity.actor_id}
+        if not excluded:
+            marked.append(activity)
+            continue
+        marked.append(
+            activity.model_copy(
+                update={
+                    "extensions": {
+                        **activity.extensions,
+                        PRIVACY_EXTENSION: sorted(excluded),
+                    }
+                }
+            )
+        )
+    return marked
+
+
+# What a body holds for as long as it is using it. A switch has one state, so a second `activate`
+# of a tap that is already running fails its precondition and stops the run; a sanitary fixture
+# holds one person. Everything else in a room — a chair, a shelf, the refrigerator door that is
+# open for three seconds — is shared by being used in turn inside the same hour, and serialising
+# whole activities over it would invent a queue no household has.
+_HELD_CAPABILITIES = frozenset({"switchable", "personal_care_support"})
+
+
+class _DeviceUses:
+    """Which of the world's objects an activity holds, so the plan says so before anyone runs it.
+
+    This is the serialisation half of ADR-026's two orthogonal declarations (the design document,
+    §6.2). Privacy says who may be in the room; this says how many uses an object bears at once,
+    and the answer was always `Resource.capacity`: a shower taken by two is one use with two
+    participants, two independent showers at the same instant are two uses of one jet. The compiler
+    has turned `required_resources` into `add_cumulative` since M3, and the engine queues a second
+    request behind the first; neither ever fired, because nothing wrote a requirement. Two morning
+    washes at one basin were placed on top of each other and the second tap failed at run time.
+
+    The object is the one the environment binder will choose, found the way it finds it: the role
+    the action names, else a word the action says, else the object the process just walked to,
+    else the first provider — the activity's own rooms before any other, then by id. The binder
+    needs a built home and runs after compilation, so it cannot be asked; the household test checks
+    the two answers agree on a real run.
+    """
+
+    def __init__(self, outline: HorizonOutline, package: PersonalProcessPackage) -> None:
+        catalog = load_action_catalog(package.catalogs.action_catalog.version)
+        self._definitions = {item.action_type: item for item in catalog.actions}
+        models = {item.process_model_id: item for item in package.process_models}
+        self._models: dict[tuple[str, str], list[ProcessModel]] = defaultdict(list)
+        for binding in package.bindings:
+            model = models.get(binding.process_model_id)
+            if model is not None:
+                self._models[(binding.resident_id, binding.intent)].append(model)
+        self._resources = list(outline.world.resources)
+        self._members = {
+            item.location_id: list(item.member_location_ids) for item in outline.world.locations
+        }
+        self._cache: dict[tuple[str, str, tuple[str, ...]], list[str]] = {}
+
+    def of(self, activity: Activity) -> list[str]:
+        key = (activity.actor_id, activity.intent, tuple(activity.location_ids))
+        if key not in self._cache:
+            rooms = self._rooms(activity.location_ids)
+            held: set[str] = set()
+            for model in self._models.get((activity.actor_id, activity.intent), []):
+                held |= self._held_by(model, activity, rooms)
+            self._cache[key] = sorted(held)
+        return self._cache[key]
+
+    def _rooms(self, location_ids: Sequence[str]) -> set[str]:
+        rooms: set[str] = set()
+        pending = list(location_ids)
+        while pending:
+            location_id = pending.pop()
+            members = self._members.get(location_id, [])
+            if members:
+                pending.extend(item for item in members if item not in rooms)
+            else:
+                rooms.add(location_id)
+        return rooms
+
+    def _held_by(self, model: ProcessModel, activity: Activity, rooms: set[str]) -> set[str]:
+        arguments: dict[str, dict[str, object]] = {}
+        for node in model.nodes:
+            if node.kind is not ProcessNodeKind.action:
+                continue
+            resolved: dict[str, object] = {}
+            for name, expression in node.arguments.items():
+                if expression.source is ValueSource.literal:
+                    resolved[name] = expression.value
+                elif expression.source is ValueSource.activity_intent:
+                    resolved[name] = activity.intent
+                elif expression.source is ValueSource.activity_location and expression.index < len(
+                    activity.location_ids
+                ):
+                    resolved[name] = activity.location_ids[expression.index]
+            arguments[node.node_id] = resolved
+        standing = _standing_roles(model, arguments, self._definitions)
+
+        held: set[str] = set()
+        for node in model.nodes:
+            definition = self._definitions.get(node.action_type or "")
+            if node.kind is not ProcessNodeKind.action or definition is None:
+                continue
+            for requirement in definition.required_capabilities:
+                if requirement.capability not in _HELD_CAPABILITIES:
+                    continue
+                found = self._provider(
+                    requirement.capability,
+                    arguments[node.node_id].get(requirement.parameter_name or ""),
+                    arguments[node.node_id],
+                    standing.get(node.node_id),
+                    rooms,
+                )
+                if found is not None:
+                    held.add(found)
+        return held
+
+    def _provider(
+        self,
+        capability: str,
+        role: object,
+        arguments: Mapping[str, object],
+        standing: str | None,
+        rooms: set[str],
+    ) -> str | None:
+        if role is not None:
+            found = self._candidates(capability, str(role), rooms)
+            # A role that names a capability rather than a role, as the binder allows.
+            return found[0] if found else self._first_offering(str(role), rooms)
+        for hint in sorted(str(value) for value in arguments.values() if isinstance(value, str)):
+            found = self._candidates(capability, hint, rooms)
+            if found:
+                return found[0]
+        if standing is not None:
+            found = self._candidates(capability, standing, rooms)
+            if found:
+                return found[0]
+        found = self._candidates(capability, None, rooms)
+        return found[0] if found else None
+
+    def _candidates(self, capability: str, role: str | None, rooms: set[str]) -> list[str]:
+        # An object of a type the vocabulary does not know offers every capability, and the binder
+        # takes it only after the room's own backstop — so it is held only where the process names
+        # it. Guessed by capability, the Ferri outline's outdoor `exercise_surface` was held by all
+        # 133 of the month's meal preparations, in a kitchen it is not in.
+        matching = [
+            item
+            for item in self._resources
+            if _offers(item.resource_type, capability)
+            and (
+                role is None
+                or role
+                in {
+                    item.resource_id,
+                    item.resource_type,
+                    *RESOURCE_ROLE_ALIASES.get(item.resource_type, ()),
+                }
+            )
+            and not (
+                capabilities_for_entity_type(item.resource_type) is None
+                and role not in {item.resource_id, item.resource_type}
+            )
+        ]
+        return [
+            item.resource_id
+            for item in sorted(
+                matching, key=lambda item: (item.location_id not in rooms, item.resource_id)
+            )
+        ]
+
+    def _first_offering(self, capability: str, rooms: set[str]) -> str | None:
+        matching = sorted(
+            (
+                item
+                for item in self._resources
+                if _offers(item.resource_type, capability)
+                and capabilities_for_entity_type(item.resource_type) is not None
+            ),
+            key=lambda item: (
+                item.location_id not in rooms,
+                item.resource_type not in _BODY_SUPPORTING_TYPES,
+                item.resource_id,
+            ),
+        )
+        return matching[0].resource_id if matching else None
+
+
+def _offers(resource_type: str, capability: str) -> bool:
+    allowed = capabilities_for_entity_type(resource_type)
+    return allowed is None or capability in allowed
+
+
+def _mark_device_uses(activities: list[Activity], uses: _DeviceUses) -> list[Activity]:
+    """Write on each activity the objects it holds, one use each, for the compiler and the engine.
+
+    One use per activity whoever takes part: the shared shower is the host's process holding the
+    jet, and the participant who joins her holds nothing of her own. The candidates the engine may
+    turn down are marked too, but the compiler leaves them out and the engine arbitrates them live.
+    """
+    marked: list[Activity] = []
+    for activity in activities:
+        held = [
+            item
+            for item in uses.of(activity)
+            if item not in {requirement.resource_id for requirement in activity.required_resources}
+        ]
+        if not held:
+            marked.append(activity)
+            continue
+        marked.append(
+            activity.model_copy(
+                update={
+                    "required_resources": [
+                        *activity.required_resources,
+                        *(ResourceRequirement(resource_id=item) for item in held),
+                    ]
+                }
+            )
+        )
+    return marked
+
+
+@dataclass(frozen=True)
+class _ResidentHorizon:
+    """Everything about one resident that is settled for the whole horizon, computed once.
+
+    The per-day loop reads this and decides nothing structural: which days hold which occurrences,
+    which events landed where, and which hours are already spoken for are all horizon-level facts,
+    and recomputing them inside the loop is how two residents would start disagreeing about the
+    same calendar.
+    """
+
+    resident: OutlineResident
+    profile: BehavioralProfile
+    calendar: CadenceCalendar
+    days_by_date: dict[str, CalendarDay]
+    placed_events: dict[str, list[_PlacedEvent]]
+    recurring: dict[str, RecurringActivity]
+    activity_locations: dict[str, str]
+    # Commitments and placed events, as minutes after midnight. Known before any plan exists,
+    # which is what lets co-presence be decided before the days are built.
+    busy_by_date: dict[str, list[tuple[int, int]]]
+    skipped: int
+    rescheduled: int
+    dropped: int
+
+
+def _resident_horizon(
+    outline: HorizonOutline, resident: OutlineResident, seed: int
+) -> _ResidentHorizon:
+    profile = _resident_profile(outline, resident)
+    calendar = _effective_calendar(outline, resident, seed)
+    placed = _place_events(resident, seed)
+    calendar, skipped, moved, dropped = _apply_displacement(
+        calendar, placed, _daily_capacity(profile, resident.phases)
+    )
+    return _ResidentHorizon(
+        resident=resident,
+        profile=profile,
+        calendar=calendar,
+        days_by_date={day.date: day for day in calendar.days},
+        placed_events=placed,
+        recurring=_activities_by_id(profile),
+        # The rooms the outline overrode, by activity. Read once: a habit's room is a property of
+        # the horizon, not of the day, so it cannot change between one calendar day and the next.
+        activity_locations={
+            item.recurring_activity_id: item.location
+            for item in profile.recurring_activities
+            if item.location is not None
+        },
+        busy_by_date={
+            day.date: [
+                *_commitment_spans(resident, date.fromisoformat(day.date)),
+                *_event_spans(placed.get(day.date, []), seed),
+            ]
+            for day in calendar.days
+        },
+        skipped=skipped,
+        rescheduled=moved,
+        dropped=dropped,
+    )
+
+
+@dataclass(frozen=True)
+class _SharedOccurrence:
+    """One day's verdict on one shared activity: who is in, and whether it is one sitting."""
+
+    joint: JointActivity
+    participants: tuple[str, ...]
+    shared: bool
+
+    @property
+    def recurring_activity_id(self) -> str:
+        return self.joint.activity.recurring_activity_id
+
+    @property
+    def host_id(self) -> str:
+        """The participant the single interval is emitted under.
+
+        Somebody has to be the activity's `actor_id`, because the contract has one; the others ride
+        on `participant_ids`, and the compiler occupies all of them alike through
+        `occupied_residents()`. The first participant in household order is chosen so that the host
+        is always built before the residents who have to be told those hours are taken.
+        """
+        return self.participants[0]
+
+
+def _free_spans(window: tuple[int, int], busy: Sequence[tuple[int, int]]) -> list[tuple[int, int]]:
+    """What is left of a band once the hours somebody else already owns are cut out of it."""
+    spans = [window]
+    for start, end in busy:
+        remaining: list[tuple[int, int]] = []
+        for low, high in spans:
+            if end <= low or start >= high:
+                remaining.append((low, high))
+                continue
+            if low < start:
+                remaining.append((low, start))
+            if high > end:
+                remaining.append((end, high))
+        spans = remaining
+    return spans
+
+
+def _overlap(first: list[tuple[int, int]], second: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    return [
+        (low, high)
+        for a_low, a_high in first
+        for b_low, b_high in second
+        if (low := max(a_low, b_low)) < (high := min(a_high, b_high))
+    ]
+
+
+def _plan_sharing(
+    outline: HorizonOutline, horizons: Sequence[_ResidentHorizon], seed: int
+) -> dict[str, list[_SharedOccurrence]]:
+    """Decide, per day, which of the household's shared activities actually happen together.
+
+    This is the principle of ADR-018 extended to cohabitation: the author declares *the propensity
+    to share*, and a deterministic pass decides *which concrete occurrences are shared*. Nobody
+    writes "on Tuesday the 14th they have dinner together" — who is even in the house that Tuesday
+    is known only after the commitments are placed and the events have landed.
+
+    Three gates, and their order is the substance:
+
+    1. **Who is still in.** A participant whose phase suspended the activity, or whose event
+       displaced today's occurrence, is not at the table. With fewer than two left there is nothing
+       to share, and whoever remains does it alone — which is what her own calendar already says.
+    2. **Co-presence.** The participants' free stretches inside the declared band are intersected,
+       and the longest one has to be worth sitting down for. A propensity can never conjure a
+       shared dinner on a day whose bands do not meet, whatever number the author wrote; and
+       `minimum_shared_minutes` is what stops a twelve-minute breakfast squeezed against somebody's
+       departure from being published as a shared breakfast.
+    3. **The draw.** Only for `optional_joint`, and only once the first two hold. One draw per
+       (activity, day) from the horizon seed — the expander's existing pattern, deterministic
+       without an evaluation order or a tie-break to get wrong, which a predicate language would
+       have needed and where a bug would have been silent.
+
+    A `joint` activity skips the third gate: given feasibility it happens, and the wait in front of
+    it belongs to whoever got home first.
+    """
+    by_resident = {item.resident.resident_id: item for item in horizons}
+    verdicts: dict[str, list[_SharedOccurrence]] = defaultdict(list)
+    for joint in outline.household.joint_activities:
+        activity_id = joint.activity.recurring_activity_id
+        for calendar_day in horizons[0].calendar.days:
+            iso = calendar_day.date
+            present: list[tuple[str, ActivityOccurrence]] = []
+            for who in joint.participant_ids:
+                day = by_resident[who].days_by_date.get(iso)
+                occurrence = next(
+                    (
+                        item
+                        for item in (day.occurrences if day is not None else ())
+                        if item.recurring_activity_id == activity_id
+                    ),
+                    None,
+                )
+                if occurrence is not None:
+                    present.append((who, occurrence))
+            if not present:
+                continue
+            participants = tuple(who for who, _ in present)
+            if len(present) < 2:
+                verdicts[iso].append(
+                    _SharedOccurrence(joint=joint, participants=participants, shared=False)
+                )
+                continue
+            common: list[tuple[int, int]] | None = None
+            for who, occurrence in present:
+                band = (_to_minutes(occurrence.window_start), _to_minutes(occurrence.window_end))
+                free = _free_spans(band, by_resident[who].busy_by_date.get(iso, []))
+                common = free if common is None else _overlap(common, free)
+            widest = max((high - low for low, high in (common or [])), default=0)
+            shared = widest >= max(joint.minimum_shared_minutes, 1)
+            if shared and joint.sharing is SharingMode.optional_joint:
+                assert joint.propensity is not None  # guaranteed by the contract
+                draw = _rng(seed, "sharing", activity_id, iso).random()
+                shared = draw < joint.propensity.on(date.fromisoformat(iso))
+            verdicts[iso].append(
+                _SharedOccurrence(joint=joint, participants=participants, shared=shared)
+            )
+    return dict(verdicts)
+
+
+def _company_at_home(
+    resident_id: str,
+    days: Sequence[CalendarDay],
+    sharing: dict[str, list[_SharedOccurrence]],
+    social: dict[date, int],
+) -> dict[date, int]:
+    """A shared occurrence is company, whatever its intent happens to be called.
+
+    `_scheduled_drive_load` counts social contact by intent category, which is right for a visit
+    and wrong for a housemate: having dinner with the person you live with *is* company, and the
+    intent of it is `eat_dinner`. Left uncounted, the need for company climbs in a resident who is
+    never alone, hits its ceiling, stops varying, and sends her out every evening of the horizon to
+    fix a loneliness the house had already fixed.
+
+    Only occurrences that were actually shared count, and only the ones the category did not
+    already count, so a declared visit is not paid for twice.
+    """
+    counted = dict(social)
+    for day in days:
+        extra = 0
+        for occasion in sharing.get(day.date, ()):
+            if not occasion.shared or resident_id not in occasion.participants:
+                continue
+            activity = occasion.joint.activity
+            intent = activity.intent or label_to_intent(activity.label, activity.kind.value)
+            if intent_spec(intent).category is not IntentCategory.social:
+                extra += 1
+        if extra:
+            key = date.fromisoformat(day.date)
+            counted[key] = counted.get(key, 0) + extra
+    return counted
+
+
+def _resident_rhythms(
+    horizon: _ResidentHorizon, sharing: dict[str, list[_SharedOccurrence]], seed: int
+) -> dict[str, DayRhythm]:
+    """One chain of nights per resident. Sleep debt is personal and does not pool."""
+    resident = horizon.resident
+    rhythm_profile = replace(
+        RhythmProfile.from_persona(
+            horizon.profile.persona_id, resident.rhythm.age, resident.rhythm.health
+        ),
+        chronotype_bedtime_minutes=_to_minutes(resident.rhythm.chronotype_bedtime),
+    )
+    # Shared occurrences sit in every participant's calendar, so a joint dinner already scales the
+    # hunger of everyone who eats it; without that the non-hosting resident would accumulate an
+    # appetite nothing ever spends.
+    meals, social = _scheduled_drive_load(horizon.calendar.days)
+    return plan_rhythms(
+        rhythm_profile,
+        [date.fromisoformat(day.date) for day in horizon.calendar.days],
+        seed=seed,
+        meals_by_day=meals,
+        social_by_day=_company_at_home(
+            resident.resident_id, horizon.calendar.days, sharing, social
+        ),
+        commitment_spans_by_day=_commitment_spans_by_day(resident, horizon.calendar.days),
+    )
+
+
+def _span_of(activity: Activity) -> tuple[int, int] | None:
+    """The activity's preferred hours as minutes after midnight, or nothing if it has none."""
+    if activity.start_window is None or activity.duration is None:
+        return None
+    start = activity.start_window.preferred
+    low = start.hour * 60 + start.minute
+    return low, low + activity.duration.preferred_minutes
+
+
+def _resident_day(
+    outline: HorizonOutline,
+    horizon: _ResidentHorizon,
+    rhythms: dict[str, DayRhythm],
+    calendar_day: CalendarDay,
+    *,
+    tz: ZoneInfo,
+    fillable: tuple[str, ...],
+    seed: int,
+    index_offset: int,
+    busy_minutes: Sequence[tuple[int, int]],
+    hosted: Mapping[str, tuple[str, ...]],
+    degradable: Mapping[str, tuple[str, ...]],
+) -> DayPlan:
+    """One resident's own day, built exactly as a single-resident horizon builds it.
+
+    The household is visible here in three places and nowhere else: `busy_minutes`, the hours a
+    shared activity has already claimed on behalf of a participant who is not hosting it; the
+    occurrences the caller removed from `calendar_day` because the household emits them once; and
+    `hosted`, the shared occurrences this resident *is* hosting, which are named with their
+    participants before the fillers are seeded so that the wait in front of one lands in the room
+    it is a wait for.
+    """
+    resident = horizon.resident
+    day_date = date.fromisoformat(calendar_day.date)
+    day_events = horizon.placed_events.get(calendar_day.date, [])
+    plan = build_day_plan(
+        calendar_day,
+        timezone=outline.time_zone,
+        actor_id=resident.resident_id,
+        rhythm=rhythms.get(calendar_day.date),
+        previous_rhythm=rhythms.get((day_date - timedelta(days=1)).isoformat()),
+        seed=seed,
+        busy_minutes=busy_minutes,
+        activity_locations=horizon.activity_locations,
+        index_offset=index_offset,
+    )
+    effective = _effective_activities(resident.phases, horizon.recurring, day_date)
+    bands = _sub_bands(plan.activities, effective)
+    activities = [
+        _wobble(
+            activity,
+            effective.get(_recurring_activity_id_of(activity) or ""),
+            tz,
+            seed,
+            bands.get(activity.activity_id),
+            _lights_out(plan),
+            _wake(plan),
+        )
+        for activity in plan.activities
+    ]
+    # One interval, every participant named on it. `occupied_residents()` reads `participant_ids`
+    # and occupies all of them, so the household's dinner keeps everybody who eats it out of
+    # anything else for its duration — and the solver pushes it past whichever of them is still on
+    # the way home, which is where the wait in front of it comes from.
+    activities = [
+        activity.model_copy(
+            update={
+                "participant_ids": _other_participants(
+                    hosted[_recurring_activity_id_of(activity) or ""], activity.actor_id
+                )
+            }
+        )
+        if (_recurring_activity_id_of(activity) or "") in hosted
+        else activity
+        for activity in activities
+    ]
+    activities = _offer_both_arms(activities, degradable, day_date)
+    for index, item in enumerate(day_events):
+        activities.append(
+            _event_activity(
+                item, index_offset + len(activities) + index, tz, resident.resident_id, seed
+            )
+        )
+    activities.extend(
+        _commitment_activities(resident, day_date, tz, index_offset + len(activities))
+    )
+    activities = _seed_filler_candidates(
+        activities,
+        fillable,
+        _wake(plan),
+        _lights_out(plan),
+        day_date,
+        resident.resident_id,
+        seed,
+        index_offset=index_offset,
+    )
+    activities = _resolve_overlaps(activities, _lights_out(plan))
+    activities = _cook_before_eating(activities)
+    activities = _to_own_bedroom(activities, _bedroom_of(outline, resident))
+    return plan.model_copy(update={"activities": activities})
+
+
+# How long the one who got home first waits for the one still on the way, at most. The design's
+# own figure for "arrives, and then they eat together" (§6.3): long enough to finish cooking and
+# lay the table, short enough that a meal an hour after somebody walked in is not the same meal.
+SHARED_ARRIVAL_MAXIMUM_LAG_MINUTES = 20
+
+
+def _anchor_to_last_arrival(activities: list[Activity], away: frozenset[str]) -> list[Activity]:
+    """Start a shared activity soon after the last participant comes home, not merely after.
+
+    No-overlap already keeps a shared lunch out of the hours a participant is still at work, so it
+    cannot begin before she is back; nothing kept it from beginning three hours later, with the one
+    who got home first "waiting" through an afternoon. The design names the missing piece: a
+    dependency on the later participant's return, with a maximum lag.
+
+    Added only where it cannot manufacture an impossible day. The absence has to be mandatory —
+    a dependency reads `presence(shared) <= presence(absence)` — and has to end inside the shared
+    activity's window whatever the compiler does with it: at its latest end no later than the
+    latest start, and at its earliest end no earlier than the lag before the earliest start. An
+    absence that is over well before the band opens involves no waiting at all, and one that ends
+    after it closes is a day `_plan_sharing` has already declared unshared.
+
+    Anchored to the latest arrival only. Everybody else is home by then, so the one dependency is
+    the whole statement.
+    """
+    shared = [item for item in activities if item.participant_ids and item.start_window]
+    if not shared:
+        return activities
+    absences = [
+        item
+        for item in activities
+        if item.mandatory
+        and not item.can_overlap_for_actor
+        and item.start_window is not None
+        and item.duration is not None
+        and item.location_ids
+        and item.location_ids[0] in away
+    ]
+    lag = timedelta(minutes=SHARED_ARRIVAL_MAXIMUM_LAG_MINUTES)
+    anchors: dict[str, Activity] = {}
+    for activity in shared:
+        window = activity.start_window
+        assert window is not None
+        people = {activity.actor_id, *activity.participant_ids}
+        candidates = []
+        for absence in absences:
+            if absence.actor_id not in people:
+                continue
+            assert absence.start_window is not None and absence.duration is not None
+            earliest_end = absence.start_window.earliest + timedelta(
+                minutes=absence.duration.minimum_minutes
+            )
+            latest_end = absence.start_window.latest + timedelta(
+                minutes=absence.duration.maximum_minutes
+            )
+            if latest_end <= window.latest and earliest_end + lag >= window.earliest:
+                candidates.append((latest_end, absence.activity_id, absence))
+        if candidates:
+            anchors[activity.activity_id] = max(candidates, key=lambda item: item[:2])[2]
+    if not anchors:
+        return activities
+    return [
+        item.model_copy(
+            update={
+                "dependency_groups": [
+                    *item.dependency_groups,
+                    DependencyGroup(
+                        activity_ids=[anchors[item.activity_id].activity_id],
+                        minimum_lag_minutes=0,
+                        maximum_lag_minutes=SHARED_ARRIVAL_MAXIMUM_LAG_MINUTES,
+                    ),
+                ]
+            }
+        )
+        if item.activity_id in anchors
+        else item
+        for item in activities
+    ]
+
+
+# What a body sleeps in. A room holding one of these is somewhere a resident can have her nights.
+_SLEEPING_RESOURCE_TYPES = frozenset({"bed", "single_bed", "double_bed", "sofa_bed"})
+# The intents that happen in the resident's own bedroom rather than in the room the catalog names:
+# the night, the waking from it, the nap in her bed. The nocturnal toilet trip is the fourth, and
+# it is the *return* half of it that is hers.
+_OWN_BEDROOM_INTENTS = frozenset({"sleep", "wake_up", "rest_or_nap"})
+_RETURNS_TO_BED_INTENTS = frozenset({"night_toilet_visit"})
+
+
+def _bedroom_of(outline: HorizonOutline, resident: OutlineResident) -> str | None:
+    """The room this resident sleeps in, when it is not the one the catalog puts every night in.
+
+    A resident starts the horizon asleep, so where she is at midnight of the first day is where her
+    bed is; `start_location_id` says so for the housemate in the second bedroom. It was only ever
+    read for that first midnight, and every night after it she walked to the catalog's `bedroom`
+    and lay down in her housemate's bed — two friends splitting the rent sharing one, which is the
+    first thing §6 of the design says they do not do. Honoured only where the room holds something
+    to sleep in, so a horizon that opens with somebody dozing on the sofa is not moved there for
+    every night of it.
+    """
+    room = outline.start_location_of(resident)
+    default = _intent_location("sleep")
+    if room == default:
+        return None
+    beds = {
+        item.location_id
+        for item in outline.world.resources
+        if item.resource_type in _SLEEPING_RESOURCE_TYPES
+    }
+    return room if room in beds else None
+
+
+def _to_own_bedroom(activities: list[Activity], bedroom: str | None) -> list[Activity]:
+    """Put the nights, and the returns to bed, in the resident's own room."""
+    default = _intent_location("sleep")
+    if bedroom is None or default is None:
+        return activities
+    moved: list[Activity] = []
+    for activity in activities:
+        rooms = list(activity.location_ids)
+        if activity.intent in _OWN_BEDROOM_INTENTS and rooms[:1] == [default]:
+            rooms[0] = bedroom
+        elif activity.intent in _RETURNS_TO_BED_INTENTS and rooms[1:2] == [default]:
+            rooms[1] = bedroom
+        moved.append(
+            activity
+            if rooms == activity.location_ids
+            else activity.model_copy(update={"location_ids": rooms})
+        )
+    return moved
+
+
+def _commitment_spans_on(resident: OutlineResident, weekday: Weekday) -> list[tuple[int, int]]:
+    return [
+        (_to_minutes(item.start_time), _to_minutes(item.end_time))
+        for item in resident.fixed_commitments
+        if weekday in item.weekdays
+    ]
+
+
+def _check_household(outline: HorizonOutline) -> None:
+    """Refuse a household whose declarations cannot all be true at once, and say which.
+
+    Two failures that a solver would otherwise discover late and report as an infeasible day with
+    no reason attached. Both are cheap here because both are properties of the *declaration* rather
+    than of any particular day: fixed commitments recur by weekday, and a privacy rule does not
+    change over the horizon.
+
+    - **A shared activity whose participants are never both free for it.** A propensity above zero
+      on an activity whose bands never meet produces a shared occurrence that is declared and never
+      happens, and the only way to notice is to read the trace. The check is the same one
+      `_plan_sharing` performs per day, run over the seven weekdays against the commitments alone:
+      if no weekday admits it, no date will either.
+    - **Two people and one bed.** Privacy over the room the night happens in cannot hold for a pair
+      who both sleep every night: there is one such room, each of them needs about eight hours of
+      it, and the day has twenty-four. The solver would spend its budget proving that.
+
+    Both are raised as sentences a researcher can act on, which is the argument §6.2 makes for
+    privacy over capacity: "Marco does not share the bathroom while he washes, and Luca's morning
+    has no other window" is readable, and `capacity 1 exceeded` is not.
+    """
+    problems: list[str] = []
+    by_id = {item.resident_id: item for item in outline.residents}
+
+    for joint in outline.household.joint_activities:
+        cadence = joint.activity.cadence
+        band = (_to_minutes(cadence.window_start), _to_minutes(cadence.window_end))
+        allowed = cadence.weekdays or list(Weekday)
+        widest = 0
+        for weekday in allowed:
+            common: list[tuple[int, int]] | None = None
+            for who in joint.participant_ids:
+                free = _free_spans(band, _commitment_spans_on(by_id[who], weekday))
+                common = free if common is None else _overlap(common, free)
+            widest = max(widest, max((high - low for low, high in (common or [])), default=0))
+        needed = max(joint.minimum_shared_minutes, 1)
+        if widest < needed:
+            problems.append(
+                f"shared activity {joint.activity.recurring_activity_id!r} asks "
+                f"{', '.join(joint.participant_ids)} for {needed} minute(s) together inside "
+                f"{cadence.window_start}-{cadence.window_end}, and their fixed commitments never "
+                f"leave them more than {widest}"
+            )
+
+    night = _intent_location("sleep")
+    # Two friends splitting the rent do not share a bed (§6), and a house that follows the family
+    # gives them two rooms (§11). Declared housemates who would still spend every night in one room
+    # are refused here, in a sentence, unless the household chose to share it — permissive settings
+    # are chosen, never inherited. A couple, a parent with a child and siblings may share a room.
+    separate = {RelationKind.housemates, RelationKind.other}
+    shared_rooms = set(outline.household.shared_location_ids)
+    for relation in outline.household.relations:
+        if relation.kind not in separate:
+            continue
+        rooms = {
+            who: _bedroom_of(outline, by_id[who]) or night
+            for who in relation.between
+            if who in by_id
+        }
+        if len(rooms) == 2 and len(set(rooms.values())) == 1:
+            room = next(iter(rooms.values()))
+            if room not in shared_rooms:
+                problems.append(
+                    f"{' and '.join(sorted(rooms))} are {relation.kind.value} and would both sleep "
+                    f"in {room!r} every night; give one of them a start location in a room with a "
+                    "bed of its own, or share the room in household.sharedLocationIds"
+                )
+    if night is not None:
+        for privacy in outline.household.location_privacy:
+            if privacy.location_id != night or privacy.intents:
+                continue
+            excluded = privacy.excluded_resident_ids or [
+                item for item in outline.resident_ids if item != privacy.subject_id
+            ]
+            if excluded:
+                problems.append(
+                    f"{privacy.subject_id!r} does not share {night!r} with "
+                    f"{', '.join(sorted(excluded))}, and there is one such room for two nights "
+                    "of about eight hours each"
+                )
+    if problems:
+        raise ExpansionError(" | ".join(problems))
+
+
 def expand_outline(
     outline: HorizonOutline,
     package: PersonalProcessPackage,
@@ -1475,108 +2529,126 @@ def expand_outline(
 
     The result is an ordinary `SimulationAuthoringBundle` and enters the unchanged ingestion flow,
     which is what keeps every frozen contract downstream untouched.
+
+    One house, one log, N residents. Each resident's day is built the way a single-resident horizon
+    has always built it — her own calendar, her own drives, her own fillers, her own overlap pass —
+    and the days are then merged into one plan per date. The household enters in three places and
+    no others: a shared occurrence is emitted once with its participants named, the residents who
+    are not hosting it are told those hours are taken, and a private activity is marked with who it
+    keeps out of the room. Everything else that makes cohabitation work was already in the
+    compiler, which keeps one no-overlap chain per resident and serialises the uses of a shower
+    that only has one jet.
     """
     _check_intents(outline)
     _check_locations(outline)
     _check_activity_locations(outline, package)
     _check_package_covers(outline, package)
-    calendar = _effective_calendar(outline, seed)
-    placed = _place_events(outline, seed)
-    calendar, skipped, moved, dropped = _apply_displacement(
-        calendar, placed, _daily_capacity(outline)
-    )
+    _check_household(outline)
 
-    rhythm_profile = replace(
-        RhythmProfile.from_persona(
-            outline.profile.persona_id, outline.rhythm.age, outline.rhythm.health
-        ),
-        chronotype_bedtime_minutes=_to_minutes(outline.rhythm.chronotype_bedtime),
-    )
-    meals, social = _scheduled_drive_load(calendar.days)
-    rhythms: dict[str, DayRhythm] = plan_rhythms(
-        rhythm_profile,
-        [date.fromisoformat(day.date) for day in calendar.days],
-        seed=seed,
-        meals_by_day=meals,
-        social_by_day=social,
-        first_commitment_by_day=_first_commitment_by_day(outline, calendar.days),
+    horizons = [_resident_horizon(outline, resident, seed) for resident in outline.residents]
+    sharing = _plan_sharing(outline, horizons, seed)
+    rhythms = [_resident_rhythms(horizon, sharing, seed) for horizon in horizons]
+    privacy = _privacy_rules(outline)
+    uses = _DeviceUses(outline, package)
+    away = frozenset(
+        item.location_id for item in outline.world.locations if item.kind is LocationKind.external
     )
 
     tz = ZoneInfo(outline.time_zone)
-    # Only what this persona's own package can perform: a filler is behaviour nobody declared, so
-    # it must not be the reason a horizon is refused.
-    implemented = {binding.intent for binding in package.bindings}
-    fillable = tuple(item for item in FILL_INTENTS if item in implemented)
-    recurring_activities = _activities_by_id(outline.profile)
-    # The rooms the outline overrode, by activity. Read once: a habit's room is a property of the
-    # horizon, not of the day, so it cannot change between one calendar day and the next.
-    activity_locations = {
-        item.recurring_activity_id: item.location
-        for item in outline.profile.recurring_activities
-        if item.location is not None
+    # Only what each resident's own bindings can perform: a filler is behaviour nobody declared, so
+    # it must not be the reason a horizon is refused. Per resident, not per package — read off the
+    # whole household, a coffee only one of two people has a process for was offered to both, and
+    # a month for a couple was refused 62 times for the one who never makes it.
+    implemented: dict[str, set[str]] = defaultdict(set)
+    for binding in package.bindings:
+        implemented[binding.resident_id].add(binding.intent)
+    fillable = {
+        resident.resident_id: tuple(
+            item for item in FILL_INTENTS if item in implemented[resident.resident_id]
+        )
+        for resident in outline.residents
     }
+
     days: list[DayPlan] = []
-    for calendar_day in calendar.days:
-        day_events = placed.get(calendar_day.date, [])
-        plan = build_day_plan(
-            calendar_day,
-            timezone=outline.time_zone,
-            actor_id=outline.resident_id,
-            rhythm=rhythms.get(calendar_day.date),
-            previous_rhythm=rhythms.get(
-                (date.fromisoformat(calendar_day.date) - timedelta(days=1)).isoformat()
-            ),
-            seed=seed,
-            busy_minutes=[
-                *_commitment_spans(outline, date.fromisoformat(calendar_day.date)),
-                *_event_spans(day_events, seed),
-            ],
-            activity_locations=activity_locations,
-        )
-        effective = _effective_activities(
-            outline, recurring_activities, date.fromisoformat(calendar_day.date)
-        )
-        bands = _sub_bands(plan.activities, effective)
-        activities = [
-            _wobble(
-                activity,
-                effective.get(_recurring_activity_id_of(activity) or ""),
-                tz,
-                seed,
-                bands.get(activity.activity_id),
-                _lights_out(plan),
-                _wake(plan),
+    calendar_dates = [day.date for day in horizons[0].calendar.days]
+    for iso in calendar_dates:
+        occasions = sharing.get(iso, [])
+        hosted = {
+            item.recurring_activity_id: item
+            for item in occasions
+            if item.shared and not item.joint.degrade_to_independent
+        }
+        # A degradable occurrence is written twice and chosen once, so nobody's calendar loses it:
+        # every participant keeps the meal she would have had alone, and the host gains a second
+        # copy naming everyone. Which of the two survives is the compiler's, because it is the only
+        # layer that can see whether the shared version fits the day.
+        degradable = {
+            item.recurring_activity_id: (item.participants, item.joint.minimum_shared_minutes)
+            for item in occasions
+            if item.shared and item.joint.degrade_to_independent
+        }
+        merged: list[Activity] = []
+        shell: DayPlan | None = None
+        # Filled in as each host's day is built, and read by the participants built after it. The
+        # host is the first participant in household order, so the hours are always known in time.
+        borrowed: dict[str, list[tuple[int, int]]] = defaultdict(list)
+        for horizon, chain in zip(horizons, rhythms, strict=True):
+            who = horizon.resident.resident_id
+            calendar_day = horizon.days_by_date[iso]
+            elsewhere = {
+                activity_id
+                for activity_id, occasion in hosted.items()
+                if occasion.host_id != who and who in occasion.participants
+            }
+            plan = _resident_day(
+                outline,
+                horizon,
+                chain,
+                calendar_day.model_copy(
+                    update={
+                        "occurrences": [
+                            item
+                            for item in calendar_day.occurrences
+                            if item.recurring_activity_id not in elsewhere
+                        ]
+                    }
+                ),
+                tz=tz,
+                fillable=fillable[who],
+                seed=seed,
+                index_offset=len(merged),
+                busy_minutes=[*horizon.busy_by_date.get(iso, []), *borrowed[who]],
+                hosted={
+                    activity_id: occasion.participants
+                    for activity_id, occasion in hosted.items()
+                    if occasion.host_id == who
+                },
+                degradable=degradable,
             )
-            for activity in plan.activities
-        ]
-        for index, item in enumerate(day_events):
-            activities.append(
-                _event_activity(item, len(activities) + index, tz, outline.resident_id, seed)
-            )
-        activities.extend(
-            _commitment_activities(
-                outline, date.fromisoformat(calendar_day.date), tz, len(activities)
-            )
-        )
-        activities = _seed_filler_candidates(
-            activities,
-            fillable,
-            _wake(plan),
-            _lights_out(plan),
-            date.fromisoformat(calendar_day.date),
-            outline.resident_id,
-            seed,
-        )
-        activities = _resolve_overlaps(activities, _lights_out(plan))
-        activities = _cook_before_eating(activities)
-        if calendar_day is calendar.days[-1]:
+            for activity in plan.activities:
+                occasion = hosted.get(_recurring_activity_id_of(activity) or "")
+                if occasion is None or occasion.host_id != who:
+                    continue
+                span = _span_of(activity)
+                if span is not None:
+                    for other in occasion.participants:
+                        if other != who:
+                            borrowed[other].append(span)
+            merged.extend(_mark_device_uses(_mark_privacy(list(plan.activities), privacy), uses))
+            if shell is None:
+                shell = plan
+        assert shell is not None  # residents is non-empty by contract
+        # Only now: the host's shared lunch and the other participant's shift are written in two
+        # different residents' days, and the dependency needs both.
+        merged = _anchor_to_last_arrival(merged, away)
+        if iso == calendar_dates[-1]:
             # The horizon stops at midnight after the last day, so whatever is still running then
             # is truncated rather than made infeasible. This is what the flag is for; the evening
             # activities of every other day have the next morning to spill into.
-            activities = [
-                item.model_copy(update={"allow_boundary_truncation": True}) for item in activities
+            merged = [
+                item.model_copy(update={"allow_boundary_truncation": True}) for item in merged
             ]
-        days.append(plan.model_copy(update={"activities": activities}))
+        days.append(shell.model_copy(update={"activities": merged}))
 
     window = SimulationWindow(
         start=datetime.combine(outline.start_date, time.min, tz),
@@ -1595,27 +2667,65 @@ def expand_outline(
             parameters={"outlineId": outline.outline_id, "seed": seed},
         ),
     )
-    ground_truth = _measure_habits(outline, days, seed)
-    # The bands travel inside the scenario as well as beside it. Nothing downstream of ingestion
-    # ever sees the outline, so without this the application holds a horizon it cannot say how to
-    # divide — and a dataset exported from the app would carry the sensor log and the oracle but
-    # not the target a segmentation algorithm is scored against.
+    declared = DeclaredHabits(
+        outline_id=outline.outline_id,
+        time_zone=outline.time_zone,
+        start_date=outline.start_date,
+        end_date=outline.end_date,
+        seed=seed,
+        residents=[
+            DeclaredResidentHabits(resident_id=item.resident_id, habits=item.habits)
+            for item in outline.residents
+        ],
+        joint_activities=[
+            DeclaredJointActivity(
+                recurring_activity_id=item.activity.recurring_activity_id,
+                intent=item.activity.intent
+                or label_to_intent(item.activity.label, item.activity.kind.value),
+                participant_ids=list(item.participant_ids),
+                sharing=item.sharing,
+                propensity=item.propensity,
+            )
+            for item in outline.household.joint_activities
+        ],
+    )
+    planned = measure_habits(
+        declared,
+        evidence_from_plan(
+            days, outline.resident_ids, started_at=window.start, ended_at=window.end
+        ),
+    )
+    # Only the declaration travels inside the scenario. Nothing downstream of ingestion ever sees
+    # the outline, so without this a run could not say how its days divide; and nothing measured
+    # travels with it, because the only thing worth publishing as measured is what a run did, which
+    # the export measures from that run's trace.
     scenario = scenario.model_copy(
         update={
             "extensions": {
                 **scenario.extensions,
-                "habitGroundTruth": json.loads(ground_truth.model_dump_json(by_alias=True)),
+                DECLARED_HABITS_EXTENSION: json.loads(declared.model_dump_json(by_alias=True)),
             }
         }
     )
+    # The package names the scenario it was written for, and on this path that scenario does not
+    # exist until now: its version is whatever this expander stamps, so a package cannot know it and
+    # can only be told it. Models that were told still wrote `2.0.0`, the outline's schema version,
+    # and a whole horizon was refused for a number with no other possible value. The identifier is
+    # left alone — a package written for another outline is a real mistake, and is still reported.
+    if (
+        package.source_scenario_id == scenario.scenario_id
+        and package.source_scenario_version != scenario.schema_version
+    ):
+        package = package.model_copy(update={"source_scenario_version": scenario.schema_version})
     return ExpansionResult(
         bundle=SimulationAuthoringBundle(scenario=scenario, personal_process_package=package),
-        habit_ground_truth=ground_truth,
+        declared_habits=declared,
+        planned_bands=planned,
         day_count=len(days),
         activity_count=sum(len(day.activities) for day in days),
-        skipped_occurrences=skipped,
-        rescheduled_occurrences=moved,
-        dropped_occurrences=dropped,
+        skipped_occurrences=sum(item.skipped for item in horizons),
+        rescheduled_occurrences=sum(item.rescheduled for item in horizons),
+        dropped_occurrences=sum(item.dropped for item in horizons),
     )
 
 

@@ -223,13 +223,16 @@ def _outline_bundle() -> dict[str, object]:
         package["bindings"].append(
             {**template, "bindingId": f"{template['residentId']}__{intent}", "intent": intent}
         )
+    # A binding belongs to a resident, and the example outline's resident is Meredith.
+    for binding in package["bindings"]:
+        binding["residentId"] = "meredith"
     outline = json.loads(
         (PROJECT_ROOT / "examples/authoring/meredith.horizon-outline.json").read_text(
             encoding="utf-8"
         )
     )
     return {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "2.0.0",
         "documentType": "horizon_authoring_bundle",
         "outline": outline,
         "personalProcessPackage": package,
@@ -363,7 +366,8 @@ def test_a_band_the_days_never_filled_is_reported_beside_the_report_it_cannot_de
     payload = _outline_bundle()
     outline = payload["outline"]
     assert isinstance(outline, dict)
-    habits = outline["habits"]
+    resident = outline["residents"][0]
+    habits = resident["habits"]
     assert isinstance(habits, list)
     # A band stretched over hours nothing was declared to fill: the failure the check exists for.
     # The fixture leaves 09:00-17:00 unclaimed and Sunday has no work shift in it, so this
@@ -375,7 +379,7 @@ def test_a_band_the_days_never_filled_is_reported_beside_the_report_it_cannot_de
     hollow["windowEnd"] = "17:00"
     hollow["weekdays"] = ["sunday"]
     hollow["recurringActivityIds"] = []
-    outline["habits"] = [*habits, hollow]
+    resident["habits"] = [*habits, hollow]
 
     result = service.import_horizon_outline(home.home_id, payload, seed=1)
 

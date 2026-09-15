@@ -410,7 +410,11 @@ def build_profile(
     observed_minutes, observed_days = _observed(started_at, ended_at, slot_minutes, len(labels))
     accumulators: dict[str, _Accumulator] = defaultdict(lambda: _Accumulator(len(labels)))
     for activity in activities:
-        accumulators[activity.actor_id].add_activity(activity, slot_minutes)
+        # Everyone who took part, not only the actor: the other person at a shared dinner spent
+        # those minutes at the table, and her profile saying otherwise would be describing a person
+        # who never eats in company.
+        for resident_id in (activity.actor_id, *activity.participant_ids):
+            accumulators[resident_id].add_activity(activity, slot_minutes)
     for actor_id, intervals in _presence(movements, started_at, ended_at).items():
         for region_id, start, end in intervals:
             accumulators[actor_id].add_presence(region_id, start, end, slot_minutes)

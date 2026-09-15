@@ -7,8 +7,10 @@ import math
 import random
 from collections import Counter, defaultdict
 from collections.abc import Callable, Generator, Iterable
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -20,24 +22,25 @@ from shapely.geometry import Polygon
 
 from smart_home_sim.behavior.service import (
     _condition_matches,
-    default_action_catalog_path,
     default_variable_catalog_path,
+    load_action_catalog,
 )
 from smart_home_sim.clock import localised
 from smart_home_sim.compiler.service import canonical_sha256
 from smart_home_sim.domain.behavior import (
-    ActionCatalog,
     EffectOperation,
     ProcessEdge,
     ProcessModel,
     ProcessNode,
     ProcessNodeKind,
+    ValueSource,
     VariableCatalog,
     VariableCondition,
 )
 from smart_home_sim.domain.environment import (
     ConnectionKind,
     Point2D,
+    RegionKind,
     ResolvedActionBinding,
     SimulationBundle,
 )
@@ -60,8 +63,11 @@ from smart_home_sim.domain.execution import (
     StateTransition,
     TraceCausality,
     TrajectoryWaypoint,
+    semantic_activity_executions,
 )
+from smart_home_sim.domain.hands import CARRYING_PREFIX, carried_role, portable_minutes
 from smart_home_sim.domain.models import (
+    PRIVACY_EXTENSION,
     Condition,
     ConditionOperator,
     RuntimeEventOperation,
@@ -69,7 +75,7 @@ from smart_home_sim.domain.models import (
 )
 from smart_home_sim.domain.plan import CanonicalActivity
 from smart_home_sim.environment.navigation import NavigationPath, plan_path
-from smart_home_sim.environment.occupancy import berth_for
+from smart_home_sim.environment.occupancy import berth_for, berths
 from smart_home_sim.validation.service import (
     MAX_SCENARIO_BYTES,
     DuplicateJsonKeyError,
@@ -156,7 +162,10 @@ _AMBULATORY_POSTURES = frozenset({_STANDING_POSTURE, "walking"})
 # done wherever the body already is — a television is turned on from the sofa, and putting a
 # switch in the set stood the resident up one second after she had sat down to watch, which is the
 # same defect as the breakfast taken standing and was found the same way, in the replay frames.
-_UPRIGHT_ACTIONS = frozenset(
+#
+# The built-in values the default vocabulary pack is derived from; the engine reads the pack
+# (`_upright_actions`), so an action an author adds says there whether it needs the resident up.
+UPRIGHT_ACTION_TYPES = frozenset(
     {
         "clean",
         "close",
@@ -217,7 +226,7 @@ _ITEM_ROLE = "item"
 SEATED_REACH_METRES = 0.9
 # And what may be lain on. Reclining is not a property of the room but of what she is on: lying
 # down in a sitting room is a sofa, and lying down in the middle of one is a floor.
-_RECLINING_FURNITURE = frozenset({"sofa", "bed", "recliner", "daybed"})
+_RECLINING_FURNITURE = frozenset({"sofa", "bed", "single_bed", "recliner", "daybed"})
 # How upright each posture is. Waiting only ever moves *down* this ladder: someone who finished
 # reading on the sofa lying down does not sit up in order to wait. Without the order, the settle
 # read the schedule literally and sat a lying resident up 1,162 times over one generated year.
@@ -232,6 +241,38 @@ IDLE_SETTLE_LOG_SIGMA = 0.35
 # The node id the return walk is filed under. Synthetic: it names no node of any process model,
 # because no author wrote it. Nothing downstream resolves node ids against the model.
 RETURN_NODE_ID = "engine_return_from_service_room"
+# The engine's own actions for a resident taking part in an activity somebody else performs:
+# the walk to where it happens, the posture she holds there, and getting up when it is over.
+# The actor's process model is hers alone — it is the cooking and the serving — so a
+# participant has no authored node to hang these on, exactly as the walk out of a service room
+# has none.
+JOIN_NODE_ID = "engine_join_shared_activity"
+JOIN_POSTURE_NODE_ID = "engine_join_shared_activity_posture"
+LEAVE_POSTURE_NODE_ID = "engine_leave_shared_activity_posture"
+JOIN_EGRESS_NODE_ID = "engine_join_shared_activity_leave_home"
+LEAVE_INGRESS_NODE_ID = "engine_leave_shared_activity_enter_home"
+# How long an actor, once free, holds herself for the others a shared activity names. Unbounded,
+# one wait froze a whole household: a television evening planned for 21:58 held Giulia from 00:27
+# while Paolo slept, she stood in the kitchen until 10:04, and the day after began eleven hours
+# late — her next two shifts started four hours behind. Of the 93 shared activities that month, 19
+# waited past a quarter of an hour after the actor was free, 9 past half an hour and 2 past the
+# hour, and those two were the frozen ones. Past this an optional one is given up and a mandatory
+# one goes ahead with whoever came.
+SHARED_WAIT_LIMIT_SECONDS = 60 * 60
+# The regions a resident has to go out of the front door to be in.
+_OUTSIDE_REGION_KINDS = frozenset({RegionKind.external, RegionKind.transit})
+# The capabilities of the front door, which says nothing about where the activity itself happens.
+_ENTRANCE_CAPABILITIES = frozenset({"home_egress", "home_ingress"})
+# Two away activities of one resident planned this close are one outing, not two. Every away model
+# is a round trip — the authoring contract requires it, because a model that leaves without
+# returning leaves `at_home` stuck — and the contract also writes a night shift as two commitments
+# either side of midnight and a commute as its own commitment before the shift. Executed as
+# written, Giulia went to work at 06:35, came back in through the front door at 07:02, left again
+# at 07:04 and walked the 500 metres in a minute; on a night shift she came home at 00:10 for two
+# minutes. The engine joins such a pair: the first activity keeps everything up to its return, the
+# second everything after its departure. The commute ends on the hour the shift starts, the two
+# halves of a shift a minute apart, and the compiler moves a commitment by at most a quarter hour.
+OUTING_CONTINUATION_GAP_SECONDS = 15 * 60
 
 # How long a gesture takes on its own, in seconds, regardless of how much time the plan has
 # budgeted for the activity around it. Sitting down takes a moment whether the meal that follows
@@ -324,6 +365,14 @@ PUNCTUAL_ACTION_SECONDS = {
 }
 
 
+def _upright_actions() -> frozenset[str]:
+    """The actions a body must be on its feet for, from the active vocabulary pack."""
+    from smart_home_sim.vocabulary import views
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return views.upright_action_types(active_pack())
+
+
 def _gesture_table() -> dict[str, float]:
     """The gesture lengths in force, from the active vocabulary pack.
 
@@ -390,6 +439,15 @@ class ResidentRuntime:
     bladder_full: bool = False
     # When the plan last stopped having anything for her, or None while it does.
     idle_since_us: int | None = None
+    # What is in her hands, by role: the pick-up it came from, so a timer can tell whether the
+    # thing it was set for is still the thing she holds; the pick-ups a timer already watches; and
+    # what ran past its time while an activity held her. See `smart_home_sim.domain.hands`.
+    carry_stamps: dict[str, int] = field(default_factory=dict)
+    carry_timers: dict[str, int] = field(default_factory=dict)
+    overdue_roles: set[str] = field(default_factory=set)
+    # The away activity she is still out for, when the last one ended without bringing her home.
+    # See `OUTING_CONTINUATION_GAP_SECONDS`.
+    outing_continues_into: str | None = None
 
 
 @dataclass
@@ -400,6 +458,16 @@ class RuntimeState:
     capability_facts: dict[str, JsonValue]
     invalidated_facts: set[str] = field(default_factory=set)
     completed_activities: set[str] = field(default_factory=set)
+
+
+@dataclass
+class _RoomUse:
+    """A running activity, as far as the privacy of its rooms is concerned."""
+
+    occupying: frozenset[str]
+    rooms: frozenset[str]
+    excluded: frozenset[str]
+    done: simpy.Event
 
 
 @dataclass
@@ -893,8 +961,112 @@ def _phase_durations(
     ]
 
 
+def _without_return(phases: list[list[ProcessNode]]) -> list[list[ProcessNode]]:
+    """The phases before the last `enter_home`: the outing, without coming back from it."""
+    index = max(
+        (i for i, phase in enumerate(phases) if any(n.action_type == "enter_home" for n in phase)),
+        default=None,
+    )
+    return phases if index is None or index == 0 else phases[:index]
+
+
+def _without_departure(phases: list[list[ProcessNode]]) -> list[list[ProcessNode]]:
+    """The phases after the first `leave_home`: the outing, for somebody who is already out."""
+    index = next(
+        (i for i, phase in enumerate(phases) if any(n.action_type == "leave_home" for n in phase)),
+        None,
+    )
+    return phases if index is None or index == len(phases) - 1 else phases[index + 1 :]
+
+
+# What a body does sitting down, when the process says nothing else — the reference models sit for
+# all of them. `perform_work` only when the work is not a shift somewhere else, and `wait` only
+# when it is rest.
+_SEDENTARY_ACTIONS = frozenset({"consume", "leisure", "communicate"})
+# Gestures made from wherever the body already is, looked past to find what it is getting ready for:
+# the remote comes before the television.
+_FROM_THE_SEAT = frozenset({"activate", "deactivate"})
+
+
+def _is_sedentary(node: ProcessNode) -> bool:
+    def literal(name: str) -> object:
+        expression = node.arguments.get(name)
+        if expression is None or expression.source is not ValueSource.literal:
+            return None
+        return expression.value
+
+    if node.action_type in _SEDENTARY_ACTIONS:
+        return True
+    if node.action_type == "perform_work":
+        mode = literal("mode")
+        return mode is not None and mode != "shift"
+    return node.action_type == "wait" and literal("purpose") == "rest"
+
+
+def _sits_down_where_written_standing(model: ProcessModel) -> set[str]:
+    """The `change_posture(standing)` nodes that are how this model sits down.
+
+    The authoring contract shows a meal as `change_posture(sitting) -> consume ->
+    change_posture(standing)`, and every reference model is written that way. The Ferri package
+    wrote `standing` in both places, for every meal, every book and every television evening of
+    both residents: 1,079 posture changes in a month, not one of them sitting, meals eaten on foot
+    in front of the refrigerator and a table and two chairs nobody used. A stand-up immediately
+    before something done seated says nothing about standing — the body is up already — and is read
+    as the sit-down the contract puts there. Anything after the sedentary action is left alone.
+    """
+    nodes = {node.node_id: node for node in model.nodes}
+    successors: defaultdict[str, list[str]] = defaultdict(list)
+    for edge in model.edges:
+        successors[edge.source_node_id].append(edge.target_node_id)
+    found: set[str] = set()
+    for node in model.nodes:
+        expression = node.arguments.get("posture")
+        if (
+            node.action_type != "change_posture"
+            or expression is None
+            or expression.source is not ValueSource.literal
+            or expression.value != _STANDING_POSTURE
+        ):
+            continue
+        current = node.node_id
+        while True:
+            following = successors.get(current, [])
+            if len(following) != 1 or following[0] not in nodes:
+                break
+            current = following[0]
+            if nodes[current].action_type not in _FROM_THE_SEAT:
+                break
+        if current != node.node_id and _is_sedentary(nodes[current]):
+            found.add(node.node_id)
+    return found
+
+
+def _shared_postures(model: ProcessModel) -> tuple[str | None, str | None]:
+    """The posture an activity is spent in, and the one it ends in, read off its process model.
+
+    A participant has no model of her own for somebody else's activity, and inventing one per intent
+    would be a second catalogue to keep in step with the first. The actor's model already says it:
+    a meal sits down, eats and stands up; an evening in front of the television sits down and stays
+    there. The first posture that is not upright is how the activity is spent; the last one is how
+    it ends.
+    """
+    postures = [
+        str(node.arguments["posture"].value)
+        for node in model.nodes
+        if node.action_type == "change_posture"
+        and "posture" in node.arguments
+        and node.arguments["posture"].source is ValueSource.literal
+    ]
+    held = next((item for item in postures if item not in _AMBULATORY_POSTURES), None)
+    return held, (postures[-1] if postures else None)
+
+
 def trace_semantic_digest(payload: dict[str, Any]) -> str:
     """The authoritative semantic digest of an execution trace payload (by-alias JSON shape)."""
+    payload = {
+        **payload,
+        "activityExecutions": semantic_activity_executions(payload["activityExecutions"]),
+    }
     semantic = {
         key: payload[key]
         for key in (
@@ -952,10 +1124,8 @@ class SimulationEngine:
             )
             for item in bundle.home_model.obstacles
         }
-        self.action_catalog = ActionCatalog.model_validate_json(
-            default_action_catalog_path(
-                bundle.behavior_package.catalogs.action_catalog.version
-            ).read_text(encoding="utf-8")
+        self.action_catalog = load_action_catalog(
+            bundle.behavior_package.catalogs.action_catalog.version
         )
         self.variable_catalog = VariableCatalog.model_validate_json(
             default_variable_catalog_path().read_text(encoding="utf-8")
@@ -967,9 +1137,15 @@ class SimulationEngine:
         self.bindings = {
             (item.source_activity_id, item.node_id): item for item in bundle.action_bindings
         }
+        self._sit_where_written_standing()
         self.kinematics = {item.resident_id: item for item in bundle.resident_kinematics}
+        # Queued by when each activity was due, not by when it reached the queue. The two used to be
+        # the same thing: a resident's own activities ask for her at their own minute. A shared one
+        # asks for its participants only once the actor is free, and first-come put it behind
+        # everything they had queued in the meantime — a television evening planned for 21:58 went
+        # in behind a bedtime planned for 23:49.
         self.actor_locks = {
-            item.resident_id: simpy.Resource(self.env, capacity=1)
+            item.resident_id: simpy.PriorityResource(self.env, capacity=1)
             for item in bundle.scenario.residents
         }
         self.resource_capacities = {
@@ -990,6 +1166,27 @@ class SimulationEngine:
         # is known: an empty stretch is only empty if nothing is coming, and how long it is decides
         # whether leaving the room is worth the walk.
         self.commitments_by_actor: dict[str, list[int]] = {}
+        # Which away activity each away activity hands its resident on to, without her coming home
+        # in between. Filled in `run`. See `OUTING_CONTINUATION_GAP_SECONDS`.
+        self.outing_continuations: dict[str, str] = {}
+        # Who each activity empties its rooms of, as the scenario declares it, and the activities
+        # running now. See `_privacy_conflicts`.
+        residents = {item.resident_id for item in bundle.scenario.residents}
+        self.exclusions: dict[str, frozenset[str]] = {
+            activity.activity_id: frozenset(
+                item
+                for item in activity.extensions.get(PRIVACY_EXTENSION) or []
+                if isinstance(item, str) and item in residents
+            )
+            for day in bundle.scenario.days
+            for activity in day.activities
+            if isinstance(activity.extensions.get(PRIVACY_EXTENSION), list)
+        }
+        self.room_uses: dict[str, _RoomUse] = {}
+        self.horizon_end_us = _offset(self.origin, bundle.scenario.simulation_window.end)
+        # Pick-ups, numbered in the order they happen, and the roles each running activity consumed.
+        self.carry_counter = 0
+        self.consumed_roles: defaultdict[str, set[str]] = defaultdict(set)
         self._prepare_events()
 
     def _prepare_events(self) -> None:
@@ -1193,6 +1390,28 @@ class SimulationEngine:
             )
         return binding.process_model_id
 
+    def _event_subject(self, candidate: Any) -> str:
+        """The resident an event's preconditions are about: whoever does what it acts on.
+
+        A resident-scoped precondition — is she at home, is she awake — was read off the first
+        resident in the scenario whoever the event touched, so in a shared house an event delaying
+        one person's shower asked whether the other person was at home. The activity it is triggered
+        by, or failing that the first one it targets, names the right body; an event about the
+        house and nobody in particular still reads the first resident, as it always did.
+        """
+        actors = {
+            item.source_activity_id: item.actor_id
+            for day in self.bundle.canonical_plan.days
+            for item in day.activities
+        }
+        for activity_id in (
+            candidate.trigger_activity_id,
+            *(effect.target_id for effect in candidate.effects),
+        ):
+            if activity_id in actors:
+                return actors[activity_id]
+        return next(iter(self.state.residents))
+
     def _runtime_event_process(self, candidate: Any) -> Generator[Any, Any, None]:
         prepared = self.prepared_events[candidate.event_id]
         if candidate.trigger_activity_id is None:
@@ -1201,7 +1420,7 @@ class SimulationEngine:
             yield self.activity_start_events[candidate.trigger_activity_id]
         outcome = "not_sampled"
         if prepared.occurred:
-            actor_id = next(iter(self.state.residents))
+            actor_id = self._event_subject(candidate)
             day = self._day_for(_at(self.origin, self.env.now, self.zone).date())
             conditions_ok = all(
                 _scenario_condition(item, self.state, actor_id, day.context.facts)
@@ -1484,6 +1703,11 @@ class SimulationEngine:
         elif effect.operation is EffectOperation.remove:
             value = [item for item in (previous or []) if item != effect.value]
         target[path] = value
+        if subject_type == "resident" and value is True and carried_role(path) is not None:
+            self.carry_counter += 1
+            holder = self.state.residents[actor_id]
+            holder.carry_stamps[path.removeprefix(CARRYING_PREFIX)] = self.carry_counter
+            holder.overdue_roles.discard(path.removeprefix(CARRYING_PREFIX))
         self._state_transition(
             subject_type,
             subject_id,
@@ -1494,6 +1718,81 @@ class SimulationEngine:
             "action_effect",
             cause_id,
         )
+
+    def _set_down(self, actor: ResidentRuntime, role: str, cause_id: str) -> None:
+        """Her hands let go of `role`, which the process model itself never put down."""
+        fact = f"{CARRYING_PREFIX}{role}"
+        actor.carry_stamps.pop(role, None)
+        actor.carry_timers.pop(role, None)
+        actor.overdue_roles.discard(role)
+        if actor.facts.get(fact) is not True:
+            return
+        actor.facts[fact] = False
+        self._state_transition(
+            "resident", actor.resident_id, fact, True, False, "set", "plan", cause_id
+        )
+
+    def _put_things_back(
+        self, actor: ResidentRuntime, activity_id: str | None, execution_id: str
+    ) -> None:
+        """The end of an activity is where what it handled is put back or carried on.
+
+        Anything not portable goes back now, and so does a portable thing she consumed here — the
+        cup once the coffee is drunk. What is left, the coffee still to drink, is carried on under a
+        timer; and whatever a timer found overdue while an activity held her goes down now.
+        `activity_id` is None for a resident who only took part in someone else's activity: she
+        handled nothing in it, and only what is overdue is hers to put down.
+        """
+        consumed = self.consumed_roles.pop(activity_id, set()) if activity_id else set()
+        carried = sorted(
+            role
+            for fact, value in actor.facts.items()
+            if value is True and (role := carried_role(fact)) is not None
+        )
+        for role in carried:
+            stamp = actor.carry_stamps.get(role, 0)
+            minutes = portable_minutes(role)
+            if role in actor.overdue_roles or (
+                activity_id is not None and (minutes is None or role in consumed)
+            ):
+                # One microsecond on, not now: a `take_item` that was the activity's last step
+                # happened at this same instant, and the trace orders equal instants by id, so a
+                # set-down written now could be read back as coming before the pick-up it undoes.
+                actor.carry_timers[role] = stamp
+                self.env.process(self._set_down_after(actor, role, stamp, 1, execution_id, False))
+            elif minutes is not None and actor.carry_timers.get(role) != stamp:
+                actor.carry_timers[role] = stamp
+                self.env.process(
+                    self._set_down_after(
+                        actor, role, stamp, int(round(minutes * MINUTE_US)), execution_id, True
+                    )
+                )
+
+    def _set_down_after(
+        self,
+        actor: ResidentRuntime,
+        role: str,
+        stamp: int,
+        delay_us: int,
+        cause_id: str,
+        waits_for_activity: bool,
+    ) -> Generator[Any, Any, None]:
+        """Set `role` down after `delay_us`, unless it has been put down or picked up again since.
+
+        A portable thing whose time runs out in the middle of another activity is not taken from her
+        hands there: a process model may still be about to put it away, and taking it first would
+        fail that `put_item`. It is marked overdue and goes down when that activity ends.
+        """
+        yield self.env.timeout(delay_us)
+        if (
+            actor.carry_stamps.get(role, 0) != stamp
+            or actor.facts.get(f"{CARRYING_PREFIX}{role}") is not True
+        ):
+            return
+        if waits_for_activity and self.actor_locks[actor.resident_id].count:
+            actor.overdue_roles.add(role)
+            return
+        self._set_down(actor, role, cause_id)
 
     def _action_fact(
         self,
@@ -1720,6 +2019,7 @@ class SimulationEngine:
         activity: CanonicalActivity,
         execution_id: str,
         next_us: int | None,
+        occurrence: int | str = 0,
     ) -> Generator[Any, Any, str | None]:
         """Leave the room the activity finished in, when nothing is coming and it is not a room to
         wait in.
@@ -1752,8 +2052,10 @@ class SimulationEngine:
         )
         if path is None or path.distance_meters <= 1e-9:
             return None
+        # A shared activity sends every participant out of the room it ended in, and an
+        # identifier derived from the activity alone would name all of their walks the same.
         action_id = self.trace.identifier(
-            "action", [activity.source_activity_id, RETURN_NODE_ID, 0]
+            "action", [activity.source_activity_id, RETURN_NODE_ID, occurrence]
         )
         started = self.env.now
         movement_us = self._walk_microseconds(actor, path, action_id)
@@ -1811,6 +2113,7 @@ class SimulationEngine:
         actor: ResidentRuntime,
         cause_id: str,
         until_us: int | None,
+        stream_key: str = "",
     ) -> Generator[Any, Any, None]:
         """Sit down while there is nothing to do, and settle back if the wait is a long one.
 
@@ -1826,7 +2129,8 @@ class SimulationEngine:
             return
         horizon_us = _offset(self.origin, self.bundle.scenario.simulation_window.end)
         limit = horizon_us if until_us is None else min(until_us, horizon_us)
-        stream = self.streams.stream(f"idle-settle:{cause_id}")
+        # Two people leaving one dinner are two people settling, not one person drawn twice.
+        stream = self.streams.stream(f"idle-settle:{cause_id}{stream_key}")
         schedule = [(IDLE_SIT_AFTER_SECONDS, _SITTING_POSTURE)]
         if self._is_on_resting_furniture(actor, _RECLINING_FURNITURE):
             schedule.append((IDLE_RECLINE_AFTER_SECONDS, _RECLINING_POSTURE))
@@ -1947,7 +2251,37 @@ class SimulationEngine:
         ]
         if not candidates:
             return None
-        return min(candidates, key=lambda item: (self._reach(actor, item), item.entity_id))
+        # A chair somebody else is sitting on is not a seat. With one resident no piece is ever
+        # taken and this changes nothing; with two, the nearest chair to the second body at the
+        # table is the one the first is already on, and `berth_for` wraps rather than refuses, so
+        # both bodies were put on the same point. A piece with room left — the other half of a
+        # sofa, the other side of a bed — is still offered, which is the case berths exist for.
+        lying = kinds is _RECLINING_FURNITURE
+        free = [item for item in candidates if not self._piece_is_full(actor, item, lying=lying)]
+        return min(free or candidates, key=lambda item: (self._reach(actor, item), item.entity_id))
+
+    def _piece_is_full(self, actor: ResidentRuntime, entity: Any, *, lying: bool) -> bool:
+        """Whether the piece already holds as many other bodies as it has places."""
+        obstacle = next(
+            (
+                item
+                for item in self.bundle.home_model.obstacles
+                if item.obstacle_id == f"obstacle_{entity.entity_id}"
+            ),
+            None,
+        )
+        if obstacle is None:
+            return False
+        shape = Polygon([(point.x, point.y) for point in obstacle.boundary.vertices])
+        others = sum(
+            1
+            for other in self.state.residents.values()
+            if other.resident_id != actor.resident_id
+            and other.resting_at is not None
+            and other.region_id == entity.region_id
+            and shape.covers(ShapelyPoint(other.resting_at.x, other.resting_at.y))
+        )
+        return others >= len(berths(obstacle.boundary, lying=lying))
 
     def _reach(self, actor: ResidentRuntime, entity: Any) -> float:
         """How far the body is from the point it would stand at to use this piece."""
@@ -2199,6 +2533,302 @@ class SimulationEngine:
             )
         )
 
+    def _shared_region(self, activity: CanonicalActivity) -> str | None:
+        """The room a participant has to be in: the one the actor's own providers are in.
+
+        Read from the binding rather than from the activity's declared location, because the table
+        a meal is eaten at is whatever the home put the `consumption_area` in, and a participant
+        sent to the room the catalog names would sit down in the kitchen while the actor ate in the
+        living room.
+
+        The front door is not where anything happens. An outing opens with `leave_home`, bound to
+        the door in the living room, and reading that first sent the participant of every Saturday
+        shop to the living room: five Saturdays out of five Paolo "bought groceries" on the sofa
+        while Giulia was at the supermarket. Skipped as a provider rather than as an action, because
+        a model that first walks to the door (`move_to_capability{home_exit}`) names it too.
+        """
+        regions = {item.region_id for item in self.bundle.home_model.regions}
+        entities = {
+            item.entity_id: item
+            for item in self.bundle.home_model.entities
+            if not any(offer.capability in _ENTRANCE_CAPABILITIES for offer in item.capabilities)
+        }
+        model = self.models[self._process_model_id(activity.source_activity_id)]
+        for node in model.nodes:
+            binding = self.bindings.get((activity.source_activity_id, node.node_id))
+            if binding is None:
+                continue
+            for item in binding.capability_bindings:
+                entity = entities.get(item.provider_id)
+                if entity is not None and entity.region_id in regions:
+                    return str(entity.region_id)
+        return next((item for item in activity.location_ids if item in regions), None)
+
+    def _record_engine_action(
+        self,
+        actor: ResidentRuntime,
+        execution_id: str,
+        action_id: str,
+        node_id: str,
+        action_type: str,
+        started_us: float,
+        arguments: dict[str, JsonValue],
+        provider_ids: list[str] | None = None,
+    ) -> None:
+        self.trace.actions.append(
+            ActionExecution(
+                action_execution_id=action_id,
+                activity_execution_id=execution_id,
+                node_id=node_id,
+                occurrence_index=0,
+                action_type=action_type,
+                actor_id=actor.resident_id,
+                started_at=_at(self.origin, started_us, self.zone),
+                ended_at=_at(self.origin, self.env.now, self.zone),
+                status="completed",
+                resolved_arguments=arguments,
+                provider_ids=provider_ids if provider_ids is not None else [actor.resident_id],
+            )
+        )
+
+    def _is_outside(self, region_id: str) -> bool:
+        return any(
+            item.region_id == region_id and item.kind in _OUTSIDE_REGION_KINDS
+            for item in self.bundle.home_model.regions
+        )
+
+    def _cross_front_door(
+        self,
+        participant: ResidentRuntime,
+        activity: CanonicalActivity,
+        execution_id: str,
+        action_type: str,
+        node_id: str,
+    ) -> Generator[Any, Any, str | None]:
+        """Take a participant through the door the actor went through, the way the actor did.
+
+        The door is the actor's: her `leave_home` or `enter_home` binding names it and says where to
+        stand, so the participant walks to that point, spends the gesture there, and gets the same
+        catalog effect on `at_home`. The action carries the door among its providers, which is what
+        the entrance contact listens for — without it the flat is left by one body and the door
+        opens for one.
+        """
+        capability = "home_egress" if action_type == "leave_home" else "home_ingress"
+        model = self.models[self._process_model_id(activity.source_activity_id)]
+        binding = next(
+            (
+                found
+                for node in model.nodes
+                if (found := self.bindings.get((activity.source_activity_id, node.node_id)))
+                is not None
+                and any(item.capability == capability for item in found.capability_bindings)
+            ),
+            None,
+        )
+        if binding is None:
+            return None
+        who = participant.resident_id
+        action_id = self.trace.identifier("action", [activity.source_activity_id, node_id, who])
+        started = self.env.now
+        point = next(
+            (
+                item
+                for item in self.bundle.home_model.interaction_points
+                if item.interaction_point_id == binding.destination_interaction_point_id
+            ),
+            None,
+        )
+        if point is not None:
+            kinetics = self.kinematics[who]
+            path = plan_path(
+                self.bundle.home_model,
+                start_region_id=participant.region_id,
+                start=participant.position,
+                end_region_id=point.region_id,
+                end=point.position,
+                walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+                body_radius_meters=kinetics.body_radius_meters,
+                mobility_profile=kinetics.mobility_profile,
+            )
+            if path is not None and path.distance_meters > 1e-9:
+                origin = participant.region_id
+                walk_us = self._walk_microseconds(participant, path, action_id)
+                yield from self._travel(participant, path, walk_us, action_id)
+                if participant.region_id != origin:
+                    self._apply_move_effects(participant, participant.region_id, action_id)
+                self._set_execution_state(
+                    participant, "performing_activity", "process_edge", action_id
+                )
+        yield self.env.timeout(int(round(_gesture_table()[action_type] * 1_000_000)))
+        for template in self.action_definitions[action_type].effects:
+            self._apply_effect(
+                StateEffect(
+                    fact=template.fact_template, operation=template.operation, value=template.value
+                ),
+                who,
+                action_id,
+                binding,
+            )
+        self._record_engine_action(
+            participant,
+            execution_id,
+            action_id,
+            node_id,
+            action_type,
+            started,
+            {},
+            provider_ids=[item.provider_id for item in binding.capability_bindings],
+        )
+        return action_id
+
+    def _join_shared_activity(
+        self,
+        participant: ResidentRuntime,
+        activity: CanonicalActivity,
+        execution_id: str,
+        posture: str | None,
+    ) -> Generator[Any, Any, list[str]]:
+        """Bring a participant to the activity and put her in the posture it is spent in.
+
+        The plan already reserved her: `occupied_residents()` keeps her out of anything else for the
+        interval. What never happened is her body. The engine ran the actor's process model and
+        nothing more, so at a shared dinner the actor sat down at the table and the other resident
+        stayed in the sitting room for three evenings out of three — a household on paper and one
+        body at the table in the trace, the sensor log and the replay alike.
+
+        She walks with the same body the actor walks with, sits on a piece of her own, and every
+        step is an ordinary action under the shared execution, so the sensor projection sees her
+        where she is without knowing anything about sharing.
+        """
+        action_ids: list[str] = []
+        who = participant.resident_id
+        participant.idle_since_us = None
+        self._set_execution_state(participant, "performing_activity", "plan", execution_id)
+        region = self._shared_region(activity)
+        if (
+            region is not None
+            and self._is_outside(region)
+            and participant.facts.get("at_home") is not False
+        ):
+            crossed = yield from self._cross_front_door(
+                participant, activity, execution_id, "leave_home", JOIN_EGRESS_NODE_ID
+            )
+            if crossed is not None:
+                action_ids.append(crossed)
+        if region is not None and region != participant.region_id:
+            point = self._settling_point(region)
+            path = None
+            if point is not None:
+                kinetics = self.kinematics[who]
+                path = plan_path(
+                    self.bundle.home_model,
+                    start_region_id=participant.region_id,
+                    start=participant.position,
+                    end_region_id=point.region_id,
+                    end=point.position,
+                    walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+                    body_radius_meters=kinetics.body_radius_meters,
+                    mobility_profile=kinetics.mobility_profile,
+                )
+            if path is not None and path.distance_meters > 1e-9:
+                action_id = self.trace.identifier(
+                    "action", [activity.source_activity_id, JOIN_NODE_ID, who]
+                )
+                started = self.env.now
+                yield from self._travel(
+                    participant,
+                    path,
+                    self._walk_microseconds(participant, path, action_id),
+                    action_id,
+                )
+                self._apply_move_effects(participant, region, action_id)
+                self._set_execution_state(
+                    participant, "performing_activity", "process_edge", action_id
+                )
+                self._record_engine_action(
+                    participant,
+                    execution_id,
+                    action_id,
+                    JOIN_NODE_ID,
+                    "move_to",
+                    started,
+                    {"destination": region},
+                )
+                action_ids.append(action_id)
+        if posture in {_SITTING_POSTURE, _RECLINING_POSTURE} and participant.posture != posture:
+            action_id = self.trace.identifier(
+                "action", [activity.source_activity_id, JOIN_POSTURE_NODE_ID, who]
+            )
+            started = self.env.now
+            yield from self._take_a_seat(participant, posture, action_id)
+            seconds = self.kinematics[who].posture_transition_seconds.get(
+                posture, _gesture_table()["change_posture"]
+            )
+            yield self.env.timeout(int(round(seconds * 1_000_000)))
+            self._set_posture(participant, posture, "action_effect", action_id)
+            self._set_execution_state(participant, "performing_activity", "process_edge", action_id)
+            self._record_engine_action(
+                participant,
+                execution_id,
+                action_id,
+                JOIN_POSTURE_NODE_ID,
+                "change_posture",
+                started,
+                {"posture": posture},
+            )
+            action_ids.append(action_id)
+        return action_ids
+
+    def _leave_shared_activity(
+        self,
+        participant: ResidentRuntime,
+        activity: CanonicalActivity,
+        execution_id: str,
+        posture: str | None,
+    ) -> Generator[Any, Any, list[str]]:
+        """Let a participant go when the activity she was brought to is over.
+
+        She ends it the way the actor's model ends it — on her feet if the meal ends with standing
+        up, still on the sofa if the evening does not — and then she is an idle resident like any
+        other, with the same walk out of a service room and the same settle.
+        """
+        action_ids: list[str] = []
+        who = participant.resident_id
+        if posture in _AMBULATORY_POSTURES and participant.posture not in _AMBULATORY_POSTURES:
+            action_id = self.trace.identifier(
+                "action", [activity.source_activity_id, LEAVE_POSTURE_NODE_ID, who]
+            )
+            started = self.env.now
+            yield from self._stand_up(participant, action_id)
+            self._record_engine_action(
+                participant,
+                execution_id,
+                action_id,
+                LEAVE_POSTURE_NODE_ID,
+                "change_posture",
+                started,
+                {"posture": _STANDING_POSTURE},
+            )
+            action_ids.append(action_id)
+        # Out with the actor, back with the actor: the engine brought her through the door, and
+        # nothing else would ever walk her home — the return from a service room only knows rooms.
+        if self._is_outside(participant.region_id) and participant.facts.get("at_home") is False:
+            crossed = yield from self._cross_front_door(
+                participant, activity, execution_id, "enter_home", LEAVE_INGRESS_NODE_ID
+            )
+            if crossed is not None:
+                action_ids.append(crossed)
+        next_us = self._next_commitment(who, int(self.env.now))
+        returned = yield from self._return_from_service_room(
+            participant, activity, execution_id, next_us, occurrence=who
+        )
+        if returned is not None:
+            action_ids.append(returned)
+        participant.idle_since_us = int(self.env.now)
+        self._set_execution_state(participant, "idle", "plan", execution_id)
+        self.env.process(self._settle(participant, execution_id, next_us, stream_key=f":{who}"))
+        return action_ids
+
     def _execute_action(
         self,
         activity: CanonicalActivity,
@@ -2214,7 +2844,7 @@ class SimulationEngine:
         )
         actor = self.state.residents[activity.actor_id]
         started = self.env.now
-        if node.action_type in _UPRIGHT_ACTIONS and actor.posture not in _AMBULATORY_POSTURES:
+        if node.action_type in _upright_actions() and actor.posture not in _AMBULATORY_POSTURES:
             yield from self._stand_up(actor, action_id)
         if node.action_type == "change_posture":
             target = str(binding.resolved_arguments.get("posture", ""))
@@ -2307,6 +2937,10 @@ class SimulationEngine:
             )
         for effect in node.effects:
             self._apply_effect(effect, actor.resident_id, action_id, binding)
+        if node.action_type == "consume" and "itemRole" in binding.resolved_arguments:
+            self.consumed_roles[activity.source_activity_id].add(
+                str(binding.resolved_arguments["itemRole"])
+            )
         self.trace.actions.append(
             ActionExecution(
                 action_execution_id=action_id,
@@ -2331,12 +2965,49 @@ class SimulationEngine:
         execution_id = self.trace.identifier("activity", [activity.source_activity_id])
         actor_id = activity.actor_id
         day = self._day_for(activity.scheduled_start.date())
-        lock = self.actor_locks[actor_id]
-        with lock.request() as actor_request:
-            yield actor_request
+        participants = [
+            item
+            for item in sorted(set(activity.participant_ids))
+            if item != actor_id and item in self.state.residents
+        ]
+        # The actor first, waited for as long as any activity waits for its own resident. Then the
+        # others, each for no longer than `SHARED_WAIT_LIMIT_SECONDS` from the moment the actor was
+        # free: holding her while somebody else finishes is what froze a whole night. The bound is
+        # also what keeps two shared activities waiting for each other's people from deadlocking —
+        # they are not taken in one global order any more, so both give up instead.
+        absent: list[str] = []
+        with ExitStack() as held:
+            yield held.enter_context(self.actor_locks[actor_id].request(priority=requested_us))
+            free_us = int(self.env.now)
+            for resident_id in participants:
+                # Out between two halves of one outing: not somewhere a shared activity can reach.
+                if self.state.residents[resident_id].outing_continues_into is not None:
+                    absent.append(resident_id)
+                    continue
+                request = self.actor_locks[resident_id].request(priority=requested_us)
+                remaining_us = free_us + SHARED_WAIT_LIMIT_SECONDS * 1_000_000 - int(self.env.now)
+                if not request.triggered:
+                    yield request | self.env.timeout(max(0, remaining_us))
+                if request.triggered:
+                    held.enter_context(request)
+                else:
+                    request.cancel()
+                    absent.append(resident_id)
+            participants = [item for item in participants if item not in absent]
             yield from self._transition_pause(
                 self.state.residents[actor_id], requested_us, activity.source_activity_id
             )
+            # The privacy the compiler kept between planned activities, kept once the day has
+            # moved. A mandatory activity waits for the room; an optional one is given up below.
+            # Asked after the pause and not before it: nothing yields between here and the moment
+            # this activity claims the room, so nobody can walk in in between. Asked before it, a
+            # wash checked an empty bathroom, paused for a minute, and started with the other
+            # resident already at the toilet — once on the regenerated Ferri month.
+            occupying = {actor_id, *participants}
+            in_the_way = self._privacy_conflicts(activity, occupying)
+            while in_the_way and activity.mandatory:
+                yield simpy.events.AnyOf(self.env, [item.done for item in in_the_way])
+                in_the_way = self._privacy_conflicts(activity, occupying)
             actual_start_us = int(self.env.now)
             start_event = self.activity_start_events.get(activity.source_activity_id)
             if start_event is not None and not start_event.triggered:
@@ -2382,22 +3053,78 @@ class SimulationEngine:
                 _scenario_condition(item, self.state, actor_id, day.context.facts)
                 for item in activity.preconditions
             )
-            if not conditions_ok:
-                if activity.mandatory:
+            # The live half of serialising an object. A candidate that may overlap its own
+            # resident is not placed against the objects it uses — it interrupts a block rather
+            # than competing for the hour, and the compiler leaves it out of the resource model —
+            # so whether the television or the toilet is free is only known now. Taken, the
+            # candidate is given up like one whose moment has passed; waiting for it would hold
+            # its resident back from the day she actually planned.
+            object_taken = (
+                conditions_ok
+                and activity.can_overlap_for_actor
+                and not activity.mandatory
+                and bool(activity.required_resources)
+                and not self.resource_coordinator._fits(
+                    {item.resource_id: item.units for item in activity.required_resources}
+                )
+            )
+            # Somebody the activity names never came. A shared evening in front of the television
+            # without the other one is not the evening that was planned, so an optional activity
+            # is given up; a dinner still happens, with whoever is at the table.
+            nobody_came = bool(absent) and not activity.mandatory
+            # She is out between two halves of one outing. A toilet trip or a phone call on the
+            # sofa that came due meanwhile cannot happen, and running it would walk her home through
+            # the street without the front door ever opening.
+            continuing = self.state.residents[actor_id].outing_continues_into
+            away = (
+                continuing is not None
+                and continuing != activity.source_activity_id
+                and not activity.mandatory
+            )
+            # Somebody the room is private from is in it, or somebody in it is doing something the
+            # room is private for. Waiting would hold her back from the day she planned, exactly as
+            # for an object in use. Asked again here: the transition pause may have cleared it.
+            room_taken = not activity.mandatory and bool(
+                self._privacy_conflicts(activity, occupying)
+            )
+            # Due after the simulation window closed: the horizon stops at its end, so whatever the
+            # day's delays pushed past it does not happen, mandatory or not.
+            past_horizon = int(self.env.now) >= self.horizon_end_us
+            if (
+                past_horizon
+                or away
+                or not conditions_ok
+                or object_taken
+                or nobody_came
+                or room_taken
+            ):
+                if activity.mandatory and not past_horizon:
                     raise SimulationFailure(
                         "PRECONDITION_FAILED",
                         f"Mandatory activity '{activity.source_activity_id}' failed "
                         "live preconditions.",
                     )
+                if past_horizon:
+                    reason, cause_id = "past-horizon", "simulation_window_ended"
+                elif away:
+                    reason, cause_id = "resident-away", "resident_away"
+                elif room_taken and conditions_ok and not object_taken:
+                    reason, cause_id = "room-occupied", "room_occupied"
+                elif not conditions_ok:
+                    reason, cause_id = "live-precondition", "live_precondition_failed"
+                elif object_taken:
+                    reason, cause_id = "object-taken", "object_in_use"
+                else:
+                    reason, cause_id = "participant-unavailable", "participant_unavailable"
                 deviation_id = self.trace.identifier(
-                    "deviation", [activity.source_activity_id, "live-precondition"]
+                    "deviation", [activity.source_activity_id, reason]
                 )
                 self.trace.deviations.append(
                     PlanDeviation(
                         deviation_id=deviation_id,
                         activity_execution_id=execution_id,
                         kind="optional_dropped",
-                        cause_id="live_precondition_failed",
+                        cause_id=cause_id,
                     )
                 )
                 # Giving up on this activity is also the moment to ask again whether she should
@@ -2442,14 +3169,49 @@ class SimulationEngine:
                         actual_start=_at(self.origin, dropped_at_us, self.zone),
                         actual_end=_at(self.origin, dropped_at_us, self.zone),
                         status="dropped",
+                        participant_ids=participants,
                         action_execution_ids=[returned] if returned is not None else [],
-                        deviation_ids=[deviation_id],
+                        # The shift it waited through as well as the drop: listing only the drop
+                        # left 556 of the Ferri month's deviations reachable from no activity.
+                        deviation_ids=[*deviations, deviation_id],
                     )
                 )
                 return
+            room_use = _RoomUse(
+                occupying=frozenset(occupying),
+                rooms=frozenset(activity.location_ids),
+                excluded=self.exclusions.get(activity.source_activity_id, frozenset()),
+                done=self.env.event(),
+            )
+            self.room_uses[execution_id] = room_use
+            if absent:
+                deviation_id = self.trace.identifier(
+                    "deviation", [activity.source_activity_id, "participant-unavailable"]
+                )
+                self.trace.deviations.append(
+                    PlanDeviation(
+                        deviation_id=deviation_id,
+                        activity_execution_id=execution_id,
+                        kind="fallback_applied",
+                        amount_microseconds=int(self.env.now) - free_us,
+                        cause_id="participant_unavailable",
+                    )
+                )
+                deviations.append(deviation_id)
             actor = self.state.residents[actor_id]
             actor.idle_since_us = None
             self._set_execution_state(actor, "performing_activity", "plan", execution_id)
+            held_posture, final_posture = _shared_postures(
+                self.models[self._process_model_id(activity.source_activity_id)]
+            )
+            joining = [
+                self.env.process(
+                    self._join_shared_activity(
+                        self.state.residents[item], activity, execution_id, held_posture
+                    )
+                )
+                for item in participants
+            ]
             requirements = {item.resource_id: item.units for item in activity.required_resources}
             allocation: ResourceAllocation | None = None
             for resource_id, units in sorted(requirements.items()):
@@ -2523,10 +3285,28 @@ class SimulationEngine:
             phases = _expand_process(
                 model, self.state, actor_id, day, self.bundle, self.variable_catalog
             )
+            # One outing written as two activities: arrive already out, and stay out for the next.
+            # Trimmed before the durations are shared out, so each keeps the length it was planned
+            # with and the time a door crossing would have taken goes to what happens out there.
+            if actor.outing_continues_into == activity.source_activity_id:
+                phases = _without_departure(phases)
+                actor.outing_continues_into = None
+            hands_on = self.outing_continuations.get(activity.source_activity_id)
+            if hands_on is not None:
+                trimmed = _without_return(phases)
+                if len(trimmed) == len(phases):
+                    hands_on = None
+                phases = trimmed
             intended = self._paced_duration(
                 activity.source_activity_id,
                 activity.duration_microseconds + self.extension_us[activity.source_activity_id],
             )
+            # Cut at the end of the window. The compiler lets the last evening run past midnight
+            # and marks it truncated, and the engine used to run it whole regardless: the Ferri
+            # month ended at 00:00 on 1 November and its trace at 07:07, with 1,287 observations
+            # from a morning outside the dataset — six hours of them a resident standing in the
+            # living room because nothing planned beyond the horizon would ever put him to bed.
+            intended = max(1, min(intended, self.horizon_end_us - int(self.env.now)))
             phase_durations = _phase_durations(
                 phases, intended, self._gesture_seconds(activity.source_activity_id, actor_id)
             )
@@ -2665,6 +3445,25 @@ class SimulationEngine:
                         )
                 action_ids.extend(result for result in results.values() if isinstance(result, str))
             self.active_processes.pop(actor_id, None)
+            if hands_on is not None:
+                actor.outing_continues_into = hands_on
+            if joining:
+                # A walk longer than a short activity arrives after it ended; she still arrived,
+                # and leaves from where she got to.
+                joined = yield simpy.events.AllOf(self.env, joining)
+                for result in joined.values():
+                    action_ids.extend(result)
+                leaving = [
+                    self.env.process(
+                        self._leave_shared_activity(
+                            self.state.residents[item], activity, execution_id, final_posture
+                        )
+                    )
+                    for item in participants
+                ]
+                left = yield simpy.events.AllOf(self.env, leaving)
+                for result in left.values():
+                    action_ids.extend(result)
             if allocation is not None:
                 self.resource_coordinator.release(allocation)
             for resource_id, units in sorted(requirements.items(), reverse=True):
@@ -2674,6 +3473,9 @@ class SimulationEngine:
                 )
             for effect in activity.effects:
                 self._apply_effect(effect, actor_id, execution_id)
+            self._put_things_back(actor, activity.source_activity_id, execution_id)
+            for item in participants:
+                self._put_things_back(self.state.residents[item], None, execution_id)
             self.state.completed_activities.add(activity.source_activity_id)
             if activity.intent in _BLADDER_RELIEVING_INTENTS:
                 self._empty_bladder(actor, execution_id)
@@ -2725,10 +3527,117 @@ class SimulationEngine:
                     actual_start=_at(self.origin, actual_start_us, self.zone),
                     actual_end=_at(self.origin, self.env.now, self.zone),
                     status=status,
+                    participant_ids=participants,
                     action_execution_ids=action_ids,
                     deviation_ids=deviations,
                 )
             )
+            # The room is free when she has left it, which is when the activity ends — after the
+            # walk out of the bathroom, not before it.
+            del self.room_uses[execution_id]
+            room_use.done.succeed()
+
+    def _privacy_conflicts(
+        self, activity: CanonicalActivity, occupying: set[str]
+    ) -> list[_RoomUse]:
+        """The running activities this one may not share its rooms with, by either one's privacy.
+
+        The compiler keeps two planned activities apart when one empties its room of the other's
+        resident, and the same rule as `solver.excluded_residents` is kept here once the day has
+        drifted. Over the Ferri month six washes that declared the bathroom private had the other
+        resident at the toilet beside them: a toilet trip is a candidate the compiler leaves out,
+        and a wash that starts late starts on top of whatever is already there.
+        """
+        excluded = self.exclusions.get(activity.source_activity_id, frozenset())
+        rooms = set(activity.location_ids)
+        return [
+            use
+            for use in self.room_uses.values()
+            if use.rooms & rooms
+            and not use.occupying & occupying
+            and (excluded & use.occupying or use.excluded & occupying)
+        ]
+
+    def _sit_where_written_standing(self) -> None:
+        """Apply `_sits_down_where_written_standing` to the engine's own copies of models and
+        bindings. The bundle is left as it came: its digest names the run."""
+        seated: dict[str, set[str]] = {}
+        for model_id, model in list(self.models.items()):
+            found = _sits_down_where_written_standing(model)
+            if not found:
+                continue
+            seated[model_id] = found
+            self.models[model_id] = model.model_copy(
+                update={
+                    "nodes": [
+                        node.model_copy(
+                            update={
+                                "arguments": {
+                                    **node.arguments,
+                                    "posture": node.arguments["posture"].model_copy(
+                                        update={"value": _SITTING_POSTURE}
+                                    ),
+                                }
+                            }
+                        )
+                        if node.node_id in found
+                        else node
+                        for node in model.nodes
+                    ]
+                }
+            )
+        for key, binding in list(self.bindings.items()):
+            if binding.node_id in seated.get(binding.process_model_id, ()):
+                self.bindings[key] = binding.model_copy(
+                    update={
+                        "resolved_arguments": {
+                            **binding.resolved_arguments,
+                            "posture": _SITTING_POSTURE,
+                        }
+                    }
+                )
+
+    def _outing_continuations(self, activities: list[CanonicalActivity]) -> dict[str, str]:
+        """Pair each away activity with the one that follows it closely enough to be one outing.
+
+        Only mandatory activities, because both halves have to happen: the first one leaves her
+        outside on the strength of the second bringing her home, and an optional one may be given
+        up. Only a resident's own activities without participants, so the door she does not walk
+        through is hers alone. And only the next mandatory activity she is occupied by at all, so
+        nothing she was due to do at home is jumped over.
+        """
+        model_ids: dict[str, str] = {}
+        for binding in self.bundle.action_bindings:
+            model_ids.setdefault(binding.source_activity_id, binding.process_model_id)
+
+        def crosses_door(activity: CanonicalActivity, action_type: str) -> bool:
+            model = self.models.get(model_ids.get(activity.source_activity_id, ""))
+            return model is not None and any(
+                node.action_type == action_type for node in model.nodes
+            )
+
+        occupied: defaultdict[str, list[CanonicalActivity]] = defaultdict(list)
+        for item in activities:
+            if item.mandatory:
+                for resident_id in {item.actor_id, *item.participant_ids}:
+                    occupied[resident_id].append(item)
+        pairs: dict[str, str] = {}
+        for resident_id, items in occupied.items():
+            items.sort(key=lambda item: (item.scheduled_start, item.sequence_index))
+            for first, second in pairwise(items):
+                if (
+                    first.actor_id != resident_id
+                    or second.actor_id != resident_id
+                    or first.participant_ids
+                    or second.participant_ids
+                ):
+                    continue
+                gap = (second.scheduled_start - first.scheduled_end).total_seconds()
+                if not 0 <= gap <= OUTING_CONTINUATION_GAP_SECONDS:
+                    continue
+                if crosses_door(first, "enter_home") and crosses_door(second, "leave_home"):
+                    pairs[first.source_activity_id] = second.source_activity_id
+        return pairs
 
     def run(self) -> ExecutionTrace:
         for candidate in self.bundle.scenario.runtime_event_candidates:
@@ -2736,11 +3645,15 @@ class SimulationEngine:
         activities = self._selected_activities()
         for item in activities:
             planned = _offset(self.origin, item.scheduled_start)
-            self.commitments_by_actor.setdefault(item.actor_id, []).append(
-                planned + self.delay_us[item.source_activity_id]
-            )
+            # The participants as well as the actor: a resident whose dinner is in five minutes is
+            # not a resident with nothing coming, whoever is cooking it.
+            for resident_id in {item.actor_id, *item.participant_ids}:
+                self.commitments_by_actor.setdefault(resident_id, []).append(
+                    planned + self.delay_us[item.source_activity_id]
+                )
         for starts in self.commitments_by_actor.values():
             starts.sort()
+        self.outing_continuations = self._outing_continuations(activities)
         processes = [self.env.process(self._activity_process(item)) for item in activities]
         try:
             self.env.run(until=simpy.events.AllOf(self.env, processes))
@@ -2755,8 +3668,13 @@ class SimulationEngine:
         self.trace.activities.sort(key=lambda item: (item.actual_start, item.source_activity_id))
         self.trace.actions.sort(key=lambda item: (item.started_at, item.action_execution_id))
         self.trace.movements.sort(key=lambda item: (item.started_at, item.movement_id))
-        self.trace.transitions.sort(key=lambda item: (item.at, item.transition_id))
-        self.trace.resources.sort(key=lambda item: (item.at, item.resource_event_id))
+        # By time alone, which keeps the order they happened in wherever two share an instant. The
+        # identifier is a hash and says nothing about order: tie-broken by it, 579 groups of the
+        # Ferri month's execution-state changes came out reversed — `moving` recorded after
+        # `performing_activity` with each one's previous value naming the other — and a release and
+        # an acquisition of one toilet at the same microsecond read as two bodies holding it.
+        self.trace.transitions.sort(key=lambda item: item.at)
+        self.trace.resources.sort(key=lambda item: item.at)
         self.trace.runtime_events.sort(key=lambda item: (item.evaluated_at, item.event_id))
         self.trace.deviations.sort(key=lambda item: item.deviation_id)
         final_state = FinalWorldState(

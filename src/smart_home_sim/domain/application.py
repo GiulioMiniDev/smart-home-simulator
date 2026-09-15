@@ -257,6 +257,14 @@ class ExportRequest(ContractModel):
             "plan_deviations",
             "final_state",
             "habit_ground_truth",
+            # What the house did rather than what any one person in it did: the stretches
+            # two residents shared a room. A per-resident answer sheet cannot state it, and
+            # without it an experiment on a shared log charges every co-presence failure to
+            # the algorithm.
+            "household_co_presence",
+            # How often each shared activity was declared shared, against how often it was, by
+            # class of day. A propensity is a number so that this comparison can be made.
+            "household_sharing",
             # Not a projection of a stored artifact but an aggregate computed at export time, and
             # the only role whose files do not follow the requested formats: a profile is a
             # document, a page and a matrix, never a JSONL record stream.

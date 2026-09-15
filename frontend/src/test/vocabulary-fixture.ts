@@ -38,6 +38,7 @@ function action(
     gestureSeconds: 3,
     observability: { motionAtObject: true, motionAlongPath: false },
     isTravel: false,
+    requiresUpright: false,
     ...overrides,
   };
 }

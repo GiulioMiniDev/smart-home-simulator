@@ -19,6 +19,11 @@ from smart_home_sim.authoring import (
     prepare_authoring_repair_file,
     validate_authoring_file,
 )
+from smart_home_sim.authoring.preflight import (
+    validate_habit_bands_are_inhabited,
+    validate_habit_bands_are_not_slept_through,
+    validate_habit_bands_hold_a_stable_stretch,
+)
 from smart_home_sim.behavior import validate_behavior_files
 from smart_home_sim.compiler import compile_file
 from smart_home_sim.domain.application import (
@@ -80,6 +85,7 @@ from smart_home_sim.hybrid_planning import (
     HorizonAuthoringBundle,
     HorizonError,
     HorizonOutline,
+    HouseholdGroundTruth,
     LMStudioClient,
     LMStudioConfig,
     LMStudioError,
@@ -97,9 +103,11 @@ from smart_home_sim.hybrid_planning import (
     generate_persona,
     generate_recurring_activities,
     run_generation,
+    upgrade_authoring_bundle_payload,
 )
 from smart_home_sim.hybrid_planning.cadence import CadenceCalendar
 from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
+from smart_home_sim.hybrid_planning.habits import ground_truth_of_run
 from smart_home_sim.hybrid_planning.lmstudio import DEFAULT_BASE_URL, DEFAULT_MODEL
 from smart_home_sim.materialization import (
     deploy_sensors,
@@ -151,6 +159,7 @@ class SchemaContract(StrEnum):
     horizon_outline = "horizon-outline"
     horizon_authoring_bundle = "horizon-authoring-bundle"
     habit_ground_truth = "habit-ground-truth"
+    household_ground_truth = "household-ground-truth"
     home_model = "home-model"
     environment_validation_report = "environment-validation-report"
     simulation_bundle = "simulation-bundle"
@@ -1041,13 +1050,30 @@ def generate_dataset_command(
 def expand_outline_command(
     bundle_path: Path,
     output: Annotated[Path, typer.Option("--output", "-o")],
-    ground_truth_output: Annotated[Path | None, typer.Option("--ground-truth-output")] = None,
+    # `--ground-truth-output` is the name this option had while the file it wrote was a measurement
+    # of the plan published as ground truth. What it writes now is the declaration alone.
+    bands_output: Annotated[
+        Path | None, typer.Option("--habit-bands-output", "--ground-truth-output")
+    ] = None,
     seed: Annotated[int, typer.Option("--seed")] = 0,
 ) -> None:
-    """Roll a confirmed horizon outline into one authoring bundle covering the whole horizon."""
+    """Roll a confirmed horizon outline into one authoring bundle covering the whole horizon.
+
+    Writes the declared habit bands beside it and reports, on the plan, any band nothing fills. The
+    habit ground truth itself is measured on a run: see `measure-habits`.
+    """
     try:
-        bundle = HorizonAuthoringBundle.model_validate_json(bundle_path.read_text(encoding="utf-8"))
-    except ValidationError as error:
+        # Outlines authored against the single-resident contract still expand: the
+        # lift is mechanical and refusing them would discard every horizon already
+        # written.
+        bundle = HorizonAuthoringBundle.model_validate_json(
+            json.dumps(
+                upgrade_authoring_bundle_payload(
+                    json.loads(bundle_path.read_text(encoding="utf-8"))
+                )
+            )
+        )
+    except (ValidationError, json.JSONDecodeError) as error:
         typer.echo(f"Not a valid horizon authoring bundle: {error}", err=True)
         raise typer.Exit(code=1) from error
 
@@ -1072,23 +1098,91 @@ def expand_outline_command(
         f"{result.rescheduled_occurrences} rescheduled, {result.dropped_occurrences} dropped"
     )
 
-    truth_path = ground_truth_output or output.with_name("habit-ground-truth.json")
-    truth_path.parent.mkdir(parents=True, exist_ok=True)
-    truth_path.write_text(
-        result.habit_ground_truth.model_dump_json(by_alias=True, indent=2) + "\n",
+    # The declaration only. What happened inside the bands is measured on a run's trace, because a
+    # run is what a sensor log belongs to; the plan is not what the residents did.
+    bands_path = bands_output or output.with_name("habit-bands.json")
+    bands_path.parent.mkdir(parents=True, exist_ok=True)
+    bands_path.write_text(
+        result.declared_habits.model_dump_json(by_alias=True, indent=2) + "\n",
         encoding="utf-8",
         newline="\n",
     )
-    habits = result.habit_ground_truth.habits
+    total = sum(len(item.habits) for item in result.declared_habits.residents)
     typer.echo(
-        f"Habit ground truth written to: {truth_path.resolve()} ({len(habits)} habit band(s))"
+        f"Declared habit bands written to: {bands_path.resolve()} "
+        f"({len(result.declared_habits.residents)} resident(s), {total} band(s))"
     )
-    if not habits:
+    if not total:
         typer.echo(
             "The outline declared no habit bands, so nothing states how the day divides. "
             "A habit-mining evaluation has no target without them.",
             err=True,
         )
+    for planned in result.planned_bands:
+        for check in (
+            validate_habit_bands_hold_a_stable_stretch,
+            validate_habit_bands_are_inhabited,
+            validate_habit_bands_are_not_slept_through,
+        ):
+            for finding in check(planned):
+                typer.echo(f"Warning ({planned.resident_id}): {finding.message}", err=True)
+
+
+@app.command("measure-habits")
+def measure_habits_command(
+    trace_path: Path,
+    scenario_path: Annotated[Path, typer.Option("--scenario")],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    household_output: Annotated[Path | None, typer.Option("--household-output")] = None,
+) -> None:
+    """Measure a run's declared habit bands on its execution trace: the habit ground truth.
+
+    The bands come from the scenario the run executed, which carries them for exactly this; what
+    filled them comes from the trace, with actual times and the rooms the bodies were in. One
+    document per resident, the first under the plain name, and one for the household beside them.
+    """
+    try:
+        scenario = Scenario.model_validate_json(scenario_path.read_text(encoding="utf-8"))
+        trace = ExecutionTrace.model_validate_json(trace_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValidationError) as error:
+        typer.echo(f"Cannot read the run: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    measured = ground_truth_of_run(scenario, trace)
+    if measured is None:
+        typer.echo(
+            "This scenario declares no habit bands: it was not expanded from an outline, so there "
+            "is nothing to measure a ground truth against.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    habits, household = measured
+    output.parent.mkdir(parents=True, exist_ok=True)
+    for index, truth in enumerate(habits):
+        truth_path = (
+            output
+            if index == 0
+            else output.with_name(f"{output.stem}-{truth.resident_id}{output.suffix}")
+        )
+        truth_path.write_text(
+            truth.model_dump_json(by_alias=True, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        typer.echo(
+            f"Habit ground truth written to: {truth_path.resolve()} "
+            f"({truth.resident_id}, {len(truth.habits)} band(s))"
+        )
+    household_path = household_output or output.with_name(f"{output.stem}-household{output.suffix}")
+    household_path.write_text(
+        household.model_dump_json(by_alias=True, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    typer.echo(
+        f"Household ground truth written to: {household_path.resolve()} "
+        f"({len(household.co_presence)} co-presence span(s), "
+        f"{len(household.shared_episodes)} shared episode(s))"
+    )
 
 
 @app.command("generate-horizon")
@@ -1296,6 +1390,7 @@ def schema(
         SchemaContract.horizon_outline: HorizonOutline,
         SchemaContract.horizon_authoring_bundle: HorizonAuthoringBundle,
         SchemaContract.habit_ground_truth: HabitGroundTruth,
+        SchemaContract.household_ground_truth: HouseholdGroundTruth,
         SchemaContract.home_model: HomeModel,
         SchemaContract.environment_validation_report: EnvironmentValidationReport,
         SchemaContract.simulation_bundle: SimulationBundle,

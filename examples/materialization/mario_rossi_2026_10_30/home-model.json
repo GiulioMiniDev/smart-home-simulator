@@ -775,6 +775,56 @@
       "orientationDegrees": 0.0
     },
     {
+      "obstacleId": "obstacle_kitchen_chair_02",
+      "regionId": "kitchen",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 8.3319,
+            "y": 2.1942
+          },
+          {
+            "x": 8.7819,
+            "y": 2.1942
+          },
+          {
+            "x": 8.7819,
+            "y": 2.6442
+          },
+          {
+            "x": 8.3319,
+            "y": 2.6442
+          }
+        ]
+      },
+      "orientationDegrees": 270.0
+    },
+    {
+      "obstacleId": "obstacle_kitchen_chair_03",
+      "regionId": "kitchen",
+      "boundary": {
+        "vertices": [
+          {
+            "x": 7.8257,
+            "y": 0.3018
+          },
+          {
+            "x": 8.2757,
+            "y": 0.3018
+          },
+          {
+            "x": 8.2757,
+            "y": 0.7518
+          },
+          {
+            "x": 7.8257,
+            "y": 0.7518
+          }
+        ]
+      },
+      "orientationDegrees": 0.0
+    },
+    {
       "obstacleId": "obstacle_sofa",
       "regionId": "living_room",
       "boundary": {
@@ -992,8 +1042,8 @@
       "interactionPointId": "point_moka",
       "regionId": "kitchen",
       "position": {
-        "x": 8.5091,
-        "y": 0.57
+        "x": 7.5257,
+        "y": 0.3
       },
       "approachRadiusMeters": 0.25
     },
@@ -1028,8 +1078,8 @@
       "interactionPointId": "point_radio",
       "regionId": "kitchen",
       "position": {
-        "x": 8.8841,
-        "y": 0.62
+        "x": 9.2569,
+        "y": 0.85
       },
       "approachRadiusMeters": 0.25
     },
@@ -1057,6 +1107,24 @@
       "position": {
         "x": 10.5878,
         "y": 4.8653
+      },
+      "approachRadiusMeters": 0.25
+    },
+    {
+      "interactionPointId": "point_kitchen_chair_02",
+      "regionId": "kitchen",
+      "position": {
+        "x": 8.5569,
+        "y": 3.0142
+      },
+      "approachRadiusMeters": 0.25
+    },
+    {
+      "interactionPointId": "point_kitchen_chair_03",
+      "regionId": "kitchen",
+      "position": {
+        "x": 7.4557,
+        "y": 0.5268
       },
       "approachRadiusMeters": 0.25
     },
@@ -2602,6 +2670,134 @@
       "initialState": {
         "medicationDoses": 10,
         "cleaningProductsAvailable": true,
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "kitchen_chair_02",
+      "entityType": "chair",
+      "regionId": "kitchen",
+      "interactionPointId": "point_kitchen_chair_02",
+      "capabilities": [
+        {
+          "capability": "cleanable",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_02"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_02"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_02"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_02"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        }
+      ],
+      "initialState": {
+        "open": false,
+        "active": false
+      },
+      "access": {
+        "allowedResidentIds": [],
+        "allowedMobilityProfiles": []
+      }
+    },
+    {
+      "entityId": "kitchen_chair_03",
+      "entityType": "chair",
+      "regionId": "kitchen",
+      "interactionPointId": "point_kitchen_chair_03",
+      "capabilities": [
+        {
+          "capability": "cleanable",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_03"
+          ],
+          "supportedOperations": [
+            "clean"
+          ]
+        },
+        {
+          "capability": "consumable",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_03"
+          ],
+          "supportedOperations": [
+            "consume"
+          ]
+        },
+        {
+          "capability": "interaction_point",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_03"
+          ],
+          "supportedOperations": [
+            "move_to_capability"
+          ]
+        },
+        {
+          "capability": "leisure_support",
+          "roles": [
+            "chair",
+            "consumption_area",
+            "dining_seat",
+            "kitchen_chair_03"
+          ],
+          "supportedOperations": [
+            "leisure"
+          ]
+        }
+      ],
+      "initialState": {
         "open": false,
         "active": false
       },

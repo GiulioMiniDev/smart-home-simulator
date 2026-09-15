@@ -240,3 +240,60 @@
   .scene-avatar, .scene-avatar-facing, .scene-avatar-posture { transition-duration: 0s; }
   .scene-floor, .scene-room-name, .scene-furniture use { transition-duration: 0s; }
 }
+
+/* --- a household: one tone per resident, on the plan, in the caption and on the ribbon ---- */
+.scene-tone-1 { --scene-person: oklch(50% 0.12 250); }
+.scene-tone-2 { --scene-person: oklch(52% 0.12 150); }
+.scene-tone-3 { --scene-person: oklch(56% 0.13 75); }
+.app-shell[data-theme="dark"] .scene-tone-1 { --scene-person: oklch(74% 0.11 250); }
+.app-shell[data-theme="dark"] .scene-tone-2 { --scene-person: oklch(74% 0.11 150); }
+.app-shell[data-theme="dark"] .scene-tone-3 { --scene-person: oklch(78% 0.12 75); }
+
+.scene-caption.is-household { gap: .45rem; }
+.scene-cast { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .6rem; }
+.scene-person-card { display: grid; align-content: start; gap: .15rem; min-width: 0; padding: .55rem .7rem .6rem; border: 1px solid var(--line); border-inline-start: 4px solid var(--scene-person); border-radius: 8px; background: var(--surface-raised); }
+.scene-caption:not(.is-household) .scene-person-card { padding: 0; border: 0; background: none; }
+.scene-person-name { display: flex; align-items: center; gap: .4rem; margin: 0; color: var(--text); font-size: .8rem; font-weight: 700; }
+.scene-person-name i, .scene-lane-name i { flex: none; inline-size: .7rem; block-size: .7rem; border-radius: 50%; background: var(--scene-person); }
+.scene-person-card .scene-where { margin: 0; color: var(--text-faint); font-size: .74rem; }
+.scene-caption.is-household .scene-headline { font-size: 1.02rem; }
+.scene-caption.is-household .scene-beat { color: color-mix(in oklch, var(--scene-person) 80%, var(--text)); font-size: .86rem; }
+.scene-house { margin: 0; color: var(--text-soft); font-size: .78rem; }
+.scene-house span { margin-inline-end: .35rem; padding: .05rem .4rem; border-radius: 99px; background: var(--surface-cool); color: var(--text-faint); font-size: .68rem; font-weight: 650; }
+.scene-house time { font-family: "Cascadia Code", monospace; font-size: .7rem; color: var(--text-faint); }
+
+.scene-ribbon.is-household { gap: .3rem; }
+.scene-lane { display: grid; grid-template-columns: minmax(6.5rem, 9rem) minmax(0, 1fr) auto; gap: .5rem; align-items: center; }
+.scene-lane.is-hours { align-items: start; }
+.scene-lane-name { display: flex; align-items: center; gap: .35rem; min-width: 0; overflow: hidden; color: var(--text-soft); font-size: .74rem; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
+.scene-ribbon-track.scene-tone-0 .scene-block, .scene-ribbon-track.scene-tone-1 .scene-block,
+.scene-ribbon-track.scene-tone-2 .scene-block, .scene-ribbon-track.scene-tone-3 .scene-block { background: var(--scene-person); }
+.scene-lane-skip { min-height: 26px; padding: .15rem .55rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: .74rem; cursor: pointer; }
+.scene-lane-skip:hover:not(:disabled) { border-color: var(--indigo); color: var(--indigo); }
+.scene-lane-skip:disabled { cursor: not-allowed; opacity: .5; }
+@media (max-width: 640px) {
+  .scene-lane { grid-template-columns: minmax(0, 1fr) auto; }
+  .scene-lane .scene-lane-name { grid-column: 1 / -1; }
+  .scene-lane.is-hours > span { display: none; }
+}
+
+/* --- the picture and the words side by side ------------------------------------------- */
+.scene-main { display: grid; min-width: 0; }
+@media (min-width: 1000px) {
+  .scene-main { grid-template-columns: minmax(0, 1fr) minmax(270px, 21rem); }
+  .scene-main .scene-canvas { max-height: clamp(340px, 64vh, 700px); }
+  .scene-main .scene-caption {
+    align-content: start; border-top: 0; border-inline-start: 1px solid var(--line);
+    max-block-size: calc(clamp(340px, 64vh, 700px) + 2rem); overflow-y: auto;
+  }
+  .scene-main .scene-cast { grid-template-columns: minmax(0, 1fr); gap: .45rem; }
+  .scene-main.is-household .scene-person-card { gap: .1rem; padding: .45rem .6rem .5rem; }
+  .scene-main.is-household .scene-headline { font-size: .92rem; line-height: 1.25; }
+  .scene-main.is-household .scene-beat { font-size: .8rem; }
+  .scene-main.is-household .scene-history { margin-top: .15rem; font-size: .72rem; }
+  /* Two earlier beats a card: the side column is the height of the flat, and a third line per
+     resident is what pushed the second card below it. */
+  .scene-main.is-household .scene-history li:nth-child(n+3) { display: none; }
+  .scene-main.is-household .scene-holding { margin-top: .15rem; font-size: .72rem; }
+  .scene-main .scene-clock { font-size: 1.3rem; }
+}

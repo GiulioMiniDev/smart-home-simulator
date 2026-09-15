@@ -22,6 +22,7 @@ import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from smart_home_sim.domain.vocabulary import VocabularyPack
 
@@ -51,7 +52,35 @@ def load_pack(path: Path) -> VocabularyPack:
     `ContractModel` is strict, so the document is parsed from JSON text rather than from a dict:
     a bare `"string"` only becomes a `ValueType` on the way through the JSON parser.
     """
-    return VocabularyPack.model_validate_json(path.read_text(encoding="utf-8"))
+    return VocabularyPack.model_validate_json(
+        json.dumps(upgrade_pack_payload(json.loads(path.read_text(encoding="utf-8"))))
+    )
+
+
+def upgrade_pack_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Fill in what a pack saved before a field existed could not have said.
+
+    `requiresUpright` arrived after researchers had already saved packs. Read with its default,
+    every action in such a pack would stop needing the resident on her feet, and a customised
+    workspace would start tidying the living room from the sofa with nothing reporting the change.
+    So an action that does not state it takes the built-in answer for the same action type, and an
+    action the author added — which the built-in pack does not know — takes `false`, as it always
+    had. Only absent keys are filled; a value the pack states is never touched.
+    """
+    from smart_home_sim.vocabulary.defaults import builtin_pack
+
+    actions = payload.get("actions")
+    if not isinstance(actions, list):
+        return payload
+    upright = {item.action_type for item in builtin_pack().actions if item.requires_upright}
+    lifted = []
+    for action in actions:
+        if isinstance(action, dict) and "requiresUpright" not in action:
+            definition = action.get("definition")
+            action_type = definition.get("actionType") if isinstance(definition, dict) else None
+            action = {**action, "requiresUpright": action_type in upright}
+        lifted.append(action)
+    return {**payload, "actions": lifted}
 
 
 def save_pack(pack: VocabularyPack, path: Path) -> None:

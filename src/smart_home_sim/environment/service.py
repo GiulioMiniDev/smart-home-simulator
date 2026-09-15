@@ -13,9 +13,9 @@ from shapely.geometry import Point, Polygon
 from smart_home_sim.behavior.service import (
     _binding_applies,
     _resolve_variable,
-    default_action_catalog_path,
     default_activity_catalog_path,
     default_variable_catalog_path,
+    load_action_catalog,
     validate_behavior_files,
 )
 from smart_home_sim.compiler.service import canonical_sha256, compile_scenario
@@ -38,6 +38,7 @@ from smart_home_sim.domain.environment import (
     ResolvedCapabilityBinding,
     ResolvedKinematics,
     SimulationBundle,
+    capabilities_for_entity_type,
 )
 from smart_home_sim.domain.models import DayPlan, Scenario
 from smart_home_sim.domain.plan import CanonicalPlan
@@ -541,15 +542,50 @@ def _entity_candidates(
     # somewhere. It is a backstop, not a choice: sorted by entity id alone it would beat
     # `sofa_living` and `table_living` on the letter s, and the resident would work at a generated
     # anchor while her desk stood idle. Real furniture first, the backstop only when nothing else
-    # answers.
+    # answers — and an object of a type the vocabulary does not know after the backstop. Such an
+    # object offers every capability so that the scenario naming it stays simulable, which makes
+    # it an answer to everything rather than furniture for anything: the Ferri outline declared an
+    # `exercise_surface` outdoors, and a nurse's whole shift bound to it as the place she worked.
     return sorted(
         candidates,
         key=lambda item: (
             item[0].region_id not in preferred_regions,
-            item[0].entity_type == "generated_environment_service",
+            _provider_rank(item[0]),
             item[0].entity_id,
         ),
     )
+
+
+_permissive_types: dict[str, bool] = {}
+_permissive_pack: object | None = None
+
+
+def _is_permissive(entity: HomeEntity) -> bool:
+    """A piece of furniture of a type the vocabulary does not declare, and so offers everything.
+
+    Asked once per type and per vocabulary: the binder sorts candidates for every action of every
+    day, and the lookup builds the pack's whole type table each time it is called.
+    """
+    global _permissive_pack
+    from smart_home_sim.vocabulary.active import active_pack
+
+    pack = active_pack()
+    if pack is not _permissive_pack:
+        _permissive_types.clear()
+        _permissive_pack = pack
+    kind = entity.entity_type
+    if kind not in _permissive_types:
+        _permissive_types[kind] = (
+            kind != "generated_environment_service" and capabilities_for_entity_type(kind) is None
+        )
+    return _permissive_types[kind]
+
+
+def _provider_rank(entity: HomeEntity) -> int:
+    """Real furniture, then the room's backstop, then an object that answers to anything."""
+    if entity.entity_type == "generated_environment_service":
+        return 1
+    return 2 if _is_permissive(entity) else 0
 
 
 _SERVICE_ANCHOR = "generated_environment_service"
@@ -563,8 +599,11 @@ _BODY_SUPPORTING_TYPES = frozenset(
 
 
 def _real_furniture(candidates: list[tuple[HomeEntity, Any]]) -> bool:
-    """Does anything here answer that is not the room's own backstop?"""
-    return any(entity.entity_type != _SERVICE_ANCHOR for entity, _ in candidates)
+    """Does anything here answer that is not the room's own backstop, nor an object of no type?"""
+    return any(
+        entity.entity_type != _SERVICE_ANCHOR and not _is_permissive(entity)
+        for entity, _ in candidates
+    )
 
 
 def _capability_providers(
@@ -601,6 +640,7 @@ def _capability_providers(
         candidates,
         key=lambda item: (
             item[0].region_id not in preferred_regions,
+            _is_permissive(item[0]),
             item[0].entity_type not in _BODY_SUPPORTING_TYPES,
             item[0].entity_id,
         ),
@@ -1131,9 +1171,7 @@ def build_bundle_files(
             )
         )
 
-    action_catalog = ActionCatalog.model_validate_json(
-        default_action_catalog_path(package.catalogs.action_catalog.version).read_text()
-    )
+    action_catalog = load_action_catalog(package.catalogs.action_catalog.version)
     variable_catalog = VariableCatalog.model_validate_json(
         default_variable_catalog_path().read_text()
     )
@@ -1227,9 +1265,7 @@ def rebind_bundle_home(bundle: SimulationBundle, home: HomeModel) -> BundleBuild
         )
 
     package = bundle.behavior_package
-    action_catalog = ActionCatalog.model_validate_json(
-        default_action_catalog_path(package.catalogs.action_catalog.version).read_text()
-    )
+    action_catalog = load_action_catalog(package.catalogs.action_catalog.version)
     variable_catalog = VariableCatalog.model_validate_json(
         default_variable_catalog_path().read_text()
     )

@@ -51,6 +51,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { describeRefusal, type ImportRefusal } from "./authoring-refusal";
+import type { VocabularyPack, VocabularyView } from "./vocabulary/types";
+import { substituteResourceTypes, type ReviewActions } from "./horizon/review";
 import { HorizonPreview } from "./horizon/HorizonPreview";
 import { readOutlineFile } from "./horizon/reading";
 import type { OutlineReadResult } from "./horizon/types";
@@ -168,19 +171,6 @@ async function readJson(file: File): Promise<Record<string, unknown>> {
     throw new Error(`“${file.name}” must contain one JSON object`);
   }
   return value as Record<string, unknown>;
-}
-
-type ImportIssue = { code?: string; path?: string; message: string };
-
-function summarizeIssues(issues: ImportIssue[]): string {
-  const unique = new Map<string, ImportIssue>();
-  for (const issue of issues) {
-    unique.set(`${issue.code ?? ""}|${issue.path ?? ""}|${issue.message}`, issue);
-  }
-  return [...unique.values()].map((issue) => {
-    const context = [issue.code, issue.path].filter(Boolean).join(" · ");
-    return context ? `${issue.message} (${context})` : issue.message;
-  }).join(" · ");
 }
 
 export function App() {
@@ -834,6 +824,10 @@ function HomePage() {
   // Read locally, the moment the file is chosen: the outline is the one input nobody can check by
   // eye, and the server's verdict arrives only after the days have been computed from it.
   const [outlineReading, setOutlineReading] = useState<OutlineReadResult>();
+  const [vocabulary, setVocabulary] = useState<VocabularyView>();
+  // Resource types to import as another type, decided in the preview. Applied to the copy that is
+  // sent, never to the file on disk.
+  const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
   const [working, setWorking] = useState(false);
   // How far one import is allowed to carry itself. Validation is not a step: it is what an import
   // is. The other two are the buttons the researcher would otherwise press by hand, in the order
@@ -846,7 +840,7 @@ function HomePage() {
     observationProfile: "realistic",
   });
   const [progress, setProgress] = useState<OperationProgress>();
-  const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string }>();
+  const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string; items?: string[] }>();
   useOperationWatch(progress, setProgress);
   const [homeDraft, setHomeDraft] = useState<HomeModel>();
   const [sensorDraft, setSensorDraft] = useState<SensorModel>();
@@ -917,21 +911,26 @@ function HomePage() {
     setWorking(true); setNotice(undefined);
     setProgress({ operationId, label, phase: "reading", startedAt: Date.now(), elapsed: 0 });
     try {
-      const payload = JSON.stringify(await body());
+      const document = await body();
+      const payload = JSON.stringify(document);
       setProgress((current) => current?.operationId === operationId ? { ...current, phase: "sending" } : current);
-      const result = await api<{ valid: boolean; issues?: ImportIssue[]; message?: string; expansion?: { dayCount: number; activityCount: number; habitBandCount: number }; bundleArtifact?: { artifactId: string } }>(`/homes/${homeId}/${path}`, {
+      const result = await api<ImportRefusal & { expansion?: { dayCount: number; activityCount: number; habitBandCount: number }; bundleArtifact?: { artifactId: string } }>(`/homes/${homeId}/${path}`, {
         method: "POST",
         body: payload,
         headers: { "X-Operation-Id": operationId },
       });
-      // An outline can be refused before any day exists, and then there are no per-activity
-      // issues to summarize — only one sentence saying what the structure got wrong.
-      if (!result.valid) setNotice({ kind: "error", text: result.message ?? summarizeIssues(result.issues ?? []) });
+      // Every gate that can refuse says where, and the researcher needs that more than the verdict:
+      // the list names each problem by the identifiers of the file they wrote.
+      if (!result.valid) setNotice({ kind: "error", ...describeRefusal(result, document) });
       else {
         const expanded = result.expansion
           ? ` Expanded into ${result.expansion.dayCount} days, ${result.expansion.activityCount} activities and ${result.expansion.habitBandCount} habit bands.`
           : "";
-        setNotice({ kind: "success", text: `The complete authoring bundle passed validation, compilation and behavior compatibility gates.${expanded}` });
+        // Warnings do not refuse an import, which is exactly why the success has to count them:
+        // an object the vocabulary does not know is accepted here and reported only below.
+        const warnings = (result.issues ?? []).filter((issue) => issue.severity === "warning").length;
+        const read = warnings ? ` ${warnings} warning${warnings === 1 ? "" : "s"} to read below.` : "";
+        setNotice({ kind: "success", text: `The complete authoring bundle passed validation, compilation and behavior compatibility gates.${expanded}${read}` });
         await resource.reload();
         if (carry !== "validate") await carryOn(carry);
       }
@@ -940,12 +939,51 @@ function HomePage() {
   };
   const importOutline = async (carry: PipelineDepth = "validate") => {
     if (!outlineFile) return;
-    await submitAuthoring("horizon-outline?seed=1", () => readJson(outlineFile), "Expanding and importing the outline", carry);
+    await submitAuthoring("horizon-outline?seed=1", async () => substituteResourceTypes(await readJson(outlineFile), substitutions), "Expanding and importing the outline", carry);
+  };
+  /**
+   * Store one change to the workspace vocabulary, made from the import preview.
+   *
+   * Read fresh and written with the digest it was read at, so an edit open in the Vocabulary page is
+   * refused with a conflict rather than silently overwritten. The view that comes back is what the
+   * preview reads next, so an accepted addition leaves the review at once.
+   */
+  const changeVocabulary = async (change: (pack: VocabularyPack) => VocabularyPack) => {
+    const current = await api<VocabularyView>("/vocabulary");
+    setVocabulary(await api<VocabularyView>("/vocabulary", {
+      method: "PUT",
+      body: JSON.stringify({ pack: change(current.pack), expected_digest: current.digest }),
+    }));
+  };
+  const review: ReviewActions = {
+    substitutions,
+    onSubstitute: (from, to) => setSubstitutions((current) => {
+      const next = { ...current };
+      // An empty replacement is a removal, so only `undefined` takes a decision back.
+      if (to === undefined) delete next[from]; else next[from] = to;
+      return next;
+    }),
+    onAddFurniture: (entity) => changeVocabulary((pack) => ({
+      ...pack,
+      entityTypes: [...pack.entityTypes.filter((item) => item.entityType !== entity.entityType), entity],
+    })),
+    onAddActivity: (intent) => changeVocabulary((pack) => ({
+      ...pack,
+      intents: [...pack.intents.filter((item) => item.intentId !== intent.intentId), intent],
+    })),
   };
   const chooseOutline = async (file?: File) => {
     setOutlineFile(file);
     setOutlineReading(undefined);
-    if (file) setOutlineReading(await readOutlineFile(file));
+    if (!file) return;
+    setSubstitutions({});
+    setOutlineReading(await readOutlineFile(file));
+    // Read on every choice, because the Vocabulary page may have changed it since. A failed read
+    // leaves the review out rather than calling every object unknown; the server reports unknown
+    // furniture and refuses unknown activities after import either way.
+    try {
+      setVocabulary(await api<VocabularyView>("/vocabulary"));
+    } catch { /* see above */ }
   };
   /**
    * Take the import as far as it was asked to go.
@@ -1270,7 +1308,7 @@ function HomePage() {
     <div className="page home-page">
       <Breadcrumbs items={[{ label: "Homes", to: "/homes" }, { label: detail.home.name }]} />
       <PageHeader eyebrow="Environment workspace" title={detail.home.name} description={detail.home.description || "Executable spatial model and resident context"} actions={<><StatusBadge status={activeJob?.status ?? (homeDraft ? "valid" : "draft")} /><button className="button primary" disabled={!inputResident || !!activeJob || working} onClick={() => void startRun()}><Play size={16} /> Run simulation</button><ConfirmAction label="Delete home" title={`Delete “${detail.home.name}”?`} consequence={`Its ${detail.residents.length} resident context(s), ${detail.jobs.length} run(s), every export built from them and the stored inputs only this home uses are deleted from the workspace folder. This cannot be undone.`} busy={working} disabled={!!activeJob} onConfirm={removeHome} /></>} />
-      {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}<span>{notice.text}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button></div>}
+      {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.kind === "success" ? <Check size={18} /> : <AlertCircle size={18} />}{notice.items?.length ? <div className="notice-body"><span>{notice.text}</span><ul className="notice-items">{notice.items.map((item, index) => <li key={index}>{item}</li>)}</ul></div> : <span>{notice.text}</span>}<button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice(undefined)}><X size={16} /></button></div>}
       {progress && <OperationPanel progress={progress} />}
       {recommended && (
         <section className="plan-review" aria-labelledby="plan-review-title">
@@ -1335,7 +1373,7 @@ function HomePage() {
         </section>
       </div>}
       {tab === "overview" && (!detail.residents.length || correctable) && outlineReading?.kind === "outline" && outlineFile && (
-        <HorizonPreview reading={outlineReading.reading} fileName={outlineFile.name} sourceFile={outlineFile} busy={working} onImport={() => void importOutline()} />
+        <HorizonPreview reading={outlineReading.reading} fileName={outlineFile.name} sourceFile={outlineFile} vocabulary={vocabulary?.pack} review={review} busy={working} onImport={() => void importOutline()} />
       )}
       {tab === "plan" && <div className="editor-layout" onKeyDown={editorKeys}>
         <section className="editor-stage">
@@ -1765,7 +1803,7 @@ function RunPage() {
     try { await api<MaintenanceSummary>(`/jobs/${runId}`, { method: "DELETE" }); navigate("/simulations"); }
     catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); }
   };
-  const createExport = async () => { try { const result = await api<ExportManifest>(`/runs/${runId}/exports`, { method: "POST", body: JSON.stringify({ runId, formats: ["jsonl", "csv", "xes"], roles: ["observable", "oracle", "activities", "actions", "movements", "state_transitions", "resources", "runtime_events", "plan_deviations", "final_state", "habit_ground_truth", "resident_profile", "summary"] }) }); setExportManifest(result); setExportNotice(`Export ${result.exportId} published with ${result.files.length} verified files.`); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
+  const createExport = async () => { try { const result = await api<ExportManifest>(`/runs/${runId}/exports`, { method: "POST", body: JSON.stringify({ runId, formats: ["jsonl", "csv", "xes"], roles: ["observable", "oracle", "activities", "actions", "movements", "state_transitions", "resources", "runtime_events", "plan_deviations", "final_state", "habit_ground_truth", "household_co_presence", "household_sharing", "resident_profile", "summary"] }) }); setExportManifest(result); setExportNotice(`Export ${result.exportId} published with ${result.files.length} verified files.`); } catch (reason) { setExportNotice(reason instanceof Error ? reason.message : String(reason)); } };
   return <div className="page run-page">
     <Breadcrumbs items={[{ label: "Simulations", to: "/simulations" }, { label: runId }]} />
     <PageHeader eyebrow="Run evidence" title={runId} description={job.progress.message} actions={<><StatusBadge status={job.status} />{!terminal.has(job.status) ? <button className="button danger" onClick={() => void cancel()}><Square size={15} /> Cancel safely</button> : <ConfirmAction label="Delete run" title="Delete this run and its evidence?" consequence="The execution trace, observable log, oracle mapping and every export built from this run are deleted from the workspace folder. The home and its inputs are untouched." onConfirm={removeRun} />}</>} />
@@ -2299,17 +2337,21 @@ function SettingsPage() {
   );
 }
 
-function promptWithCase(template: string, caseDescription: string): string {
+// Said when the additions could not be read, so the author does not take the silence for "none".
+const ADDITIONS_UNREAD = "This workspace's additions to the vocabulary could not be read when the prompt was copied. Use only the lists above, and propose anything they lack.";
+
+function promptWithCase(template: string, caseDescription: string, additions?: string): string {
   const description = caseDescription.trim() || "[DESCRIVI QUI PERSONA, ABITUDINI, VINCOLI, DATE E OBIETTIVO DELLO STUDIO]";
   return template
+    .replace("{{WORKSPACE_VOCABULARY}}", additions ?? ADDITIONS_UNREAD)
     .replace("{{PERSON_AND_CASE_DESCRIPTION}}", description)
     .replace("[PERSON_AND_CASE_DESCRIPTION]", description)
     .replaceAll("[GENERATION_TIMESTAMP]", new Date().toISOString());
 }
 
-function PromptCard({ title, label, description, template, caseDescription }: { title: string; label: string; description: string; template: string; caseDescription: string }) {
+function PromptCard({ title, label, description, template, caseDescription, additions }: { title: string; label: string; description: string; template: string; caseDescription: string; additions?: string }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
-  const prompt = promptWithCase(template, caseDescription);
+  const prompt = promptWithCase(template, caseDescription, additions);
   const copy = async () => {
     try {
       if (!navigator.clipboard) throw new Error("Clipboard access is unavailable");
@@ -2325,7 +2367,17 @@ function PromptCard({ title, label, description, template, caseDescription }: { 
 
 function HelpPage() {
   const [caseDescription, setCaseDescription] = useState("");
-  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">One file goes in</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery and disk space</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM for the <em>structure</em> of the period—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><p>It does not ask for the days themselves, because that degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. An outline costs the same whether it covers a week or a year.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into the prompt. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label="Recommended · outline 1.3.0" description="Returns a horizon outline plus its process package, not days. The expander also publishes the habit ground truth a segmentation algorithm is scored against, and every declared band must be inhabited: an anchor activity, something that occupies a wide band in blocks, and content that differs between two bands sharing a window. 1.2.0 also describes the dwelling — every room the plan can draw, every piece of furniture it can bind, and how a home says it has two storeys and is larger than a small flat — and 1.3.0 lets a habit name the room it happens in rather than taking the one its intent usually uses." template={authoringPrompts.outline.text} caseDescription={caseDescription} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> It answers with both halves at once — the outline and the process package that says how its intents are performed — so the saved file has <code>documentType: horizon_authoring_bundle</code>. Choose it under <em>Horizon outline and processes</em> in Resident context: the application computes the days and imports the result in one step. Choosing the file draws it first — the day as a clock, the week beside itself and the months as a calendar — so what the model wrote can be read before a horizon of days is computed from it. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the outline prompt&rsquo;s saved answer under <em>Horizon outline and processes</em>. The application expands it into days, validates, compiles and attaches it.</li><li>Say how far that import should carry itself: attach and stop, build the home and its sensor field, or build it and run. Each step is reached only if the one before it passed; anything refused stops there and is reported.</li><li>Resolve every reported validation issue; rejected documents publish no authoring revision.</li><li>Review the proposed plan. Move a wall or a PIR and publish, confirm it as it stands, or ask for the whole planimetry again with <em>Regenerate plan</em>.</li><li>Start the run, then open it and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>One file goes in</h2><p><strong>The horizon outline bundle is the only document this application imports.</strong> It has <code>documentType: horizon_authoring_bundle</code> and carries both halves of the prompt&rsquo;s answer: the outline of the period and the process package saying how its intents are performed. The days are computed from it here, and everything after that is the ordinary path.</p><p>Everything else you will see in a workspace — the scenario, the process package, the compiled plan, the bundle the expander wrote — is an internal projection of that import, published as evidence rather than authored by hand. The command line still accepts them separately for debugging and controlled migration: <code>smart-home-sim expand-outline</code>, then the materialization commands.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and disk space</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p><p>A workspace grows with every run and every export, and the folder it starts in is on the system drive. <Link to="/settings">Settings</Link> weighs each part of it against the space left on that drive, and moves the whole workspace to another one. The move is agreed there and performed by the next start, when nothing has the database open: across drives the files are copied before anything is removed, so an interrupted move leaves the workspace where it was.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
+  // What the workspace vocabulary adds to the prompt's own lists: the furniture and activities the
+  // researcher has defined, so the author uses them instead of proposing them again.
+  const [additions, setAdditions] = useState<string>();
+  useEffect(() => {
+    let live = true;
+    api<{ markdown: string }>("/vocabulary/additions")
+      .then((view) => { if (live) setAdditions(view.markdown); })
+      .catch(() => { /* the prompt says it could not read them */ });
+    return () => { live = false; };
+  }, []);
+  return <div className="page guide-page"><PageHeader eyebrow="Integrated guide" title="From a case description to inspectable evidence" description="Everything required to generate, import, run and verify a simulation—offline and without manual JSON authoring." /><div className="guide-layout"><nav aria-label="Guide contents"><a href="#authoring">Generate the bundle</a><a href="#first-run">Import and run</a><a href="#artifacts">One file goes in</a><a href="#truth">Truth and observation</a><a href="#recovery">Recovery and disk space</a><a href="#keyboard">Keyboard</a></nav><article><section id="authoring"><span>01</span><div><h2>Generate one authoring bundle</h2><p>Describe the person or people in ordinary language. Include dates, habits, constraints, health information and the research objective only when relevant. The prompt asks the external LLM for the <em>structure</em> of the period—recurring activities, the habit bands of the day, phases and events—and a deterministic expander produces every concrete day from it, computing sleep debt, hunger and fatigue as it goes.</p><p>It does not ask for the days themselves, because that degrades as the horizon grows: measured on this project's own cases, the share of distinct days falls from 1.00 over a week to 0.74 over a month to 0.03 over eight months, where 244 days collapsed into seven templates. An outline costs the same whether it covers a week or a year.</p><label className="case-description"><span>Person and case description</span><textarea aria-label="Person and case description" value={caseDescription} onChange={(event) => setCaseDescription(event.target.value)} placeholder="Example: Lucia Rossi, 68, lives alone in Rome. Simulate August 2026…" /><small>This text is inserted locally into the prompt. Nothing is sent by this application.</small></label><div className="prompt-grid"><PromptCard title="Horizon outline prompt" label={`Recommended · outline ${authoringPrompts.outline.version.replace("generate-horizon-outline-", "")}`} description="Returns a horizon outline plus its process package, not days. The expander also publishes the habit ground truth a segmentation algorithm is scored against, and every declared band must be inhabited: an anchor activity, something that occupies a wide band in blocks, and content that differs between two bands sharing a window. 1.2.0 also describes the dwelling — every room the plan can draw, every piece of furniture it can bind, and how a home says it has two storeys and is larger than a small flat — 1.3.0 lets a habit name the room it happens in rather than taking the one its intent usually uses, and 2.0.0 describes a household: one or more residents, who they are to each other, what they do together and which rooms are private. It also lists what this workspace has added to the vocabulary, and lets the model propose furniture and activities it lacks, which the import preview asks you to accept." template={authoringPrompts.outline.text} caseDescription={caseDescription} additions={additions} /></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Save only the model response as JSON.</strong> It must start with <code>{"{"}</code>, end with <code>{"}"}</code>, and contain no Markdown fence or explanation.</p></div><div className="guide-callout"><ShieldCheck size={19} /><p><strong>Its response is expanded, not imported as it stands.</strong> It answers with both halves at once — the outline and the process package that says how its intents are performed — so the saved file has <code>documentType: horizon_authoring_bundle</code>. Choose it under <em>Horizon outline and processes</em> in Resident context: the application computes the days and imports the result in one step. Choosing the file draws it first — the day as a clock, the week beside itself and the months as a calendar — so what the model wrote can be read before a horizon of days is computed from it. From a terminal the same thing is <code>smart-home-sim expand-outline outline.json --output bundle.json --ground-truth-output truth.json --seed 1</code>, which also writes the habit ground truth beside the bundle.</p></div></div></section><section id="first-run"><span>02</span><div><h2>Import and run</h2><ol><li>Create a home from the Homes page.</li><li>Select the outline prompt&rsquo;s saved answer under <em>Horizon outline and processes</em>. The application expands it into days, validates, compiles and attaches it.</li><li>Say how far that import should carry itself: attach and stop, build the home and its sensor field, or build it and run. Each step is reached only if the one before it passed; anything refused stops there and is reported.</li><li>Resolve every reported validation issue; rejected documents publish no authoring revision.</li><li>Review the proposed plan. Move a wall or a PIR and publish, confirm it as it stands, or ask for the whole planimetry again with <em>Regenerate plan</em>.</li><li>Start the run, then open it and verify its replay digest.</li></ol></div></section><section id="artifacts"><span>03</span><div><h2>One file goes in</h2><p><strong>The horizon outline bundle is the only document this application imports.</strong> It has <code>documentType: horizon_authoring_bundle</code> and carries both halves of the prompt&rsquo;s answer: the outline of the period and the process package saying how its intents are performed. The days are computed from it here, and everything after that is the ordinary path.</p><p>Everything else you will see in a workspace — the scenario, the process package, the compiled plan, the bundle the expander wrote — is an internal projection of that import, published as evidence rather than authored by hand. The command line still accepts them separately for debugging and controlled migration: <code>smart-home-sim expand-outline</code>, then the materialization commands.</p></div></section><section id="truth"><span>04</span><div><h2>Ground truth is not a sensor field</h2><p>The diary is derived from the authoritative execution trace. The Observable view contains only device fields. Oracle mode opens a separate mapping from a sensor record to its simulated cause, resident and activity.</p><div className="concept-pair"><div><Radar size={20} /><strong>Observable</strong><p>Sensor, timestamp, measurement, value and quality.</p></div><div><ShieldCheck size={20} /><strong>Oracle</strong><p>Movement, action or transition that produced the observation.</p></div></div></div></section><section id="recovery"><span>05</span><div><h2>Safe interruption, recovery and disk space</h2><p>Closing the browser leaves the backend and worker active. Cancelling a run discards staging. If the backend stops unexpectedly, active work becomes interrupted and the next start verifies every registered artifact before enabling publication.</p><p>You can delete files from the workspace folder: the next start forgets the catalogue entries that described them, says what it changed, and keeps working. Publication is only paused when a file is still there holding content that contradicts the digest recorded when it was published, because then what a run executed can no longer be established. <Link to="/maintenance">Maintenance</Link> shows exactly what the folder and the catalogue disagree about, and lets you delete exports, runs and homes from inside the application instead.</p><p>A workspace grows with every run and every export, and the folder it starts in is on the system drive. <Link to="/settings">Settings</Link> weighs each part of it against the space left on that drive, and moves the whole workspace to another one. The move is agreed there and performed by the next start, when nothing has the database open: across drives the files are copied before anything is removed, so an interrupted move leaves the workspace where it was.</p></div></section><section id="keyboard"><span>06</span><div><h2>Keyboard and structured alternatives</h2><p>Use Tab to reach plan objects, Enter or Space to select, and the inspector controls for precise movement. Every spatial object also appears in a structured list. Motion respects your reduced-motion preference.</p></div></section></article></div></div>;
 }
 
 function NotFound() {

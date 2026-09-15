@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useResource } from "../hooks";
 import type { HomeModel, SensorModel } from "../types";
+import { activitiesOf, beatsFor, castOf, houseBeats, type CastMember } from "./replay-cast";
 import { replayTimestamp } from "./replay-positioning";
 import { scenePlace } from "./replay-place";
 import { activityAt, beatsUpTo, residentName, type SceneActivity } from "./replay-script";
-import { foldWorld } from "./replay-world";
+import { foldWorld, type WorldResident } from "./replay-world";
 import { sceneMotion } from "./scene-motion";
 import { SceneStage } from "./SceneStage";
 import { localParts, SCENE_SPEEDS, useReplayScene, type ReplaySceneController } from "./useReplayScene";
@@ -55,9 +56,19 @@ function SceneClock({ controller }: { controller: ReplaySceneController }) {
   return <span className="scene-clock" ref={label} aria-live="off">{clockText(controller.atMs, controller.offsetMs)}</span>;
 }
 
-/** The whole day as one bar: where the resident is in it, and what is left to watch. */
-function DayRibbon({ controller }: { controller: ReplaySceneController }) {
-  const { dayStartMs, offsetMs, script } = controller;
+/**
+ * One track of the day: a row of activity blocks under a moving playhead.
+ *
+ * The playhead is written straight to the DOM from the clock, like the clock's own text, so a
+ * household of several tracks costs no re-render per frame.
+ */
+function RibbonTrack({ controller, activities, label, tone }: {
+  controller: ReplaySceneController;
+  activities: readonly SceneActivity[];
+  label: string;
+  tone?: number;
+}) {
+  const { dayStartMs, offsetMs } = controller;
   const playhead = useRef<HTMLDivElement | null>(null);
   const day = useRef(dayStartMs);
   day.current = dayStartMs;
@@ -71,11 +82,11 @@ function DayRibbon({ controller }: { controller: ReplaySceneController }) {
   useLayoutEffect(() => { place(controller.atMs); });
 
   if (dayStartMs === undefined) return null;
-  const blocks = script.activities.map((activity, index) => {
+  const blocks = activities.map((activity, index) => {
     // A block may never reach into the next one's time. On a narrow screen a seven-minute
     // activity is a pixel and a half wide, and a minimum width wide enough to see was enough
     // to cover its neighbour and swallow the tap meant for it.
-    const next = script.activities[index + 1];
+    const next = activities[index + 1];
     const gap = next ? (next.startMs - activity.startMs) / MILLISECONDS_PER_DAY : 1;
     return {
       activity,
@@ -89,24 +100,66 @@ function DayRibbon({ controller }: { controller: ReplaySceneController }) {
     controller.seek(dayStartMs + ((event.clientX - box.left) / box.width) * MILLISECONDS_PER_DAY);
   };
   return (
-    <div className="scene-ribbon" aria-label={`The day, ${String(script.activities.length)} activities`}>
-      {/* The bar itself is the coarse way through the day; the blocks on it are the precise one. */}
-      <div className="scene-ribbon-track" onClick={seekToPointer}>
-        {blocks.map(({ activity, left, width }) => (
-          <button
-            key={activity.eventId}
-            type="button"
-            className={activity.deviated ? "scene-block is-deviated" : "scene-block"}
-            style={{ insetInlineStart: `${String(left * 100)}%`, inlineSize: `${String(width * 100)}%` }}
-            title={`${shortClock(activity.startMs, offsetMs)} ${activity.title}`}
-            aria-label={`${shortClock(activity.startMs, offsetMs)}, ${activity.title}`}
-            onClick={(event) => { event.stopPropagation(); controller.seek(activity.startMs); }}
-          />
-        ))}
-        <div className="scene-ribbon-playhead" ref={playhead} aria-hidden="true" />
-      </div>
-      <div className="scene-ribbon-hours" aria-hidden="true">
-        {[0, 6, 12, 18].map((hour) => <span key={hour} style={{ insetInlineStart: `${String((hour / 24) * 100)}%` }}>{two(hour)}</span>)}
+    // The bar itself is the coarse way through the day; the blocks on it are the precise one.
+    <div className={tone === undefined ? "scene-ribbon-track" : `scene-ribbon-track scene-tone-${String(tone)}`} onClick={seekToPointer} aria-label={label}>
+      {blocks.map(({ activity, left, width }) => (
+        <button
+          key={activity.eventId}
+          type="button"
+          className={activity.deviated ? "scene-block is-deviated" : "scene-block"}
+          style={{ insetInlineStart: `${String(left * 100)}%`, inlineSize: `${String(width * 100)}%` }}
+          title={`${shortClock(activity.startMs, offsetMs)} ${activity.title}`}
+          aria-label={`${shortClock(activity.startMs, offsetMs)}, ${activity.title}`}
+          onClick={(event) => { event.stopPropagation(); controller.seek(activity.startMs); }}
+        />
+      ))}
+      <div className="scene-ribbon-playhead" ref={playhead} aria-hidden="true" />
+    </div>
+  );
+}
+
+function RibbonHours() {
+  return (
+    <div className="scene-ribbon-hours" aria-hidden="true">
+      {[0, 6, 12, 18].map((hour) => <span key={hour} style={{ insetInlineStart: `${String((hour / 24) * 100)}%` }}>{two(hour)}</span>)}
+    </div>
+  );
+}
+
+/**
+ * The whole day: one bar for one resident, one lane each for a household.
+ *
+ * With two people on one bar their activities lay over each other, and "skip ahead" landed on
+ * whichever boundary came first — usually the other person's. Each lane has its own skip, which
+ * moves the one shared clock past *that* resident's activity: time still passes for everyone.
+ */
+function DayRibbon({ controller, cast }: { controller: ReplaySceneController; cast: readonly CastMember[] }) {
+  const { dayStartMs, script } = controller;
+  if (dayStartMs === undefined) return null;
+  const household = cast.length > 1;
+  return (
+    <div className={household ? "scene-ribbon is-household" : "scene-ribbon"} aria-label={`The day, ${String(script.activities.length)} activities`}>
+      {household ? cast.map((member) => {
+        const activities = activitiesOf(script, member.residentId);
+        return (
+          <div className="scene-lane" key={member.residentId}>
+            <span className={`scene-lane-name scene-tone-${String(member.tone)}`}><i aria-hidden="true" />{member.name}</span>
+            <RibbonTrack controller={controller} activities={activities} tone={member.tone} label={`${member.name}'s day, ${String(activities.length)} activities`} />
+            <button
+              type="button"
+              className="scene-lane-skip"
+              disabled={controller.status !== "ready"}
+              aria-label={`Skip ahead for ${member.name}`}
+              title={`Past ${member.name}'s current activity, or on to their next one`}
+              onClick={() => { controller.skip(member.residentId); }}
+            >Skip ▸</button>
+          </div>
+        );
+      }) : <RibbonTrack controller={controller} activities={script.activities} label="The day" />}
+      <div className={household ? "scene-lane is-hours" : undefined}>
+        {household && <span />}
+        <RibbonHours />
+        {household && <span />}
       </div>
     </div>
   );
@@ -116,6 +169,51 @@ function headline(activity: SceneActivity | undefined, name: string, atMs: numbe
   if (!activity) return `${name} has nothing planned right now`;
   // The trace calls this field an intent, so saying it as a wish is the plainest reading of it.
   return atMs - activity.startMs < 6_000 ? `${name} ${activity.wish}` : `${name} is ${activity.title}`;
+}
+
+function whereText(resident: WorldResident | undefined): string | undefined {
+  if (!resident?.regionId) return undefined;
+  const room = resident.regionId.replaceAll("_", " ");
+  return `${resident.away ? "away · " : "in the "}${room}${resident.using ? ` · at the ${resident.using.label}` : ""}`;
+}
+
+/**
+ * One resident's side of the moment: where they are, what they are doing, and what they just did.
+ *
+ * A single caption for a household named only whoever was listed first and interleaved both
+ * people's last few actions into one list, so "Giulia is preparing lunch" sat above "Paolo wants
+ * to prepare breakfast" with nothing to say the two lines were about different people.
+ */
+function ResidentCard({ member, resident, controller, household, beats: told }: {
+  member: CastMember;
+  resident: WorldResident | undefined;
+  controller: ReplaySceneController;
+  household: boolean;
+  /** What to list instead of this resident's own beats: one resident keeps the whole day's. */
+  beats?: ReturnType<typeof beatsUpTo>;
+}) {
+  const { atMs, offsetMs, script } = controller;
+  const activity = activityAt(script, atMs, member.residentId);
+  const beats = told ?? beatsFor(script, atMs, member.residentId, HISTORY);
+  const latest = beats.at(-1);
+  const earlier = beats.slice(0, -1).reverse();
+  const where = whereText(resident);
+  return (
+    <article className={`scene-person-card scene-tone-${String(member.tone)}`} aria-label={member.name}>
+      {household && <p className="scene-person-name"><i aria-hidden="true" />{member.name}</p>}
+      {where && <p className="scene-where">{where}</p>}
+      <h2 className="scene-headline">{headline(activity, member.name, atMs)}</h2>
+      <p className="scene-beat">{latest?.text ?? (household ? `Nothing from ${member.name} yet today` : "Nothing has happened yet today")}</p>
+      <ol className="scene-history">
+        {earlier.map((beat) => <li key={`${String(beat.atMs)}-${beat.text}`}>
+          <time>{shortClock(beat.atMs, offsetMs)}</time> {beat.text}
+        </li>)}
+      </ol>
+      {resident && resident.carrying.length > 0 && <p className="scene-holding">
+        Carrying {resident.carrying.map((item) => item.replaceAll("_", " ")).join(", ")}
+      </p>}
+    </article>
+  );
 }
 
 /** The stretch the scrubber covers: the day on screen, not the whole horizon.
@@ -151,12 +249,17 @@ export function ReplayScene({ runId }: { runId: string }) {
     [anchorMs, controller.subscribeToClock, place, world],
   );
 
-  const resident = world.residents[0];
-  const name = resident?.name ?? residentName(script.activities[0]?.actorId);
-  const activity = activityAt(script, atMs, resident?.residentId);
-  const beats = beatsUpTo(script, atMs, HISTORY);
-  const latest = beats.at(-1);
-  const earlier = beats.slice(0, -1).reverse();
+  const cast = useMemo(() => {
+    const members = castOf(world.residents, script.activities);
+    return members.length ? members : [{ residentId: script.activities[0]?.actorId ?? "resident", name: residentName(script.activities[0]?.actorId), tone: 0 }];
+  }, [script.activities, world.residents]);
+  const household = cast.length > 1;
+  const byId = new Map(world.residents.map((resident) => [resident.residentId, resident]));
+  const away = world.residents.filter((resident) => resident.away);
+  // Doors and appliances name no one, so in a household they are said once, for the flat.
+  const house = household ? houseBeats(script, atMs, 1).at(-1) : undefined;
+  // One resident keeps the one list of everything, the fridge included, as it always had.
+  const single = household ? undefined : beatsUpTo(script, atMs, HISTORY);
 
   if (controller.status === "blocked") {
     return <section className="scene-page">
@@ -166,16 +269,19 @@ export function ReplayScene({ runId }: { runId: string }) {
 
   return (
     <section className="scene-page" data-status={controller.status}>
+      {/* The picture and what is said about it sit side by side where the screen is wide enough, so
+          the whole moment — the flat, each resident's card and the day below — fits without scrolling. */}
+      <div className={household ? "scene-main is-household" : "scene-main"}>
       <div className="scene-viewport">
         <SceneStage
           home={models.data?.homeModel}
           world={world}
           motion={motion}
-          activeRegionId={resident?.away ? undefined : resident?.regionId}
-          usingEntityId={resident?.using?.entityId}
+          activeRegionIds={world.residents.flatMap((resident) => !resident.away && resident.regionId ? [resident.regionId] : [])}
+          usingEntityIds={world.residents.flatMap((resident) => resident.using?.entityId ? [resident.using.entityId] : [])}
         />
-        {resident?.away && <p className="scene-away" role="status">
-          {name} is out{resident.regionId ? ` — ${resident.regionId.replaceAll("_", " ")}` : ""}
+        {away.length > 0 && <p className="scene-away" role="status">
+          {away.map((resident) => `${resident.name} is out${resident.regionId ? ` — ${resident.regionId.replaceAll("_", " ")}` : ""}`).join(" · ")}
         </p>}
         {controller.status === "loading" && <p className="scene-loading" role="status">Setting the scene…</p>}
         {controller.status === "verifying" && <p className="scene-loading" role="status">
@@ -185,28 +291,23 @@ export function ReplayScene({ runId }: { runId: string }) {
         {controller.loadingDay && controller.status === "ready" && <p className="scene-loading is-quiet" role="status">Loading this day…</p>}
       </div>
 
-      <section className="scene-caption" aria-live="polite" aria-atomic="true">
+      <section className={household ? "scene-caption is-household" : "scene-caption"} aria-live="polite" aria-atomic="true">
         <p className="scene-when">
           <SceneClock controller={controller} />
           <span className="scene-date">{dayText(atMs, offsetMs)}</span>
-          {resident?.regionId && <span className="scene-where">
-            {resident.away ? "away · " : "in the "}{resident.regionId.replaceAll("_", " ")}
-            {resident.using ? ` · at the ${resident.using.label}` : ""}
-          </span>}
         </p>
-        <h2 className="scene-headline">{headline(activity, name, atMs)}</h2>
-        <p className="scene-beat">{latest?.text ?? "Nothing has happened yet today"}</p>
-        <ol className="scene-history">
-          {earlier.map((beat) => <li key={`${String(beat.atMs)}-${beat.text}`}>
-            <time>{shortClock(beat.atMs, offsetMs)}</time> {beat.text}
-          </li>)}
-        </ol>
-        {resident && resident.carrying.length > 0 && <p className="scene-holding">
-          Carrying {resident.carrying.map((item) => item.replaceAll("_", " ")).join(", ")}
-        </p>}
+        {household ? (
+          <div className="scene-cast">
+            {cast.map((member) => <ResidentCard key={member.residentId} member={member} resident={byId.get(member.residentId)} controller={controller} household />)}
+          </div>
+        ) : (
+          <ResidentCard member={cast[0]!} resident={byId.get(cast[0]!.residentId) ?? world.residents[0]} controller={controller} household={false} beats={single} />
+        )}
+        {house && <p className="scene-house"><span>In the flat</span> <time>{shortClock(house.atMs, offsetMs)}</time> {house.text}</p>}
       </section>
+      </div>
 
-      <DayRibbon controller={controller} />
+      <DayRibbon controller={controller} cast={cast} />
 
       <section className="scene-transport" aria-label="Replay controls">
         <button type="button" className="scene-key" aria-label="Previous day" onClick={() => { controller.stepDay(-1); }}>◀</button>
@@ -230,12 +331,13 @@ export function ReplayScene({ runId }: { runId: string }) {
           disabled={controller.status !== "ready"}
           onClick={() => { controller.nudge(1); }}
         >+15s</button>
-        <button
+        {/* A household skips from each resident's own lane, where it is clear whose activity it passes. */}
+        {!household && <button
           type="button"
           className="scene-key"
           disabled={controller.status !== "ready"}
           onClick={() => { controller.skip(); }}
-        >Skip ahead</button>
+        >Skip ahead</button>}
         <label className="scene-speed">Speed
           <select
             aria-label="Playback speed"

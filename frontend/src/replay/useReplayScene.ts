@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api";
 import type { HomeModel, ReplayEventWindow, ReplayFrame, ReplayVerification } from "../types";
+import { skipTarget } from "./replay-cast";
 import { buildScript, type SceneScript } from "./replay-script";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -83,8 +84,14 @@ export interface ReplaySceneController {
   pause(): void;
   seek(atMs: number): void;
   setSpeed(speed: number): void;
-  /** Jump past whatever is happening now: the rest of this activity, or on to the next. */
-  skip(): void;
+  /**
+   * Jump past whatever is happening now: the rest of this activity, or on to the next.
+   *
+   * Given a resident, only that resident's activities count. Two people in one flat are rarely
+   * doing things that start and end together, so a skip read off both lands on whichever boundary
+   * comes first, which is usually the other person's.
+   */
+  skip(residentId?: string): void;
   /** A step of a few seconds, forwards or back, that will not jump over a walk. */
   nudge(direction: -1 | 1): void;
   stepDay(direction: -1 | 1): void;
@@ -273,13 +280,14 @@ export function useReplayScene(runId: string, home: HomeModel | undefined): Repl
     if (day !== dayStartMs) setDayStartMs(day);
   }, [dayStartMs, publish]);
 
-  const skip = useCallback(() => {
+  const skip = useCallback((residentId?: string) => {
     const at = atRef.current;
-    const running = script.activities.find((activity) => activity.startMs <= at && at < activity.endMs);
-    const upcoming = script.activities.find((activity) => activity.startMs > at);
     // Past the end of what is happening, or on to the next thing, or simply an hour on when a
     // day has nothing else to show.
-    jump(running ? running.endMs : upcoming ? upcoming.startMs : at + 60 * 60 * 1000);
+    const activities = residentId === undefined
+      ? script.activities
+      : script.activities.filter((activity) => activity.actorId === residentId);
+    jump(skipTarget(activities, at));
   }, [jump, script.activities]);
 
   const nudge = useCallback((direction: -1 | 1) => {

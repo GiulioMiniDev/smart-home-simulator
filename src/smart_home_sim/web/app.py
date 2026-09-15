@@ -564,6 +564,26 @@ def create_app(
             )
         return _vocabulary_view(vocabulary_store.save(workspace_root, _parse_pack(request.pack)))
 
+    @app.get("/api/vocabulary/additions", dependencies=[secured])
+    def read_vocabulary_additions() -> dict[str, Any]:
+        """What this workspace adds to the built-in vocabulary, rendered for the outline prompt.
+
+        The prompt is built with the bundled catalogs only; the application fills its
+        `{{WORKSPACE_VOCABULARY}}` section with this when the researcher copies it, so the author
+        is told about the furniture and activities the import will accept.
+        """
+        from smart_home_sim.vocabulary.additions import render_additions, workspace_additions
+
+        pack = vocabulary_store.load(workspace_root).pack
+        additions = workspace_additions(pack)
+        return {
+            "markdown": render_additions(pack),
+            "entityTypes": [item.entity_type for item in additions.entity_types],
+            "intents": [item.intent_id for item in additions.intents],
+            "awayIntents": [item.intent_id for item in additions.away_intents],
+            "actions": [item.action_type for item in additions.actions],
+        }
+
     @app.delete("/api/vocabulary", dependencies=[secured])
     def reset_vocabulary() -> dict[str, Any]:
         """Forget every edit and go back to the vocabulary the simulator ships with."""
@@ -725,20 +745,29 @@ def create_app(
         """Delete a home with its residents, revisions, runs, exports and stored inputs."""
         return workspace.delete_home(home_id).model_dump(mode="json", by_alias=True)
 
+    # The imports validate, expand and compile in this process rather than in a job worker, and a
+    # worker adopts the workspace vocabulary before it does anything — this process never did. An
+    # activity or a piece of furniture added in the editor was therefore unknown to the import that
+    # needed it, and the preview said one thing while the server checked against another. Adopting
+    # at the top of each import reads the file the editor last saved; an unreadable one raises
+    # rather than quietly falling back to the built-in vocabulary, exactly as a worker does.
     @app.post("/api/homes/{home_id}/authoring", dependencies=[secured])
     def import_authoring(home_id: str, request: AuthoringImport) -> dict[str, Any]:
+        vocabulary_store.adopt(workspace_root)
         return application.import_authoring(
             home_id, request.scenario, request.personal_process_package
         )
 
     @app.post("/api/homes/{home_id}/authoring-bundle", dependencies=[secured])
     def import_authoring_bundle(home_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        vocabulary_store.adopt(workspace_root)
         return application.import_authoring_bundle(home_id, request)
 
     @app.post("/api/homes/{home_id}/horizon-outline", dependencies=[secured])
     def import_horizon_outline(
         home_id: str, request: dict[str, Any], http_request: Request, seed: int = 0
     ) -> dict[str, Any]:
+        vocabulary_store.adopt(workspace_root)
         return application.import_horizon_outline(
             home_id, request, seed=seed, on_stage=stage_reporter(http_request)
         )

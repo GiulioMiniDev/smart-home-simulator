@@ -415,6 +415,30 @@ class ResourceRequirement(ContractModel):
     units: int = Field(default=1, ge=1)
 
 
+# Residents who may not be in this activity's room while it runs. A key in `Activity.extensions`
+# rather than a field, because the scenario contract is frozen at 1.0.0 and this is what the escape
+# hatch is for: the outline expander writes it from the household's declared privacy, the compiler
+# turns it into a pairwise non-overlap, and a scenario that never heard of a household carries
+# nothing and compiles exactly as it did before.
+PRIVACY_EXTENSION = "excludesResidents"
+
+# Which arm of a set of mutually exclusive alternatives this activity belongs to, as
+# `{"group": <id>, "branch": <name>}`. Exactly one branch of a group is scheduled and
+# the rest are left out, so a household's dinner can be written as one sitting *or* two
+# and the choice made by the only layer that knows whether the first one fits.
+#
+# Distinct from `ActivationMode.fallback`, whose triggers are both runtime events: a
+# precondition that failed, an activity that was cancelled. There was no way to say
+# "the shared version did not fit", because that is decided while compiling and not
+# while running. Preference is expressed through `priority`, which the objective
+# already maximises over present optional activities, so a branch worth more than the
+# sum of its alternative wins wherever it is feasible.
+BRANCH_EXTENSION = "exclusiveBranch"
+# The two arms of a degradable shared activity: one sitting, or one each.
+JOINT_BRANCH = "joint"
+SEPARATE_BRANCH = "separate"
+
+
 class Activity(ContractModel):
     activity_id: str = Field(min_length=1)
     actor_id: str = Field(min_length=1)

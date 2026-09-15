@@ -439,10 +439,12 @@ OUTLINE_PROMPTS = (
     (
         ROOT / "prompts/templates/generate-horizon-outline-1.0.0.template.md",
         ROOT / "prompts/generate-horizon-outline-1.0.0.md",
+        ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json",
     ),
     (
         ROOT / "prompts/templates/generate-horizon-outline-1.1.0.template.md",
         ROOT / "prompts/generate-horizon-outline-1.1.0.md",
+        ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json",
     ),
     # 1.2.0 is 1.1.0 with the dwelling described rather than assumed. 1.1.0 named six rooms and
     # sixteen furniture types and said nothing about storeys or size, so every home the external
@@ -452,6 +454,7 @@ OUTLINE_PROMPTS = (
     (
         ROOT / "prompts/templates/generate-horizon-outline-1.2.0.template.md",
         ROOT / "prompts/generate-horizon-outline-1.2.0.md",
+        ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json",
     ),
     # 1.3.0 lets a habit name its own room. Until it, the room came from the intent alone, so a
     # case that read in a library or ate in front of the kitchen television had to be folded into
@@ -459,9 +462,18 @@ OUTLINE_PROMPTS = (
     (
         ROOT / "prompts/templates/generate-horizon-outline-1.3.0.template.md",
         ROOT / "prompts/generate-horizon-outline-1.3.0.md",
+        ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json",
+    ),
+    # 2.0.0 makes the subject of an outline a household rather than a person (ADR-026). The
+    # versions above stay frozen against the 1.0.0 bundle schema, because the documents already
+    # authored against them record that version in their provenance and are still readable.
+    (
+        ROOT / "prompts/templates/generate-horizon-outline-2.0.0.template.md",
+        ROOT / "prompts/generate-horizon-outline-2.0.0.md",
+        ROOT / "schemas/horizon-authoring-bundle-2.0.0.schema.json",
     ),
 )
-OUTLINE_BUNDLE_SCHEMA_PATH = ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json"
+RUNTIME_PLACEHOLDERS = frozenset({"{{PERSON_AND_CASE_DESCRIPTION}}", "{{WORKSPACE_VOCABULARY}}"})
 REUSED_FROM_1_3_0 = ("## Personal ADL process-model rules", "## Required final consistency checks")
 
 
@@ -886,11 +898,11 @@ def _retarget_action_state_contract(section: str) -> str:
 
 
 def build_outline_prompt() -> None:
-    for template, destination in OUTLINE_PROMPTS:
-        _render_outline_prompt(template, destination)
+    for template, destination, bundle_schema in OUTLINE_PROMPTS:
+        _render_outline_prompt(template, destination, bundle_schema)
 
 
-def _render_outline_prompt(template_path: Path, destination: Path) -> None:
+def _render_outline_prompt(template_path: Path, destination: Path, bundle_schema: Path) -> None:
     frozen = PROMPT_1_3_PATH.read_text(encoding="utf-8")
     prompt = template_path.read_text(encoding="utf-8")
     prompt = prompt.replace("{{ACTIVITY_PORTFOLIO}}", _render_activity_portfolio())
@@ -916,19 +928,18 @@ def _render_outline_prompt(template_path: Path, destination: Path) -> None:
         "{{PROCESS_MODEL_SECTIONS}}",
         _retarget_action_state_contract(_section_span(frozen, *REUSED_FROM_1_3_0)),
     )
-    prompt = prompt.replace(
-        "{{OUTLINE_BUNDLE_SCHEMA_JSON}}", _compact_json(OUTLINE_BUNDLE_SCHEMA_PATH)
-    )
+    prompt = prompt.replace("{{OUTLINE_BUNDLE_SCHEMA_JSON}}", _compact_json(bundle_schema))
     for placeholder, path in OUTLINE_PLACEHOLDERS.items():
         prompt = prompt.replace(placeholder, _compact_json(path))
     unresolved = [item for item in OUTLINE_PLACEHOLDERS if item in prompt]
     # Everything else the template can ask for, too: a placeholder renamed in the template and not
-    # in the renderer used to ship as literal `{{...}}` in the distributed prompt. The case brief
-    # is the one substitution the operator makes, so it is the one that legitimately survives.
+    # in the renderer used to ship as literal `{{...}}` in the distributed prompt. Two substitutions
+    # are made when the prompt is copied rather than when it is built: the case brief, and what the
+    # workspace's own vocabulary adds, which only the running application knows.
     unresolved.extend(
         item
         for item in sorted(set(re.findall(r"\{\{[A-Z0-9_]+\}\}", prompt)))
-        if item != "{{PERSON_AND_CASE_DESCRIPTION}}" and item not in unresolved
+        if item not in RUNTIME_PLACEHOLDERS and item not in unresolved
     )
     if unresolved:
         raise RuntimeError(f"Unresolved outline prompt placeholders: {unresolved}")

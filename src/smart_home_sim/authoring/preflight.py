@@ -21,6 +21,7 @@ from smart_home_sim.domain.environment import (
     UNIVERSAL_ENTITY_CAPABILITIES,
     capabilities_for_entity_type,
 )
+from smart_home_sim.domain.hands import carried_role, portable_minutes
 from smart_home_sim.domain.models import (
     DayPlan,
     LocationKind,
@@ -270,6 +271,22 @@ def _analyze_model(
     return final_state, findings
 
 
+def _hands_after_activity(state: dict[str, object]) -> dict[str, object]:
+    """What the engine leaves in her hands once an activity ends; see `domain.hands`.
+
+    A thing that is not portable is put back, so a later `put_item` of it is definitely false. A
+    portable one may still be held or may already be down, depending on whether it was consumed
+    and on how much time passes before the next activity; which of the two is not known here.
+    """
+    result = dict(state)
+    for fact, value in state.items():
+        role = carried_role(fact.removeprefix("resident."))
+        if role is None or not fact.startswith("resident.") or value is False:
+            continue
+        result[fact] = False if portable_minutes(role) is None else _UNKNOWN
+    return result
+
+
 def validate_deterministic_preconditions(
     scenario: Scenario,
     plan: CanonicalPlan,
@@ -335,6 +352,7 @@ def validate_deterministic_preconditions(
             model_indices[model.process_model_id],
         )
         findings.extend(model_findings)
+        next_state = _hands_after_activity(next_state)
         for fact in list(state):
             if fact.startswith(prefix) or not fact.startswith("resident:"):
                 del state[fact]
@@ -716,6 +734,54 @@ def validate_rooms_are_furnished(scenario: Scenario) -> list[PreflightFinding]:
                     "intents": sorted(intents),
                     "activities": activities_by_room[room],
                     "declaredResources": sorted(declared),
+                },
+            )
+        )
+    return findings
+
+
+def validate_furniture_types_are_known(scenario: Scenario) -> list[PreflightFinding]:
+    """Which declared objects does the vocabulary not say anything about?
+
+    A type with no capabilities in the vocabulary offers *every* capability — the binder, the
+    materializer and the expander all read it that way, so a scenario can furnish what the
+    vocabulary lacks. That is also exactly how a storage cabinet once became the place where nine
+    hours of work a day happened: in a room holding one, any action may bind to it, and nothing
+    reports the choice.
+
+    So the object is accepted, and said out loud. An outline that needed a yoga mat in a vocabulary
+    where nothing offers `exercise_support` should be able to bring one; the researcher should also
+    learn that the mat can now be picked for the television, and decide whether to add it to the
+    vocabulary with what it is actually for.
+    """
+    from smart_home_sim.vocabulary.active import active_pack
+
+    in_pack = {item.entity_type for item in active_pack().entity_types}
+    findings: list[PreflightFinding] = []
+    for index, resource in enumerate(scenario.resources):
+        if capabilities_for_entity_type(resource.resource_type) is not None:
+            continue
+        # Two different situations reach the same permissiveness, and the fix differs: an invented
+        # type is added to the vocabulary, a known one is told what it is for.
+        what = (
+            "is in the vocabulary but declares no capabilities"
+            if resource.resource_type in in_pack
+            else "is not in the vocabulary"
+        )
+        findings.append(
+            PreflightFinding(
+                path=f"$.resources[{index}]",
+                message=(
+                    f"Object {resource.resource_id!r} in {resource.location_id!r} has type "
+                    f"{resource.resource_type!r}, which {what}. It is treated as offering every "
+                    f"capability, so any action performed in {resource.location_id!r} may bind to "
+                    "it. Add the type to the vocabulary with what it is for, or use a known type."
+                ),
+                details={
+                    "resourceId": resource.resource_id,
+                    "resourceType": resource.resource_type,
+                    "room": resource.location_id,
+                    "inVocabulary": resource.resource_type in in_pack,
                 },
             )
         )
@@ -1188,6 +1254,17 @@ def _largest(habit: HabitObservation) -> str:
     return f"its largest single activity is {intent!r} at {share:.0%}"
 
 
+def _measured_in(ground_truth: HabitGroundTruth) -> str:
+    """Where the numbers in a finding come from, said in the finding itself.
+
+    These checks run right after an outline is imported, on the expanded plan, because that is the
+    only thing that exists before a run and the whole point is to warn before hours of compilation.
+    A statement about the plan is true as long as it says it is about the plan; what it may not do
+    is read as a statement about what the resident did, which only a run can make.
+    """
+    return "the expanded plan" if ground_truth.measured_on == "expanded_plan" else "the run"
+
+
 def _band_details(habit: HabitObservation) -> dict[str, JsonValue]:
     largest = _largest_share(habit)
     return {
@@ -1211,9 +1288,10 @@ def validate_habit_bands_are_inhabited(
 ) -> list[PreflightFinding]:
     """A band with a shape and holes in it: something holds it, and the rest says nothing.
 
-    The expander already measures this. Every band comes out of the expansion with the mix that
-    landed inside it, the share of minutes in which nothing declared was running, and the stretch
-    its dominant activity really holds — and until now nothing read those numbers back. The
+    The expansion already measures this, on the plan it has just written. Every band comes out of
+    it with the mix that landed inside it, the share of minutes in which nothing declared was
+    running, and the stretch its dominant activity really holds — and until now nothing read
+    those numbers back. The
     authoring guidance spends two pages on the failure they detect, gives the thresholds, and ends
     with "you are asked to write bands that would survive them"; a model that had read all of it
     still produced two bands at 0.64 and 0.56 in the same document. Saying it a third time in the
@@ -1244,7 +1322,8 @@ def validate_habit_bands_are_inhabited(
             PreflightFinding(
                 path=f"$.habits[{index}]",
                 message=(
-                    f"The band {habit.label!r} ({habit.window_start}-{habit.window_end}) spends "
+                    f"In {_measured_in(ground_truth)}, the band {habit.label!r} "
+                    f"({habit.window_start}-{habit.window_end}) spends "
                     f"{habit.unaccounted_share:.0%} of its minutes with no declared activity "
                     f"running, measured over {habit.day_count} day(s). It does have a shape - "
                     f"{habit.dominant_intent!r} holds {habit.effective_start}-"
@@ -1253,6 +1332,48 @@ def validate_habit_bands_are_inhabited(
                     "to the stretch it can describe."
                 ),
                 details=_band_details(habit),
+            )
+        )
+    return findings
+
+
+# The share of a daytime band sleep may take before the band is being slept through rather than
+# merely touched by a late morning.
+SLEPT_THROUGH_BAND_LIMIT = 0.5
+
+
+def validate_habit_bands_are_not_slept_through(
+    ground_truth: HabitGroundTruth,
+) -> list[PreflightFinding]:
+    """A band of the waking day whose largest activity is sleep.
+
+    The rhythm lays each night from the resident's `chronotypeBedtime` and the sleep their age
+    needs; the habit bands are the author's separate statement of how the day divides, and nothing
+    checked that the two agree. The Ferri outline gave Paolo a night band of 22:30-07:00, a morning
+    band of 07:00-09:00 and a chronotype of 00:30: the expanded plan's morning band was 82% sleep,
+    and a working day declared from 09:00 started at eleven on some Thursdays.
+    Either statement can be the true one, so the finding names both instead of choosing.
+    """
+    findings: list[PreflightFinding] = []
+    for index, habit in enumerate(ground_truth.habits):
+        if habit.crosses_midnight:
+            continue
+        slept = sum(item.share for item in habit.composition if item.intent == "sleep")
+        if slept < SLEPT_THROUGH_BAND_LIMIT:
+            continue
+        findings.append(
+            PreflightFinding(
+                path=f"$.habits[{index}]",
+                message=(
+                    f"In {_measured_in(ground_truth)}, the band {habit.label!r} "
+                    f"({habit.window_start}-{habit.window_end}) is {slept:.0%} sleep over "
+                    f"{habit.day_count} day(s). Nights are laid from the resident's "
+                    "`chronotypeBedtime` and the sleep their age needs, and here they run into a "
+                    "band declared as waking time. Either the chronotype is later than the habits "
+                    "say, or the bands are earlier than the resident sleeps: bring the two into "
+                    "agreement, or pin the start of the day with a fixed commitment."
+                ),
+                details={**_band_details(habit), "sleepShare": round(slept, 4)},
             )
         )
     return findings
@@ -1283,7 +1404,8 @@ def validate_habit_bands_hold_a_stable_stretch(
             PreflightFinding(
                 path=f"$.habits[{index}]",
                 message=(
-                    f"The band {habit.label!r} ({habit.window_start}-{habit.window_end}) spends "
+                    f"In {_measured_in(ground_truth)}, the band {habit.label!r} "
+                    f"({habit.window_start}-{habit.window_end}) spends "
                     f"{habit.unaccounted_share:.0%} of its minutes with no declared activity "
                     f"running, and no activity holds any part of it on most of its "
                     f"{habit.day_count} day(s): {_largest(habit)}, and nothing owns the band. "

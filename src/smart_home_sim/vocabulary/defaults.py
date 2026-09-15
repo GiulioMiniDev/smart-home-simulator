@@ -39,7 +39,7 @@ from smart_home_sim.hybrid_planning.intents import (
     REFERENCE_FILE,
 )
 from smart_home_sim.sensors.service import PIR_ACTIVITY_ACTION_TYPES
-from smart_home_sim.simulation.service import PUNCTUAL_ACTION_SECONDS
+from smart_home_sim.simulation.service import PUNCTUAL_ACTION_SECONDS, UPRIGHT_ACTION_TYPES
 
 ACTION_CATALOG_FILE = f"{SOURCE_ACTION_CATALOG}.json"
 
@@ -79,6 +79,7 @@ def _build_actions() -> list[VocabularyAction]:
                     motion_along_path=is_travel,
                 ),
                 is_travel=is_travel,
+                requires_upright=action_type in UPRIGHT_ACTION_TYPES,
             )
         )
     return actions

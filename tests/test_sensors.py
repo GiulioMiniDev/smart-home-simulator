@@ -958,3 +958,164 @@ def test_a_thermometer_with_nothing_to_watch_keeps_its_own_cadence(
 
     bare = base.model_copy(update={"sources": [], "sample_interval_seconds": None})
     assert bare.effective_sample_interval_seconds == DEFAULT_TEMPERATURE_SAMPLE_SECONDS
+
+
+# --- two bodies, one cone -------------------------------------------------------------------
+
+
+def _pulse(
+    group: str,
+    resident: str,
+    start: datetime,
+    seconds: int,
+) -> list[Candidate]:
+    """One body's ON/OFF pair, as `_pir_candidates` emits it."""
+    common = dict(
+        measurement="motion",
+        unit=None,
+        origin="simulated_cause",
+        cause_type="action_execution",
+        cause_ids=(f"{group}_action",),
+        resident_ids=(resident,),
+        activity_ids=(f"{group}_activity",),
+        action_ids=(f"{group}_action",),
+        group_id=group,
+    )
+    return [
+        Candidate(at=start, value="ON", group_start=True, **common),
+        Candidate(
+            at=start + timedelta(seconds=seconds),
+            value="OFF",
+            applies_cooldown=False,
+            applies_false_negative=False,
+            **common,
+        ),
+    ]
+
+
+def test_two_bodies_in_one_cone_are_one_observation() -> None:
+    """A PIR reports that something warm moved, never how many things did."""
+    start = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
+    candidates = sorted(
+        [*_pulse("g1", "r1", start, 30), *_pulse("g2", "r2", start + timedelta(seconds=10), 30)],
+        key=lambda item: (item.at, item.cause_ids),
+    )
+
+    reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+    assert [item.value for item in reconciled] == ["ON", "OFF"]
+    assert reconciled[0].at == start
+    assert reconciled[1].at == start + timedelta(seconds=40)
+
+
+def test_the_oracle_link_of_a_fused_pulse_names_both_bodies() -> None:
+    """The record does not know who moved. The answer sheet beside it does."""
+    start = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
+    candidates = sorted(
+        [*_pulse("g1", "r1", start, 30), *_pulse("g2", "r2", start + timedelta(seconds=10), 30)],
+        key=lambda item: (item.at, item.cause_ids),
+    )
+
+    reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+    for item in reconciled:
+        assert item.resident_ids == ("r1", "r2")
+        assert item.activity_ids == ("g1_activity", "g2_activity")
+        assert item.action_ids == ("g1_action", "g2_action")
+
+
+def test_two_bodies_that_never_overlap_stay_two_observations() -> None:
+    """Fusing is what a retrigger window does, not a licence to merge the whole morning."""
+    start = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
+    candidates = [
+        *_pulse("g1", "r1", start, 30),
+        *_pulse("g2", "r2", start + timedelta(minutes=5), 30),
+    ]
+
+    reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+    assert [item.value for item in reconciled] == ["ON", "OFF", "ON", "OFF"]
+    assert [item.resident_ids for item in reconciled] == [("r1",), ("r1",), ("r2",), ("r2",)]
+
+
+def test_one_body_seen_twice_is_still_one_body() -> None:
+    """Her hands at the fridge and her body in the chair were always two pulses in one cone."""
+    start = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
+    candidates = sorted(
+        [*_pulse("g1", "r1", start, 30), *_pulse("g2", "r1", start + timedelta(seconds=10), 30)],
+        key=lambda item: (item.at, item.cause_ids),
+    )
+
+    reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+    assert [item.resident_ids for item in reconciled] == [("r1",), ("r1",)]
+
+
+def _noise(group: str, start: datetime, seconds: int) -> list[Candidate]:
+    """A false-positive pulse, built the way `_false_positive_candidates` builds one."""
+    common = {
+        "measurement": "motion",
+        "unit": None,
+        "origin": "false_positive",
+        "cause_type": "noise",
+        "group_id": group,
+    }
+    return [
+        Candidate(at=start, value="ON", group_start=True, **common),
+        Candidate(
+            at=start + timedelta(seconds=seconds),
+            value="OFF",
+            applies_cooldown=False,
+            applies_false_negative=False,
+            **common,
+        ),
+    ]
+
+
+def test_noise_that_overlaps_a_body_is_explained_by_the_body() -> None:
+    """A false positive and a real crossing held one sensor on together; the reading is the body's.
+
+    Whichever of the two opened or closed the stretch, the fused link used to keep the noise
+    pulse's origin while naming the body's causes, and the oracle refused it: the sensor projection
+    of a month for two residents failed on it.
+    """
+    start = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
+    for noise_first in (True, False):
+        noise = _noise("noise", start if noise_first else start + timedelta(seconds=10), 30)
+        body = _pulse("g1", "r1", start + timedelta(seconds=10) if noise_first else start, 30)
+        candidates = sorted(
+            [*noise, *body], key=lambda item: (item.at, item.origin, item.cause_ids)
+        )
+
+        reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+        assert [item.value for item in reconciled] == ["ON", "OFF"]
+        for index, item in enumerate(reconciled):
+            assert item.origin == "simulated_cause", (noise_first, index)
+            OracleObservationLink(
+                observation_id=f"observation_{index}",
+                origin=item.origin,  # type: ignore[arg-type]
+                cause_type=item.cause_type,  # type: ignore[arg-type]
+                cause_ids=list(item.cause_ids),
+                resident_ids=list(item.resident_ids),
+                activity_execution_ids=list(item.activity_ids),
+                action_execution_ids=list(item.action_ids),
+            )
+
+
+def test_noise_on_its_own_stays_noise() -> None:
+    start = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)
+    candidates = [
+        *_noise("noise", start, 30),
+        *_pulse("g1", "r1", start + timedelta(minutes=5), 30),
+    ]
+
+    reconciled = _reconcile_binary_candidates(candidates, on_value="ON", off_value="OFF")
+
+    assert [item.origin for item in reconciled] == [
+        "false_positive",
+        "false_positive",
+        "simulated_cause",
+        "simulated_cause",
+    ]
+    assert reconciled[0].cause_ids == ()

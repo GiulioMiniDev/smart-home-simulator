@@ -78,6 +78,8 @@ from smart_home_sim.materialization.service import (
     _CompanionSeat,
     _functional_zones,
     _stair_pose,
+    _stray_companions,
+    _table_places,
     _watch_counts,
     load_home_policy,
     load_sensor_policy,
@@ -112,7 +114,8 @@ def test_home_generation_is_valid_deterministic_and_matches_golden() -> None:
     assert first.report.success
     assert first.report.home_sha256 == canonical_sha256(golden)
     assert first.report.summary.region_count == 9
-    assert first.report.summary.entity_count == 27
+    # 27 until a table was given its places: the kitchen's one authored chair became three.
+    assert first.report.summary.entity_count == 29
     assert first.report.summary.resource_binding_count == 17
     assert any(entity.entity_id == "entrance_door" for entity in golden.entities)
     points_by_id = {item.interaction_point_id: item for item in golden.interaction_points}
@@ -1339,10 +1342,10 @@ def test_a_desk_with_nothing_to_sit_at_it_is_given_a_chair() -> None:
                 _CompanionSeat("study_desk", "desk", "study"),
                 _CompanionSeat("study_armchair", "armchair", "study"),
             ],
-            # Already has something to pull up: left exactly as the author wrote it.
-            "kitchen": [
-                _CompanionSeat("kitchen_table", "table", "kitchen"),
-                _CompanionSeat("kitchen_chair", "chair", "kitchen"),
+            # A desk with its chair already: left exactly as the author wrote it.
+            "office": [
+                _CompanionSeat("office_desk", "desk", "office"),
+                _CompanionSeat("office_chair", "chair", "office"),
             ],
             # Nothing to sit *at*: a sitting room does not get a dining chair for its sofa.
             "living_room": [_CompanionSeat("living_sofa", "sofa", "living_room")],
@@ -1352,6 +1355,65 @@ def test_a_desk_with_nothing_to_sit_at_it_is_given_a_chair() -> None:
     assert [(item.resource_id, item.resource_type, item.location_id) for item in seats] == [
         ("study_chair", "chair", "study")
     ]
+
+
+def test_a_table_has_its_places_even_for_somebody_who_lives_alone() -> None:
+    """A table is not a one-person object: two to four places, and never fewer than the household.
+
+    An outline furnishes the kitchen with a table and the one chair its author thought of, and every
+    home generated from it had a person living alone with one chair at her own table. The number
+    is read off the table, so the same home is the same home on every rebuild; chairs the author did
+    write count towards it.
+    """
+    kitchen = {
+        "kitchen": [
+            _CompanionSeat("kitchen_table", "table", "kitchen"),
+            _CompanionSeat("kitchen_chair", "chair", "kitchen"),
+        ]
+    }
+
+    alone = _companion_seats(kitchen, residents=1)
+    places = _table_places("kitchen_table")
+
+    assert 2 <= places <= 4
+    assert len(alone) == places - 1
+    assert all(item.resource_type == "chair" and item.location_id == "kitchen" for item in alone)
+    assert _companion_seats(kitchen, residents=1) == alone
+    assert len(_companion_seats(kitchen, residents=6)) == 6 - 1
+    furnished = {
+        "kitchen": [
+            *kitchen["kitchen"],
+            *(_CompanionSeat(f"chair_{index}", "chair", "kitchen") for index in range(4)),
+        ]
+    }
+    assert _companion_seats(furnished, residents=2) == []
+
+
+def test_a_supplied_chair_that_does_not_reach_the_table_is_taken_back() -> None:
+    """A table's places are the ones that fit round it, not a row of chairs along the far wall.
+
+    In a small kitchen with the table against the counter run, two seats reach it and the rest were
+    stood against another wall. Those go — but only chairs the generator supplied, and never below
+    one seat per resident, since a chair by the wall is still a seat when the table is too small.
+    """
+    from smart_home_sim.materialization.floorplan import PlacedFurniture, Rect
+
+    entries = [
+        _CompanionSeat("kitchen_table", "table", "kitchen"),
+        _CompanionSeat("kitchen_chair", "chair", "kitchen"),
+        _CompanionSeat("kitchen_chair_02", "chair", "kitchen"),
+        _CompanionSeat("kitchen_chair_03", "chair", "kitchen"),
+    ]
+    at = Point2D(x=0.0, y=0.0)
+    placed = [
+        PlacedFurniture("kitchen_table", Rect(2.0, 1.0, 1.2, 0.8), at),
+        PlacedFurniture("kitchen_chair", Rect(2.3, 1.85, 0.45, 0.45), at),
+        PlacedFurniture("kitchen_chair_02", Rect(1.5, 1.1, 0.45, 0.45), at),
+        PlacedFurniture("kitchen_chair_03", Rect(0.0, 3.0, 0.45, 0.45), at),
+    ]
+
+    assert _stray_companions(entries, placed, residents=1) == {"kitchen_chair_03"}
+    assert _stray_companions(entries, placed, residents=3) == set()
 
 
 def test_a_companion_chair_takes_a_free_id_and_no_resource_binding() -> None:

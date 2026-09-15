@@ -9,6 +9,7 @@ from smart_home_sim.authoring.preflight import (
     _UNKNOWN,
     _actual_detail,
     _apply_effect,
+    _hands_after_activity,
     _is_definitely_false,
     _join,
     _resolve_arguments,
@@ -16,6 +17,7 @@ from smart_home_sim.authoring.preflight import (
     validate_activity_rooms_can_perform_them,
     validate_away_round_trips,
     validate_declared_objects_are_reachable,
+    validate_furniture_types_are_known,
     validate_habit_bands_are_inhabited,
     validate_habit_bands_hold_a_stable_stretch,
     validate_home_work_is_fragmented,
@@ -68,6 +70,26 @@ def test_abstract_state_join_effects_and_precondition_operators() -> None:
     assert _is_definitely_false("same", "ne", "same")
     assert not _is_definitely_false("same", "unsupported", "same")
     assert _actual_detail(_UNKNOWN) == "unknown"
+
+
+def test_what_the_engine_puts_down_between_activities_is_mirrored() -> None:
+    after = _hands_after_activity(
+        {
+            "resident.carrying.ingredients": True,
+            "resident.carrying.purchases": True,
+            "resident.carrying.drink": _UNKNOWN,
+            "resident.carrying.cleaning_tool": False,
+            "resident.at_home": True,
+        }
+    )
+    # Put back as the activity ends: a later `put_item` of it is definitely false.
+    assert after["resident.carrying.ingredients"] is False
+    assert _is_definitely_false(after["resident.carrying.ingredients"], "eq", True)
+    # Carried on or already down, depending on time the preflight does not see.
+    assert after["resident.carrying.purchases"] is _UNKNOWN
+    assert after["resident.carrying.drink"] is _UNKNOWN
+    assert after["resident.carrying.cleaning_tool"] is False
+    assert after["resident.at_home"] is True
 
 
 def test_activity_location_argument_is_resolved_from_canonical_activity() -> None:
@@ -562,6 +584,24 @@ def _scenario_with_resources(*types: str) -> Scenario:
     return Scenario.model_validate_json(json.dumps(payload))
 
 
+def test_furniture_the_vocabulary_does_not_know_is_accepted_and_said_out_loud() -> None:
+    """A yoga mat may furnish what the vocabulary lacks; the researcher still has to hear it.
+
+    A type the vocabulary says nothing about offers every capability, so in its room it can be
+    chosen for any action — the television included. Nothing downstream reports that choice.
+    """
+    scenario = _scenario_with_resources("refrigerator", "exercise_mat")
+
+    findings = validate_furniture_types_are_known(scenario)
+
+    assert [finding.details["resourceType"] for finding in findings] == ["exercise_mat"]
+    assert findings[0].path == "$.resources[1]"
+    assert findings[0].details["inVocabulary"] is False
+    assert "treated as offering every capability" in findings[0].message
+    known = _scenario_with_resources("refrigerator", "sofa")
+    assert validate_furniture_types_are_known(known) == []
+
+
 def _package_opening(*targets: str) -> PersonalProcessPackage:
     return _package_with(
         [
@@ -840,6 +880,7 @@ def _observation(
 ) -> HabitObservation:
     return HabitObservation(
         habitId=habit_id,
+        residentId="resident",
         label=habit_id.replace("_", " "),
         windowStart="21:00",
         windowEnd="06:30",
@@ -873,6 +914,8 @@ def _ground_truth(*habits: HabitObservation) -> HabitGroundTruth:
         startDate=date(2026, 8, 27),
         endDate=date(2027, 8, 27),
         seed=1,
+        # These checks run on the expanded plan, right after import, and say so in what they report.
+        measuredOn="expanded_plan",
         habits=list(habits),
         provenance=Provenance(authorType=AuthorType.rule_generator),
     )
@@ -976,3 +1019,12 @@ def test_a_band_that_measured_nothing_at_all_still_reads_as_a_sentence() -> None
 
     assert "nothing at all was measured inside it" in findings[0].message
     assert findings[0].details["dominantShare"] is None
+
+
+def test_a_band_warning_says_it_is_about_the_plan() -> None:
+    """Measured before any run exists, so it may speak about the plan and never about behaviour."""
+    band = _observation("hollow_band", 0.62, effective=None)
+
+    (finding,) = validate_habit_bands_hold_a_stable_stretch(_ground_truth(band))
+
+    assert finding.message.startswith("In the expanded plan, the band")

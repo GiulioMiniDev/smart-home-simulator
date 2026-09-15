@@ -59,6 +59,8 @@ export interface VocabularyAction {
   gestureSeconds: number | null;
   observability: ActionObservability;
   isTravel: boolean;
+  /** A resident found sitting or lying stands up before doing this; otherwise it is done in place. */
+  requiresUpright: boolean;
 }
 
 export interface VocabularyEntityType {

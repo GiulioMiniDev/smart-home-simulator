@@ -22,18 +22,27 @@ import type {
   CommitmentView,
   DayPiece,
   EventView,
+  HouseholdView,
   MonthTick,
   OutlineReadResult,
   PhaseView,
+  ProposalsView,
   RawActivity,
   RawBundle,
   RawCadence,
   RawCommitment,
   RawEvent,
   RawHabit,
+  RawHousehold,
   RawOutline,
   RawPackage,
+  RawVocabularyProposals,
   RawPhase,
+  RawProcessModel,
+  RawResident,
+  RelationKind,
+  ResidentReading,
+  SharingMode,
   WeekColumn,
   Weekday,
 } from "./types";
@@ -316,28 +325,33 @@ function readCommitments(raw: RawCommitment[], start: string, endExclusive: stri
   });
 }
 
-function readActivities(raw: RawActivity[], gaps: string[]): ActivityView[] {
-  const views = raw.map((activity, index) => {
-    const id = activity.recurringActivityId ?? `activity-${index}`;
-    const cadence = activity.cadence;
-    const pieces = dayPieces(cadence?.windowStart, cadence?.windowEnd);
-    if (!pieces.length) gaps.push(`“${activity.label ?? id}” has no readable window, so it is not drawn on the day.`);
-    const jitter = cadence?.jitterMinutes;
-    const kind: ActivityKind = activity.kind ?? "contextual";
-    return {
-      id,
-      label: activity.label ?? id,
-      kind,
-      pieces,
-      clock: windowClock(cadence?.windowStart, cadence?.windowEnd),
-      weekdays: knownWeekdays(cadence?.weekdays),
-      sentence: describeCadence(cadence),
-      spread: typeof jitter === "number" && jitter > 0 ? `starts anywhere in the window, give or take ${jitter} minutes` : "starts at the same point in the window each time",
-      note: activity.note ?? "",
-      order: pieces[0]?.fromMinutes ?? MINUTES_PER_DAY + KIND_ORDER[kind],
-    };
-  });
+function readActivity(activity: RawActivity, fallbackId: string, gaps: string[]): ActivityView {
+  const id = activity.recurringActivityId ?? fallbackId;
+  const cadence = activity.cadence;
+  const pieces = dayPieces(cadence?.windowStart, cadence?.windowEnd);
+  if (!pieces.length) gaps.push(`“${activity.label ?? id}” has no readable window, so it is not drawn on the day.`);
+  const jitter = cadence?.jitterMinutes;
+  const kind: ActivityKind = activity.kind ?? "contextual";
+  return {
+    id,
+    label: activity.label ?? id,
+    kind,
+    pieces,
+    clock: windowClock(cadence?.windowStart, cadence?.windowEnd),
+    weekdays: knownWeekdays(cadence?.weekdays),
+    sentence: describeCadence(cadence),
+    spread: typeof jitter === "number" && jitter > 0 ? `starts anywhere in the window, give or take ${jitter} minutes` : "starts at the same point in the window each time",
+    note: activity.note ?? "",
+    order: pieces[0]?.fromMinutes ?? MINUTES_PER_DAY + KIND_ORDER[kind],
+  };
+}
+
+function byWindow<T extends ActivityView>(views: T[]): T[] {
   return views.sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
+}
+
+function readActivities(raw: RawActivity[], gaps: string[]): ActivityView[] {
+  return byWindow(raw.map((activity, index) => readActivity(activity, `activity-${index}`, gaps)));
 }
 
 function readPhases(raw: RawPhase[], start: string, endExclusive: string, labels: Map<string, string>, gaps: string[]): PhaseView[] {
@@ -439,12 +453,15 @@ function describeAuthor(provenance: RawOutline["provenance"]): string {
  * rhythm emits — sleeping and waking among them — which the outline never mentions, so a clean
  * result here is not a promise that the server will accept the file.
  */
-function readBehaviour(raw: RawOutline, pack: RawPackage): BehaviourView {
+function readBehaviour(residents: RawResident[], household: RawHousehold, pack: RawPackage): BehaviourView {
   const bound = new Set((pack.bindings ?? []).map((binding) => binding.intent).filter((intent): intent is string => !!intent));
   const named = new Set<string>();
-  for (const activity of raw.profile?.recurringActivities ?? []) if (activity.intent) named.add(activity.intent);
-  for (const commitment of raw.fixedCommitments ?? []) if (commitment.intent) named.add(commitment.intent);
-  for (const event of raw.events ?? []) if (event.intent) named.add(event.intent);
+  for (const resident of residents) {
+    for (const activity of resident.profile?.recurringActivities ?? []) if (activity.intent) named.add(activity.intent);
+    for (const commitment of resident.fixedCommitments ?? []) if (commitment.intent) named.add(commitment.intent);
+    for (const event of resident.events ?? []) if (event.intent) named.add(event.intent);
+  }
+  for (const joint of household.jointActivities ?? []) if (joint.activity?.intent) named.add(joint.activity.intent);
   return {
     processCount: (pack.processModels ?? []).length,
     namedIntents: named.size,
@@ -476,16 +493,20 @@ export function readOutline(value: unknown): OutlineReadResult {
       : "";
     return { kind: "other", message: `This file says it is “${documentType}”, which is neither a horizon outline nor the bundle that carries one.${named}` };
   }
-  if (!documentType && !raw.profile && !raw.habits) {
-    return { kind: "other", message: "This file does not look like a horizon outline: it has no document type, no behavioural profile and no habit bands." };
+  if (!documentType && !raw.profile && !raw.habits && !Array.isArray(raw.residents)) {
+    return { kind: "other", message: "This file does not look like a horizon outline: it has no document type, no residents, no behavioural profile and no habit bands." };
   }
 
   const gaps: string[] = [];
-  const activitiesRaw = raw.profile?.recurringActivities ?? [];
+  const { residents: rawResidents, household } = rosterOf(raw, gaps);
   const labels = new Map<string, string>();
-  for (const activity of activitiesRaw) {
-    if (activity.recurringActivityId) labels.set(activity.recurringActivityId, activity.label ?? activity.recurringActivityId);
-  }
+  const remember = (activity: RawActivity | undefined) => {
+    if (activity?.recurringActivityId) labels.set(activity.recurringActivityId, activity.label ?? activity.recurringActivityId);
+  };
+  // Activity identifiers are unique across the whole document, so a phase of one resident may
+  // name an activity the household does together, and one map serves every lookup.
+  for (const resident of rawResidents) for (const activity of resident.profile?.recurringActivities ?? []) remember(activity);
+  for (const joint of household.jointActivities ?? []) remember(joint.activity);
 
   const start = isoDate(raw.startDate);
   const months = typeof raw.months === "number" && raw.months >= 1 ? Math.trunc(raw.months) : 1;
@@ -495,44 +516,250 @@ export function readOutline(value: unknown): OutlineReadResult {
   const dayCount = dayNumber(endExclusive) - dayNumber(startDate);
   const lastDate = fromDayNumber(dayNumber(endExclusive) - 1);
 
-  const bands = readBands(raw.habits ?? [], labels, gaps);
-  const commitments = readCommitments(raw.fixedCommitments ?? [], startDate, endExclusive, gaps);
-  const activities = readActivities(activitiesRaw, gaps);
-  const week = readWeek(bands, commitments, activities);
+  const residents = rawResidents.map((resident, index) => {
+    const own: string[] = [];
+    const reading = readResident(resident, index, rawResidents.length, startDate, endExclusive, labels, own);
+    // With one person every line is about them; with several, a line has to say whose it is.
+    gaps.push(...own.map((gap) => rawResidents.length > 1 ? `${reading.name}: ${gap}` : gap));
+    return reading;
+  });
   const locations = raw.world?.locations ?? [];
 
   return {
     kind: "outline",
     reading: {
       title: raw.title ?? "Untitled horizon",
-      behaviour: pack ? readBehaviour(raw, pack) : undefined,
-      residentId: raw.residentId ?? "unnamed resident",
+      behaviour: pack ? readBehaviour(rawResidents, household, pack) : undefined,
+      residents,
+      household: readHousehold(household, residents, gaps),
       timeZone: raw.timeZone ?? "an unstated time zone",
       startDate,
       lastDate,
       spanPhrase: `${formatDate(startDate)} → ${formatDate(lastDate)}`,
       dayCount,
       months,
-      age: typeof raw.rhythm?.age === "number" ? raw.rhythm.age : undefined,
-      health: (raw.rhythm?.health ?? []).filter((item): item is string => typeof item === "string"),
-      bedtime: minutesOfDay(raw.rhythm?.chronotypeBedtime) === undefined ? undefined : raw.rhythm?.chronotypeBedtime,
       authorPhrase: describeAuthor(raw.provenance),
       humanReviewed: raw.provenance?.humanReviewed === true,
-      bands,
-      bandRows: groupBands(bands),
-      commitments,
-      activities,
-      week,
-      weekVaries: week.some((column) => column.entries.length > 0),
-      phases: readPhases(raw.phases ?? [], startDate, endExclusive, labels, gaps),
-      events: readEvents(raw.events ?? [], startDate, endExclusive, labels, gaps),
       monthTicks: monthTicks(startDate, endExclusive),
       rooms: locations.filter((item) => item.kind === "room").map((item) => item.locationId ?? "?"),
-      elsewhere: locations.filter((item) => item.kind && item.kind !== "room").map((item) => item.locationId ?? "?"),
+      // A composite is a grouping of rooms — `home` — and neither a room nor somewhere to travel to.
+      elsewhere: locations.filter((item) => item.kind && item.kind !== "room" && item.kind !== "composite").map((item) => item.locationId ?? "?"),
+      usedIntents: usedIntents(rawResidents, household),
+      proposals: readProposals(raw.vocabularyProposals, pack),
+      furniture: (raw.world?.resources ?? []).flatMap((item) => item.resourceType
+        ? [{ resourceId: item.resourceId ?? item.resourceType, resourceType: item.resourceType, room: item.locationId ?? "?" }]
+        : []),
       people: (raw.world?.externalPeople ?? []).map((person) => person.displayName ?? person.externalPersonId ?? "someone"),
       note: raw.note ?? "",
       gaps,
     },
+  };
+}
+
+function usedIntents(residents: RawResident[], household: RawHousehold): string[] {
+  const used = new Set<string>();
+  for (const resident of residents) {
+    for (const activity of resident.profile?.recurringActivities ?? []) if (activity.intent) used.add(activity.intent);
+    for (const commitment of resident.fixedCommitments ?? []) if (commitment.intent) used.add(commitment.intent);
+    for (const event of resident.events ?? []) if (event.intent) used.add(event.intent);
+  }
+  for (const joint of household.jointActivities ?? []) if (joint.activity?.intent) used.add(joint.activity.intent);
+  return [...used].sort();
+}
+
+function countSteps(model: RawProcessModel | undefined): number {
+  return (model?.nodes ?? []).filter((node) => node.kind === "action").length;
+}
+
+/**
+ * What the author asks to add, with what the package already says about it.
+ *
+ * An activity proposal is only half written in the outline: how it is performed is in the process
+ * package, bound to the proposed intent like any other. The first model bound to it is kept, so
+ * accepting the proposal starts the vocabulary entry from the author's own steps rather than from
+ * a blank activity the researcher has to rebuild.
+ */
+function readProposals(raw: RawVocabularyProposals | undefined, pack: RawPackage | undefined): ProposalsView {
+  const models = new Map((pack?.processModels ?? []).flatMap((model) => model.processModelId ? [[model.processModelId, model] as const] : []));
+  const modelsByIntent: Record<string, RawProcessModel> = {};
+  for (const binding of pack?.bindings ?? []) {
+    const model = binding.processModelId ? models.get(binding.processModelId) : undefined;
+    if (binding.intent && model && !modelsByIntent[binding.intent]) modelsByIntent[binding.intent] = model;
+  }
+  const text = (value: unknown, fallback: string) => typeof value === "string" && value.trim() ? value : fallback;
+  return {
+    furniture: (raw?.furniture ?? []).flatMap((item) => item.entityType ? [{
+      entityType: item.entityType,
+      displayName: text(item.displayName, item.entityType.replace(/_/g, " ")),
+      capabilities: (item.capabilities ?? []).filter((value): value is string => typeof value === "string"),
+      contactInstrumented: item.contactInstrumented === true,
+      rationale: text(item.rationale, ""),
+    }] : []),
+    activities: (raw?.activities ?? []).flatMap((item) => item.intentId ? [{
+      intentId: item.intentId,
+      label: text(item.label, item.intentId.replace(/_/g, " ")),
+      category: text(item.category, "leisure"),
+      defaultLocation: text(item.defaultLocation, "living_room"),
+      description: text(item.description, ""),
+      rationale: text(item.rationale, ""),
+      processModel: modelsByIntent[item.intentId],
+      steps: countSteps(modelsByIntent[item.intentId]),
+    }] : []),
+    modelsByIntent,
+  };
+}
+
+/**
+ * The people of the outline, whichever version wrote them down.
+ *
+ * A 2.0.0 document lists them; a 1.x one kept its single person at the top level, and is lifted
+ * into a roster of one exactly as the server lifts it before expanding, so the picture never
+ * disagrees with the import about who lives here.
+ */
+function rosterOf(raw: RawOutline, gaps: string[]): { residents: RawResident[]; household: RawHousehold } {
+  if (Array.isArray(raw.residents)) {
+    const residents = raw.residents.filter((item): item is RawResident => !!item && typeof item === "object" && !Array.isArray(item));
+    if (residents.length) return { residents, household: raw.household ?? {} };
+    gaps.push("The outline declares no resident, so there is nobody whose days could be expanded.");
+    return { residents: [{}], household: raw.household ?? {} };
+  }
+  return {
+    residents: [{
+      residentId: raw.residentId,
+      displayName: raw.displayName,
+      profile: raw.profile,
+      rhythm: raw.rhythm,
+      habits: raw.habits,
+      fixedCommitments: raw.fixedCommitments,
+      phases: raw.phases,
+      events: raw.events,
+    }],
+    household: {},
+  };
+}
+
+function readResident(raw: RawResident, index: number, count: number, startDate: string, endExclusive: string, labels: Map<string, string>, gaps: string[]): ResidentReading {
+  const residentId = raw.residentId ?? (count === 1 ? "unnamed resident" : `resident ${index + 1}`);
+  const bands = readBands(raw.habits ?? [], labels, gaps);
+  const commitments = readCommitments(raw.fixedCommitments ?? [], startDate, endExclusive, gaps);
+  const activities = readActivities(raw.profile?.recurringActivities ?? [], gaps);
+  const week = readWeek(bands, commitments, activities);
+  return {
+    residentId,
+    name: raw.displayName?.trim() || residentId,
+    age: typeof raw.rhythm?.age === "number" ? raw.rhythm.age : undefined,
+    health: (raw.rhythm?.health ?? []).filter((item): item is string => typeof item === "string"),
+    bedtime: minutesOfDay(raw.rhythm?.chronotypeBedtime) === undefined ? undefined : raw.rhythm?.chronotypeBedtime,
+    bands,
+    bandRows: groupBands(bands),
+    commitments,
+    activities,
+    week,
+    weekVaries: week.some((column) => column.entries.length > 0),
+    phases: readPhases(raw.phases ?? [], startDate, endExclusive, labels, gaps),
+    events: readEvents(raw.events ?? [], startDate, endExclusive, labels, gaps),
+    note: raw.note ?? "",
+  };
+}
+
+const RELATION_PHRASE: Record<RelationKind, (first: string, second: string) => string> = {
+  couple: (first, second) => `${first} and ${second} are a couple`,
+  housemates: (first, second) => `${first} and ${second} share the home as housemates`,
+  // The only asymmetric kind: the schema reads the first of `between` as the parent.
+  parent_child: (first, second) => `${first} is ${second}’s parent`,
+  siblings: (first, second) => `${first} and ${second} are siblings`,
+  other: (first, second) => `${first} and ${second} live together`,
+};
+
+function percent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+/**
+ * How often a shared activity is really shared, in the words of the class of day it depends on.
+ *
+ * The weekday and weekend figures exist because one average fabricates a pattern — shared evenings
+ * scattered through a working week that only ever had them on Saturday — so the sentence keeps
+ * the two apart whenever the outline did.
+ */
+function describeTogether(sharing: SharingMode | undefined, propensity: { default?: number; weekday?: number | null; weekend?: number | null } | null | undefined): string {
+  if (sharing !== "optional_joint") return "Always together";
+  const base = typeof propensity?.default === "number" ? propensity.default : undefined;
+  const weekday = typeof propensity?.weekday === "number" ? propensity.weekday : base;
+  const weekend = typeof propensity?.weekend === "number" ? propensity.weekend : base;
+  if (weekday === undefined || weekend === undefined) return "Sometimes together, in a proportion the outline does not state";
+  if (weekday === weekend) return `Together on ${percent(weekday)} of days`;
+  return `Together on ${percent(weekday)} of weekdays and ${percent(weekend)} of weekend days`;
+}
+
+function readHousehold(raw: RawHousehold, residents: ResidentReading[], gaps: string[]): HouseholdView {
+  const names = new Map(residents.map((resident) => [resident.residentId, resident.name]));
+  // A name the roster does not hold is written as the model wrote it and reported, because the
+  // server refuses exactly this, and a sentence about somebody who does not live here would
+  // otherwise read as perfectly sensible.
+  const nameOf = (id: string | undefined, where: string): string => {
+    if (!id) {
+      gaps.push(`${where} names a resident without an identifier.`);
+      return "someone";
+    }
+    if (!names.has(id)) gaps.push(`${where} names “${id}”, who is not among the residents.`);
+    return names.get(id) ?? id;
+  };
+  const pair = (between: string[] | undefined, where: string): [string, string] => {
+    const [first, second] = between ?? [];
+    return [nameOf(first, where), nameOf(second, where)];
+  };
+
+  const relations = (raw.relations ?? []).map((relation, index) => {
+    const [first, second] = pair(relation.between, `Relation ${index + 1}`);
+    const phrase = (relation.kind && RELATION_PHRASE[relation.kind]) || RELATION_PHRASE.other;
+    return `${phrase(first, second)}${relation.note ? ` — ${relation.note}` : ""}`;
+  });
+
+  const joint = byWindow((raw.jointActivities ?? []).map((item, index) => {
+    const view = readActivity(item.activity ?? {}, `joint-activity-${index}`, gaps);
+    const participants = (item.participantIds ?? []).map((id) => nameOf(id, `The shared “${view.label}”`));
+    if (participants.length < 2) gaps.push(`The shared “${view.label}” names fewer than two participants, so nothing about it is shared.`);
+    const minimum = typeof item.minimumSharedMinutes === "number" && item.minimumSharedMinutes > 0
+      ? ` if they overlap for at least ${item.minimumSharedMinutes} minutes`
+      : "";
+    return {
+      ...view,
+      participants,
+      together: `${describeTogether(item.sharing, item.propensity)}${minimum}`,
+      fallback: item.degradeToIndependent === false
+        ? "Never done apart: on a day it does not fit, the day has to make room for it"
+        : "Done separately on a day the shared version does not fit",
+      note: item.note || view.note,
+    };
+  }));
+
+  const policies = (raw.sharingPolicies ?? []).map((policy, index) => {
+    const [first, second] = pair(policy.between, `Sharing rule ${index + 1}`);
+    const intent = policy.intent ?? "an unnamed intent";
+    const rule = policy.sharing === "exclusive"
+      ? `When ${first} or ${second} does ${intent}, the other leaves the room`
+      : `${first} and ${second} each do ${intent} on their own, and only contend for what they both use`;
+    return `${rule}${policy.note ? ` — ${policy.note}` : ""}`;
+  });
+
+  const privacy = (raw.locationPrivacy ?? []).map((rule, index) => {
+    const room = rule.locationId ? `the ${rule.locationId.replace(/_/g, " ")}` : "an unnamed room";
+    const where = `Privacy rule ${index + 1}`;
+    const subject = nameOf(rule.subjectId, where);
+    const excluded = (rule.excludedResidentIds ?? []).map((id) => nameOf(id, where));
+    const who = excluded.length ? `${joinWords(excluded)} may not` : "Nobody else may";
+    const doing = rule.intents?.length ? ` for ${joinWords(rule.intents)}` : "";
+    const reverse = rule.symmetric === false ? "" : ", and the other way round";
+    return `${who} be in ${room} while ${subject} uses it${doing}${reverse}${rule.note ? ` — ${rule.note}` : ""}`;
+  });
+
+  return {
+    relations,
+    joint,
+    policies,
+    privacy,
+    sharedRooms: (raw.sharedLocationIds ?? []).map((id) => id.replace(/_/g, " ")),
   };
 }
 

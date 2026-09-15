@@ -456,3 +456,100 @@ describe("ReplayScene", () => {
     expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
   });
 });
+
+
+describe("ReplayScene for a household", () => {
+  // Giulia cooks lunch while Paolo is still at breakfast: two people, two days that do not line up.
+  const household = [
+    { at: "2026-10-30T11:00:00+01:00", end: "2026-10-30T11:40:00+01:00", kind: "activity", eventId: "lunch", label: "prepare_simple_lunch", status: "completed", actorId: "resident_giulia_ferri", waypoints: [], details: {} },
+    { at: "2026-10-30T13:00:00+01:00", end: "2026-10-30T14:00:00+01:00", kind: "activity", eventId: "rest", label: "read_and_rest", status: "completed", actorId: "resident_giulia_ferri", waypoints: [], details: {} },
+    { at: "2026-10-30T11:20:00+01:00", end: "2026-10-30T11:30:00+01:00", kind: "activity", eventId: "breakfast", label: "prepare_breakfast", status: "completed", actorId: "resident_paolo_ferri", waypoints: [], details: {} },
+    { at: "2026-10-30T11:05:00+01:00", kind: "state_transition", eventId: "fridge", label: "entity.open", waypoints: [], details: { value: true, subjectId: "refrigerator" } },
+    { at: "2026-10-30T11:24:00+01:00", kind: "state_transition", eventId: "sit", label: "resident.posture", actorId: "resident_paolo_ferri", waypoints: [], details: { value: "sitting", previousValue: "standing" } },
+  ];
+  const pair = {
+    ...frame,
+    residents: [
+      { residentId: "resident_giulia_ferri", regionId: "kitchen", position: { x: 2, y: 2 }, posture: "standing", executionState: "idle", heldResourceIds: [], facts: {} },
+      { residentId: "resident_paolo_ferri", regionId: "bedroom", position: { x: 6, y: 2 }, posture: "lying", executionState: "idle", heldResourceIds: [], facts: {} },
+    ],
+  };
+
+  beforeEach(() => {
+    sessionStorage.setItem("habitat-lab-session", "token");
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      const body = path.includes("/replay/events")
+        ? { items: household, total: household.length, traceStart: start, traceEnd: end, windowStart: start, windowEnd: end }
+        : path.includes("/replay/frame") ? pair : respond(path);
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+    }));
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  async function ready(): Promise<HTMLElement> {
+    return screen.findByLabelText("The day, 3 activities");
+  }
+
+  it("tells each resident's moment on a card of their own, in their own colour", async () => {
+    render(<ReplayScene runId="run_1" />);
+    await ready();
+    fireEvent.change(screen.getByRole("slider", { name: "Replay time" }), { target: { value: String(Date.parse("2026-10-30T11:25:00+01:00")) } });
+
+    const giulia = await screen.findByRole("article", { name: "Giulia Ferri" });
+    const paolo = screen.getByRole("article", { name: "Paolo Ferri" });
+    await waitFor(() => expect(within(giulia).getByRole("heading", { level: 2 })).toHaveTextContent("Giulia Ferri is preparing simple lunch"));
+    expect(within(paolo).getByRole("heading", { level: 2 })).toHaveTextContent("Paolo Ferri is preparing breakfast");
+    // Each card lists only what its own resident did; the fridge names nobody and is said once.
+    expect(within(paolo).getByText("Paolo Ferri sits down")).toBeInTheDocument();
+    expect(within(giulia).queryByText("Paolo Ferri sits down")).not.toBeInTheDocument();
+    expect(screen.getByText("In the flat")).toBeInTheDocument();
+    expect(screen.getByText("The refrigerator opens")).toBeInTheDocument();
+    expect(giulia).toHaveClass("scene-tone-0");
+    expect(paolo).toHaveClass("scene-tone-1");
+
+    const scene = screen.getByRole("img", { name: /flat, seen from above/ });
+    const tones = [...scene.querySelectorAll(".scene-people > g")].map((node) => node.getAttribute("class"));
+    expect(tones).toEqual(["scene-tone-0", "scene-tone-1"]);
+  });
+
+  it("gives each resident a lane of the day, and skips past that resident's activity only", async () => {
+    render(<ReplayScene runId="run_1" />);
+    const ribbon = await ready();
+    const scrub = screen.getByRole("slider", { name: "Replay time" });
+
+    expect(within(ribbon).getByLabelText("Giulia Ferri's day, 2 activities")).toBeInTheDocument();
+    expect(within(ribbon).getByLabelText("Paolo Ferri's day, 1 activities")).toBeInTheDocument();
+    // The household skips from its lanes, where it is clear whose activity a skip passes.
+    expect(screen.queryByRole("button", { name: "Skip ahead" })).not.toBeInTheDocument();
+
+    fireEvent.change(scrub, { target: { value: String(Date.parse("2026-10-30T11:25:00+01:00")) } });
+    fireEvent.click(screen.getByRole("button", { name: "Skip ahead for Giulia Ferri" }));
+    await waitFor(() => expect(scrub).toHaveValue(String(Date.parse("2026-10-30T11:40:00+01:00"))));
+
+    fireEvent.change(scrub, { target: { value: String(Date.parse("2026-10-30T11:25:00+01:00")) } });
+    fireEvent.click(screen.getByRole("button", { name: "Skip ahead for Paolo Ferri" }));
+    await waitFor(() => expect(scrub).toHaveValue(String(Date.parse("2026-10-30T11:30:00+01:00"))));
+
+    fireEvent.click(within(within(ribbon).getByLabelText("Giulia Ferri's day, 2 activities")).getByRole("button", { name: /^13:00, reading/ }));
+    await waitFor(() => expect(scrub).toHaveValue(String(Date.parse("2026-10-30T13:00:00+01:00"))));
+  });
+
+  it("says who is out when one of them leaves", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL) => {
+      const path = String(input);
+      const away = { ...pair, residents: [pair.residents[0], { ...pair.residents[1], regionId: "outdoors", position: { x: 3, y: 22 } }] };
+      const body = path.includes("/replay/events")
+        ? { items: household, total: household.length, traceStart: start, traceEnd: end, windowStart: start, windowEnd: end }
+        : path.includes("/replay/frame") ? away : respond(path);
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+    }));
+    render(<ReplayScene runId="run_1" />);
+    await ready();
+
+    expect(await screen.findByText(/Paolo Ferri is out — outdoors/)).toBeInTheDocument();
+    expect(within(screen.getByRole("article", { name: "Paolo Ferri" })).getByText(/away · outdoors/)).toBeInTheDocument();
+  });
+});

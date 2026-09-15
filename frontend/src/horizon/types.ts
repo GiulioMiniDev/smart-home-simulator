@@ -1,7 +1,7 @@
 /**
  * A horizon outline as it actually arrives: an unvalidated JSON object written by a model.
  *
- * `RawOutline` mirrors `horizon-outline-1.0.0.schema.json` with every field optional, because this
+ * `RawOutline` mirrors `horizon-outline-2.0.0.schema.json` with every field optional, because this
  * file is read *before* the server has judged it. Anything missing or malformed must degrade into
  * a gap in the picture, never into a blank page or a thrown error — the whole point of reading the
  * outline here is to see what the model wrote, including the parts it got wrong.
@@ -86,11 +86,57 @@ export interface RawEvent {
   note?: string;
 }
 
-export interface RawOutline {
+/** What is individual to one person: who they are, what recurs for them, how their day divides. */
+export interface RawResident {
+  residentId?: string;
+  displayName?: string;
+  profile?: { recurringActivities?: RawActivity[] };
+  rhythm?: { age?: number; health?: string[]; chronotypeBedtime?: string };
+  habits?: RawHabit[];
+  fixedCommitments?: RawCommitment[];
+  phases?: RawPhase[];
+  events?: RawEvent[];
+  startLocationId?: string | null;
+  note?: string;
+}
+
+export type RelationKind = "couple" | "housemates" | "parent_child" | "siblings" | "other";
+export type SharingMode = "joint" | "optional_joint" | "independent" | "exclusive";
+
+/** What is true of the house rather than of any one person in it (ADR-026). */
+export interface RawHousehold {
+  relations?: Array<{ between?: string[]; kind?: RelationKind; note?: string }>;
+  jointActivities?: Array<{
+    activity?: RawActivity;
+    participantIds?: string[];
+    sharing?: SharingMode;
+    propensity?: { default?: number; weekday?: number | null; weekend?: number | null } | null;
+    minimumSharedMinutes?: number;
+    degradeToIndependent?: boolean;
+    note?: string;
+  }>;
+  sharingPolicies?: Array<{ between?: string[]; intent?: string; sharing?: SharingMode; note?: string }>;
+  locationPrivacy?: Array<{
+    locationId?: string;
+    subjectId?: string;
+    excludedResidentIds?: string[];
+    intents?: string[];
+    symmetric?: boolean;
+    note?: string;
+  }>;
+  sharedLocationIds?: string[];
+}
+
+/**
+ * Both shapes an outline has had. 2.0.0 keeps the person under `residents` and adds `household`;
+ * 1.x kept the one person at the top level, and `readOutline` lifts that into a roster of one the
+ * same way the server's `upgrade_outline_payload` does, so everything downstream reads one shape.
+ */
+export interface RawOutline extends RawResident {
   documentType?: string;
+  schemaVersion?: string;
   outlineId?: string;
   title?: string;
-  residentId?: string;
   timeZone?: string;
   startDate?: string;
   months?: number;
@@ -100,12 +146,9 @@ export interface RawOutline {
     externalPeople?: Array<{ externalPersonId?: string; displayName?: string | null }>;
     startLocationId?: string;
   };
-  profile?: { recurringActivities?: RawActivity[] };
-  rhythm?: { age?: number; health?: string[]; chronotypeBedtime?: string };
-  habits?: RawHabit[];
-  fixedCommitments?: RawCommitment[];
-  phases?: RawPhase[];
-  events?: RawEvent[];
+  residents?: RawResident[];
+  household?: RawHousehold;
+  vocabularyProposals?: RawVocabularyProposals;
   provenance?: {
     authorType?: string;
     modelName?: string | null;
@@ -116,9 +159,26 @@ export interface RawOutline {
   note?: string;
 }
 
+/** What the author asks to add to the vocabulary, for the researcher to accept or refuse. */
+export interface RawVocabularyProposals {
+  furniture?: Array<{ entityType?: string; displayName?: string; capabilities?: string[]; contactInstrumented?: boolean; rationale?: string }>;
+  activities?: Array<{ intentId?: string; label?: string; category?: string; defaultLocation?: string; description?: string; rationale?: string }>;
+}
+
+/** A process model as the file carries it: passed through untouched to the vocabulary, never drawn. */
+export interface RawProcessModel {
+  processModelId?: string;
+  title?: string;
+  residentId?: string;
+  implementedComponents?: string[];
+  nodes?: Array<{ nodeId?: string; kind?: string; actionType?: string | null }>;
+  edges?: unknown[];
+  [field: string]: unknown;
+}
+
 export interface RawPackage {
-  processModels?: Array<{ processModelId?: string; title?: string }>;
-  bindings?: Array<{ intent?: string; processModelId?: string }>;
+  processModels?: RawProcessModel[];
+  bindings?: Array<{ intent?: string; processModelId?: string; residentId?: string }>;
   language?: string;
 }
 
@@ -235,23 +295,14 @@ export interface BehaviourView {
   namedIntents: number;
 }
 
-export interface HorizonReading {
-  title: string;
-  /** Absent when the file carried the outline alone, with no process package beside it. */
-  behaviour?: BehaviourView;
+/** One person of the household, read on their own: their day, their week, their stretches. */
+export interface ResidentReading {
   residentId: string;
-  timeZone: string;
-  startDate: string;
-  /** The last day that is simulated — the schema's half-open end date, minus one. */
-  lastDate: string;
-  spanPhrase: string;
-  dayCount: number;
-  months: number;
+  /** The display name when the model wrote one, the identifier otherwise. */
+  name: string;
   age?: number;
   health: string[];
   bedtime?: string;
-  authorPhrase: string;
-  humanReviewed: boolean;
   bands: BandView[];
   bandRows: BandRow[];
   commitments: CommitmentView[];
@@ -260,13 +311,82 @@ export interface HorizonReading {
   weekVaries: boolean;
   phases: PhaseView[];
   events: EventView[];
+  note: string;
+}
+
+/** A shared activity: declared once, with one window, and the people who take part named. */
+export interface JointActivityView extends ActivityView {
+  participants: string[];
+  /** How often it is actually shared — always, or a proportion that may differ at the weekend. */
+  together: string;
+  /** What happens on a day the shared version does not fit. */
+  fallback: string;
+}
+
+export interface HouseholdView {
+  relations: string[];
+  joint: JointActivityView[];
+  policies: string[];
+  privacy: string[];
+  sharedRooms: string[];
+}
+
+export interface HorizonReading {
+  title: string;
+  /** Absent when the file carried the outline alone, with no process package beside it. */
+  behaviour?: BehaviourView;
+  /** Never empty: a 1.x outline, or one whose roster is unreadable, is read as a household of one. */
+  residents: ResidentReading[];
+  household: HouseholdView;
+  timeZone: string;
+  startDate: string;
+  /** The last day that is simulated — the schema's half-open end date, minus one. */
+  lastDate: string;
+  spanPhrase: string;
+  dayCount: number;
+  months: number;
+  authorPhrase: string;
+  humanReviewed: boolean;
   monthTicks: MonthTick[];
   rooms: string[];
   elsewhere: string[];
+  /** Every declared object, so the preview can say which of them the vocabulary does not know. */
+  furniture: Array<{ resourceId: string; resourceType: string; room: string }>;
+  /** Every intent the outline uses anywhere, so the preview can say which the vocabulary lacks. */
+  usedIntents: string[];
+  proposals: ProposalsView;
   people: string[];
   note: string;
   /** Everything the outline says that this reading could not place on a clock or a calendar. */
   gaps: string[];
+}
+
+export interface FurnitureProposalView {
+  entityType: string;
+  displayName: string;
+  capabilities: string[];
+  contactInstrumented: boolean;
+  rationale: string;
+}
+
+export interface ActivityProposalView {
+  intentId: string;
+  label: string;
+  category: string;
+  defaultLocation: string;
+  description: string;
+  rationale: string;
+  /** The first process model the package binds to this intent, to start the vocabulary entry from. */
+  processModel?: RawProcessModel;
+  /** How many steps that model takes, for the sentence beside the button. */
+  steps: number;
+}
+
+export interface ProposalsView {
+  furniture: FurnitureProposalView[];
+  activities: ActivityProposalView[];
+  /** Process models by the intent they are bound to, for activities used without a proposal. */
+  modelsByIntent: Record<string, RawProcessModel>;
 }
 
 export type OutlineReadResult =

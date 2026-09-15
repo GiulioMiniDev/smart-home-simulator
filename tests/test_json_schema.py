@@ -52,6 +52,7 @@ from smart_home_sim.domain.environment import (
     HomeModel,
     SimulationBundle,
 )
+from smart_home_sim.domain.execution import ExecutionTrace
 from smart_home_sim.domain.materialization import (
     EnvironmentMaterializationManifest,
     SyntheticWorkspaceManifest,
@@ -70,6 +71,7 @@ from smart_home_sim.hybrid_planning.outline import (
     HabitGroundTruth,
     HorizonAuthoringBundle,
     HorizonOutline,
+    HouseholdGroundTruth,
 )
 from smart_home_sim.validation.codes import STABLE_ISSUE_CODES
 
@@ -91,18 +93,32 @@ AUTHORING_SCHEMAS = {
     "authoring-repair-request-1.0.0.schema.json": AuthoringRepairRequest,
 }
 OUTLINE_SCHEMAS = {
-    "horizon-outline-1.0.0.schema.json": HorizonOutline,
-    "horizon-authoring-bundle-1.0.0.schema.json": HorizonAuthoringBundle,
-    "habit-ground-truth-1.2.0.schema.json": HabitGroundTruth,
+    "horizon-outline-2.0.0.schema.json": HorizonOutline,
+    "horizon-authoring-bundle-2.0.0.schema.json": HorizonAuthoringBundle,
+    "habit-ground-truth-1.3.0.schema.json": HabitGroundTruth,
+    "household-ground-truth-1.0.0.schema.json": HouseholdGroundTruth,
 }
 HISTORICAL_AUTHORING_REPORT_SCHEMA = (
     PROJECT_ROOT / "schemas/authoring-ingestion-report-1.0.0.schema.json"
+)
+# Outlines authored against the single-resident contract are no longer expandable, but the
+# schema that described them stays published: it is what tells a reader of an archived
+# bundle which document they are holding.
+HISTORICAL_OUTLINE_SCHEMAS = (
+    PROJECT_ROOT / "schemas/horizon-outline-1.0.0.schema.json",
+    PROJECT_ROOT / "schemas/horizon-authoring-bundle-1.0.0.schema.json",
 )
 ENVIRONMENT_SCHEMAS = {
     "home-model-1.0.0.schema.json": HomeModel,
     "environment-validation-report-1.0.0.schema.json": EnvironmentValidationReport,
     "simulation-bundle-1.0.0.schema.json": SimulationBundle,
 }
+# Pinned from 1.1.0, which added `participantIds`. The 1.0.0 schema stays published because
+# every trace written before it declares that version and still verifies against its digest.
+EXECUTION_SCHEMAS = {
+    "execution-trace-1.1.0.schema.json": ExecutionTrace,
+}
+HISTORICAL_EXECUTION_TRACE_SCHEMA = PROJECT_ROOT / "schemas/execution-trace-1.0.0.schema.json"
 BATCH_SCHEMAS = {
     "simulation-batch-manifest-1.0.0.schema.json": SimulationBatchManifest,
     "simulation-batch-report-1.0.0.schema.json": SimulationBatchReport,
@@ -805,11 +821,14 @@ def test_frozen_schema_checksums_match() -> None:
         *(PROJECT_ROOT / "schemas" / name for name in OUTLINE_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in ENVIRONMENT_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in BATCH_SCHEMAS),
+        *(PROJECT_ROOT / "schemas" / name for name in EXECUTION_SCHEMAS),
+        HISTORICAL_EXECUTION_TRACE_SCHEMA,
         *(PROJECT_ROOT / "schemas" / name for name in SENSOR_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in MATERIALIZATION_SCHEMAS),
         *(PROJECT_ROOT / "schemas" / name for name in APPLICATION_SCHEMAS),
         HISTORICAL_AUTHORING_REPORT_SCHEMA,
         HISTORICAL_EXPORT_MANIFEST_SCHEMA,
+        *HISTORICAL_OUTLINE_SCHEMAS,
     ):
         checksum_path = schema_path.with_suffix(".sha256")
         expected = checksum_path.read_text(encoding="utf-8").split()[0]
@@ -994,7 +1013,7 @@ def test_outline_schemas_match_models_and_the_published_example() -> None:
         Draft202012Validator.check_schema(schema)
 
     outline_schema = json.loads(
-        (PROJECT_ROOT / "schemas/horizon-outline-1.0.0.schema.json").read_text(encoding="utf-8")
+        (PROJECT_ROOT / "schemas/horizon-outline-2.0.0.schema.json").read_text(encoding="utf-8")
     )
     example = json.loads(
         (PROJECT_ROOT / "examples/authoring/meredith.horizon-outline.json").read_text(
@@ -1002,3 +1021,11 @@ def test_outline_schemas_match_models_and_the_published_example() -> None:
         )
     )
     assert list(Draft202012Validator(outline_schema).iter_errors(example)) == []
+
+
+def test_the_execution_trace_schema_matches_its_model() -> None:
+    """1.1.0 is what the engine writes now; a model drifting from it must break the build."""
+    for name, model in EXECUTION_SCHEMAS.items():
+        schema = json.loads((PROJECT_ROOT / "schemas" / name).read_text(encoding="utf-8"))
+        assert schema == model.model_json_schema(by_alias=True)
+        Draft202012Validator.check_schema(schema)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, JsonValue, model_validator
 
@@ -165,6 +165,13 @@ class ActivityExecution(ContractModel):
     actual_start: AwareDatetime
     actual_end: AwareDatetime
     status: Literal["completed", "deviated", "failed", "dropped"]
+    # The residents who took part besides the actor: the other people at a shared dinner. One
+    # execution with everybody named, not one per participant, for the reason the plan does the same
+    # thing — a diary that listed the dinner once per person who ate it would report a household
+    # eating twice as many dinners as it had. Their walks and postures are ordinary actions filed
+    # under this execution, each carrying its own `actorId`. Empty for everything a resident does
+    # alone, which is everything a trace written before 1.1.0 contains.
+    participant_ids: list[str] = Field(default_factory=list)
     action_execution_ids: list[str] = Field(default_factory=list)
     deviation_ids: list[str] = Field(default_factory=list)
     failure_code: str | None = None
@@ -204,17 +211,37 @@ class DailyExecutionSummary(ContractModel):
     dropped_activity_count: int = Field(ge=0)
 
 
+def semantic_activity_executions(activities: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Activity executions as they are hashed: an empty `participantIds` spelled as no field at all.
+
+    1.1.0 added `participantIds`, and a trace read back through the model gains an empty list on
+    every activity it never had. An empty list and an absent field say the same thing, so they have
+    to hash the same. Otherwise every trace written before the field existed stops verifying against
+    its own digest — and so does every dataset built from one — and a one-resident run written today
+    carries a different digest from the identical run written yesterday.
+
+    Kept here, beside the contract, because more than one component recomputes the digest and they
+    must never disagree about what it covers.
+    """
+    return [
+        {key: value for key, value in item.items() if not (key == "participantIds" and not value)}
+        for item in activities
+    ]
+
+
 class ExecutionTrace(ContractModel):
     model_config = ConfigDict(
         **ContractModel.model_config,
         json_schema_extra={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "urn:smart-home-simulator:schema:execution-trace:1.0.0",
-            "title": "Smart Home Authoritative Execution Trace 1.0.0",
+            "$id": "urn:smart-home-simulator:schema:execution-trace:1.1.0",
+            "title": "Smart Home Authoritative Execution Trace 1.1.0",
         },
     )
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    # 1.1.0 adds `participantIds` to an activity execution, so a shared activity can say who was
+    # there. Traces written as 1.0.0 carry none and stay readable exactly as they were.
+    schema_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     document_type: Literal["execution_trace"] = "execution_trace"
     trace_id: str = Field(min_length=1)
     source_bundle_id: str = Field(min_length=1)

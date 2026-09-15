@@ -21,7 +21,12 @@ from smart_home_sim.compiler.solver import (
     activity_records,
 )
 from smart_home_sim.domain.compilation import COMPILATION_ISSUE_CODES
-from smart_home_sim.domain.models import DependencyGroup, Scenario
+from smart_home_sim.domain.models import (
+    BRANCH_EXTENSION,
+    PRIVACY_EXTENSION,
+    DependencyGroup,
+    Scenario,
+)
 
 PROJECT_ROOT = Path(__file__).parents[1]
 EXAMPLES = PROJECT_ROOT / "examples"
@@ -595,3 +600,235 @@ def test_the_time_axis_resolves_to_what_the_scenario_actually_declares() -> None
     assert canonical_sha256(compile_payload(payload).plan) == canonical_sha256(
         compile_file(EXAMPLES / "valid" / "minimal.json").plan
     )
+
+
+def _two_resident_payload(*, private: bool) -> dict[str, Any]:
+    """The minimal scenario with a housemate who wants the kitchen at the same moment.
+
+    Both activities are anchored on the same half hour and neither depends on the other, so the
+    only thing that can separate them is the privacy rule. With it off they are free to overlap —
+    two people in one room is ordinary — and with it on they cannot.
+    """
+    payload = _payload()
+    payload["residents"].append({"residentId": "resident_2", "displayName": "Resident Two"})
+    payload["initialState"]["residents"].append(
+        {"residentId": "resident_2", "locationId": "bedroom", "facts": {"awake": False}}
+    )
+    first = copy.deepcopy(payload["days"][0]["activities"][0])
+    first.update(
+        {
+            "activityId": "activity_private",
+            "actorId": "resident_1",
+            "intent": "take_shower",
+            "requiredResources": [],
+            "commitmentId": None,
+            "startWindow": {
+                "earliest": "2026-10-12T08:00:00+02:00",
+                "preferred": "2026-10-12T08:00:00+02:00",
+                "latest": "2026-10-12T09:00:00+02:00",
+            },
+        }
+    )
+    if private:
+        first["extensions"] = {PRIVACY_EXTENSION: ["resident_2"]}
+    second = copy.deepcopy(first)
+    second.update(
+        {
+            "activityId": "activity_other",
+            "actorId": "resident_2",
+            "intent": "clean_kitchen",
+            "extensions": {},
+        }
+    )
+    payload["days"][0]["activities"] = [first, second]
+    payload["commitments"] = []
+    # The example's runtime events name activities this fixture replaced.
+    payload["runtimeEventCandidates"] = []
+    return payload
+
+
+def test_without_a_privacy_rule_two_residents_may_share_a_room() -> None:
+    """The baseline the constraint has to be measured against: co-presence is the normal case."""
+    result = compile_payload(_two_resident_payload(private=False))
+
+    assert result.plan is not None
+    first, second = sorted(_activities(result.plan), key=lambda item: item.source_activity_id)
+    assert first.scheduled_start < second.scheduled_end
+    assert second.scheduled_start < first.scheduled_end
+
+
+def test_a_private_activity_empties_the_room_it_happens_in() -> None:
+    """Pairwise non-overlap, not capacity: the rule is about two named people in one room."""
+    result = compile_payload(_two_resident_payload(private=True))
+
+    assert result.plan is not None
+    ordered = sorted(_activities(result.plan), key=lambda item: item.scheduled_start)
+    assert ordered[0].scheduled_end <= ordered[1].scheduled_start
+
+
+def test_privacy_does_not_reach_a_different_room() -> None:
+    """Being private about the kitchen says nothing about what happens in the bedroom."""
+    payload = _two_resident_payload(private=True)
+    payload["days"][0]["activities"][1]["locationIds"] = ["bedroom"]
+    payload["days"][0]["activities"][1]["intent"] = "read_and_rest"
+
+    result = compile_payload(payload)
+
+    assert result.plan is not None
+    first, second = sorted(_activities(result.plan), key=lambda item: item.source_activity_id)
+    assert first.scheduled_start < second.scheduled_end
+    assert second.scheduled_start < first.scheduled_end
+
+
+def test_a_shared_use_is_one_activity_and_passes() -> None:
+    """Two participants on one interval is one use, and the rule is about who is *not* in it."""
+    payload = _two_resident_payload(private=True)
+    payload["days"][0]["activities"] = [payload["days"][0]["activities"][0]]
+    payload["days"][0]["activities"][0]["participantIds"] = ["resident_2"]
+
+    result = compile_payload(payload)
+
+    assert result.plan is not None
+    assert len(_activities(result.plan)) == 1
+
+
+def _branching_payload(*, room_for_the_shared_arm: bool) -> dict[str, Any]:
+    """The couple's dinner written twice: one sitting, or two.
+
+    With room, the shared arm fits and is worth more than both halves of the separate one. Without
+    it — a commitment parked over the shared arm's only window — the compiler has to fall to the
+    separate arm rather than squeeze the meal, which is the decision §6.3.2 says belongs to it.
+    """
+    payload = _payload()
+    payload["residents"].append({"residentId": "resident_2", "displayName": "Resident Two"})
+    payload["initialState"]["residents"].append(
+        {"residentId": "resident_2", "locationId": "bedroom", "facts": {"awake": False}}
+    )
+    payload["runtimeEventCandidates"] = []
+    payload["commitments"] = []
+    template = copy.deepcopy(payload["days"][0]["activities"][0])
+    template.update({"intent": "eat_dinner", "requiredResources": [], "commitmentId": None})
+
+    def arm(
+        activity_id: str, actor: str, branch: str, priority: int, **extra: Any
+    ) -> dict[str, Any]:
+        item = copy.deepcopy(template)
+        item.update(
+            {
+                "activityId": activity_id,
+                "actorId": actor,
+                "mandatory": False,
+                "priority": priority,
+                "extensions": {BRANCH_EXTENSION: {"group": "dinner", "branch": branch}},
+                "startWindow": {
+                    "earliest": "2026-10-12T19:00:00+02:00",
+                    "preferred": "2026-10-12T19:00:00+02:00",
+                    "latest": "2026-10-12T19:30:00+02:00",
+                },
+                **extra,
+            }
+        )
+        return item
+
+    shared = arm("dinner_joint", "resident_1", "joint", 90, participantIds=["resident_2"])
+    if not room_for_the_shared_arm:
+        # `resident_2` is out until after the shared arm's window closes, so one sitting cannot
+        # hold them both and the separate arm is the only one that fits.
+        payload["commitments"] = [
+            {
+                "commitmentId": "late_shift",
+                "intent": "work_shift",
+                "locationId": "kitchen",
+                "start": "2026-10-12T17:00:00+02:00",
+                "end": "2026-10-12T21:00:00+02:00",
+                "participantIds": ["resident_2"],
+            }
+        ]
+    payload["days"][0]["activities"] = [
+        shared,
+        # The separate arms reach further into the evening, which is the point of them: eating
+        # apart is what makes a late shift survivable without shortening anybody's dinner.
+        arm("dinner_alone_1", "resident_1", "separate", 40, **_late_window()),
+        arm("dinner_alone_2", "resident_2", "separate", 40, **_late_window()),
+    ]
+    return payload
+
+
+def _late_window() -> dict[str, Any]:
+    return {
+        "startWindow": {
+            "earliest": "2026-10-12T19:00:00+02:00",
+            "preferred": "2026-10-12T19:00:00+02:00",
+            "latest": "2026-10-12T22:00:00+02:00",
+        }
+    }
+
+
+def test_the_compiler_takes_the_shared_sitting_when_it_fits() -> None:
+    """Preference through `priority`, which the objective's first stage already maximises."""
+    result = compile_payload(_branching_payload(room_for_the_shared_arm=True))
+
+    assert result.plan is not None
+    assert [item.source_activity_id for item in _activities(result.plan)] == ["dinner_joint"]
+
+
+def test_the_compiler_falls_to_two_sittings_rather_than_squeeze_one() -> None:
+    """Eating a forty-minute dinner in fifteen would be a worse lie than eating it alone."""
+    result = compile_payload(_branching_payload(room_for_the_shared_arm=False))
+
+    assert result.plan is not None
+    scheduled = sorted(item.source_activity_id for item in _activities(result.plan))
+    assert scheduled == ["dinner_alone_1", "dinner_alone_2"]
+
+
+def test_exactly_one_arm_of_a_group_is_ever_scheduled() -> None:
+    """Alternatives, not options: a plan holding both would have the household eating twice."""
+    for room in (True, False):
+        result = compile_payload(_branching_payload(room_for_the_shared_arm=room))
+        assert result.plan is not None
+        chosen = {item.source_activity_id for item in _activities(result.plan)}
+        assert ("dinner_joint" in chosen) != bool({"dinner_alone_1", "dinner_alone_2"} & chosen)
+
+
+def test_a_choice_is_canonicalised_once_per_group_not_once_per_arm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The losing arm is not a preference to try and reject: exactly one arm ever exists.
+
+    Locked activity by activity, every day with a degradable dinner produced a guaranteed rejection
+    found by bisection, and on a couple's week that was a third of all rejections. The choice is
+    one lock on the most valuable arm, and the arm's activities are never locked on their own.
+    """
+    from smart_home_sim.compiler import solver as solver_module
+
+    names: list[str] = []
+    original = solver_module.ScheduleSolver._lock_requests
+
+    def spy(self: Any, requests: list[Any]) -> Any:
+        names.extend(item.name for item in requests)
+        return original(self, requests)
+
+    monkeypatch.setattr(solver_module.ScheduleSolver, "_lock_requests", spy)
+    for room in (True, False):
+        names.clear()
+        result = compile_payload(_branching_payload(room_for_the_shared_arm=room))
+
+        assert result.plan is not None
+        assert [name for name in names if name.startswith("canonical_branch__")] == [
+            "canonical_branch__dinner__joint"
+        ]
+        assert not [name for name in names if name.startswith("canonical_optional__dinner")]
+
+
+def test_a_household_is_split_into_windows_by_how_many_live_in_it() -> None:
+    """The threshold was measured on one resident, and a household is not a longer day."""
+    scenario = Scenario.model_validate_json(
+        (EXAMPLES / "valid/mario_week.json").read_text(encoding="utf-8")
+    )
+    resident = scenario.residents[0]
+    couple = scenario.model_copy(
+        update={"residents": [resident, resident.model_copy(update={"resident_id": "second"})]}
+    )
+
+    assert compiler_service._resident_days(scenario) == len(scenario.days)
+    assert compiler_service._resident_days(couple) == 2 * len(scenario.days)

@@ -448,7 +448,12 @@ def test_the_page_states_the_flat_the_sensors_and_the_declared_person(
 
 def test_a_band_says_where_its_activity_actually_runs(inputs: SummaryInputs) -> None:
     page = render_summary_html(
-        SummaryInputs(**{**vars(inputs), "habits": {"outlineId": "o", "habits": [_band()]}})
+        SummaryInputs(
+            **{
+                **vars(inputs),
+                "habits": [{"outlineId": "o", "residentId": "r1", "habits": [_band()]}],
+            }
+        )
     )
 
     assert "Notte" in page
@@ -462,7 +467,12 @@ def test_a_band_no_activity_holds_claims_no_boundary(inputs: SummaryInputs) -> N
     unsettled = _band(dominantIntent="eat_breakfast", effectiveStart=None, effectiveEnd=None)
 
     page = render_summary_html(
-        SummaryInputs(**{**vars(inputs), "habits": {"outlineId": "o", "habits": [unsettled]}})
+        SummaryInputs(
+            **{
+                **vars(inputs),
+                "habits": [{"outlineId": "o", "residentId": "r1", "habits": [unsettled]}],
+            }
+        )
     )
 
     # The window is the only boundary the behaviour supports, and inventing a narrower one would
@@ -481,7 +491,12 @@ def test_a_band_nothing_dominates_reports_that_as_the_finding(inputs: SummaryInp
     mixed = _band(dominantIntent=None, effectiveStart=None, effectiveEnd=None, effectiveShare=0.0)
 
     page = render_summary_html(
-        SummaryInputs(**{**vars(inputs), "habits": {"outlineId": "o", "habits": [mixed]}})
+        SummaryInputs(
+            **{
+                **vars(inputs),
+                "habits": [{"outlineId": "o", "residentId": "r1", "habits": [mixed]}],
+            }
+        )
     )
 
     assert "no single activity holds it on most days" in page

@@ -637,7 +637,7 @@ def _initial_residents(
     if bundle is None:
         for transition in sorted(
             (item for item in trace.state_transitions if item.subject_type == "resident"),
-            key=lambda item: (item.at, item.transition_id),
+            key=lambda item: item.at,
         ):
             state = residents.setdefault(
                 transition.subject_id,
@@ -745,7 +745,7 @@ def _resident_frames(
         if sources
         else sorted(
             (item for item in trace.state_transitions if item.at <= at),
-            key=lambda item: (item.at, item.transition_id),
+            key=lambda item: item.at,
         )
     )
     for transition in transitions:
@@ -825,7 +825,7 @@ def _resident_frames(
         if sources
         else sorted(
             (item for item in trace.resource_events if item.at <= at),
-            key=lambda item: (item.at, item.resource_event_id),
+            key=lambda item: item.at,
         )
     )
     for event in resource_events:
@@ -1075,9 +1075,7 @@ def _world_state_at(
         else (dict(bundle.scenario.initial_state.environment_facts) if bundle else {})
     )
     if bundle is None and sources is None:
-        for transition in sorted(
-            trace.state_transitions, key=lambda item: (item.at, item.transition_id)
-        ):
+        for transition in sorted(trace.state_transitions, key=lambda item: item.at):
             if transition.subject_type == "entity":
                 if transition.fact.startswith(f"{transition.subject_id}."):
                     continue
@@ -1091,7 +1089,7 @@ def _world_state_at(
         if sources
         else sorted(
             (item for item in trace.state_transitions if item.at <= at),
-            key=lambda item: (item.at, item.transition_id),
+            key=lambda item: item.at,
         )
     )
     for transition in transitions:
@@ -1127,9 +1125,7 @@ def _resource_state_at(
         )
     )
     if bundle is None and sources is None:
-        for item in sorted(
-            trace.resource_events, key=lambda item: (item.at, item.resource_event_id)
-        ):
+        for item in sorted(trace.resource_events, key=lambda item: item.at):
             if item.resource_id in resources:
                 continue
             if item.operation == "acquired":
@@ -1143,7 +1139,7 @@ def _resource_state_at(
         if sources
         else sorted(
             (item for item in trace.resource_events if item.at <= at),
-            key=lambda item: (item.at, item.resource_event_id),
+            key=lambda item: item.at,
         )
     )
     for item in events:
@@ -1200,9 +1196,7 @@ def _sensor_state_at(
 
 
 def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _FrameSources:
-    transitions = tuple(
-        sorted(trace.state_transitions, key=lambda item: (item.at, item.transition_id))
-    )
+    transitions = tuple(sorted(trace.state_transitions, key=lambda item: item.at))
     activities = tuple(sorted(trace.activity_executions, key=lambda item: item.actual_start))
     actions = tuple(sorted(trace.action_executions, key=lambda item: item.started_at))
     active_activity_times, active_activity_snapshots = _active_interval_snapshots(
@@ -1218,9 +1212,7 @@ def _frame_sources(trace: ExecutionTrace, bundle: SimulationBundle | None) -> _F
         identifier="action_execution_id",
     )
     movements = tuple(sorted(trace.movements, key=lambda item: item.started_at))
-    resources = tuple(
-        sorted(trace.resource_events, key=lambda item: (item.at, item.resource_event_id))
-    )
+    resources = tuple(sorted(trace.resource_events, key=lambda item: item.at))
     residents = _initial_residents(trace, bundle)
     resident_ids = {item.actor_id for item in trace.activity_executions}
     resident_ids.update(item.actor_id for item in trace.action_executions)

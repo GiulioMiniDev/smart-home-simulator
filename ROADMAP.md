@@ -370,7 +370,12 @@ contratti batch `1.0.0`. L'audit terminale è in
 - M6 risolve sensori, rumore, dropout e separazione oracle/observable;
 - M7 espone batch, stato delle run, replay ed export nella UI;
 - M8 aggiunge orizzonti annuali, scenario multi-residente di accettazione e decide tramite
-  benchmark se attivare streaming, partizionamento e checkpoint;
+  benchmark se attivare streaming, partizionamento e checkpoint. Il contratto multi-residente è
+  già in campo: l'outline 2.0.0 ha per soggetto la casa, non la persona
+  ([ADR-026](docs/decisions/ADR-026-the-household-as-the-subject-of-an-outline.md)). Restano a M8
+  lo scenario di accettazione e la misura del costo di compilazione a due residenti, che §13 del
+  documento di progetto dice esplicitamente di misurare e non di stimare — le attività congiunte
+  riducono il modello e le stanze esclusive lo allargano, quindi il verso non è deducibile;
 - M9 introduce distribuzioni ed eventi correlati soltanto sulla base dei dati usati per la
   calibrazione.
 

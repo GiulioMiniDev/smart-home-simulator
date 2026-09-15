@@ -193,6 +193,11 @@ function ActionRow({
                   </small>
                 </span>
               </label>
+              <UprightField
+                checked={action.requiresUpright}
+                disabled={action.isTravel}
+                onChange={(requiresUpright) => onEdit(draft.updateAction(pack, type, { requiresUpright }))}
+              />
             </div>
           </td>
         </tr>
@@ -201,8 +206,33 @@ function ActionRow({
   );
 }
 
+/**
+ * Whether the resident gets up for this.
+ *
+ * A walk is left alone: moving is already on your feet, and the planner decides how. For everything
+ * else the answer is what a replay shows — someone reading on the sofa who then tidied the living
+ * room without standing up.
+ */
+function UprightField({ checked, disabled, onChange }: { checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="check-field">
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+      <span>
+        The resident has to be on their feet for this.{" "}
+        <small>
+          Someone sitting or lying down stands up first. Leave it off for what is done wherever the
+          body already is — switching on the television from the sofa, taking a pill in bed.
+        </small>
+      </span>
+    </label>
+  );
+}
+
 function NewAction({ pack, onEdit }: { pack: VocabularyPack; onEdit: (pack: VocabularyPack) => void }) {
   const [open, setOpen] = useState(false);
+  // On by default: an action someone adds is almost always done with the hands to an object, and
+  // the defect this guards against is performing it from the sofa.
+  const [upright, setUpright] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [capability, setCapability] = useState("");
@@ -264,6 +294,7 @@ function NewAction({ pack, onEdit }: { pack: VocabularyPack; onEdit: (pack: Voca
           <span>It fills the activity — this is what the activity is made of</span>
         </label>
       </fieldset>
+      <UprightField checked={upright} onChange={setUpright} />
       <div className="button-row">
         <button
           className="button"
@@ -279,6 +310,7 @@ function NewAction({ pack, onEdit }: { pack: VocabularyPack; onEdit: (pack: Voca
                 // it. Anything that should be invisible is the exception, and the row above turns
                 // it off explicitly.
                 motionAtObject: true,
+                requiresUpright: upright,
               }),
             );
             setName("");

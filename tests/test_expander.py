@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from smart_home_sim.compiler.service import compile_scenario
 from smart_home_sim.domain.behavior import PersonalProcessPackage
 from smart_home_sim.domain.models import (
+    BRANCH_EXTENSION,
+    PRIVACY_EXTENSION,
     Activity,
     AuthorType,
     DateTimeWindow,
@@ -20,6 +24,7 @@ from smart_home_sim.domain.models import (
     LocationKind,
     Provenance,
     Resource,
+    SimulationWindow,
     VersionedReference,
 )
 from smart_home_sim.hybrid_planning.day_generation import (
@@ -27,27 +32,54 @@ from smart_home_sim.hybrid_planning.day_generation import (
     RHYTHM_EMITTED_INTENTS,
     WAKE_CLEARANCE_MINUTES,
 )
+from smart_home_sim.hybrid_planning.dwelling import CORE_RESOURCES
 from smart_home_sim.hybrid_planning.expander import (
     _MEAL_AFTER_PREPARATION,
+    FILL_INTENTS,
+    FILL_LABEL,
+    JOINT_BRANCH_PRIORITY,
     MINIMUM_FLEX_MINUTES,
+    SEPARATE_BRANCH_PRIORITY,
+    SHARED_ARRIVAL_MAXIMUM_LAG_MINUTES,
     ExpansionError,
     _cook_before_eating,
-    _measure_habits,
+    _separate_priority,
+    _waiting_rooms,
     expand_outline,
 )
-from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
+from smart_home_sim.hybrid_planning.habits import (
+    DECLARED_HABITS_EXTENSION,
+    evidence_from_plan,
+    measure_habits,
+    measure_household,
+)
+from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG, IntentCategory
 from smart_home_sim.hybrid_planning.outline import (
     ActivityDisplacement,
     ActivityOverride,
+    ActivityProposal,
+    DeclaredHabits,
+    DeclaredResidentHabits,
     Displacement,
     FixedCommitment,
     HabitGroundTruth,
     HabitSegment,
     HorizonOutline,
+    Household,
+    HouseholdRelation,
+    JointActivity,
+    LocationPrivacy,
     OutlineEvent,
     OutlinePhase,
+    OutlineResident,
     OutlineWorld,
+    RelationKind,
+    SharingMode,
+    SharingPolicy,
+    SharingPropensity,
+    VocabularyProposals,
 )
+from smart_home_sim.hybrid_planning.package_authoring import _retarget_reference
 from smart_home_sim.hybrid_planning.recurring_activities import (
     ActivityCadence,
     BehavioralProfile,
@@ -61,6 +93,8 @@ _NOW = datetime(2026, 8, 2, 11, 54, tzinfo=UTC)
 _START = date(2026, 8, 3)  # a Monday
 # The activity catalog places every intent in one of these rooms.
 _ROOMS = ("bedroom", "bathroom", "kitchen", "living_room", "balcony")
+# Everybody a test in this module names as a resident.
+_TEST_RESIDENTS = ("resident", "r1", "r2", "r3")
 
 
 @pytest.fixture(scope="module")
@@ -75,14 +109,47 @@ def package() -> PersonalProcessPackage:
     # the declared activities plus the wake, night and state-driven extras the rhythm adds. The
     # minimal example binds two intents, so the rest are pointed at an existing model, which is
     # enough for tests that never run behaviour validation.
+    #
+    # A binding belongs to a resident, and the expander checks coverage per resident, so every
+    # identifier these tests give a resident is bound — the minimal example's own `resident_1` is
+    # nobody the outlines here name.
     template = payload["bindings"][0]
-    bound = {binding["intent"] for binding in payload["bindings"]}
+    by_model = {binding["intent"]: binding["processModelId"] for binding in payload["bindings"]}
     needed = {spec.intent_id for spec in INTENT_CATALOG} | RHYTHM_EMITTED_INTENTS
-    for intent in sorted(needed - bound):
-        payload["bindings"].append(
-            {**template, "bindingId": f"{template['residentId']}__{intent}", "intent": intent}
-        )
+    payload["bindings"] = [
+        {
+            **template,
+            "bindingId": f"{resident}__{intent}",
+            "residentId": resident,
+            "intent": intent,
+            "processModelId": by_model.get(intent, template["processModelId"]),
+        }
+        for resident in _TEST_RESIDENTS
+        for intent in sorted(needed)
+    ]
     return PersonalProcessPackage.model_validate_json(json.dumps(payload))
+
+
+def _with_away_intent(package: PersonalProcessPackage, intent: str) -> PersonalProcessPackage:
+    """The package, also able to be somewhere else: an absence needs an away intent."""
+    template = package.bindings[0]
+    return package.model_copy(
+        update={
+            "bindings": [
+                *package.bindings,
+                *(
+                    template.model_copy(
+                        update={
+                            "binding_id": f"{resident}__away__{intent}",
+                            "resident_id": resident,
+                            "intent": intent,
+                        }
+                    )
+                    for resident in _TEST_RESIDENTS
+                ),
+            ]
+        }
+    )
 
 
 def _recurring(
@@ -177,19 +244,34 @@ def _world(rooms: tuple[str, ...] = _ROOMS) -> OutlineWorld:
     )
 
 
+def _resident(**overrides: Any) -> OutlineResident:
+    fields: dict[str, Any] = {"resident_id": "resident", "profile": _profile()}
+    fields.update(overrides)
+    return OutlineResident(**fields)
+
+
+# Routed down to the single resident by `_outline`, so a test about phases, events or bands reads
+# the way it did before the household existed.
+_PERSONAL_FIELDS = frozenset(
+    {"resident_id", "display_name", "profile", "rhythm", "habits", "fixed_commitments"}
+    | {"phases", "events", "start_location_id"}
+)
+
+
 def _outline(**overrides: Any) -> HorizonOutline:
+    """A household of one unless the test passes `residents=` or `household=`."""
+    personal = {key: value for key, value in overrides.items() if key in _PERSONAL_FIELDS}
     fields: dict[str, Any] = {
         "outline_id": "o1",
         "title": "One month",
-        "resident_id": "resident",
         "time_zone": "America/New_York",
         "start_date": _START,
         "months": 1,
         "world": _world(),
-        "profile": _profile(),
+        "residents": [_resident(**personal)],
         "provenance": Provenance(author_type=AuthorType.external_llm, generated_at=_NOW),
     }
-    fields.update(overrides)
+    fields.update({key: value for key, value in overrides.items() if key not in _PERSONAL_FIELDS})
     return HorizonOutline(**fields)
 
 
@@ -641,6 +723,37 @@ def test_a_habit_can_declare_the_room_it_happens_in(package: PersonalProcessPack
     assert undeclared["watch_television"] == {"living_room"}
 
 
+def test_a_proposed_activity_is_refused_until_it_is_in_the_vocabulary(
+    package: PersonalProcessPackage,
+) -> None:
+    """Refused like any unknown intent, but the refusal says the fix is in the vocabulary."""
+    profile = _profile()
+    guest = _recurring(
+        "dinner_guest", RecurringActivityKind.rare, ("19:00", "22:00"), intent="host_guest"
+    )
+    outline = _outline(
+        profile=profile.model_copy(
+            update={"recurring_activities": [*profile.recurring_activities, guest]}
+        ),
+        vocabulary_proposals=VocabularyProposals(
+            activities=[
+                ActivityProposal(
+                    intent_id="host_guest",
+                    label="Host a guest",
+                    category=IntentCategory.social,
+                    default_location="kitchen",
+                    rationale="A dinner guest is not a phone call.",
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(
+        ExpansionError, match="proposed and not yet in the vocabulary: 'host_guest'"
+    ):
+        expand_outline(outline, package, seed=1)
+
+
 def test_a_habit_sent_to_a_room_that_is_not_there_is_refused(
     package: PersonalProcessPackage,
 ) -> None:
@@ -667,6 +780,31 @@ def test_a_habit_sent_to_a_room_that_cannot_perform_it_is_refused(
 
     with pytest.raises(ExpansionError, match="holds nothing offering consumable"):
         expand_outline(outline, package, seed=1)
+
+
+def test_a_room_furnished_with_a_type_the_vocabulary_does_not_know_is_accepted(
+    package: PersonalProcessPackage,
+) -> None:
+    """Unknown furniture offers every capability here, as it does everywhere after expansion.
+
+    An outline for a resident who does yoga in the living room had no way through: no piece of
+    furniture in the vocabulary declares `exercise_support`, and the one it invented — an
+    `exercise_mat` — was read by this check as offering nothing, while the binder, the
+    materializer and the preflight all read it as offering everything.
+    """
+    outline = _outline(
+        world=_world_with_study("exercise_mat"),
+        profile=_override(_profile(), "watch_television", "study"),
+    )
+
+    result = expand_outline(outline, package, seed=1)
+
+    assert any(
+        activity.location_ids[0] == "study"
+        for day in result.bundle.scenario.days
+        for activity in day.activities
+        if activity.intent == "watch_television"
+    )
 
 
 def test_a_habit_sent_outdoors_is_accepted(package: PersonalProcessPackage) -> None:
@@ -752,17 +890,7 @@ def test_windows_stay_ordered_across_a_spring_forward_transition(
         intent="work_shift",
     )
     # An absence needs an away intent, and the shared fixture only binds the home catalog.
-    template = package.bindings[0]
-    covering = package.model_copy(
-        update={
-            "bindings": [
-                *package.bindings,
-                template.model_copy(
-                    update={"binding_id": "away__work_shift", "intent": "work_shift"}
-                ),
-            ]
-        }
-    )
+    covering = _with_away_intent(package, "work_shift")
     result = expand_outline(
         _outline(
             time_zone="Europe/Rome",
@@ -811,7 +939,7 @@ def test_the_declared_kind_decides_what_a_crowded_day_may_drop(
 
     by_activity = {
         activity.recurring_activity_id: activity.kind
-        for activity in _outline().profile.recurring_activities
+        for activity in _outline().residents[0].profile.recurring_activities
     }
     mandatory_by_kind: dict[RecurringActivityKind, set[bool]] = defaultdict(set)
     for day in result.bundle.scenario.days:
@@ -890,11 +1018,11 @@ def test_the_wobble_never_carries_an_occurrence_out_of_its_day(
     rejected whole.
     """
     outline = _outline(months=2)
-    for activity in outline.profile.recurring_activities:
+    for activity in outline.residents[0].profile.recurring_activities:
         # Far wider than any author would write, so the tail certainly reaches for both edges.
         activity.cadence.jitter_minutes = 120
-    outline.profile.recurring_activities[0].cadence.window_start = "00:30"
-    outline.profile.recurring_activities[0].cadence.window_end = "02:00"
+    outline.residents[0].profile.recurring_activities[0].cadence.window_start = "00:30"
+    outline.residents[0].profile.recurring_activities[0].cadence.window_end = "02:00"
 
     stray = [
         (day.date, item.activity_id, item.start_window.preferred.isoformat())
@@ -1029,17 +1157,7 @@ def test_a_debt_nap_is_not_dropped_inside_a_shift(package: PersonalProcessPackag
         end_time="17:30",
         intent="work_shift",
     )
-    template = package.bindings[0]
-    covering = package.model_copy(
-        update={
-            "bindings": [
-                *package.bindings,
-                template.model_copy(
-                    update={"binding_id": "away__work_shift", "intent": "work_shift"}
-                ),
-            ]
-        }
-    )
+    covering = _with_away_intent(package, "work_shift")
     result = expand_outline(_outline(months=3, fixed_commitments=[commitment]), covering, seed=2)
 
     clashes = []
@@ -1111,7 +1229,27 @@ def _fortnight(band: HabitSegment, weekday_entries, weekend_entries) -> HabitGro
         )
         for offset in range(14)
     ]
-    return _measure_habits(_outline(habits=[band]), days, seed=1)
+    return _measure_plan(band, days)
+
+
+def _measure_plan(band: HabitSegment, days: list[DayPlan]) -> HabitGroundTruth:
+    """The shared band arithmetic, run on hand-built days whose clock is UTC."""
+    declared = DeclaredHabits(
+        outline_id="o1",
+        time_zone="UTC",
+        start_date=days[0].date,
+        end_date=days[-1].date + timedelta(days=1),
+        seed=1,
+        residents=[DeclaredResidentHabits(resident_id="resident", habits=[band])],
+    )
+    evidence = evidence_from_plan(
+        days,
+        ["resident"],
+        started_at=datetime.combine(declared.start_date, time.min, UTC),
+        ended_at=datetime.combine(declared.end_date, time.min, UTC),
+    )
+    (truth,) = measure_habits(declared, evidence)
+    return truth
 
 
 def test_a_weekday_scoped_band_is_measured_only_on_its_own_days() -> None:
@@ -1219,7 +1357,7 @@ def test_no_effective_window_is_published_when_nothing_holds_the_band() -> None:
         )
         for offset in range(12)
     ]
-    truth = _measure_habits(_outline(habits=[band]), days, seed=1)
+    truth = _measure_plan(band, days)
 
     (observation,) = truth.habits
     assert observation.effective_start is None
@@ -1315,3 +1453,1050 @@ def test_a_mandatory_meal_is_not_chained_to_cooking_the_author_made_optional() -
         ]
     )
     assert [item.intent for item in chained if item.dependency_groups] == ["eat_dinner"]
+
+
+# --- the household ------------------------------------------------------------------------------
+
+
+def _renamed(profile: BehavioralProfile, suffix: str) -> BehavioralProfile:
+    """The same routine under identifiers of its own.
+
+    Recurring activity identifiers are unique across the whole outline, because the expander merges
+    every resident's day into one scenario and two people who had both called an activity
+    `eat_breakfast` would arrive there as one activity performed twice.
+    """
+    return profile.model_copy(
+        update={
+            "profile_id": f"{profile.profile_id}_{suffix}",
+            "persona_id": f"{profile.persona_id}_{suffix}",
+            "recurring_activities": [
+                item.model_copy(
+                    update={"recurring_activity_id": f"{item.recurring_activity_id}_{suffix}"}
+                )
+                for item in profile.recurring_activities
+            ],
+        }
+    )
+
+
+def _without(profile: BehavioralProfile, *activity_ids: str) -> BehavioralProfile:
+    return profile.model_copy(
+        update={
+            "recurring_activities": [
+                item
+                for item in profile.recurring_activities
+                if item.recurring_activity_id not in activity_ids
+            ]
+        }
+    )
+
+
+def _two_residents() -> list[OutlineResident]:
+    return [
+        _resident(resident_id="r1", profile=_renamed(_profile(), "r1")),
+        _resident(resident_id="r2", profile=_renamed(_profile(), "r2")),
+    ]
+
+
+def _couple(**household: Any) -> HorizonOutline:
+    """Two residents, one house, whatever the household declares on top."""
+    return _outline(residents=_two_residents(), household=Household(**household))
+
+
+def _joint_dinner(**overrides: Any) -> JointActivity:
+    fields: dict[str, Any] = {
+        "activity": _recurring(
+            "household_dinner",
+            RecurringActivityKind.anchor,
+            ("19:00", "21:00"),
+            intent="eat_dinner",
+        ),
+        "participant_ids": ["r1", "r2"],
+        # Pinned off here: these tests are about when a meal is shared and how it is emitted, and
+        # they count one interval. Degradation — on by default — has tests of its own below.
+        "degrade_to_independent": False,
+    }
+    fields.update(overrides)
+    return JointActivity(**fields)
+
+
+def _shared_couple(**overrides: Any) -> HorizonOutline:
+    """The couple with their own dinners replaced by one declared for the household."""
+    joint = _joint_dinner(**overrides)
+    return _outline(
+        residents=[
+            _resident(
+                resident_id="r1", profile=_without(_renamed(_profile(), "r1"), "eat_dinner_r1")
+            ),
+            _resident(
+                resident_id="r2", profile=_without(_renamed(_profile(), "r2"), "eat_dinner_r2")
+            ),
+        ],
+        household=Household(joint_activities=[joint]),
+    )
+
+
+def _occurrences_of(day: DayPlan, activity_id: str) -> list[Activity]:
+    return [activity for activity in day.activities if f"activity:{activity_id}" in activity.labels]
+
+
+def test_two_residents_are_one_scenario_with_two_rosters(package: PersonalProcessPackage) -> None:
+    """One house, one log, two people: the household is a scenario, not two scenarios."""
+    result = expand_outline(_couple(), package, seed=1)
+    scenario = result.bundle.scenario
+
+    assert [item.resident_id for item in scenario.residents] == ["r1", "r2"]
+    assert [item.resident_id for item in scenario.initial_state.residents] == ["r1", "r2"]
+    actors = {activity.actor_id for day in scenario.days for activity in day.activities}
+    assert actors == {"r1", "r2"}
+
+
+def test_two_residents_never_share_an_activity_identifier(
+    package: PersonalProcessPackage,
+) -> None:
+    """Identifiers are `<date>_<index>_<intent>`, so two people waking on one morning collide."""
+    result = expand_outline(_couple(), package, seed=1)
+
+    for day in result.bundle.scenario.days:
+        identifiers = [activity.activity_id for activity in day.activities]
+        assert len(set(identifiers)) == len(identifiers)
+
+
+def test_one_ground_truth_per_resident(package: PersonalProcessPackage) -> None:
+    """Habit segmentation is defined over a person, so a shared log has N answer sheets."""
+    band = HabitSegment(
+        habit_id="evening", label="Evening", window_start="18:00", window_end="23:00"
+    )
+    outline = _outline(
+        residents=[
+            _resident(
+                resident_id="r1",
+                profile=_renamed(_profile(), "r1"),
+                habits=[band.model_copy(update={"habit_id": "evening_r1"})],
+            ),
+            _resident(
+                resident_id="r2",
+                profile=_renamed(_profile(), "r2"),
+                habits=[band.model_copy(update={"habit_id": "evening_r2"})],
+            ),
+        ]
+    )
+
+    result = expand_outline(outline, package, seed=1)
+
+    assert [item.resident_id for item in result.declared_habits.residents] == ["r1", "r2"]
+    assert [item.habits[0].habit_id for item in result.declared_habits.residents] == [
+        "evening_r1",
+        "evening_r2",
+    ]
+    assert [item.resident_id for item in result.planned_bands] == ["r1", "r2"]
+    assert {item.measured_on for item in result.planned_bands} == {"expanded_plan"}
+    extension = result.bundle.scenario.extensions[DECLARED_HABITS_EXTENSION]
+    assert [item["residentId"] for item in extension["residents"]] == ["r1", "r2"]  # type: ignore[index,union-attr]
+
+
+def test_a_joint_activity_is_emitted_once_with_every_participant_named(
+    package: PersonalProcessPackage,
+) -> None:
+    """The rule the household level exists for: one dinner, not two dinners forty minutes apart."""
+    result = expand_outline(_shared_couple(), package, seed=1)
+
+    for day in result.bundle.scenario.days:
+        dinners = _occurrences_of(day, "household_dinner")
+        assert len(dinners) == 1
+        assert dinners[0].actor_id == "r1"
+        # `participantIds` names the people taking part besides the actor; repeating him there is
+        # a validation failure, and `occupied_residents()` adds him back regardless.
+        assert dinners[0].participant_ids == ["r2"]
+
+
+def test_a_shared_dinner_is_counted_in_the_band_of_the_resident_who_does_not_own_it(
+    package: PersonalProcessPackage,
+) -> None:
+    """She was at the table. Measuring her evening by `actor_id` alone would report it empty."""
+    band = HabitSegment(
+        habit_id="evening_r2", label="Evening", window_start="18:30", window_end="22:00"
+    )
+    outline = _shared_couple()
+    outline = outline.model_copy(
+        update={
+            "residents": [
+                outline.residents[0],
+                outline.residents[1].model_copy(update={"habits": [band]}),
+            ]
+        }
+    )
+
+    truth = expand_outline(outline, package, seed=1).planned_bands[1]
+
+    assert truth.resident_id == "r2"
+    assert "eat_dinner" in {row.intent for row in truth.habits[0].composition}
+
+
+def test_an_optional_joint_activity_is_shared_on_some_days_and_not_on_others(
+    package: PersonalProcessPackage,
+) -> None:
+    """A propensity is a number, and a number that is neither 0 nor 1 has to produce a mixture."""
+    outline = _shared_couple(
+        sharing=SharingMode.optional_joint,
+        propensity=SharingPropensity(default=0.5),
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    counts = {len(_occurrences_of(day, "household_dinner")) for day in days}
+
+    assert counts == {1, 2}
+
+
+def test_a_weekend_propensity_does_not_leak_into_the_working_week(
+    package: PersonalProcessPackage,
+) -> None:
+    """The argument for indexing the number: a single average fabricates a weekly pattern."""
+    outline = _shared_couple(
+        sharing=SharingMode.optional_joint,
+        propensity=SharingPropensity(default=0.0, weekend=1.0),
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    shared = {
+        day.date.weekday() for day in days if len(_occurrences_of(day, "household_dinner")) == 1
+    }
+
+    assert shared == {5, 6}
+
+
+def test_a_propensity_of_zero_still_feeds_both_residents(
+    package: PersonalProcessPackage,
+) -> None:
+    """Not shared is two dinners, not none: they eat, they just do not eat together."""
+    outline = _shared_couple(
+        sharing=SharingMode.optional_joint, propensity=SharingPropensity(default=0.0)
+    )
+
+    for day in expand_outline(outline, package, seed=1).bundle.scenario.days:
+        dinners = _occurrences_of(day, "household_dinner")
+        assert len(dinners) == 2
+        assert {item.actor_id for item in dinners} == {"r1", "r2"}
+        assert all(not item.participant_ids for item in dinners)
+
+
+def _late_worker(**overrides: Any) -> HorizonOutline:
+    """The couple, with one of them at work until a quarter past eight on the working days."""
+    outline = _shared_couple(**overrides)
+    shift = FixedCommitment(
+        commitment_id="evening_shift",
+        label="Evening shift",
+        intent="work_shift",
+        weekdays=[
+            Weekday.monday,
+            Weekday.tuesday,
+            Weekday.wednesday,
+            Weekday.thursday,
+            Weekday.friday,
+        ],
+        start_time="19:00",
+        end_time="20:15",
+    )
+    return outline.model_copy(
+        update={
+            "residents": [
+                outline.residents[0],
+                outline.residents[1].model_copy(update={"fixed_commitments": [shift]}),
+            ]
+        }
+    )
+
+
+def test_a_minimum_overlap_refuses_a_shared_meal_nobody_had_time_for(
+    package: PersonalProcessPackage,
+) -> None:
+    """A dinner squeezed into the minutes a shift leaves over is not a shared dinner.
+
+    The shift leaves them forty-five minutes in common from Monday to Friday and the whole band at
+    the weekend, so a minimum of one lets every day share and a minimum of an hour keeps the
+    working week apart. Neither is refused outright: both are possible on some day.
+    """
+
+    # An absence needs an away intent, and the shared fixture only binds the home catalog.
+    covering = _with_away_intent(package, "work_shift")
+
+    def shared_weekdays(outline: HorizonOutline) -> set[int]:
+        return {
+            day.date.weekday()
+            for day in expand_outline(outline, covering, seed=1).bundle.scenario.days
+            if len(_occurrences_of(day, "household_dinner")) == 1
+        }
+
+    assert shared_weekdays(_late_worker(minimum_shared_minutes=1)) == set(range(7))
+    assert shared_weekdays(_late_worker(minimum_shared_minutes=60)) == {5, 6}
+
+
+def test_a_shared_meal_starts_soon_after_the_last_one_gets_home(
+    package: PersonalProcessPackage,
+) -> None:
+    """Arrives, and then they eat together — within twenty minutes, not some time that evening.
+
+    No-overlap alone kept the dinner out of the shift and nothing else: the one at home could be
+    left "waiting" until the band closed. The dependency on the shift carries the design's maximum
+    lag, and compiling the day shows the dinner beginning inside it. At the weekend nobody is out,
+    so there is nothing to anchor to.
+    """
+    covering = _with_away_intent(package, "work_shift")
+    scenario = expand_outline(
+        _late_worker(minimum_shared_minutes=1), covering, seed=1
+    ).bundle.scenario
+    monday, saturday = scenario.days[0], scenario.days[5]
+
+    (dinner,) = _occurrences_of(monday, "household_dinner")
+    (shift,) = [item for item in monday.activities if "commitment:evening_shift" in item.labels]
+    assert [(group.activity_ids, group.maximum_lag_minutes) for group in dinner.dependency_groups][
+        -1
+    ] == ([shift.activity_id], SHARED_ARRIVAL_MAXIMUM_LAG_MINUTES)
+    assert not any(
+        group.maximum_lag_minutes
+        for item in _occurrences_of(saturday, "household_dinner")
+        for group in item.dependency_groups
+    )
+
+    one_day = scenario.model_copy(
+        update={
+            "days": [monday],
+            "simulation_window": SimulationWindow(
+                start=datetime.combine(monday.date, time.min, dinner.start_window.preferred.tzinfo),
+                end=datetime.combine(
+                    monday.date + timedelta(days=1), time.min, dinner.start_window.preferred.tzinfo
+                ),
+            ),
+        }
+    )
+    one_day = one_day.model_copy(
+        update={
+            "days": [
+                monday.model_copy(
+                    update={
+                        "activities": [
+                            item.model_copy(update={"allow_boundary_truncation": True})
+                            for item in monday.activities
+                        ]
+                    }
+                )
+            ],
+            "initial_state": one_day.initial_state.model_copy(
+                update={"at": one_day.simulation_window.start}
+            ),
+        }
+    )
+    plan = compile_scenario(one_day).plan
+    assert plan is not None
+    scheduled = {item.source_activity_id: item for day in plan.days for item in day.activities}
+    lag = scheduled[dinner.activity_id].scheduled_start - scheduled[shift.activity_id].scheduled_end
+    assert timedelta() <= lag <= timedelta(minutes=SHARED_ARRIVAL_MAXIMUM_LAG_MINUTES)
+
+
+def test_a_shared_meal_that_can_never_happen_is_refused_before_the_days_exist(
+    package: PersonalProcessPackage,
+) -> None:
+    """A propensity above zero on bands that never meet declares a dinner nobody ever has."""
+    with pytest.raises(ExpansionError, match="never leave them more than"):
+        expand_outline(_shared_couple(minimum_shared_minutes=24 * 60), package, seed=1)
+
+
+def _housemates(**second: Any) -> HorizonOutline:
+    """Two friends splitting the rent, in a flat with a bed in each of two bedrooms."""
+    world = _world((*_ROOMS, "second_bedroom"))
+    world = world.model_copy(
+        update={
+            "resources": [
+                *world.resources,
+                Resource(resource_id="bed_main", resource_type="bed", location_id="bedroom"),
+                Resource(
+                    resource_id="bed_spare",
+                    resource_type="single_bed",
+                    location_id="second_bedroom",
+                ),
+            ],
+            "start_location_id": "bedroom",
+        }
+    )
+    first, other = _two_residents()
+    return _outline(
+        world=world,
+        residents=[first, other.model_copy(update=second)],
+        household=Household(
+            relations=[HouseholdRelation(between=["r1", "r2"], kind=RelationKind.housemates)]
+        ),
+    )
+
+
+def test_a_housemate_sleeps_in_her_own_room_every_night(package: PersonalProcessPackage) -> None:
+    """Where she wakes on the first morning is where her bed is, on every night after it too.
+
+    `startLocationId` used to be read for that first midnight only; every night after it both
+    friends walked to the catalog's bedroom and lay down in one bed.
+    """
+    outline = _housemates(start_location_id="second_bedroom")
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    rooms: dict[str, set[str]] = defaultdict(set)
+    for day in days:
+        for activity in day.activities:
+            if activity.intent in {"sleep", "wake_up"}:
+                rooms[activity.actor_id].add(activity.location_ids[0])
+
+    assert rooms == {"r1": {"bedroom"}, "r2": {"second_bedroom"}}
+
+
+def test_housemates_are_not_put_in_one_bedroom_without_saying_so(
+    package: PersonalProcessPackage,
+) -> None:
+    """Two friends do not share a bed (§6); a house that follows the family gives them two rooms."""
+    with pytest.raises(ExpansionError, match="housemates and would both sleep in 'bedroom'"):
+        expand_outline(_housemates(), package, seed=1)
+
+    # Choosing to share it is one line, like every other permissive setting.
+    shared = _housemates()
+    shared = shared.model_copy(
+        update={
+            "household": shared.household.model_copy(update={"shared_location_ids": ["bedroom"]})
+        }
+    )
+    expand_outline(
+        HorizonOutline.model_validate_json(shared.model_dump_json(by_alias=True)), package, seed=1
+    )
+
+
+def test_two_nights_may_not_be_asked_to_share_one_bedroom(
+    package: PersonalProcessPackage,
+) -> None:
+    """The hard constraint of a household: declared privacy over the night has nowhere to go."""
+    outline = _outline(
+        residents=_two_residents(),
+        household=Household(
+            location_privacy=[LocationPrivacy(location_id="bedroom", subject_id="r1")]
+        ),
+    )
+
+    with pytest.raises(ExpansionError, match="one such room for two nights"):
+        expand_outline(outline, package, seed=1)
+
+
+def test_the_household_expansion_is_deterministic(package: PersonalProcessPackage) -> None:
+    """Two residents double the moving parts and must not double the sources of variation."""
+    first = expand_outline(_shared_couple(), package, seed=7).bundle.scenario
+    second = expand_outline(_shared_couple(), package, seed=7).bundle.scenario
+
+    assert first.model_dump_json(by_alias=True) == second.model_dump_json(by_alias=True)
+
+
+def test_one_resident_is_the_household_of_one(package: PersonalProcessPackage) -> None:
+    """N=1 is not a separate path: the same code, with every loop running once."""
+    result = expand_outline(_outline(), package, seed=1)
+
+    assert len(result.planned_bands) == 1
+    assert [item.resident_id for item in result.bundle.scenario.residents] == ["resident"]
+
+
+def _bathroom_world() -> OutlineWorld:
+    """The test world with one shower in the bathroom, which is what makes it a bathroom."""
+    world = _world()
+    return world.model_copy(
+        update={
+            "resources": [
+                *world.resources,
+                Resource(resource_id="shower", resource_type="shower", location_id="bathroom"),
+            ]
+        }
+    )
+
+
+def _privacy_marks(days: Sequence[DayPlan]) -> dict[str, set[str]]:
+    """Who each actor's activities exclude, gathered over the horizon."""
+    marks: dict[str, set[str]] = defaultdict(set)
+    for day in days:
+        for activity in day.activities:
+            excluded = activity.extensions.get(PRIVACY_EXTENSION)
+            if isinstance(excluded, list):
+                marks[activity.actor_id].update(str(item) for item in excluded)
+    return dict(marks)
+
+
+def test_a_room_with_one_sanitary_fixture_is_private_without_anyone_declaring_it(
+    package: PersonalProcessPackage,
+) -> None:
+    """The restrictive default: the cost of getting it wrong the other way is a false dataset."""
+    outline = _outline(world=_bathroom_world(), residents=_two_residents())
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    bathroom = [
+        activity
+        for day in days
+        for activity in day.activities
+        if "bathroom" in activity.location_ids
+    ]
+
+    assert bathroom
+    assert all(
+        activity.extensions[PRIVACY_EXTENSION]
+        == [item for item in ("r1", "r2") if item != activity.actor_id]
+        for activity in bathroom
+    )
+
+
+def test_a_household_that_shares_its_bathroom_says_so_in_one_line(
+    package: PersonalProcessPackage,
+) -> None:
+    """Permissive settings are chosen, never inherited — but choosing them is one field."""
+    outline = _outline(
+        world=_bathroom_world(),
+        residents=_two_residents(),
+        household=Household(shared_location_ids=["bathroom"]),
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+
+    assert _privacy_marks(days) == {}
+
+
+def test_an_activity_names_each_object_it_holds_so_uses_are_serialised(
+    package: PersonalProcessPackage,
+) -> None:
+    """Serialisation, not privacy: a bathroom the couple shares still has one toilet and one tap.
+
+    The toilet trip names the toilet and the basin it washes its hands at, the television names
+    the set it switches on, and a meal — which switches nothing and sits on a chair — names nothing.
+    """
+    world = _world().model_copy(
+        update={
+            "resources": [
+                Resource(resource_id=resource_id, resource_type=kind, location_id=room)
+                for resource_id, kind, room in CORE_RESOURCES
+            ]
+        }
+    )
+    outline = _outline(
+        world=world,
+        residents=_two_residents(),
+        household=Household(shared_location_ids=["bathroom"]),
+    )
+    # The reference process models, because which object an activity holds is read off what its
+    # process actually does; the module package points every intent at one breakfast.
+    reference = [
+        _retarget_reference(spec.intent_id, resident)
+        for resident in ("r1", "r2")
+        for spec in INTENT_CATALOG
+    ]
+    package = package.model_copy(
+        update={
+            "process_models": [*package.process_models, *reference],
+            "bindings": [
+                binding.model_copy(
+                    update={"process_model_id": f"{binding.resident_id}__{binding.intent}"}
+                )
+                if binding.resident_id in {"r1", "r2"}
+                and binding.intent in {spec.intent_id for spec in INTENT_CATALOG}
+                else binding
+                for binding in package.bindings
+            ],
+        }
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    held: dict[str, list[set[str]]] = defaultdict(list)
+    for day in days:
+        for activity in day.activities:
+            held[activity.intent].append({item.resource_id for item in activity.required_resources})
+
+    assert held["use_toilet"]
+    assert all(item == {"toilet_01", "washbasin_01"} for item in held["use_toilet"])
+    assert all(item == {"television_01"} for item in held["watch_television"])
+    assert all(item == set() for item in held["eat_dinner"])
+
+
+def test_a_room_with_no_sanitary_fixture_is_not_private_by_default(
+    package: PersonalProcessPackage,
+) -> None:
+    """Two people in a kitchen is ordinary, and a default that forbade it would be a fiction."""
+    outline = _outline(world=_bathroom_world(), residents=_two_residents())
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    kitchen = [
+        activity
+        for day in days
+        for activity in day.activities
+        if activity.location_ids == ["kitchen"]
+    ]
+
+    assert kitchen
+    assert all(PRIVACY_EXTENSION not in activity.extensions for activity in kitchen)
+
+
+def test_a_directional_rule_reaches_one_way_only(package: PersonalProcessPackage) -> None:
+    """Between a parent and a small child the norm is not reciprocal, and has to be sayable."""
+    outline = _outline(
+        residents=_two_residents(),
+        household=Household(
+            location_privacy=[
+                LocationPrivacy(
+                    location_id="living_room",
+                    subject_id="r1",
+                    excluded_resident_ids=["r2"],
+                    symmetric=False,
+                )
+            ]
+        ),
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+
+    assert _privacy_marks(days) == {"r1": {"r2"}}
+
+
+def test_the_symmetric_shorthand_writes_the_rule_both_ways(
+    package: PersonalProcessPackage,
+) -> None:
+    """Between two adults the norm is almost always reciprocal, and is written once."""
+    outline = _outline(
+        residents=_two_residents(),
+        household=Household(
+            location_privacy=[
+                LocationPrivacy(
+                    location_id="living_room", subject_id="r1", excluded_resident_ids=["r2"]
+                )
+            ]
+        ),
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+
+    assert _privacy_marks(days) == {"r1": {"r2"}, "r2": {"r1"}}
+
+
+def test_an_exclusive_sharing_policy_is_privacy_keyed_by_intent(
+    package: PersonalProcessPackage,
+) -> None:
+    """The same statement from the other end: whichever room that intent happens in."""
+    outline = _outline(
+        residents=_two_residents(),
+        household=Household(
+            sharing_policies=[
+                SharingPolicy(
+                    between=["r1", "r2"],
+                    intent="eat_breakfast",
+                    sharing=SharingMode.exclusive,
+                )
+            ]
+        ),
+    )
+
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+    marked = {
+        activity.intent
+        for day in days
+        for activity in day.activities
+        if PRIVACY_EXTENSION in activity.extensions
+    }
+
+    assert marked == {"eat_breakfast"}
+
+
+def test_a_household_of_one_is_never_private_from_anybody(
+    package: PersonalProcessPackage,
+) -> None:
+    """There is nobody to exclude, so the restrictive default has nothing to say."""
+    days = expand_outline(_outline(world=_bathroom_world()), package, seed=1).bundle.scenario.days
+
+    assert _privacy_marks(days) == {}
+
+
+# --- the ambiguity share and the household document ---------------------------------------------
+
+
+def test_a_household_of_one_has_nothing_to_be_ambiguous_with(
+    package: PersonalProcessPackage,
+) -> None:
+    """Zero by construction, not by convention: there is nobody else in the room."""
+    band = HabitSegment(
+        habit_id="evening", label="Evening", window_start="18:00", window_end="23:00"
+    )
+
+    truth = expand_outline(_outline(habits=[band]), package, seed=1).planned_bands[0]
+
+    assert truth.habits[0].ambiguous_minutes == 0.0
+    assert truth.habits[0].ambiguous_share == 0.0
+
+
+def test_a_shared_dinner_makes_the_evening_band_ambiguous(
+    package: PersonalProcessPackage,
+) -> None:
+    """The number this whole level exists to publish, and the second axis of difficulty.
+
+    A minute two bodies were both present for cannot be attributed by a log that does not
+    distinguish bodies. Without saying how many such minutes a band holds, an algorithm failing on
+    a crowded band and one failing on a noisy band report the same figure and mean different
+    things.
+    """
+    band = HabitSegment(
+        habit_id="evening_r2", label="Evening", window_start="18:00", window_end="23:00"
+    )
+    outline = _shared_couple()
+    outline = outline.model_copy(
+        update={
+            "residents": [
+                outline.residents[0],
+                outline.residents[1].model_copy(update={"habits": [band]}),
+            ]
+        }
+    )
+
+    observation = expand_outline(outline, package, seed=1).planned_bands[1].habits[0]
+
+    assert observation.resident_id == "r2"
+    assert observation.ambiguous_minutes > 0
+    assert 0 < observation.ambiguous_share <= 1
+
+
+def test_every_band_says_whose_it_is(package: PersonalProcessPackage) -> None:
+    """An export flattens both residents' bands into one table, and a row has to be readable."""
+    band = HabitSegment(
+        habit_id="evening", label="Evening", window_start="18:00", window_end="23:00"
+    )
+    outline = _outline(
+        residents=[
+            _resident(
+                resident_id="r1",
+                profile=_renamed(_profile(), "r1"),
+                habits=[band.model_copy(update={"habit_id": "evening_r1"})],
+            ),
+            _resident(
+                resident_id="r2",
+                profile=_renamed(_profile(), "r2"),
+                habits=[band.model_copy(update={"habit_id": "evening_r2"})],
+            ),
+        ]
+    )
+
+    truths = expand_outline(outline, package, seed=1).planned_bands
+
+    assert [item.habits[0].resident_id for item in truths] == ["r1", "r2"]
+
+
+def _household_of_plan(outline: HorizonOutline, package: PersonalProcessPackage) -> Any:
+    """The household arithmetic run on an expansion's plan: the same code a run's export uses."""
+    result = expand_outline(outline, package, seed=1)
+    scenario = result.bundle.scenario
+    evidence = evidence_from_plan(
+        scenario.days,
+        outline.resident_ids,
+        started_at=scenario.simulation_window.start,
+        ended_at=scenario.simulation_window.end,
+    )
+    return measure_household(result.declared_habits, evidence, external_locations=["outdoors"])
+
+
+def test_the_household_document_names_the_rooms_they_shared(
+    package: PersonalProcessPackage,
+) -> None:
+    """What N per-resident sheets cannot say: the two of them were in there at the same
+    time."""
+    household = _household_of_plan(_shared_couple(), package)
+
+    assert household.resident_ids == ["r1", "r2"]
+    assert household.co_presence
+    assert all(len(item.resident_ids) == 2 for item in household.co_presence)
+    assert all(item.minutes > 0 for item in household.co_presence)
+
+
+def test_the_household_document_lists_each_shared_meal_once(
+    package: PersonalProcessPackage,
+) -> None:
+    """A reader counting dinners gets dinners, not the number of people who ate one."""
+    household = _household_of_plan(_shared_couple(), package)
+
+    dinners = [item for item in household.shared_episodes if item.intent == "eat_dinner"]
+    assert dinners
+    assert all(item.participant_ids == ["r1", "r2"] for item in dinners)
+    assert len({(item.day, item.activity_id) for item in dinners}) == len(dinners)
+
+
+def test_a_household_of_one_publishes_an_empty_document_rather_than_none(
+    package: PersonalProcessPackage,
+) -> None:
+    """Empty is the true answer, and it saves every consumer an existence check."""
+    household = _household_of_plan(_outline(), package)
+
+    assert household.resident_ids == ["resident"]
+    assert household.co_presence == []
+    assert household.shared_episodes == []
+    assert household.days
+    assert all(item.shared_minutes == {"resident": 0.0} for item in household.days)
+
+
+def test_the_household_says_how_often_it_shared_against_how_often_it_said_it_would(
+    package: PersonalProcessPackage,
+) -> None:
+    """Declared against realised, weekdays and weekends apart (§15.2).
+
+    "Never in the week, always at the weekend" is two numbers and has to come back as two rows;
+    one average of them would describe a household that does not exist. Counted over the days the
+    dinner ran at all, together or apart, so the realised share is a fraction of days — the unit
+    the propensity was declared in.
+    """
+    outline = _shared_couple(
+        sharing=SharingMode.optional_joint,
+        propensity=SharingPropensity(default=0.25, weekend=1.0),
+    )
+    days = expand_outline(outline, package, seed=1).bundle.scenario.days
+
+    household = _household_of_plan(outline, package)
+    rows = {item.day_class: item for item in household.sharing}
+
+    assert set(rows) == {"weekday", "weekend"}
+    assert rows["weekend"].declared_propensity == 1.0
+    assert rows["weekday"].declared_propensity == 0.25
+    assert rows["weekend"].realised_share == 1.0
+    weekdays = [
+        day for day in days if day.date.weekday() < 5 and _occurrences_of(day, "household_dinner")
+    ]
+    shared = [day for day in weekdays if len(_occurrences_of(day, "household_dinner")) == 1]
+    assert rows["weekday"].days_with_occurrence == len(weekdays)
+    assert rows["weekday"].days_shared == len(shared)
+    assert 0 < rows["weekday"].days_shared < rows["weekday"].days_with_occurrence
+    assert all(item.participant_ids == ["r1", "r2"] for item in household.sharing)
+
+
+def test_only_the_declaration_travels_inside_the_scenario(
+    package: PersonalProcessPackage,
+) -> None:
+    """The bands ride with the days; nothing measured does, because only a run can be measured.
+
+    A measurement made at expansion is a measurement of the plan. Carried in the scenario it reached
+    every export as the ground truth of a run it had never seen, which is the defect this replaces.
+    """
+    scenario = expand_outline(_shared_couple(), package, seed=1).bundle.scenario
+
+    assert DECLARED_HABITS_EXTENSION in scenario.extensions
+    assert "habitGroundTruths" not in scenario.extensions
+    assert "householdGroundTruth" not in scenario.extensions
+
+
+def test_the_wait_in_front_of_a_shared_meal_happens_where_the_meal_will(
+    package: PersonalProcessPackage,
+) -> None:
+    """A wait is not a hole in the plan. It is time spent in the room the other one is coming to.
+
+    Anchoring a shared activity to the last participant to become free produces the wait for free;
+    what this covers is that the minutes are somewhere. Left in the catalog's default room they
+    are what `behaviour.py` counts as long idle — a motionless body, which is what the replay
+    shows and what makes the trace read as a dot on a sofa.
+    """
+    days = expand_outline(_shared_couple(), package, seed=1).bundle.scenario.days
+
+    placed = []
+    for day in days:
+        for waiting_start, waiting_end, room in _waiting_rooms(day.activities):
+            placed.extend(
+                activity.location_ids[0] == room
+                for activity in day.activities
+                if FILL_LABEL in activity.labels
+                and activity.start_window is not None
+                and waiting_start <= activity.start_window.preferred < waiting_end
+            )
+
+    assert placed, "no filler landed inside a wait, so there is nothing to check"
+    assert all(placed)
+
+
+def test_a_filler_is_only_what_that_resident_can_perform(package: PersonalProcessPackage) -> None:
+    """One housemate makes coffee and the other never does; the other is not handed a coffee.
+
+    The fillable intents were read off the whole package, so a process only one of two people had
+    was offered to both — and a month for a couple was refused 62 times over, for the one whose
+    package had never mentioned it.
+    """
+    coffee = "prepare_and_drink_hot_drink"
+    assert coffee in FILL_INTENTS
+    partial = package.model_copy(
+        update={
+            "bindings": [
+                item
+                for item in package.bindings
+                if not (item.resident_id == "r2" and item.intent == coffee)
+            ]
+        }
+    )
+
+    days = expand_outline(_couple(), partial, seed=1).bundle.scenario.days
+
+    filled: dict[str, set[str]] = defaultdict(set)
+    for day in days:
+        for activity in day.activities:
+            if FILL_LABEL in activity.labels:
+                filled[activity.actor_id].add(activity.intent)
+    assert coffee in filled["r1"]
+    assert filled["r2"], "r2 received no filler at all, so there is nothing to check"
+    assert coffee not in filled["r2"]
+
+
+def test_no_wait_intent_is_coined(package: PersonalProcessPackage) -> None:
+    """The catalogue is closed, and nobody waits — they do something else and watch the clock."""
+    days = expand_outline(_shared_couple(), package, seed=1).bundle.scenario.days
+
+    intents = {activity.intent for day in days for activity in day.activities}
+
+    assert all(item in {spec.intent_id for spec in INTENT_CATALOG} for item in intents)
+
+
+def test_a_degradable_meal_is_written_twice_and_chosen_once(
+    package: PersonalProcessPackage,
+) -> None:
+    """The shared sitting and the two separate ones, in one group the compiler picks from."""
+    days = expand_outline(
+        _shared_couple(degrade_to_independent=True), package, seed=1
+    ).bundle.scenario.days
+
+    for day in days:
+        dinners = _occurrences_of(day, "household_dinner")
+        branches = {
+            item.extensions[BRANCH_EXTENSION]["branch"]  # type: ignore[index,call-overload]
+            for item in dinners
+        }
+        assert branches == {"joint", "separate"}
+        groups = {
+            item.extensions[BRANCH_EXTENSION]["group"]  # type: ignore[index,call-overload]
+            for item in dinners
+        }
+        assert len(groups) == 1
+        assert all(not item.mandatory for item in dinners)
+
+
+def test_the_shared_arm_outweighs_both_halves_of_the_separate_one() -> None:
+    """How "share it if it fits" is expressed: the objective's first stage, and nothing new."""
+    assert JOINT_BRANCH_PRIORITY > 2 * SEPARATE_BRANCH_PRIORITY
+    # Nothing in a household is binary: a family of four still eats together when it fits.
+    for participants in (2, 3, 4, 6):
+        assert participants * _separate_priority(participants) < JOINT_BRANCH_PRIORITY
+    assert _separate_priority(2) == SEPARATE_BRANCH_PRIORITY
+
+
+def test_a_degradable_meal_is_measured_on_its_shared_arm_only(
+    package: PersonalProcessPackage,
+) -> None:
+    """Counting both arms would report a household eating twice as many dinners as it has."""
+    band = HabitSegment(
+        habit_id="evening_r1", label="Evening", window_start="18:00", window_end="23:00"
+    )
+    outline = _shared_couple(degrade_to_independent=True)
+    outline = outline.model_copy(
+        update={
+            "residents": [
+                outline.residents[0].model_copy(update={"habits": [band]}),
+                outline.residents[1],
+            ]
+        }
+    )
+
+    truth = expand_outline(outline, package, seed=1).planned_bands[0]
+    dinner = [row for row in truth.habits[0].composition if row.intent == "eat_dinner"]
+
+    assert dinner
+    # One dinner a day inside a five-hour band, not two.
+    assert dinner[0].share < 0.5
+
+
+def test_a_joint_activity_that_may_not_degrade_stays_one_interval(
+    package: PersonalProcessPackage,
+) -> None:
+    """Turned off, a shared activity is one interval: the author chose squeeze over separate."""
+    days = expand_outline(
+        _shared_couple(degrade_to_independent=False), package, seed=1
+    ).bundle.scenario.days
+
+    for day in days:
+        dinners = _occurrences_of(day, "household_dinner")
+        assert len(dinners) == 1
+        assert BRANCH_EXTENSION not in dinners[0].extensions
+
+
+def test_the_expanded_household_is_a_valid_scenario(package: PersonalProcessPackage) -> None:
+    """The guard that was missing: every expander test read the days and none validated them.
+
+    `participantIds` names the people taking part *besides* the actor, and a joint activity that
+    repeated its own actor there produced a scenario the contract rejects — through an expansion
+    that looked right in every assertion about intents, rooms and counts.
+    """
+    from smart_home_sim.validation.service import validate_payload
+
+    scenario = expand_outline(_shared_couple(), package, seed=1).bundle.scenario
+    report = validate_payload(json.loads(scenario.model_dump_json(by_alias=True)))
+
+    assert [item.code for item in report.issues] == []
+
+
+def test_a_package_that_implements_the_household_for_one_resident_is_refused(
+    package: PersonalProcessPackage,
+) -> None:
+    """A binding belongs to a person: dinner implemented for one of two is implemented for one."""
+    one_sided = package.model_copy(
+        update={"bindings": [item for item in package.bindings if item.resident_id != "r2"]}
+    )
+
+    with pytest.raises(ExpansionError, match="does not implement for 'r2'"):
+        expand_outline(_shared_couple(), one_sided, seed=1)
+
+
+def test_a_shared_arm_is_never_shorter_than_the_author_said_sharing_needs(
+    package: PersonalProcessPackage,
+) -> None:
+    """Below `minimumSharedMinutes` it is not a shared meal, so the shared arm stops there.
+
+    Without the floor the compiler never chose: a twelve-minute shared dinner is still a dinner, the
+    objective prefers the shared arm, and degradation on or off served the same twelve minutes.
+    """
+    days = expand_outline(
+        _shared_couple(degrade_to_independent=True, minimum_shared_minutes=25), package, seed=1
+    ).bundle.scenario.days
+
+    shared_arms = [
+        item
+        for day in days
+        for item in _occurrences_of(day, "household_dinner")
+        if item.extensions[BRANCH_EXTENSION]["branch"] == "joint"  # type: ignore[index,call-overload]
+    ]
+    assert shared_arms
+    assert all(
+        item.duration is not None and item.duration.minimum_minutes >= 25 for item in shared_arms
+    )
+
+
+def test_a_shared_activity_may_degrade_unless_the_author_says_otherwise() -> None:
+    """On by default, now that the ground truth is measured on what the compiler chose."""
+    assert _recurring_joint_default().degrade_to_independent is True
+
+
+def _recurring_joint_default() -> JointActivity:
+    return JointActivity(
+        activity=_recurring("dinner", RecurringActivityKind.anchor, intent="eat_dinner"),
+        participant_ids=["r1", "r2"],
+    )
+
+
+def test_the_package_is_told_the_version_of_the_scenario_it_could_not_have_seen(
+    package: PersonalProcessPackage,
+) -> None:
+    """The scenario is built from the outline, so its version is the expander's to state.
+
+    A model that was told `1.0.0` still wrote `2.0.0`, the outline's schema version, and the whole
+    horizon was refused as targeting a different scenario. The identifier is not aligned: a package
+    written for another outline is a real mistake, and stays one.
+    """
+    outline = _outline()
+    guessed = package.model_copy(
+        update={"source_scenario_id": outline.outline_id, "source_scenario_version": "2.0.0"}
+    )
+
+    bundle = expand_outline(outline, guessed, seed=1).bundle
+
+    assert bundle.personal_process_package.source_scenario_version == bundle.scenario.schema_version
+    elsewhere = guessed.model_copy(update={"source_scenario_id": "another_outline"})
+    kept = expand_outline(outline, elsewhere, seed=1).bundle.personal_process_package
+    assert (kept.source_scenario_id, kept.source_scenario_version) == ("another_outline", "2.0.0")

@@ -4,7 +4,7 @@
   "sensorModelId": "synthetic_mario_rome_apartment_logical_v1__room_coverage__sensors",
   "sensorModelVersion": "1.1.0",
   "sourceBundleId": "mario_rossi_autonomous_elderly_2026_10_30__synthetic_mario_rome_apartment_logical_v1__behavior_1.1.0__1.0.0",
-  "sourceBundleSha256": "bf15142282e5bd616d1e7e112cf08c63b0a91825e9f5a85cac2d33e403e3e10f",
+  "sourceBundleSha256": "df816ce16e857b1413dc420dca4c7774072fc4aa808b9602b4d149732df2effe",
   "seed": 42,
   "regionIds": [
     "balcony",
@@ -23,6 +23,8 @@
     "dining_table",
     "entrance_door",
     "kitchen_chair",
+    "kitchen_chair_02",
+    "kitchen_chair_03",
     "kitchen_sink",
     "medication_cleaning_cabinet",
     "moka",

@@ -210,12 +210,14 @@ describe("adding and removing", () => {
       capability: "plant_care",
       gestureSeconds: 12,
       motionAtObject: true,
+      requiresUpright: true,
     });
     const created = actionOf(pack, "water_plants")!;
     expect(created.definition.parameters.map((item) => item.parameterName)).toEqual(["targetRole"]);
     expect(created.definition.requiredCapabilities[0]!.capability).toBe("plant_care");
     expect(created.gestureSeconds).toBe(12);
     expect(created.isTravel).toBe(false);
+    expect(created.requiresUpright).toBe(true);
   });
 
   it("creates an action with no target when it is done to nothing in particular", () => {
@@ -225,6 +227,7 @@ describe("adding and removing", () => {
       capability: "",
       gestureSeconds: null,
       motionAtObject: false,
+      requiresUpright: false,
     });
     const created = actionOf(pack, "hum")!;
     expect(created.definition.parameters).toEqual([]);
@@ -233,7 +236,7 @@ describe("adding and removing", () => {
 
   it("refuses a duplicate or nameless action", () => {
     const pack = fixturePack();
-    const base = { description: "", capability: "", gestureSeconds: null, motionAtObject: false };
+    const base = { description: "", capability: "", gestureSeconds: null, motionAtObject: false, requiresUpright: false };
     expect(draft.addAction(pack, { ...base, actionType: "open" })).toBe(pack);
     expect(draft.addAction(pack, { ...base, actionType: "  " })).toBe(pack);
   });
@@ -520,6 +523,8 @@ describe("the actions tab", () => {
     await waitFor(() => expect(saved).toHaveLength(1));
     const body = saved[0] as { pack: VocabularyPack };
     expect(body.pack.actions.map((item) => item.definition.actionType)).toContain("water_plants");
+    // Watering the plants from the sofa is the defect the default exists to prevent.
+    expect(actionOf(body.pack, "water_plants")!.requiresUpright).toBe(true);
   });
 });
 
@@ -838,6 +843,19 @@ describe("editing the parts of a step that are not a role", () => {
     await waitFor(() => expect(saved.length).toBeGreaterThan(0));
     const body = saved[saved.length - 1] as { pack: VocabularyPack };
     expect(actionOf(body.pack, "open")!.observability.motionAtObject).toBe(false);
+  });
+
+  it("says whether the resident gets up for an action", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { saved } = mockApi();
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Actions" }));
+    fireEvent.click(screen.getByLabelText("Edit open"));
+    fireEvent.click(await screen.findByText(/The resident has to be on their feet for this/));
+    await vi.advanceTimersByTimeAsync(900);
+    await waitFor(() => expect(saved.length).toBeGreaterThan(0));
+    const body = saved[saved.length - 1] as { pack: VocabularyPack };
+    expect(actionOf(body.pack, "open")!.requiresUpright).toBe(true);
   });
 
   it("adds a kind of furniture from the rail", async () => {
