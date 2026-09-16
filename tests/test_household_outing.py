@@ -9,7 +9,7 @@ the actor was at the supermarket — the trace, the sensor log and the habit gro
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -20,13 +20,18 @@ from smart_home_sim.domain.behavior import (
     ProcessModel,
     ProcessNode,
 )
+from smart_home_sim.domain.environment import SimulationBundle
 from smart_home_sim.domain.execution import ActivityExecution, ExecutionTrace
 from smart_home_sim.hybrid_planning.outline import HorizonOutline, JointActivity
 from smart_home_sim.hybrid_planning.recurring_activities import RecurringActivityKind
 from tests.test_household_simulation import (
     _RESIDENTS,
+    _ROOMS,
+    _executions,
+    _is,
     _outline,
     _package,
+    _placed,
     _recurring,
     materialized_run,
 )
@@ -196,3 +201,75 @@ def test_the_front_door_contact_hears_the_participant(
     }
 
     assert opened_by == set(_RESIDENTS)
+
+
+def test_a_toilet_trip_due_while_she_is_out_is_given_up_not_kept_for_her_return(run: Path) -> None:
+    """She cannot be interrupted for the toilet at the supermarket, and it does not wait for her.
+
+    Queued behind the outing on her lock, a trip planned for mid-morning ran the moment she came
+    home: 100 on the Verdi months, the latest nine and a half hours after it was due.
+    """
+    bundle = SimulationBundle.model_validate_json(
+        (run / "simulation-bundle.json").read_text(encoding="utf-8")
+    )
+    outing = next(
+        item
+        for item in bundle.canonical_plan.days[0].activities
+        if item.intent == "buy_groceries" and item.participant_ids
+    )
+    minutes = int(outing.duration_microseconds // 60_000_000)
+    middle = outing.scheduled_start + timedelta(minutes=minutes / 2)
+    trace, executions = _executions(
+        _placed(
+            run,
+            {
+                "outing": (
+                    lambda item: item.source_activity_id == outing.source_activity_id,
+                    outing.scheduled_start,
+                    minutes,
+                ),
+                "toilet": (_is(outing.actor_id, "use_toilet"), middle, 6),
+            },
+        )
+    )
+    toilet = executions["toilet"]
+
+    assert toilet.status == "dropped"
+    assert toilet.actual_start - toilet.planned_start < timedelta(minutes=1)
+    assert [
+        item.cause_id
+        for item in trace.plan_deviations
+        if item.activity_execution_id == toilet.activity_execution_id
+        and item.kind == "optional_dropped"
+    ] == ["resident_away"]
+
+
+def test_she_is_out_until_she_comes_in_through_the_door(
+    trace: ExecutionTrace, outings: list[ActivityExecution]
+) -> None:
+    """The way home is spent on the way, and the door opens as she arrives.
+
+    Walked first, the minute of walking left the rest of the leg's budget to be spent standing in
+    the living room with `at_home` false and the door still shut: 53 minutes of every Verdi Sunday
+    out, and six of every working day.
+    """
+    for item in outings:
+        mine = sorted(
+            (
+                action
+                for action in trace.action_executions
+                if action.activity_execution_id == item.activity_execution_id
+                and action.actor_id == item.actor_id
+            ),
+            key=lambda action: action.started_at,
+        )
+        entered = next(action for action in mine if action.action_type == "enter_home")
+        arrived = max(
+            movement.ended_at
+            for movement in trace.movements
+            if movement.actor_id == item.actor_id
+            and movement.ended_at <= entered.started_at
+            and movement.destination_region_id in _ROOMS
+            and movement.origin_region_id not in _ROOMS
+        )
+        assert timedelta() <= entered.started_at - arrived < timedelta(minutes=1)

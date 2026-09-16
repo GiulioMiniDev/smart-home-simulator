@@ -392,3 +392,47 @@ export interface ProposalsView {
 export type OutlineReadResult =
   | { kind: "outline"; reading: HorizonReading }
   | { kind: "other"; message: string };
+
+/**
+ * One thing the server says the outline cannot do, from `POST /api/outline/check`.
+ *
+ * The same check the expander stops on, returned before anything is expanded so the preview can put
+ * a repair beside it. `details` depends on `code`; the shapes the preview acts on are below.
+ */
+export interface OutlineFinding {
+  code: string;
+  severity: "error" | "warning";
+  /** A JSON path into the bundle as the import reads it. */
+  path: string;
+  message: string;
+  details: Record<string, unknown>;
+}
+
+export interface OutlineCheck {
+  valid: boolean;
+  /** `outline` when the file is not a horizon bundle at all; `expansion` when it was checked. */
+  stage: string;
+  findings: OutlineFinding[];
+  message?: string;
+}
+
+/** `ROOM_LACKS_CAPABILITY`: an activity sent to a room holding nothing it needs. */
+export interface RoomLacksCapabilityDetails {
+  recurringActivityId: string;
+  label: string;
+  intent: string;
+  residentIds: string[];
+  room: string;
+  missingCapabilities: string[];
+  /** Per missing capability, the furniture types in the vocabulary that provide it. */
+  furnitureTypes: Record<string, string[]>;
+  /** Declared rooms that already hold everything the activity needs. */
+  roomsThatCanHostIt: string[];
+}
+
+/** `ROOM_NOT_DECLARED`: an activity sent to a room the world does not have. */
+export interface RoomNotDeclaredDetails {
+  recurringActivityId: string;
+  room: string;
+  declaredRooms: string[];
+}

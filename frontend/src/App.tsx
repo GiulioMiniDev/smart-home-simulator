@@ -53,10 +53,11 @@ import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetSta
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { describeRefusal, type ImportRefusal } from "./authoring-refusal";
 import type { VocabularyPack, VocabularyView } from "./vocabulary/types";
-import { substituteResourceTypes, type ReviewActions } from "./horizon/review";
+import { applyAmendments, recordResearcherChanges, researcherChanges, resourceIds, substituteResourceTypes, type OutlineAmendment, type ReviewActions } from "./horizon/review";
+import type { ProblemActions } from "./horizon/OutlineProblems";
 import { HorizonPreview } from "./horizon/HorizonPreview";
 import { readOutlineFile } from "./horizon/reading";
-import type { OutlineReadResult } from "./horizon/types";
+import type { OutlineCheck, OutlineReadResult } from "./horizon/types";
 import { VocabularyPage } from "./vocabulary/VocabularyPage";
 import { useCustomSymbols } from "./vocabulary/symbol-registry";
 import { api, clearSession, download, eventSourceUrl, health } from "./api";
@@ -828,6 +829,13 @@ function HomePage() {
   // Resource types to import as another type, decided in the preview. Applied to the copy that is
   // sent, never to the file on disk.
   const [substitutions, setSubstitutions] = useState<Record<string, string>>({});
+  // Repairs to what the server says the outline cannot do, made in the preview. Like the
+  // substitutions, they change the copy that is sent and never the file.
+  const [amendments, setAmendments] = useState<OutlineAmendment[]>([]);
+  const [outlineCheck, setOutlineCheck] = useState<OutlineCheck>();
+  const [checkingOutline, setCheckingOutline] = useState(false);
+  const [outlineCheckFailure, setOutlineCheckFailure] = useState<string>();
+  const [importedResourceIds, setImportedResourceIds] = useState<Set<string>>(new Set());
   const [working, setWorking] = useState(false);
   // How far one import is allowed to carry itself. Validation is not a step: it is what an import
   // is. The other two are the buttons the researcher would otherwise press by hand, in the order
@@ -900,6 +908,34 @@ function HomePage() {
     window.addEventListener("beforeunload", guard);
     return () => { window.removeEventListener("beforeunload", guard); };
   }, [unsaved]);
+  // The server checks the copy that would be imported — substitutions and repairs applied — every
+  // time either changes, and when the vocabulary does, since a type added there can be what a room
+  // was missing. An answer for a copy that has since changed is dropped.
+  const outlineReadable = outlineReading?.kind === "outline";
+  const vocabularyDigest = vocabulary?.digest;
+  useEffect(() => {
+    if (!outlineFile || !outlineReadable) {
+      setOutlineCheck(undefined);
+      return;
+    }
+    let current = true;
+    setCheckingOutline(true);
+    setOutlineCheckFailure(undefined);
+    void (async () => {
+      try {
+        const document = applyAmendments(substituteResourceTypes(await readJson(outlineFile), substitutions), amendments);
+        const result = await api<OutlineCheck>("/outline/check", { method: "POST", body: JSON.stringify(document) });
+        if (!current) return;
+        setOutlineCheck(result);
+        setImportedResourceIds(resourceIds(document));
+      } catch (reason) {
+        if (current) setOutlineCheckFailure(reason instanceof Error ? reason.message : String(reason));
+      } finally {
+        if (current) setCheckingOutline(false);
+      }
+    })();
+    return () => { current = false; };
+  }, [outlineFile, outlineReadable, substitutions, amendments, vocabularyDigest]);
   if (resource.loading) return <div className="page"><Skeleton lines={8} /></div>;
   if (resource.error || !resource.data) return <div className="page"><ErrorPanel message={resource.error?.message ?? "Home not found"} onRetry={() => void resource.reload()} /></div>;
   const detail = resource.data;
@@ -939,7 +975,7 @@ function HomePage() {
   };
   const importOutline = async (carry: PipelineDepth = "validate") => {
     if (!outlineFile) return;
-    await submitAuthoring("horizon-outline?seed=1", async () => substituteResourceTypes(await readJson(outlineFile), substitutions), "Expanding and importing the outline", carry);
+    await submitAuthoring("horizon-outline?seed=1", async () => recordResearcherChanges(applyAmendments(substituteResourceTypes(await readJson(outlineFile), substitutions), amendments), researcherChanges(substitutions, amendments)), "Expanding and importing the outline", carry);
   };
   /**
    * Store one change to the workspace vocabulary, made from the import preview.
@@ -972,11 +1008,26 @@ function HomePage() {
       intents: [...pack.intents.filter((item) => item.intentId !== intent.intentId), intent],
     })),
   };
+  const problems: ProblemActions = {
+    check: outlineCheck,
+    checking: checkingOutline,
+    failure: outlineCheckFailure,
+    amendments,
+    resourceIds: importedResourceIds,
+    // A repair of the same kind for the same thing replaces the earlier one: moving an activity
+    // twice is one move, to the last room chosen.
+    onAmend: (added) => setAmendments((current) => [
+      ...current.filter((item) => !added.some((next) => next.key === item.key)),
+      ...added,
+    ]),
+    onUndo: (key) => setAmendments((current) => current.filter((item) => item.key !== key)),
+  };
   const chooseOutline = async (file?: File) => {
     setOutlineFile(file);
     setOutlineReading(undefined);
     if (!file) return;
     setSubstitutions({});
+    setAmendments([]);
     setOutlineReading(await readOutlineFile(file));
     // Read on every choice, because the Vocabulary page may have changed it since. A failed read
     // leaves the review out rather than calling every object unknown; the server reports unknown
@@ -1373,7 +1424,7 @@ function HomePage() {
         </section>
       </div>}
       {tab === "overview" && (!detail.residents.length || correctable) && outlineReading?.kind === "outline" && outlineFile && (
-        <HorizonPreview reading={outlineReading.reading} fileName={outlineFile.name} sourceFile={outlineFile} vocabulary={vocabulary?.pack} review={review} busy={working} onImport={() => void importOutline()} />
+        <HorizonPreview reading={outlineReading.reading} fileName={outlineFile.name} sourceFile={outlineFile} vocabulary={vocabulary?.pack} review={review} problems={problems} busy={working} onImport={() => void importOutline()} />
       )}
       {tab === "plan" && <div className="editor-layout" onKeyDown={editorKeys}>
         <section className="editor-stage">

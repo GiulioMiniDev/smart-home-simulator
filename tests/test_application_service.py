@@ -259,6 +259,30 @@ def test_a_horizon_outline_is_expanded_and_then_imported_like_any_bundle(tmp_pat
     assert "report" in result or result.get("valid") is True
 
 
+def test_an_outline_is_checked_without_importing_anything(tmp_path: Path) -> None:
+    """The findings a preview puts a repair beside, and nothing stored to produce them."""
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Outline")
+    service = ApplicationService(workspace)
+    payload = _outline_bundle()
+
+    clean = service.check_horizon_outline(payload)
+    assert clean == {"stage": "expansion", "valid": True, "findings": []}
+
+    outline = payload["outline"]
+    assert isinstance(outline, dict)
+    activity = outline["residents"][0]["profile"]["recurringActivities"][0]
+    activity["location"] = "library"
+    found = service.check_horizon_outline(payload)
+
+    assert found["valid"] is False
+    assert [item["code"] for item in found["findings"]] == ["ROOM_NOT_DECLARED"]
+    finding = found["findings"][0]
+    assert finding["path"] == "$.outline.residents[0].profile.recurringActivities[0].location"
+    assert finding["details"]["room"] == "library"
+    assert service.check_horizon_outline(_authoring())["stage"] == "outline"
+    assert workspace.list_homes("") == []
+
+
 def test_a_document_that_is_not_an_outline_is_refused_before_anything_is_written(
     tmp_path: Path,
 ) -> None:

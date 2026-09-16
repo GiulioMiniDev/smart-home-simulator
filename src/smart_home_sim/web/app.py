@@ -763,6 +763,12 @@ def create_app(
         vocabulary_store.adopt(workspace_root)
         return application.import_authoring_bundle(home_id, request)
 
+    @app.post("/api/outline/check", dependencies=[secured])
+    def check_horizon_outline(request: dict[str, Any]) -> dict[str, Any]:
+        """The problems an outline would be refused for, as findings, without importing it."""
+        vocabulary_store.adopt(workspace_root)
+        return application.check_horizon_outline(request)
+
     @app.post("/api/homes/{home_id}/horizon-outline", dependencies=[secured])
     def import_horizon_outline(
         home_id: str, request: dict[str, Any], http_request: Request, seed: int = 0

@@ -1331,6 +1331,45 @@ def test_export_publishes_one_summary_page_that_indexes_the_dataset(
     assert "observable.jsonl" in page and "activities.jsonl" in page
 
 
+def test_the_summary_page_reads_what_the_researcher_changed_from_the_run_scenario(
+    tmp_path: Path,
+) -> None:
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Replay")
+    home = workspace.create_home("Mario")
+    job = workspace.create_job("simulation", home_id=home.home_id, seed=123)
+    destination = workspace.runs_path / job.job_id
+    shutil.copytree(SOURCE, destination)
+    scenario_path = destination / "scenario.json"
+    scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+    scenario["provenance"]["parameters"]["researcherChanges"] = [
+        {
+            "kind": "add_furniture",
+            "resourceId": "living_room_bookshelf",
+            "resourceType": "bookshelf",
+            "room": "living_room",
+            "reason": "the living room held nothing offering storage_support",
+        }
+    ]
+    scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
+    workspace.import_run_directory(job.job_id, destination)
+    workspace.update_job(
+        job.job_id,
+        JobStatus.completed,
+        JobProgress(phase="completed", percent=100, message="Done"),
+        result_reference=job.job_id,
+    )
+    service = ExportService(workspace)
+
+    manifest = service.export(
+        ExportRequest(run_id=job.job_id, formats=[ExportFormat.csv], roles=["summary"])
+    )
+
+    summary = next(item for item in manifest.files if item.role == "summary")
+    page = (workspace.exports_path / summary.relative_path).read_text(encoding="utf-8")
+    assert "Changed by the researcher at import" in page
+    assert "Added a bookshelf (living_room_bookshelf) to the living room." in page
+
+
 def test_a_rebuilt_summary_is_the_same_page(
     completed_workspace: tuple[WorkspaceService, str],
 ) -> None:

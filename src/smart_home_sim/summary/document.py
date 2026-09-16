@@ -22,6 +22,7 @@ export beside it, whose observable log carries no labels at all.
 from __future__ import annotations
 
 import html
+import json
 import re
 from collections.abc import Container, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -137,6 +138,8 @@ class ScenarioFacts:
     language: str | None = None
     time_zone: str | None = None
     residents: list[dict[str, Any]] = field(default_factory=list)
+    # What the researcher changed in the imported copy of the outline, from its provenance.
+    researcher_changes: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -168,6 +171,54 @@ class SummaryInputs:
     sensor_stats: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     include_start: datetime | None = None
     include_end: datetime | None = None
+
+
+def describe_researcher_change(change: dict[str, Any]) -> str:
+    """One change made at import, in the sentence the import preview used for it."""
+
+    def words(value: object) -> str:
+        return str(value).replace("_", " ")
+
+    kind = change.get("kind")
+    if kind == "add_furniture":
+        return (
+            f"Added a {words(change.get('resourceType'))} ({change.get('resourceId')}) to the "
+            f"{words(change.get('room'))}."
+        )
+    if kind == "move_activity":
+        return (
+            f"Moved {change.get('recurringActivityId')} from the {words(change.get('from'))} to "
+            f"the {words(change.get('room'))}."
+        )
+    if kind == "substitute_type":
+        return f"Imported every {words(change.get('from'))} as a {words(change.get('to'))}."
+    if kind == "remove_type":
+        return f"Removed every {words(change.get('resourceType'))} from the import."
+    return f"A change of kind {kind!r}: {json.dumps(change, sort_keys=True)}"
+
+
+def _changes_section(inputs: SummaryInputs) -> str:
+    """What was simulated that the author did not write, said before anything else on the page.
+
+    An import preview can furnish a room, move a habit or replace a piece of furniture, and every
+    one of those makes the dataset differ from the outline the author produced. A reader comparing
+    the two, or citing the outline as the source of the data, needs to know where.
+    """
+    changes = inputs.scenario.researcher_changes if inputs.scenario else []
+    if not changes:
+        return ""
+    items = "".join(
+        f"<li>{_escape(describe_researcher_change(change))}"
+        + (f" <small>{_escape(str(change['reason']))}</small>" if change.get("reason") else "")
+        + "</li>"
+        for change in changes
+    )
+    return (
+        "<section><h2>Changed by the researcher at import</h2>"
+        "<p>The outline was imported with these changes. Everything below was simulated from the "
+        "changed copy, so in these places the data does not follow the outline as its author "
+        f"wrote it.</p><ul>{items}</ul></section>"
+    )
 
 
 def _who(resident_count: int) -> str:
@@ -791,6 +842,7 @@ def render_summary_html(inputs: SummaryInputs) -> str:
         f'<p class="meta">{_escape(_who(len(profile.residents)))} Everything here is read from '
         "the artifacts of a single run.</p>"
         f"{header}{_metrics(inputs)}</header>"
+        f"{_changes_section(inputs)}"
         f"{_home_section(inputs)}"
         f"{_sensor_section(inputs)}"
         f"{_resident_section_declared(inputs)}"

@@ -19,6 +19,7 @@ from smart_home_sim.domain.models import (
     DateTimeWindow,
     DayContext,
     DayPlan,
+    DependencyMode,
     DurationRange,
     Location,
     LocationKind,
@@ -45,6 +46,7 @@ from smart_home_sim.hybrid_planning.expander import (
     _cook_before_eating,
     _separate_priority,
     _waiting_rooms,
+    activity_location_findings,
     expand_outline,
 )
 from smart_home_sim.hybrid_planning.habits import (
@@ -88,6 +90,8 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     RecurringActivityKind,
     Weekday,
 )
+from smart_home_sim.vocabulary import views
+from smart_home_sim.vocabulary.active import active_pack
 
 _NOW = datetime(2026, 8, 2, 11, 54, tzinfo=UTC)
 _START = date(2026, 8, 3)  # a Monday
@@ -780,6 +784,92 @@ def test_a_habit_sent_to_a_room_that_cannot_perform_it_is_refused(
 
     with pytest.raises(ExpansionError, match="holds nothing offering consumable"):
         expand_outline(outline, package, seed=1)
+
+
+def test_a_room_that_cannot_perform_an_activity_is_reported_with_both_repairs(
+    package: PersonalProcessPackage,
+) -> None:
+    """The same refusal, as a finding a page can put two buttons beside.
+
+    Furnish the room — with a type the vocabulary says provides what is missing — or move the habit
+    to a room that already has everything it needs. The sentence the expander raises is unchanged.
+    """
+    outline = _outline(
+        world=_world_with_study("bookshelf"),
+        profile=_override(_profile(), "watch_television", "study"),
+    )
+
+    findings = activity_location_findings(outline, package)
+
+    assert [item.code for item in findings] == ["ROOM_LACKS_CAPABILITY"]
+    finding = findings[0]
+    assert finding.severity == "error"
+    assert "holds nothing offering" in finding.message
+    index = next(
+        position
+        for position, item in enumerate(outline.residents[0].profile.recurring_activities)
+        if item.recurring_activity_id == "watch_television"
+    )
+    assert finding.path == f"$.outline.residents[0].profile.recurringActivities[{index}].location"
+    details = finding.details
+    assert details["recurringActivityId"] == "watch_television"
+    assert details["room"] == "study"
+    assert details["residentIds"] == [outline.residents[0].resident_id]
+    missing = details["missingCapabilities"]
+    assert isinstance(missing, list) and missing
+    offered = views.entity_type_capabilities(active_pack())
+    types = details["furnitureTypes"]
+    assert isinstance(types, dict) and set(types) == set(missing)
+    for capability, kinds in types.items():
+        assert kinds and all(capability in offered[kind] for kind in kinds)
+    hosts = details["roomsThatCanHostIt"]
+    assert isinstance(hosts, list) and hosts and "study" not in hosts
+
+
+def test_what_the_researcher_changed_at_import_travels_into_the_scenario(
+    package: PersonalProcessPackage,
+) -> None:
+    """The outline's provenance stops at expansion; the record of changes made to it must not.
+
+    Without changes the scenario's parameters are exactly what they were, so no earlier scenario
+    changes by a byte.
+    """
+    plain = expand_outline(_outline(), package, seed=1).bundle.scenario
+    assert plain.provenance.parameters == {"outlineId": "o1", "seed": 1}
+
+    changes = [
+        {
+            "kind": "add_furniture",
+            "resourceId": "study_bookshelf",
+            "resourceType": "bookshelf",
+            "room": "study",
+            "reason": "the study held nothing offering storage_support",
+        }
+    ]
+    provenance = Provenance(
+        author_type=AuthorType.external_llm,
+        generated_at=_NOW,
+        parameters={"researcherChanges": changes, "somethingElse": "kept out"},
+    )
+    changed = expand_outline(_outline(provenance=provenance), package, seed=1).bundle.scenario
+
+    assert changed.provenance.parameters == {
+        "outlineId": "o1",
+        "seed": 1,
+        "researcherChanges": changes,
+    }
+
+
+def test_a_room_that_is_not_there_is_reported_with_the_rooms_that_are(
+    package: PersonalProcessPackage,
+) -> None:
+    outline = _outline(profile=_override(_profile(), "watch_television", "library"))
+
+    findings = activity_location_findings(outline, package)
+
+    assert [item.code for item in findings] == ["ROOM_NOT_DECLARED"]
+    rooms = findings[0].details["declaredRooms"]
+    assert isinstance(rooms, list) and "library" not in rooms and "living_room" in rooms
 
 
 def test_a_room_furnished_with_a_type_the_vocabulary_does_not_know_is_accepted(
@@ -2466,6 +2556,121 @@ def test_a_shared_arm_is_never_shorter_than_the_author_said_sharing_needs(
     assert all(
         item.duration is not None and item.duration.minimum_minutes >= 25 for item in shared_arms
     )
+
+
+def test_a_shared_activity_lasts_what_sharing_it_needs_even_past_its_usual_length(
+    package: PersonalProcessPackage,
+) -> None:
+    """The floor is the author's, and the catalogue's usual maximum does not cap it.
+
+    The Verdi Sunday out was declared at 240 minutes together and published at 24 to 78: the floor
+    applied only to the shared arm of a degradable activity, and even there it stopped at the 120
+    minutes a drink out usually lasts. A dinner declared at 110 is the same case at a smaller scale.
+    """
+    for degrade in (False, True):
+        days = expand_outline(
+            _shared_couple(degrade_to_independent=degrade, minimum_shared_minutes=110),
+            package,
+            seed=1,
+        ).bundle.scenario.days
+        shared = [
+            item
+            for day in days
+            for item in _occurrences_of(day, "household_dinner")
+            if item.participant_ids
+        ]
+
+        assert shared, degrade
+        assert all(
+            item.duration is not None
+            and item.duration.minimum_minutes >= 110
+            and item.duration.maximum_minutes >= 110
+            for item in shared
+        ), degrade
+
+
+def _shared_breakfast() -> HorizonOutline:
+    """Breakfast made together and eaten together, both free to happen apart."""
+
+    def joint(activity_id: str, band: tuple[str, str], intent: str) -> JointActivity:
+        return JointActivity(
+            activity=_recurring(activity_id, RecurringActivityKind.anchor, band, intent=intent),
+            participant_ids=["r1", "r2"],
+            sharing=SharingMode.optional_joint,
+            propensity=SharingPropensity(default=1.0),
+            minimum_shared_minutes=10,
+        )
+
+    return _outline(
+        residents=[
+            _resident(
+                resident_id=who, profile=_without(_renamed(_profile(), who), f"eat_breakfast_{who}")
+            )
+            for who in ("r1", "r2")
+        ],
+        household=Household(
+            joint_activities=[
+                joint("household_prepare_breakfast", ("07:30", "08:30"), "prepare_breakfast"),
+                joint("household_eat_breakfast", ("08:30", "10:00"), "eat_breakfast"),
+            ]
+        ),
+    )
+
+
+def test_a_breakfast_eaten_together_can_be_made_together(package: PersonalProcessPackage) -> None:
+    """Either arm of the preparation cooks the meal: eating together does not force cooking apart.
+
+    Tied to the separate preparation alone, the shared breakfast made that arm present and the
+    exclusive group kept the shared preparation out: on the Verdi weekends the couple ate together
+    24 times of 34 and cooked together 8, against the same declared 0.75 for both.
+    """
+    scenario = expand_outline(_shared_breakfast(), package, seed=1).bundle.scenario
+    day = scenario.days[0]
+
+    def arm(activity_id: str, branch: str) -> list[Any]:
+        return [
+            item
+            for item in _occurrences_of(day, activity_id)
+            if item.extensions[BRANCH_EXTENSION]["branch"] == branch  # type: ignore[index,call-overload]
+        ]
+
+    (eaten,) = arm("household_eat_breakfast", "joint")
+    (made,) = arm("household_prepare_breakfast", "joint")
+    host_made = [
+        item.activity_id
+        for item in _occurrences_of(day, "household_prepare_breakfast")
+        if item.actor_id == eaten.actor_id
+    ]
+    (group,) = eaten.dependency_groups
+    assert group.mode is DependencyMode.any
+    assert sorted(group.activity_ids) == sorted(host_made)
+    assert made.activity_id in group.activity_ids
+
+    zone = made.start_window.preferred.tzinfo  # type: ignore[union-attr]
+    window = SimulationWindow(
+        start=datetime.combine(day.date, time.min, zone),
+        end=datetime.combine(day.date + timedelta(days=1), time.min, zone),
+    )
+    one_day = scenario.model_copy(
+        update={
+            "days": [
+                day.model_copy(
+                    update={
+                        "activities": [
+                            item.model_copy(update={"allow_boundary_truncation": True})
+                            for item in day.activities
+                        ]
+                    }
+                )
+            ],
+            "simulation_window": window,
+            "initial_state": scenario.initial_state.model_copy(update={"at": window.start}),
+        }
+    )
+    plan = compile_scenario(one_day).plan
+    assert plan is not None
+    scheduled = {item.source_activity_id for plan_day in plan.days for item in plan_day.activities}
+    assert {eaten.activity_id, made.activity_id} <= scheduled
 
 
 def test_a_shared_activity_may_degrade_unless_the_author_says_otherwise() -> None:

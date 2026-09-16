@@ -28,9 +28,14 @@ from smart_home_sim.domain.environment import HomeModel
 from smart_home_sim.domain.models import Scenario
 from smart_home_sim.domain.sensors import SensorModel
 from smart_home_sim.environment import validate_home_model
-from smart_home_sim.hybrid_planning.expander import ExpansionError, expand_outline
+from smart_home_sim.hybrid_planning.expander import (
+    ExpansionError,
+    activity_location_findings,
+    expand_outline,
+)
 from smart_home_sim.hybrid_planning.outline import (
     HorizonAuthoringBundle,
+    OutlineCheckReport,
     upgrade_authoring_bundle_payload,
 )
 
@@ -108,6 +113,34 @@ class ApplicationService:
                 "personalProcessPackage": behavior_payload,
             },
         )
+
+    def check_horizon_outline(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """What an outline cannot do, found before anything is expanded, compiled or stored.
+
+        The import finds the same problems and stops on the first sentence of them; this returns
+        them as findings an import preview can put a repair beside. Nothing is written, and no home
+        is needed: a researcher checks the file she is about to import. Paths refer to the bundle
+        after `upgrade_authoring_bundle_payload`, which is the shape the import reads.
+        """
+        try:
+            bundle = HorizonAuthoringBundle.model_validate_json(
+                json.dumps(upgrade_authoring_bundle_payload(payload))
+            )
+        except ValidationError as error:
+            return {
+                "valid": False,
+                "stage": "outline",
+                "message": "The document is not a valid horizon authoring bundle.",
+                "details": error.errors(
+                    include_url=False, include_context=False, include_input=False
+                ),
+                "findings": [],
+            }
+        findings = activity_location_findings(bundle.outline, bundle.personal_process_package)
+        report = OutlineCheckReport(
+            valid=not any(item.severity == "error" for item in findings), findings=findings
+        )
+        return {"stage": "expansion", **report.model_dump(mode="json", by_alias=True)}
 
     def import_horizon_outline(
         self,

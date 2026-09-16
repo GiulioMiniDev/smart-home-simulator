@@ -24,6 +24,7 @@ import { downloadPreviewPage } from "./export";
 import { KIND_PHRASE } from "./reading";
 import type { ReviewActions } from "./review";
 import { VocabularyReview } from "./VocabularyReview";
+import { OutlineProblems, type ProblemActions } from "./OutlineProblems";
 import type { VocabularyPack } from "../vocabulary/types";
 import type { BandRow, BehaviourView, DayPiece, HorizonReading, HouseholdView, ResidentReading } from "./types";
 import "./horizon.css";
@@ -415,12 +416,14 @@ function sum(residents: ResidentReading[], count: (resident: ResidentReading) =>
   return residents.reduce((total, resident) => total + count(resident), 0);
 }
 
-export function HorizonPreview({ reading, fileName, onImport, busy, sourceFile, vocabulary, review }: {
+export function HorizonPreview({ reading, fileName, onImport, busy, sourceFile, vocabulary, review, problems }: {
   reading: HorizonReading;
   /** The active vocabulary. Absent while it is loading, or if it failed — then nothing is called unknown. */
   vocabulary?: VocabularyPack;
   /** What the researcher can do about each addition. Absent, the review only lists them. */
   review?: ReviewActions;
+  /** What the server says the outline cannot do, and the repairs made to the imported copy. */
+  problems?: ProblemActions;
   fileName: string;
   onImport: () => void;
   busy: boolean;
@@ -479,6 +482,7 @@ export function HorizonPreview({ reading, fileName, onImport, busy, sourceFile, 
       {reading.note && <p className="horizon-note">{reading.note}</p>}
       {alone?.note && <p className="horizon-note">{alone.note}</p>}
       <VocabularyReview reading={reading} pack={vocabulary} actions={review} />
+      <OutlineProblems actions={problems} />
       <div className="horizon-toggle">
         <button className="button secondary" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide the detail" : "Read the whole outline"}</button>
         <button className="button secondary" onClick={() => void exportPage()}><Download size={16} /> Download this page</button>

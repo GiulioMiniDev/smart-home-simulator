@@ -35,6 +35,7 @@ from smart_home_sim.simulation.service import (
     _AMBULATORY_POSTURES,
     _SEATING_FURNITURE,
     _TRANSIENT_REGIONS,
+    EXECUTION_PACE_MAX_DRIFT_MINUTES,
     EXECUTION_PACE_MAX_FACTOR,
     EXECUTION_PACE_MIN_FACTOR,
     GAIT_ACCELERATION_METRES_PER_SECOND_SQUARED,
@@ -94,8 +95,13 @@ def test_golden_week_executes_complete_vocabulary_and_closes_state(result) -> No
     # a little longer and one gap that used to be wide enough for a walk out of a service room no
     # longer is. The activity count above is untouched, which is the point -- this moves when a walk
     # falls, not what the plan decides.
-    assert len(trace.action_executions) == 795
-    assert len(trace.movements) == 204
+    #
+    # And by one more when the pace stopped carrying a long block by the hour: the durations of
+    # this week move by seconds rather than by minutes now, and one gap again lost the walk out of
+    # a service room it used to hold. Both readings fall together, as they did then: the walk is
+    # one action and the one movement it records.
+    assert len(trace.action_executions) == 794
+    assert len(trace.movements) == 203
     assert all(item.status != "failed" for item in trace.activity_executions)
     expected_actions = {
         item["actionType"]
@@ -696,6 +702,33 @@ def test_execution_pace_breaks_whole_minute_durations(bundle: SimulationBundle) 
         for item in planned
     )
     assert 0.85 <= ratio <= 1.15
+
+
+def test_the_pace_does_not_carry_a_long_block_by_the_hour(bundle: SimulationBundle) -> None:
+    """A tenth of a night is fifty minutes, and a night is not the thing the pace is about.
+
+    Scaled without a bound the Verdi months ran office shifts up to 118 minutes past their own
+    closing time, and nights an hour past the length the rhythm drew — the rhythm being where a
+    night's length is decided, with a dispersion of its own. The short activity the pace exists
+    for is untouched, and both stay off the whole-minute grid.
+    """
+    engine = SimulationEngine(bundle)
+    bound = EXECUTION_PACE_MAX_DRIFT_MINUTES * 60_000_000
+    night = 8 * 60 * 60_000_000
+    errand = 25 * 60_000_000
+
+    nights = [engine._paced_duration(f"night-{index}", night) for index in range(200)]
+    errands = [engine._paced_duration(f"errand-{index}", errand) for index in range(200)]
+
+    assert all(abs(item - night) < bound for item in nights)
+    assert max(abs(item - night) for item in nights) > bound / 2
+    # The short one keeps the whole of its proportional wobble, to within a percent of it.
+    assert all(
+        errand * EXECUTION_PACE_MIN_FACTOR * 0.99 <= item <= errand * EXECUTION_PACE_MAX_FACTOR
+        for item in errands
+    )
+    assert max(abs(item - errand) for item in errands) > errand * 0.1
+    assert not any(item % 60_000_000 == 0 for item in [*nights, *errands])
 
 
 def _node(action_type: str, weight: float = 1.0) -> ProcessNode:

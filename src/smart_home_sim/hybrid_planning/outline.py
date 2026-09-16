@@ -1034,6 +1034,34 @@ class HorizonOutline(ContractModel):
                     )
 
 
+class OutlineFinding(ContractModel):
+    """One thing an outline cannot do, said so that an interface can offer to fix it.
+
+    The expander refuses these with a sentence, which is enough for a command line and nothing for
+    a page that wants to put a button beside the problem. The same check produces both: the
+    sentence is `message`, and `details` carries what a repair needs — for a room that lacks what
+    an activity needs, which furniture types would provide it and which rooms already could.
+    """
+
+    code: str = Field(min_length=1)
+    severity: Literal["error", "warning"] = "error"
+    # A JSON path into the horizon authoring bundle, `$.outline...`.
+    path: str = Field(min_length=1)
+    message: str = Field(min_length=1)
+    details: dict[str, JsonValue] = Field(default_factory=dict)
+
+
+class OutlineCheckReport(ContractModel):
+    """What checking an outline found, before anything is expanded, compiled or stored.
+
+    `valid` is false while any finding is an error: those are exactly the ones the expander would
+    stop on.
+    """
+
+    valid: bool
+    findings: list[OutlineFinding] = Field(default_factory=list)
+
+
 class HorizonAuthoringBundle(ContractModel):
     """Transport envelope for outline-first authoring: the arc, and how its actions are performed.
 

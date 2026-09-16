@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -531,3 +532,31 @@ def test_the_page_carries_no_clock_reading(inputs: SummaryInputs) -> None:
     assert page == render_summary_html(inputs)
     body = page.split("<body>", 1)[1]
     assert not re.search(r"20\d\d-\d\d-\d\dT\d\d:\d\d", body), "no generation timestamp"
+
+
+def test_the_page_says_what_the_researcher_changed_at_import(inputs: SummaryInputs) -> None:
+    """Changes made in the import preview are named first, so nobody cites the outline for them."""
+    assert inputs.scenario is not None
+    assert "Changed by the researcher at import" not in render_summary_html(inputs)
+
+    changes = [
+        {
+            "kind": "add_furniture",
+            "resourceId": "living_room_sideboard",
+            "resourceType": "sideboard",
+            "room": "living_room",
+            "reason": "recurring activity 'fil_tidy' happens in 'living_room', which holds nothing",
+        },
+        {"kind": "move_activity", "recurringActivityId": "fil_gym", "from": "gym", "room": "study"},
+        {"kind": "substitute_type", "from": "exercise_surface", "to": "yoga_mat"},
+        {"kind": "remove_type", "resourceType": "aquarium"},
+    ]
+    scenario = replace(inputs.scenario, researcher_changes=changes)
+    page = render_summary_html(replace(inputs, scenario=scenario))
+
+    assert "Changed by the researcher at import" in page
+    assert "Added a sideboard (living_room_sideboard) to the living room." in page
+    assert "Moved fil_gym from the gym to the study." in page
+    assert "Imported every exercise surface as a yoga mat." in page
+    assert "Removed every aquarium from the import." in page
+    assert page.index("Changed by the researcher at import") < page.index("The home")

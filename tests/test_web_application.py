@@ -688,6 +688,21 @@ def test_the_plan_is_marked_as_a_recommendation_until_the_researcher_answers(
         assert refused.json()["error"]["code"] == "WORKSPACE_OPERATION_FAILED"
 
 
+def test_an_outline_can_be_checked_before_it_is_imported(tmp_path: Path) -> None:
+    """The check needs a session and nothing else: no home, and it writes none."""
+    app = create_app(tmp_path / "workspace", workspace_name="Outline check")
+    with TestClient(app) as client:
+        assert client.post("/api/outline/check", json={}).status_code == 401
+        headers = {"X-Workspace-Token": _token(client)}
+
+        refused = client.post("/api/outline/check", headers=headers, json={"not": "an outline"})
+
+        assert refused.status_code == 200
+        assert refused.json()["valid"] is False
+        assert refused.json()["stage"] == "outline"
+        assert client.get("/api/homes", headers=headers).json() == []
+
+
 def test_an_import_checks_against_the_vocabulary_the_editor_saved(tmp_path: Path) -> None:
     """The import ran in the API process, which never adopted the workspace vocabulary.
 

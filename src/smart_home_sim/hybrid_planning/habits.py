@@ -213,6 +213,16 @@ def evidence_from_trace(
     episodes: list[Episode] = []
     occurrences: list[Occurrence] = []
     recurring = recurring_by_activity or {}
+    # Each person's activities by start, so the errands nested inside one can be found and cut out.
+    spans: dict[str, list[tuple[datetime, datetime, str]]] = defaultdict(list)
+    for execution in trace.activity_executions:
+        if execution.status in OCCUPYING_STATUSES:
+            for resident_id in (execution.actor_id, *execution.participant_ids):
+                spans[resident_id].append(
+                    (execution.actual_start, execution.actual_end, execution.activity_execution_id)
+                )
+    for series in spans.values():
+        series.sort()
     for execution in trace.activity_executions:
         if execution.status not in OCCUPYING_STATUSES:
             continue
@@ -230,10 +240,15 @@ def evidence_from_trace(
                 )
             )
         for resident_id in people:
-            for piece in _split_by_location(timelines.get(resident_id, []), begin, finish):
-                activities[resident_id].append(
-                    Stretch(resident_id, piece.start, piece.end, piece.location, execution.intent)
-                )
+            for left, right in _without_nested(
+                spans[resident_id], execution.activity_execution_id, begin, finish
+            ):
+                for piece in _split_by_location(timelines.get(resident_id, []), left, right):
+                    activities[resident_id].append(
+                        Stretch(
+                            resident_id, piece.start, piece.end, piece.location, execution.intent
+                        )
+                    )
         if execution.participant_ids:
             where = _split_by_location(timelines.get(execution.actor_id, []), begin, finish)
             episodes.append(
@@ -265,6 +280,34 @@ def evidence_from_trace(
         trace_id=trace.trace_id,
         source_trace_semantic_digest=trace.semantic_digest,
     )
+
+
+def _without_nested(
+    series: Sequence[tuple[datetime, datetime, str]],
+    execution_id: str,
+    begin: datetime,
+    finish: datetime,
+) -> list[tuple[datetime, datetime]]:
+    """[begin, finish] with every other activity of the same person that lies inside it removed.
+
+    The engine puts a night's sleep down for the toilet and picks it up again, so the sleep's
+    record spans the visit. Counted whole, the band's composition had both the minutes at the
+    toilet and the same minutes asleep — in the bathroom, since that is where the body was.
+    """
+    pieces: list[tuple[datetime, datetime]] = []
+    cursor = begin
+    index = bisect.bisect_left(series, (begin,))
+    while index < len(series) and series[index][0] < finish:
+        start, end, other = series[index]
+        index += 1
+        if other == execution_id or end > finish or end <= start:
+            continue
+        if start > cursor:
+            pieces.append((cursor, start))
+        cursor = max(cursor, end)
+    if finish > cursor:
+        pieces.append((cursor, finish))
+    return pieces
 
 
 def _recurring_activity_id_of(activity: Activity) -> str | None:

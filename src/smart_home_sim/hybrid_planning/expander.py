@@ -39,6 +39,8 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from pydantic import JsonValue
+
 from smart_home_sim.behavior.service import load_action_catalog
 from smart_home_sim.domain.authoring import SimulationAuthoringBundle
 from smart_home_sim.domain.behavior import (
@@ -61,6 +63,7 @@ from smart_home_sim.domain.models import (
     DateTimeWindow,
     DayPlan,
     DependencyGroup,
+    DependencyMode,
     DurationRange,
     LocationKind,
     Provenance,
@@ -114,6 +117,7 @@ from smart_home_sim.hybrid_planning.outline import (
     HorizonOutline,
     JointActivity,
     OutlineEvent,
+    OutlineFinding,
     OutlinePhase,
     OutlineResident,
     OutlineWorld,
@@ -130,6 +134,7 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
     Weekday,
 )
 from smart_home_sim.hybrid_planning.world import PlanningWorld, assemble_scenario
+from smart_home_sim.vocabulary.active import active_pack
 
 # Capabilities no piece of furniture provides: the resident carries them, or the floor does.
 # Requiring a room to offer `posture_control` would refuse every override ever written.
@@ -823,6 +828,23 @@ def _waiting_rooms(activities: Sequence[Activity]) -> list[tuple[datetime, datet
     return stretches
 
 
+def _at_least(duration: DurationRange | None, floor: int) -> DurationRange | None:
+    """The duration a shared occurrence is written with: never shorter than the author's floor.
+
+    Raised past the catalogue's own maximum when the floor is above it. `minimumSharedMinutes` is
+    the author saying what the occasion is — "the couple spends Sunday out together", 240 minutes —
+    and capping it at the 120 a drink out usually lasts published a Sunday out of twenty-four to
+    seventy-eight minutes, the band 62% unaccounted for.
+    """
+    if duration is None or floor <= duration.minimum_minutes:
+        return duration
+    return DurationRange(
+        minimum_minutes=float(floor),
+        preferred_minutes=max(duration.preferred_minutes, float(floor)),
+        maximum_minutes=max(duration.maximum_minutes, float(floor)),
+    )
+
+
 def _offer_both_arms(
     activities: list[Activity],
     degradable: Mapping[str, tuple[tuple[str, ...], int]],
@@ -872,19 +894,11 @@ def _offer_both_arms(
         )
         if activity.actor_id != participants[0]:
             continue
-        duration = activity.duration
-        if duration is not None and floor > duration.minimum_minutes:
-            shortest = min(float(floor), duration.maximum_minutes)
-            duration = DurationRange(
-                minimum_minutes=shortest,
-                preferred_minutes=max(duration.preferred_minutes, shortest),
-                maximum_minutes=duration.maximum_minutes,
-            )
         offered.append(
             activity.model_copy(
                 update={
                     "activity_id": f"{activity.activity_id}__joint",
-                    "duration": duration,
+                    "duration": _at_least(activity.duration, floor),
                     "participant_ids": _other_participants(participants, activity.actor_id),
                     "mandatory": False,
                     "priority": JOINT_BRANCH_PRIORITY,
@@ -920,6 +934,7 @@ def _seed_filler_candidates(
     actor_id: str,
     seed: int,
     index_offset: int = 0,
+    away: frozenset[str] = frozenset(),
 ) -> list[Activity]:
     """Chances to do something with a stretch of day the plan left empty.
 
@@ -956,6 +971,12 @@ def _seed_filler_candidates(
         where = next((location for start, end, location in waits if start <= moment < end), None)
         intent = available[rng.randrange(len(available))]
         if where is not None and not _can_happen_in(intent, where):
+            where = None
+        # The wait in front of an outing is spent at home. `away` holds the places a resident
+        # reaches only through the front door, which a filler never walks her through: a phone call
+        # put in front of the Verdi Sunday out took her to the outdoors region through the wall,
+        # with no door contact and `at_home` still true.
+        if where in away:
             where = None
         added.append(
             activity_from_intent(
@@ -1312,16 +1333,44 @@ def _cook_before_eating(activities: list[Activity]) -> list[Activity]:
         ):
             updated.append(activity)
             continue
+        arms = _arms_of(cooking, activities)
         updated.append(
             activity.model_copy(
                 update={
                     "dependency_groups": [
                         DependencyGroup(activity_ids=[cooking.activity_id], minimum_lag_minutes=0)
+                        if len(arms) == 1
+                        else DependencyGroup(
+                            mode=DependencyMode.any,
+                            activity_ids=[item.activity_id for item in arms],
+                            minimum_lag_minutes=0,
+                        )
                     ]
                 }
             )
         )
     return updated
+
+
+def _arms_of(cooking: Activity, activities: Sequence[Activity]) -> list[Activity]:
+    """The preparation and, when it is a degradable shared one, its other arm on the same day.
+
+    Tied to the separate arm alone, a meal made the separate preparation present whenever it was
+    eaten, and the exclusive group then kept the shared preparation out: on the Verdi weekends the
+    couple ate breakfast together 24 times of 34 and made it together 8, against a declared 0.75
+    for both. Either arm cooks the meal, so either satisfies it.
+    """
+    branch = cooking.extensions.get(BRANCH_EXTENSION)
+    if not isinstance(branch, dict):
+        return [cooking]
+    return [cooking] + [
+        item
+        for item in activities
+        if item is not cooking
+        and item.intent == cooking.intent
+        and isinstance(other := item.extensions.get(BRANCH_EXTENSION), dict)
+        and other.get("group") == branch.get("group")
+    ]
 
 
 def _planning_world(outline: HorizonOutline) -> PlanningWorld:
@@ -1367,6 +1416,26 @@ def _planning_world(outline: HorizonOutline) -> PlanningWorld:
         environment_facts=world.environment_facts,
         provenance=outline.provenance,
     )
+
+
+# Where the import preview records what the researcher changed in the copy it imports.
+RESEARCHER_CHANGES_PARAMETER = "researcherChanges"
+
+
+def researcher_changes(outline: HorizonOutline) -> list[JsonValue]:
+    """What the researcher changed in the imported copy of this outline, as the preview recorded it.
+
+    The preview can furnish a room, move an activity, or import a type of furniture as another, and
+    each of those makes the simulated scenario differ from what the author wrote. The outline's own
+    provenance is the author's and stops at expansion — the scenario has always named the expander
+    as its author — so the record is carried across here, into the scenario every run and every
+    export reads. Only a list of objects is carried; anything else in that parameter is not a
+    record this code wrote.
+    """
+    declared = outline.provenance.parameters.get(RESEARCHER_CHANGES_PARAMETER)
+    if not isinstance(declared, list):
+        return []
+    return [item for item in declared if isinstance(item, dict)]
 
 
 def _declared_activities(outline: HorizonOutline) -> list[RecurringActivity]:
@@ -1554,7 +1623,56 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
     design, which is why the capability half is skipped there too; see the same exclusion, with the
     same reason, in `validate_rooms_are_furnished`.
     """
-    rooms = {item.location_id for item in outline.world.locations if item.kind is LocationKind.room}
+    findings = activity_location_findings(outline, package)
+    if findings:
+        raise ExpansionError(" | ".join(item.message for item in findings))
+
+
+ROOM_NOT_DECLARED = "ROOM_NOT_DECLARED"
+ROOM_LACKS_CAPABILITY = "ROOM_LACKS_CAPABILITY"
+
+
+def _declared_activities_with_paths(
+    outline: HorizonOutline,
+) -> list[tuple[RecurringActivity, str, list[str]]]:
+    """`_declared_activities`, each with where it sits in the bundle and who performs it."""
+    located: list[tuple[RecurringActivity, str, list[str]]] = []
+    for resident_index, resident in enumerate(outline.residents):
+        for index, activity in enumerate(resident.profile.recurring_activities):
+            located.append(
+                (
+                    activity,
+                    f"$.outline.residents[{resident_index}].profile.recurringActivities[{index}]",
+                    [resident.resident_id],
+                )
+            )
+    for index, joint in enumerate(outline.household.joint_activities):
+        located.append(
+            (
+                joint.activity,
+                f"$.outline.household.jointActivities[{index}].activity",
+                list(joint.participant_ids),
+            )
+        )
+    return located
+
+
+def activity_location_findings(
+    outline: HorizonOutline, package: PersonalProcessPackage
+) -> list[OutlineFinding]:
+    """The failures `_check_activity_locations` refuses, as findings an interface can act on.
+
+    The sentence is the one the expander has always raised. What is new is what travels beside it:
+    for a room that cannot perform an activity, the capabilities it lacks, the furniture types in
+    the vocabulary that would provide each of them, and the declared rooms that could host the
+    activity as they are. Those are the two repairs a researcher has — furnish the room, or move the
+    habit — and a page offering them needs both lists, which the sentence never carried.
+
+    The process model is read per resident. It used to be one model per intent for the whole
+    household, whichever binding came last, so two residents doing the same activity with different
+    models were both checked against one of them.
+    """
+    rooms = [item.location_id for item in outline.world.locations if item.kind is LocationKind.room]
     away = {
         item.location_id for item in outline.world.locations if item.kind is LocationKind.external
     }
@@ -1572,47 +1690,96 @@ def _check_activity_locations(outline: HorizonOutline, package: PersonalProcessP
         else:
             by_room.setdefault(resource.location_id, set()).update(known)
     models = {item.process_model_id: item for item in package.process_models}
+    by_resident = {
+        (item.resident_id, item.intent): models.get(item.process_model_id)
+        for item in package.bindings
+    }
     by_intent = {item.intent: models.get(item.process_model_id) for item in package.bindings}
     actions = load_action_catalog(package.catalogs.action_catalog.version)
     definitions = {item.action_type: item for item in actions.actions}
+    furniture = {
+        item.entity_type: set(item.capabilities)
+        for item in active_pack().entity_types
+        if item.capabilities
+    }
 
-    problems: list[str] = []
-    for activity in _declared_activities(outline):
+    findings: list[OutlineFinding] = []
+    for activity, path, performers in _declared_activities_with_paths(outline):
         room = activity.location
-        if room is None:
-            continue
-        if room in away:
+        if room is None or room in away:
             continue
         if room not in rooms:
-            problems.append(
-                f"recurring activity {activity.recurring_activity_id!r} happens in {room!r}, "
-                "which the outline world does not declare as a room"
+            findings.append(
+                OutlineFinding(
+                    code=ROOM_NOT_DECLARED,
+                    path=f"{path}.location",
+                    message=(
+                        f"recurring activity {activity.recurring_activity_id!r} happens in "
+                        f"{room!r}, which the outline world does not declare as a room"
+                    ),
+                    details={
+                        "recurringActivityId": activity.recurring_activity_id,
+                        "room": room,
+                        "declaredRooms": list(rooms),
+                    },
+                )
             )
             continue
         if room in permissive:
             continue
         intent = activity.intent or label_to_intent(activity.label, activity.kind.value)
-        model = by_intent.get(intent)
-        if model is None:
-            continue
+        performing = [
+            model
+            for model in (by_resident.get((resident, intent)) for resident in performers)
+            if model is not None
+        ] or [model for model in (by_intent.get(intent),) if model is not None]
         needed: set[str] = set()
-        for node in model.nodes:
-            definition = definitions.get(node.action_type or "")
-            if definition is None:
-                continue
-            needed.update(
-                item.capability
-                for item in definition.required_capabilities
-                if item.capability not in _UNFURNISHED_CAPABILITIES
-            )
+        for model in performing:
+            for node in model.nodes:
+                definition = definitions.get(node.action_type or "")
+                if definition is None:
+                    continue
+                needed.update(
+                    item.capability
+                    for item in definition.required_capabilities
+                    if item.capability not in _UNFURNISHED_CAPABILITIES
+                )
         unmet = sorted(needed - by_room.get(room, set()))
-        if unmet:
-            problems.append(
-                f"recurring activity {activity.recurring_activity_id!r} happens in {room!r}, "
-                f"which holds nothing offering {', '.join(unmet)}"
+        if not unmet:
+            continue
+        findings.append(
+            OutlineFinding(
+                code=ROOM_LACKS_CAPABILITY,
+                path=f"{path}.location",
+                message=(
+                    f"recurring activity {activity.recurring_activity_id!r} happens in {room!r}, "
+                    f"which holds nothing offering {', '.join(unmet)}"
+                ),
+                details={
+                    "recurringActivityId": activity.recurring_activity_id,
+                    "label": activity.label,
+                    "intent": intent,
+                    "residentIds": list(performers),
+                    "room": room,
+                    "missingCapabilities": list(unmet),
+                    # Per capability, what the vocabulary has that would provide it here.
+                    "furnitureTypes": {
+                        capability: sorted(
+                            kind for kind, offered in furniture.items() if capability in offered
+                        )
+                        for capability in unmet
+                    },
+                    # The declared rooms that already hold everything the activity needs.
+                    "roomsThatCanHostIt": [
+                        other
+                        for other in rooms
+                        if other != room
+                        and (other in permissive or needed <= by_room.get(other, set()))
+                    ],
+                },
             )
-    if problems:
-        raise ExpansionError(" | ".join(problems))
+        )
+    return findings
 
 
 # The fixtures that make a room a bathroom. A room holding exactly one of them is private by
@@ -2258,12 +2425,22 @@ def _resident_day(
     # and occupies all of them, so the household's dinner keeps everybody who eats it out of
     # anything else for its duration — and the solver pushes it past whichever of them is still on
     # the way home, which is where the wait in front of it comes from.
+    #
+    # And as long as the author said it is: the floor holds for an activity that is always shared
+    # just as for the shared arm of one that may not be. See `_at_least`.
+    floors = {
+        item.activity.recurring_activity_id: item.minimum_shared_minutes
+        for item in outline.household.joint_activities
+    }
     activities = [
         activity.model_copy(
             update={
                 "participant_ids": _other_participants(
                     hosted[_recurring_activity_id_of(activity) or ""], activity.actor_id
-                )
+                ),
+                "duration": _at_least(
+                    activity.duration, floors.get(_recurring_activity_id_of(activity) or "", 0)
+                ),
             }
         )
         if (_recurring_activity_id_of(activity) or "") in hosted
@@ -2289,6 +2466,11 @@ def _resident_day(
         resident.resident_id,
         seed,
         index_offset=index_offset,
+        away=frozenset(
+            item.location_id
+            for item in outline.world.locations
+            if item.kind is not LocationKind.room
+        ),
     )
     activities = _resolve_overlaps(activities, _lights_out(plan))
     activities = _cook_before_eating(activities)
@@ -2664,7 +2846,15 @@ def expand_outline(
             generator_name=GENERATOR_NAME,
             generator_version=GENERATOR_VERSION,
             generated_at=window.start,
-            parameters={"outlineId": outline.outline_id, "seed": seed},
+            parameters={
+                "outlineId": outline.outline_id,
+                "seed": seed,
+                **(
+                    {"researcherChanges": changes}
+                    if (changes := researcher_changes(outline))
+                    else {}
+                ),
+            },
         ),
     )
     declared = DeclaredHabits(

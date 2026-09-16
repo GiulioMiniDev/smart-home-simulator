@@ -622,6 +622,12 @@ class ExportService:
                 language=_metadata(scenario_path, "language"),
                 time_zone=_metadata(scenario_path, "timeZone"),
                 residents=list(_metadata(scenario_path, "residents") or []),
+                researcher_changes=[
+                    item
+                    for item in _metadata(scenario_path, "provenance.parameters.researcherChanges")
+                    or []
+                    if isinstance(item, dict)
+                ],
             )
         report_path = path_of("sensor_projection_report")
         stats: dict[str, Any] = {}

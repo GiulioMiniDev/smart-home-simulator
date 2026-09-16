@@ -100,6 +100,14 @@ EXECUTION_PACE_SIGMA = 0.10
 EXECUTION_PACE_LOG_LIMIT = 0.262
 EXECUTION_PACE_MIN_FACTOR = math.exp(-EXECUTION_PACE_LOG_LIMIT)
 EXECUTION_PACE_MAX_FACTOR = math.exp(EXECUTION_PACE_LOG_LIMIT)
+# And how far the pace may carry a long block, in minutes. A tenth of twenty-five minutes is two
+# and a half; a tenth of a night is fifty, and a tenth of an office day is fifty-one. Scaled
+# without a bound, the Verdi months ran shifts up to 118 minutes past their own closing time and
+# nights an hour past the length the rhythm drew for them — and the rhythm is where a night's
+# length is decided, with a dispersion of its own that this was multiplying a second time. A
+# person leaves the office a few minutes late and lies in a little; she does not do either by the
+# hour. Squashed rather than clamped, for the reason the factor above is.
+EXECUTION_PACE_MAX_DRIFT_MINUTES = 20.0
 # How a body gets up to speed, and why a walk is not its distance over a cruising speed.
 #
 # Every one of the 8,131 movements of the five-month export was walked at exactly 1.20 m/s: p05,
@@ -251,6 +259,14 @@ JOIN_POSTURE_NODE_ID = "engine_join_shared_activity_posture"
 LEAVE_POSTURE_NODE_ID = "engine_leave_shared_activity_posture"
 JOIN_EGRESS_NODE_ID = "engine_join_shared_activity_leave_home"
 LEAVE_INGRESS_NODE_ID = "engine_leave_shared_activity_enter_home"
+# The engine's own actions for an errand that interrupted something: the walk back to where she
+# was, and settling back into the posture she left it in. Nobody wrote a node for coming back
+# from the toilet to the desk, any more than for the walk out of a service room.
+ERRAND_RETURN_NODE_ID = "engine_errand_return"
+ERRAND_POSTURE_NODE_ID = "engine_errand_posture"
+# How often an errand looks again at a resident who is busy with something that cannot be put
+# down this second: walking, standing up, waiting her turn for an object.
+ERRAND_RETRY_SECONDS = 5
 # How long an actor, once free, holds herself for the others a shared activity names. Unbounded,
 # one wait froze a whole household: a television evening planned for 21:58 held Giulia from 00:27
 # while Paolo slept, she stood in the kitchen until 10:04, and the day after began eleven hours
@@ -259,6 +275,13 @@ LEAVE_INGRESS_NODE_ID = "engine_leave_shared_activity_enter_home"
 # hour, and those two were the frozen ones. Past this an optional one is given up and a mandatory
 # one goes ahead with whoever came.
 SHARED_WAIT_LIMIT_SECONDS = 60 * 60
+# How long a resident stands at a refrigerator somebody else has open before she reaches past
+# them. Nothing in the plan serialises opening a door: the compiler places activities against the
+# resources they declare, and a breakfast declares the stove, not the refrigerator it takes the
+# ingredients from. Two residents at it in the same minute is ordinary, and it stopped a whole
+# Verdi run: `open` requires the door closed, and the other one had it open. A door held this long
+# is not being reached into but left open, and it is shared rather than waited for.
+OPENABLE_WAIT_LIMIT_SECONDS = 2 * 60
 # The regions a resident has to go out of the front door to be in.
 _OUTSIDE_REGION_KINDS = frozenset({RegionKind.external, RegionKind.transit})
 # The capabilities of the front door, which says nothing about where the activity itself happens.
@@ -471,6 +494,21 @@ class _RoomUse:
 
 
 @dataclass
+class _Host:
+    """An activity a resident is in the middle of, as an errand that comes due sees it.
+
+    `processes` are the actions of the phase running now, replaced as the activity moves from one
+    phase to the next; `requirements` are the objects it holds, which an errand needing one of
+    them has to wait for instead of interrupting.
+    """
+
+    activity: CanonicalActivity
+    execution_id: str
+    processes: list[simpy.events.Process]
+    requirements: frozenset[str]
+
+
+@dataclass
 class PreparedEvent:
     event_id: str
     occurred: bool
@@ -601,6 +639,20 @@ class TraceCollector:
 
 def _at(origin: datetime, microseconds: int | float, zone: ZoneInfo) -> datetime:
     return localised(origin + timedelta(microseconds=int(round(microseconds))), zone)
+
+
+def _opened_entity(node: ProcessNode, binding: ResolvedActionBinding) -> str | None:
+    """The entity an `open` or a `close` acts on, or nothing for every other action."""
+    if node.action_type not in {"open", "close"}:
+        return None
+    return next(
+        (
+            item.provider_id
+            for item in binding.capability_bindings
+            if item.provider_type == "entity"
+        ),
+        None,
+    )
 
 
 def _offset(origin: datetime, value: datetime) -> int:
@@ -1169,6 +1221,15 @@ class SimulationEngine:
         # Which away activity each away activity hands its resident on to, without her coming home
         # in between. Filled in `run`. See `OUTING_CONTINUATION_GAP_SECONDS`.
         self.outing_continuations: dict[str, str] = {}
+        # Who has each openable entity open right now, through an `open` of theirs not yet closed,
+        # and the event the next close fires. See `_wait_until_closed`.
+        self.opened_by: defaultdict[str, set[str]] = defaultdict(set)
+        self.closed_events: dict[str, simpy.Event] = {}
+        # What each resident is in the middle of, the actions that can be put down right now, and
+        # the interruptions each activity was put down for. See `_find_host`.
+        self.hosts: dict[str, _Host] = {}
+        self.pausable: set[simpy.events.Process] = set()
+        self.pause_deviations: defaultdict[str, list[str]] = defaultdict(list)
         # Who each activity empties its rooms of, as the scenario declares it, and the activities
         # running now. See `_privacy_conflicts`.
         residents = {item.resident_id for item in bundle.scenario.residents}
@@ -1336,7 +1397,9 @@ class SimulationEngine:
         drawn = stream.gauss(0.0, EXECUTION_PACE_SIGMA)
         limit = EXECUTION_PACE_LOG_LIMIT
         factor = math.exp(limit * math.tanh(drawn / limit))
-        return max(1, int(round(intended_us * factor)))
+        drift = intended_us * (factor - 1.0)
+        bound = EXECUTION_PACE_MAX_DRIFT_MINUTES * MINUTE_US
+        return max(1, int(round(intended_us + bound * math.tanh(drift / bound))))
 
     def _walk_microseconds(
         self, actor: ResidentRuntime, path: NavigationPath, action_id: str
@@ -2829,6 +2892,97 @@ class SimulationEngine:
         self.env.process(self._settle(participant, execution_id, next_us, stream_key=f":{who}"))
         return action_ids
 
+    def _sit_out_interruption(
+        self, activity: CanonicalActivity, activity_execution_id: str, payload: dict[str, Any]
+    ) -> Generator[Any, Any, None]:
+        """What an action does when something interrupts it: wait out a pause, or the event.
+
+        A pause — an object taken from it, or an errand it was put down for — ends when its
+        `resume_event` fires. Another interruption can arrive meanwhile: a television evening put
+        down for the toilet can lose the television to somebody else in the same minutes. It is
+        sat out after the one in hand rather than crashing the action it lands in.
+        """
+        actor = self.state.residents[activity.actor_id]
+        pending = [payload]
+        while pending:
+            current = pending.pop(0)
+            if current.get("kind") in {"resource_preemption", "errand"}:
+                waiting = True
+                while waiting:
+                    try:
+                        yield current["resume_event"]
+                        waiting = False
+                    except simpy.Interrupt as again:
+                        pending.append(again.cause)
+                continue
+            deviation_id = self.trace.identifier(
+                "deviation", [activity.source_activity_id, current["event_id"]]
+            )
+            if not any(item.deviation_id == deviation_id for item in self.trace.deviations):
+                self.trace.deviations.append(
+                    PlanDeviation(
+                        deviation_id=deviation_id,
+                        activity_execution_id=activity_execution_id,
+                        kind="interrupted",
+                        amount_microseconds=current["duration_us"],
+                        cause_id=current["event_id"],
+                    )
+                )
+            self._set_execution_state(actor, "interrupted", "runtime_event", current["event_id"])
+            ends_us = int(self.env.now) + current["duration_us"]
+            while int(self.env.now) < ends_us:
+                try:
+                    yield self.env.timeout(ends_us - int(self.env.now))
+                except simpy.Interrupt as again:
+                    pending.append(again.cause)
+            self._set_execution_state(
+                actor, "performing_activity", "runtime_event", current["event_id"]
+            )
+
+    def _take_time(
+        self, activity: CanonicalActivity, activity_execution_id: str, remaining: int
+    ) -> Generator[Any, Any, None]:
+        """Spend what is left of an action's duration, sitting out whatever interrupts it.
+
+        Only while it is simply taking its time can an errand put it down: a walk or a stand-up
+        has no remaining time to come back to, and an interruption delivered there would crash it.
+        """
+        process = self.env.active_process
+        while remaining:
+            before = self.env.now
+            self.pausable.add(process)
+            try:
+                yield self.env.timeout(remaining)
+                remaining = 0
+            except simpy.Interrupt as interruption:
+                self.pausable.discard(process)
+                elapsed = int(self.env.now - before)
+                remaining = max(0, remaining - elapsed)
+                yield from self._sit_out_interruption(
+                    activity, activity_execution_id, interruption.cause
+                )
+            self.pausable.discard(process)
+
+    def _wait_until_closed(
+        self, activity: CanonicalActivity, activity_execution_id: str, entity_id: str
+    ) -> Generator[Any, Any, None]:
+        """Stand at a door somebody else has open until they close it, for a short while at most.
+
+        Past `OPENABLE_WAIT_LIMIT_SECONDS` she stops waiting and the caller shares the open door.
+        The bound is also what keeps two residents from waiting on each other forever, each holding
+        one door open and wanting the one the other holds.
+        """
+        actor_id = activity.actor_id
+        deadline_us = int(self.env.now) + OPENABLE_WAIT_LIMIT_SECONDS * 1_000_000
+        while self.opened_by[entity_id] - {actor_id} and int(self.env.now) < deadline_us:
+            closed = self.closed_events.setdefault(entity_id, self.env.event())
+            try:
+                yield closed | self.env.timeout(deadline_us - int(self.env.now))
+            except simpy.Interrupt as interruption:
+                yield from self._sit_out_interruption(
+                    activity, activity_execution_id, interruption.cause
+                )
+
     def _execute_action(
         self,
         activity: CanonicalActivity,
@@ -2838,11 +2992,22 @@ class SimulationEngine:
         duration_us: int,
     ) -> Generator[Any, Any, str]:
         binding = self.bindings[(activity.source_activity_id, node.node_id)]
-        self._check_action_preconditions(activity, node, binding)
+        actor = self.state.residents[activity.actor_id]
+        entity_id = _opened_entity(node, binding)
+        if node.action_type == "open" and entity_id is not None:
+            yield from self._wait_until_closed(activity, activity_execution_id, entity_id)
+        # Somebody else still has it open: she reaches in beside them, and it stays open for them
+        # when she is done. The door is neither opened twice nor shut in the other one's face.
+        shared = entity_id is not None and bool(self.opened_by[entity_id] - {actor.resident_id})
+        if not shared:
+            self._check_action_preconditions(activity, node, binding)
+        # Claimed as she reaches for it, not once it has swung open: two residents arriving in the
+        # same second otherwise both found it closed, both opened it, and the second close failed.
+        if entity_id is not None and node.action_type == "open":
+            self.opened_by[entity_id].add(actor.resident_id)
         action_id = self.trace.identifier(
             "action", [activity.source_activity_id, node.node_id, occurrence]
         )
-        actor = self.state.residents[activity.actor_id]
         started = self.env.now
         if node.action_type in _upright_actions() and actor.posture not in _AMBULATORY_POSTURES:
             yield from self._stand_up(actor, action_id)
@@ -2863,42 +3028,26 @@ class SimulationEngine:
             path = None
         movement_us = self._walk_microseconds(actor, path, action_id) if path else 0
         actual_duration = max(duration_us, movement_us)
-        if path and path.distance_meters > 1e-9:
+        walks = path is not None and path.distance_meters > 1e-9
+        # The way home is spent on the way, and she arrives at the end of it. The walk takes a
+        # minute of an action budgeted by its weight, and walked first the rest was spent standing
+        # in the living room with `at_home` false and the front door still shut: fifty-three minutes
+        # of every Verdi Sunday out, and six of every working day, in the room the door opens into.
+        homecoming = (
+            walks
+            and path is not None
+            and self._is_outside(actor.region_id)
+            and not self._is_outside(path.waypoints[-1].region_id)
+        )
+        if homecoming:
+            yield from self._take_time(
+                activity, activity_execution_id, max(0, actual_duration - movement_us)
+            )
+        if walks and path is not None:
             yield from self._travel(actor, path, movement_us, action_id)
             self._set_execution_state(actor, "performing_activity", "process_edge", action_id)
         remaining = max(0, actual_duration - int(self.env.now - started))
-        while remaining:
-            before = self.env.now
-            try:
-                yield self.env.timeout(remaining)
-                remaining = 0
-            except simpy.Interrupt as interruption:
-                elapsed = int(self.env.now - before)
-                remaining = max(0, remaining - elapsed)
-                payload = interruption.cause
-                if payload.get("kind") == "resource_preemption":
-                    yield payload["resume_event"]
-                    continue
-                deviation_id = self.trace.identifier(
-                    "deviation", [activity.source_activity_id, payload["event_id"]]
-                )
-                if not any(item.deviation_id == deviation_id for item in self.trace.deviations):
-                    self.trace.deviations.append(
-                        PlanDeviation(
-                            deviation_id=deviation_id,
-                            activity_execution_id=activity_execution_id,
-                            kind="interrupted",
-                            amount_microseconds=payload["duration_us"],
-                            cause_id=payload["event_id"],
-                        )
-                    )
-                self._set_execution_state(
-                    actor, "interrupted", "runtime_event", payload["event_id"]
-                )
-                yield self.env.timeout(payload["duration_us"])
-                self._set_execution_state(
-                    actor, "performing_activity", "runtime_event", payload["event_id"]
-                )
+        yield from self._take_time(activity, activity_execution_id, remaining)
         # She got up to reach something out of arm's length, and then stayed standing at it. The
         # berth survives a walk that does not leave the room, so the trace went on saying she was
         # sitting on the sofa while the body stood at the television for the thirty-one minutes she
@@ -2922,7 +3071,7 @@ class SimulationEngine:
             self._release_berth(actor, action_id)
         definition = self.action_definitions[node.action_type or ""]
         arguments = {key: str(value) for key, value in binding.resolved_arguments.items()}
-        for template in definition.effects:
+        for template in [] if shared else definition.effects:
             fact = template.fact_template.format(**arguments)
             value = (
                 template.value.format(**arguments)
@@ -2937,6 +3086,12 @@ class SimulationEngine:
             )
         for effect in node.effects:
             self._apply_effect(effect, actor.resident_id, action_id, binding)
+        if entity_id is not None and node.action_type == "close":
+            self.opened_by[entity_id].discard(actor.resident_id)
+            if not self.opened_by[entity_id]:
+                closed = self.closed_events.pop(entity_id, None)
+                if closed is not None:
+                    closed.succeed()
         if node.action_type == "consume" and "itemRole" in binding.resolved_arguments:
             self.consumed_roles[activity.source_activity_id].add(
                 str(binding.resolved_arguments["itemRole"])
@@ -2977,7 +3132,18 @@ class SimulationEngine:
         # they are not taken in one global order any more, so both give up instead.
         absent: list[str] = []
         with ExitStack() as held:
-            yield held.enter_context(self.actor_locks[actor_id].request(priority=requested_us))
+            # A toilet trip does not wait for the night to end. A candidate that may overlap its
+            # resident was left out of her timeline by the compiler precisely so that it interrupts
+            # the block it lands in, and queueing it behind that block on her lock ran 61 of 62
+            # night visits on the Verdi months after the alarm, and 100 toilet trips planned during
+            # the working day at the moment she came home.
+            host: _Host | None = None
+            out_of_reach = False
+            if activity.can_overlap_for_actor and not participants:
+                host, out_of_reach = yield from self._find_host(activity)
+            errand = host is not None or out_of_reach
+            if not errand:
+                yield held.enter_context(self.actor_locks[actor_id].request(priority=requested_us))
             free_us = int(self.env.now)
             for resident_id in participants:
                 # Out between two halves of one outing: not somewhere a shared activity can reach.
@@ -2994,9 +3160,10 @@ class SimulationEngine:
                     request.cancel()
                     absent.append(resident_id)
             participants = [item for item in participants if item not in absent]
-            yield from self._transition_pause(
-                self.state.residents[actor_id], requested_us, activity.source_activity_id
-            )
+            if not errand:
+                yield from self._transition_pause(
+                    self.state.residents[actor_id], requested_us, activity.source_activity_id
+                )
             # The privacy the compiler kept between planned activities, kept once the day has
             # moved. A mandatory activity waits for the room; an optional one is given up below.
             # Asked after the pause and not before it: nothing yields between here and the moment
@@ -3005,7 +3172,9 @@ class SimulationEngine:
             # resident already at the toilet — once on the regenerated Ferri month.
             occupying = {actor_id, *participants}
             in_the_way = self._privacy_conflicts(activity, occupying)
-            while in_the_way and activity.mandatory:
+            # An errand may not yield before it has put its host down: the host was found
+            # interruptible at this instant, and a wait here would let it move on.
+            while in_the_way and activity.mandatory and not errand:
                 yield simpy.events.AnyOf(self.env, [item.done for item in in_the_way])
                 in_the_way = self._privacy_conflicts(activity, occupying)
             actual_start_us = int(self.env.now)
@@ -3076,7 +3245,7 @@ class SimulationEngine:
             # sofa that came due meanwhile cannot happen, and running it would walk her home through
             # the street without the front door ever opening.
             continuing = self.state.residents[actor_id].outing_continues_into
-            away = (
+            away = out_of_reach or (
                 continuing is not None
                 and continuing != activity.source_activity_id
                 and not activity.mandatory
@@ -3177,6 +3346,14 @@ class SimulationEngine:
                     )
                 )
                 return
+            # Where she was and how, when she put it down: what `_back_to_host` restores.
+            resume: simpy.Event | None = None
+            paused_at_us = int(self.env.now)
+            left = self.state.residents[actor_id]
+            body = (left.region_id, left.position)
+            left_posture = left.posture
+            if host is not None:
+                resume = self._put_down(host)
             room_use = _RoomUse(
                 occupying=frozenset(occupying),
                 rooms=frozenset(activity.location_ids),
@@ -3312,7 +3489,11 @@ class SimulationEngine:
             )
             occurrences: Counter[str] = Counter()
             action_ids: list[str] = []
-            self.active_processes[actor_id] = self.env.active_process
+            # Something an errand can come back from. An errand itself is not: a second one waits
+            # for the first to finish and then interrupts what the first came back to.
+            hosting = not activity.can_overlap_for_actor and not errand
+            if not errand:
+                self.active_processes[actor_id] = self.env.active_process
             for phase, duration_us in zip(phases, phase_durations, strict=True):
                 processes = []
                 for node in phase:
@@ -3324,6 +3505,10 @@ class SimulationEngine:
                                 activity, execution_id, node, occurrence, duration_us
                             )
                         )
+                    )
+                if hosting:
+                    self.hosts[actor_id] = _Host(
+                        activity, execution_id, processes, frozenset(requirements)
                     )
                 while True:
                     try:
@@ -3444,7 +3629,10 @@ class SimulationEngine:
                             actor, "performing_activity", "runtime_event", payload["event_id"]
                         )
                 action_ids.extend(result for result in results.values() if isinstance(result, str))
-            self.active_processes.pop(actor_id, None)
+            if hosting:
+                self.hosts.pop(actor_id, None)
+            if not errand:
+                self.active_processes.pop(actor_id, None)
             if hands_on is not None:
                 actor.outing_continues_into = hands_on
             if joining:
@@ -3473,23 +3661,57 @@ class SimulationEngine:
                 )
             for effect in activity.effects:
                 self._apply_effect(effect, actor_id, execution_id)
-            self._put_things_back(actor, activity.source_activity_id, execution_id)
+            if host is None:
+                self._put_things_back(actor, activity.source_activity_id, execution_id)
+            else:
+                # What she is carrying belongs to what she put down, not to the errand: ending the
+                # toilet trip set down the ingredients of the dinner she left on the stove, and the
+                # dinner's own `put_item` then failed on Verdi. Only what is overdue goes down.
+                self.consumed_roles.pop(activity.source_activity_id, None)
+                self._put_things_back(actor, None, execution_id)
             for item in participants:
                 self._put_things_back(self.state.residents[item], None, execution_id)
             self.state.completed_activities.add(activity.source_activity_id)
             if activity.intent in _BLADDER_RELIEVING_INTENTS:
                 self._empty_bladder(actor, execution_id)
-            next_us = self._next_commitment(actor_id, int(self.env.now))
-            returned = yield from self._return_from_service_room(
-                actor, activity, execution_id, next_us
-            )
-            if returned is not None:
-                action_ids.append(returned)
-            actor.idle_since_us = int(self.env.now)
-            self._set_execution_state(actor, "idle", "plan", execution_id)
-            # Not held while it runs: the waiting owns no lock, so the next activity takes the
-            # resident back the moment it is due and `_settle` simply finds her busy and stops.
-            self.env.process(self._settle(actor, execution_id, next_us))
+            if host is not None and resume is not None:
+                # Back to where she left what she was doing, in the posture she left it in, and
+                # only then does it go on. The pause is the host's deviation, named after the
+                # errand, and the host lists it when it ends.
+                action_ids.extend(
+                    (
+                        yield from self._back_to_host(
+                            actor, activity, execution_id, body, left_posture
+                        )
+                    )
+                )
+                self._set_execution_state(actor, "performing_activity", "plan", host.execution_id)
+                deviation_id = self.trace.identifier(
+                    "deviation", [host.activity.source_activity_id, activity.source_activity_id]
+                )
+                self.trace.deviations.append(
+                    PlanDeviation(
+                        deviation_id=deviation_id,
+                        activity_execution_id=host.execution_id,
+                        kind="interrupted",
+                        amount_microseconds=int(self.env.now) - paused_at_us,
+                        cause_id=activity.source_activity_id,
+                    )
+                )
+                self.pause_deviations[host.execution_id].append(deviation_id)
+                resume.succeed()
+            else:
+                next_us = self._next_commitment(actor_id, int(self.env.now))
+                returned = yield from self._return_from_service_room(
+                    actor, activity, execution_id, next_us
+                )
+                if returned is not None:
+                    action_ids.append(returned)
+                actor.idle_since_us = int(self.env.now)
+                self._set_execution_state(actor, "idle", "plan", execution_id)
+                # Not held while it runs: the waiting owns no lock, so the next activity takes the
+                # resident back the moment it is due and `_settle` simply finds her busy and stops.
+                self.env.process(self._settle(actor, execution_id, next_us))
             if self.extension_us[activity.source_activity_id]:
                 event_id = next(
                     item.event_id
@@ -3514,6 +3736,7 @@ class SimulationEngine:
                     )
                 )
                 deviations.append(deviation_id)
+            deviations.extend(self.pause_deviations.pop(execution_id, []))
             status = "deviated" if deviations else "completed"
             self.trace.activities.append(
                 ActivityExecution(
@@ -3536,6 +3759,131 @@ class SimulationEngine:
             # walk out of the bathroom, not before it.
             del self.room_uses[execution_id]
             room_use.done.succeed()
+
+    def _find_host(
+        self, activity: CanonicalActivity
+    ) -> Generator[Any, Any, tuple[_Host | None, bool]]:
+        """What an errand that has come due does about a resident who is busy.
+
+        Returns the activity to interrupt, or whether she is out of reach: out of the house, an
+        optional errand is given up — a toilet trip planned for the working day does not wait in
+        the hall for her to come home — and a mandatory one queues as before. Free, it queues for
+        her like any activity. Otherwise it looks again every `ERRAND_RETRY_SECONDS` until what she
+        is doing can be put down: nothing is interrupted mid-stride, and nothing holding an object
+        the errand needs is interrupted at all.
+        """
+        actor = self.state.residents[activity.actor_id]
+        lock = self.actor_locks[activity.actor_id]
+        needs = frozenset(item.resource_id for item in activity.required_resources)
+        while lock.count:
+            if actor.facts.get("at_home") is False or self._is_outside(actor.region_id):
+                if not activity.mandatory:
+                    return None, True
+                return None, False
+            host = self.hosts.get(activity.actor_id)
+            # Holding what the errand needs — at the toilet for her own morning wash — it is not
+            # put down, and the errand looks again once the wash is over rather than queueing: in
+            # the queue it went in behind the working day, and ran at 18:22 for 09:18.
+            # Nor with a door in her hand: put down between `open` and `close`, the refrigerator
+            # stood open for the five minutes she was at the toilet, eight times over the Verdi
+            # months.
+            holding_open = any(activity.actor_id in holders for holders in self.opened_by.values())
+            if host is not None and not host.requirements & needs and not holding_open:
+                alive = [item for item in host.processes if item.is_alive]
+                if alive and all(item in self.pausable for item in alive):
+                    return host, False
+            yield self.env.timeout(ERRAND_RETRY_SECONDS * 1_000_000)
+        return None, False
+
+    def _put_down(self, host: _Host) -> simpy.Event:
+        """Pause every action of the host's running phase until the returned event fires."""
+        resume = self.env.event()
+        for process in host.processes:
+            if process.is_alive:
+                process.interrupt({"kind": "errand", "resume_event": resume})
+        # Delivered later in this same instant; a second errand due now must not pause it twice.
+        self.pausable.difference_update(host.processes)
+        return resume
+
+    def _back_to_host(
+        self,
+        actor: ResidentRuntime,
+        activity: CanonicalActivity,
+        execution_id: str,
+        body: tuple[str, Point2D],
+        posture: str,
+    ) -> Generator[Any, Any, list[str]]:
+        """Walk her back to where she was when the errand came due, and settle her as she was.
+
+        A night visit already puts her back to bed — its model ends lying down in the bedroom —
+        and then there is nothing to do. From the desk, the sofa or the table the errand ends in
+        the bathroom, and without this she would work on from the washbasin.
+        """
+        region_id, position = body
+        action_ids: list[str] = []
+        settled = (
+            actor.region_id == region_id
+            and posture in {_SITTING_POSTURE, _RECLINING_POSTURE}
+            and actor.posture == posture
+            and actor.resting_at is not None
+        )
+        near = (
+            actor.region_id == region_id
+            and math.hypot(actor.position.x - position.x, actor.position.y - position.y) <= 0.5
+        )
+        if not settled and not near:
+            kinetics = self.kinematics[actor.resident_id]
+            path = plan_path(
+                self.bundle.home_model,
+                start_region_id=actor.region_id,
+                start=actor.position,
+                end_region_id=region_id,
+                end=position,
+                walking_speed_meters_per_second=kinetics.walking_speed_meters_per_second,
+                body_radius_meters=kinetics.body_radius_meters,
+                mobility_profile=kinetics.mobility_profile,
+            )
+            if path is not None and path.distance_meters > 1e-9:
+                action_id = self.trace.identifier(
+                    "action", [activity.source_activity_id, ERRAND_RETURN_NODE_ID]
+                )
+                started = self.env.now
+                yield from self._travel(
+                    actor, path, self._walk_microseconds(actor, path, action_id), action_id
+                )
+                self._apply_move_effects(actor, region_id, action_id)
+                self._record_engine_action(
+                    actor,
+                    execution_id,
+                    action_id,
+                    ERRAND_RETURN_NODE_ID,
+                    "move_to",
+                    started,
+                    {"destination": region_id},
+                )
+                action_ids.append(action_id)
+        if posture in {_SITTING_POSTURE, _RECLINING_POSTURE} and not settled:
+            action_id = self.trace.identifier(
+                "action", [activity.source_activity_id, ERRAND_POSTURE_NODE_ID]
+            )
+            started = self.env.now
+            yield from self._take_a_seat(actor, posture, action_id)
+            seconds = self.kinematics[actor.resident_id].posture_transition_seconds.get(
+                posture, _gesture_table()["change_posture"]
+            )
+            yield self.env.timeout(int(round(seconds * 1_000_000)))
+            self._set_posture(actor, posture, "action_effect", action_id)
+            self._record_engine_action(
+                actor,
+                execution_id,
+                action_id,
+                ERRAND_POSTURE_NODE_ID,
+                "change_posture",
+                started,
+                {"posture": posture},
+            )
+            action_ids.append(action_id)
+        return action_ids
 
     def _privacy_conflicts(
         self, activity: CanonicalActivity, occupying: set[str]

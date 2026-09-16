@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -49,7 +50,7 @@ from smart_home_sim.domain.models import (
 from smart_home_sim.domain.plan import CanonicalActivity
 from smart_home_sim.hybrid_planning.dwelling import CORE_RESOURCES
 from smart_home_sim.hybrid_planning.expander import expand_outline
-from smart_home_sim.hybrid_planning.habits import ground_truth_of_run
+from smart_home_sim.hybrid_planning.habits import evidence_from_trace, ground_truth_of_run
 from smart_home_sim.hybrid_planning.intents import INTENT_CATALOG
 from smart_home_sim.hybrid_planning.outline import (
     HabitSegment,
@@ -76,7 +77,9 @@ from smart_home_sim.hybrid_planning.recurring_activities import (
 )
 from smart_home_sim.materialization import materialize_workspace
 from smart_home_sim.profiling.builder import OCCUPYING_STATUSES
+from smart_home_sim.sensors.service import _motion_pulses
 from smart_home_sim.simulation.service import (
+    OPENABLE_WAIT_LIMIT_SECONDS,
     SHARED_WAIT_LIMIT_SECONDS,
     simulate_bundle,
     validate_execution_trace,
@@ -490,6 +493,7 @@ _MARCO_HYGIENE = "marco_hygiene"
 _LUCA_HYGIENE = "luca_hygiene"
 _MARCO_TOILET = "marco_toilet"
 _LUCA_LUNCH = "luca_lunch"
+_MARCO_LUNCH = "marco_lunch"
 _ROLE_INTENTS = {
     "call": "phone_call",
     "hygiene": "evening_hygiene",
@@ -697,6 +701,241 @@ def test_a_mandatory_wash_waits_for_the_bathroom_to_be_free(run: Path) -> None:
     assert hygiene.actual_start >= toilet.actual_end
 
 
+# --- an errand interrupts what it lands in ------------------------------------------------------
+
+
+def _placed(
+    run: Path,
+    placements: dict[str, tuple[Callable[[CanonicalActivity], bool], datetime, int]],
+) -> tuple[SimulationBundle, dict[str, str]]:
+    """Only the first activity each predicate picks, each at `(start, minutes long)`.
+
+    `_evening` for moments that are not measured from the television: a night, a morning on the
+    sofa, an afternoon out. Preconditions are cleared for the same reason.
+    """
+    bundle = SimulationBundle.model_validate_json(
+        (run / "simulation-bundle.json").read_text(encoding="utf-8")
+    )
+    day = bundle.canonical_plan.days[0]
+    found = {
+        role: next(item for item in day.activities if pick(item))
+        for role, (pick, _, _) in placements.items()
+    }
+    activities = [
+        found[role].model_copy(
+            update={
+                "sequence_index": index,
+                "scheduled_start": start,
+                "scheduled_end": start + timedelta(minutes=minutes),
+                "duration_microseconds": minutes * 60_000_000,
+                "preconditions": [],
+            }
+        )
+        for index, (role, (_, start, minutes)) in enumerate(sorted(placements.items()))
+    ]
+    plan_day = day.model_copy(
+        update={"activities": activities, "contingencies": [], "omitted_activities": []}
+    )
+    plan = bundle.canonical_plan.model_copy(update={"days": [plan_day]})
+    ids = {role: item.source_activity_id for role, item in found.items()}
+    return bundle.model_copy(update={"canonical_plan": plan}), ids
+
+
+def _midnight(run: Path) -> datetime:
+    bundle = SimulationBundle.model_validate_json(
+        (run / "simulation-bundle.json").read_text(encoding="utf-8")
+    )
+    return bundle.scenario.simulation_window.start
+
+
+def _is(resident: str, intent: str) -> Callable[[CanonicalActivity], bool]:
+    return lambda item: (
+        item.actor_id == resident and item.intent == intent and not item.participant_ids
+    )
+
+
+def _posture_at(trace: ExecutionTrace, resident: str, moment: datetime) -> str | None:
+    changes = sorted(
+        (item.ended_at, str(item.resolved_arguments.get("posture")))
+        for item in trace.action_executions
+        if item.actor_id == resident
+        and item.action_type == "change_posture"
+        and item.ended_at <= moment
+    )
+    return changes[-1][1] if changes else None
+
+
+def _night_with_a_toilet_trip(run: Path) -> tuple[ExecutionTrace, dict[str, ActivityExecution]]:
+    midnight = _midnight(run)
+    return _executions(
+        _placed(
+            run,
+            {
+                "sleep": (_is("luca", "sleep"), midnight + timedelta(minutes=15), 7 * 60),
+                "toilet": (_is("luca", "use_toilet"), midnight + timedelta(hours=3), 6),
+            },
+        )
+    )
+
+
+def test_a_toilet_trip_in_the_night_interrupts_the_sleep_and_goes_back_to_bed(run: Path) -> None:
+    """Queued behind the night on her lock, 61 of 62 Verdi night visits happened after the alarm."""
+    trace, executions = _night_with_a_toilet_trip(run)
+    sleep, toilet = executions["sleep"], executions["toilet"]
+    during = toilet.actual_start + (toilet.actual_end - toilet.actual_start) / 2
+    after = toilet.actual_end + timedelta(minutes=10)
+    pauses = [
+        item
+        for item in trace.plan_deviations
+        if item.deviation_id in sleep.deviation_ids and item.kind == "interrupted"
+    ]
+
+    assert toilet.status != "dropped"
+    assert toilet.actual_start - toilet.planned_start < timedelta(minutes=1)
+    assert sleep.actual_start < toilet.actual_start
+    assert toilet.actual_end < sleep.actual_end
+    assert _region_at(trace, "luca", during) == "bathroom"
+    assert _region_at(trace, "luca", after) == "bedroom"
+    assert _posture_at(trace, "luca", after) == "lying"
+    assert [item.cause_id for item in pauses] == [toilet.source_activity_id]
+    assert pauses[0].amount_microseconds >= (toilet.actual_end - toilet.actual_start) // timedelta(
+        microseconds=1
+    )
+
+
+def test_the_night_is_not_counted_twice_where_the_toilet_trip_cut_it(run: Path) -> None:
+    """The sleep's record spans the visit; the answer sheet does not have her asleep meanwhile."""
+    trace, executions = _night_with_a_toilet_trip(run)
+    toilet = executions["toilet"]
+    evidence = evidence_from_trace(trace, initial_regions=dict.fromkeys(_RESIDENTS, "bedroom"))
+    asleep = [item for item in evidence.activities["luca"] if item.intent == "sleep"]
+
+    assert asleep
+    assert not [item for item in asleep if item.location == "bathroom"]
+    assert not [
+        item for item in asleep if item.start < toilet.actual_end and item.end > toilet.actual_start
+    ]
+
+
+def test_a_toilet_trip_waits_for_the_refrigerator_door_to_be_shut(run: Path) -> None:
+    """Nobody walks off to the toilet with the refrigerator standing open behind them."""
+    lunch_at = _midnight(run) + timedelta(hours=13)
+    lunch = (_is("luca", "eat_lunch"), lunch_at, 25)
+    trace, alone = _executions(_placed(run, {"lunch": lunch}))
+    opened, closed = _door_visits(trace, alone["lunch"])[0]
+    due = opened + (closed - opened) / 2
+
+    trace, executions = _executions(
+        _placed(run, {"lunch": lunch, "toilet": (_is("luca", "use_toilet"), due, 6)})
+    )
+    toilet = executions["toilet"]
+
+    assert toilet.status != "dropped"
+    assert toilet.actual_start - toilet.planned_start < timedelta(minutes=2)
+    assert all(
+        shut <= toilet.actual_start or toilet.actual_end <= open_
+        for open_, shut in _door_visits(trace, executions["lunch"])
+    )
+
+
+def test_from_the_sofa_she_comes_back_to_the_sofa(run: Path) -> None:
+    """An errand from a seated block ends where it began, and the block goes on from there.
+
+    The sensors see her go too: the reading's own motion stops while she is out of the room.
+    """
+    midnight = _midnight(run)
+    bundle, ids = _placed(
+        run,
+        {
+            "read": (_is("luca", "read_and_rest"), midnight + timedelta(hours=10), 60),
+            "toilet": (_is("luca", "use_toilet"), midnight + timedelta(hours=10, minutes=25), 6),
+        },
+    )
+    trace, executions = _executions((bundle, ids))
+    read, toilet = executions["read"], executions["toilet"]
+    after = toilet.actual_end + timedelta(minutes=5)
+    reading = {
+        item.action_execution_id
+        for item in trace.action_executions
+        if item.activity_execution_id == read.activity_execution_id
+    }
+
+    assert toilet.actual_start - toilet.planned_start < timedelta(minutes=1)
+    assert read.actual_start < toilet.actual_start
+    assert toilet.actual_end < read.actual_end
+    assert _region_at(trace, "luca", after) == _region_at(trace, "luca", toilet.planned_start)
+    assert _posture_at(trace, "luca", after) == "sitting"
+    assert not [
+        pulse
+        for pulse in _motion_pulses(trace, bundle)
+        if set(pulse.action_ids) & reading and toilet.actual_start < pulse.at < toilet.actual_end
+    ]
+
+
+def _door_visits(
+    trace: ExecutionTrace, execution: ActivityExecution
+) -> list[tuple[datetime, datetime]]:
+    """From the start of each `open` the activity does to the end of the `close` after it."""
+    actions = sorted(
+        (
+            item
+            for item in trace.action_executions
+            if item.activity_execution_id == execution.activity_execution_id
+            and item.action_type in {"open", "close"}
+        ),
+        key=lambda item: item.started_at,
+    )
+    return [
+        (opened.started_at, closed.ended_at)
+        for opened, closed in zip(actions[::2], actions[1::2], strict=True)
+    ]
+
+
+def test_a_resident_who_finds_the_refrigerator_open_waits_for_it_to_be_closed(run: Path) -> None:
+    """Nothing in the plan keeps two residents from the refrigerator in the same minute.
+
+    A breakfast is placed against the stove, not the refrigerator it takes the food from, and on the
+    Verdi month one resident reached for it while the other had it open: `open` requires it closed,
+    and the run stopped. Luca is sent to lunch so that he reaches it halfway through marco's visit.
+    """
+    trace, alone = _executions(_evening(run, {_TELEVISION: (0, 15), _LUCA_LUNCH: (30, 25)}))
+    lead = _door_visits(trace, alone[_LUCA_LUNCH])[0][0] - alone[_LUCA_LUNCH].actual_start
+    trace, alone = _executions(_evening(run, {_TELEVISION: (0, 15), _MARCO_LUNCH: (30, 25)}))
+    opened, closed = _door_visits(trace, alone[_MARCO_LUNCH])[0]
+
+    bundle, ids = _evening(
+        run, {_TELEVISION: (0, 15), _MARCO_LUNCH: (30, 25), _LUCA_LUNCH: (30, 25)}
+    )
+    day = bundle.canonical_plan.days[0]
+    due = opened + (closed - opened) / 2 - lead
+    moved = [
+        item.model_copy(
+            update={
+                "scheduled_start": due,
+                "scheduled_end": due + (item.scheduled_end - item.scheduled_start),
+            }
+        )
+        if item.source_activity_id == ids[_LUCA_LUNCH]
+        else item
+        for item in day.activities
+    ]
+    plan = bundle.canonical_plan.model_copy(
+        update={"days": [day.model_copy(update={"activities": moved})]}
+    )
+    trace, executions = _executions((bundle.model_copy(update={"canonical_plan": plan}), ids))
+    marco = _door_visits(trace, executions[_MARCO_LUNCH])
+    luca = _door_visits(trace, executions[_LUCA_LUNCH])
+    waited = luca[0][0] - executions[_LUCA_LUNCH].actual_start - lead
+
+    assert executions[_LUCA_LUNCH].status != "dropped"
+    assert timedelta(0) < waited < timedelta(seconds=OPENABLE_WAIT_LIMIT_SECONDS)
+    assert all(
+        luca_close <= marco_open or marco_close <= luca_open
+        for luca_open, luca_close in luca
+        for marco_open, marco_close in marco
+    )
+
+
 def _written_standing(bundle: SimulationBundle, activity_id: str) -> SimulationBundle:
     """The bundle with every posture change of this activity's model written as `standing`, the way
     the Ferri package wrote its meals."""
@@ -864,7 +1103,9 @@ def test_the_composition_is_what_the_trace_says_happened(
 
     Recomputed the plain way an experiment would do it from `activities.csv` — every executed
     activity a resident took part in, on its actual times, clipped to each day of the band — and it
-    has to match the published minutes to the rounding of the published rows.
+    has to match the published minutes to the rounding of the published rows. A toilet trip that
+    interrupted an activity lies inside that activity's times, and its minutes are counted once:
+    the file says so by the nesting, and so does the answer sheet.
     """
     measured = ground_truth_of_run(scenario, trace)
     assert measured is not None
@@ -881,15 +1122,26 @@ def test_the_composition_is_what_the_trace_says_happened(
             while datetime.combine(day, time.min, zone) < trace.ended_at:
                 begin = max(datetime.combine(day, opens, zone), trace.started_at)
                 end = min(datetime.combine(day, closes, zone), trace.ended_at)
-                for execution in trace.activity_executions:
-                    if execution.status not in OCCUPYING_STATUSES:
-                        continue
-                    if who not in (execution.actor_id, *execution.participant_ids):
-                        continue
+                mine = [
+                    execution
+                    for execution in trace.activity_executions
+                    if execution.status in OCCUPYING_STATUSES
+                    and who in (execution.actor_id, *execution.participant_ids)
+                ]
+                for execution in mine:
                     low = max(execution.actual_start, begin)
                     high = min(execution.actual_end, end)
                     if high > low:
                         expected += (high - low).total_seconds() / 60
+                        expected -= sum(
+                            (min(other.actual_end, high) - max(other.actual_start, low))
+                            / timedelta(minutes=1)
+                            for other in mine
+                            if other is not execution
+                            and execution.actual_start <= other.actual_start
+                            and other.actual_end <= execution.actual_end
+                            and min(other.actual_end, high) > max(other.actual_start, low)
+                        )
                 day += timedelta(days=1)
             published = sum(row.minutes for row in band.composition)
             assert abs(published - expected) <= 0.1 * max(1, len(band.composition)), (

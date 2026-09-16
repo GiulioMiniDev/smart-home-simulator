@@ -193,6 +193,9 @@
 .vocab-kind { align-self: center; padding: .08rem .45rem; border-radius: 99px; font-size: .68rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
 .vocab-kind-object { background: var(--teal-soft); color: color-mix(in oklch, var(--teal) 75%, var(--text)); }
 .vocab-kind-activity { background: var(--indigo-soft); color: color-mix(in oklch, var(--indigo) 75%, var(--text)); }
+.vocab-kind-room { background: var(--amber-soft); color: color-mix(in oklch, var(--amber) 70%, var(--text)); }
+.outline-problems { border-top-color: color-mix(in oklch, var(--red) 40%, var(--line)); }
+.outline-problems > header > svg { color: color-mix(in oklch, var(--red) 75%, var(--text)); }
 .vocab-review-facts { display: grid; gap: .15rem; margin: 0; font-size: .78rem; }
 .vocab-review-facts > div { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: .5rem; }
 .vocab-review-facts dt { color: var(--text-faint); }

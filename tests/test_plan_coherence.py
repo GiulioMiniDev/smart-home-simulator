@@ -29,7 +29,9 @@ def _at(hour: int, minute: int = 0) -> datetime:
     return datetime(_DAY.year, _DAY.month, _DAY.day, hour, minute, tzinfo=_ZONE)
 
 
-def _fillers_in_a_long_wait(available: tuple[str, ...]) -> list[tuple[datetime, str]]:
+def _fillers_in_a_long_wait(
+    available: tuple[str, ...], shared_in: str = "kitchen", away: frozenset[str] = frozenset()
+) -> list[tuple[datetime, str]]:
     """A day whose last activity before a shared dinner ends three hours before it.
 
     Every filler seeded into those three hours falls inside the wait for the dinner, which is what
@@ -37,9 +39,9 @@ def _fillers_in_a_long_wait(available: tuple[str, ...]) -> list[tuple[datetime, 
     """
     tea = activity_from_intent("read_and_rest", _DAY, _at(15), "luca", index=0)
     dinner = activity_from_intent("eat_dinner", _DAY, _at(19, 30), "luca", index=1)
-    dinner = dinner.model_copy(update={"participant_ids": ["marco"], "location_ids": ["kitchen"]})
+    dinner = dinner.model_copy(update={"participant_ids": ["marco"], "location_ids": [shared_in]})
     planned = _seed_filler_candidates(
-        [tea, dinner], available, _at(8), _at(23), _DAY, "luca", seed=1
+        [tea, dinner], available, _at(8), _at(23), _DAY, "luca", seed=1, away=away
     )
     assert tea.start_window is not None and tea.duration is not None
     wait_opens = tea.start_window.preferred + timedelta(minutes=tea.duration.preferred_minutes)
@@ -64,6 +66,16 @@ def test_a_phone_call_still_waits_where_the_dinner_will_be() -> None:
 
     assert placed, "no filler fell inside the wait"
     assert {room for _, room in placed} == {"kitchen"}
+
+
+def test_a_phone_call_does_not_wait_outdoors_for_a_shared_outing() -> None:
+    """Nothing walks a filler through the front door, so it cannot be sent out to wait."""
+    placed = _fillers_in_a_long_wait(
+        ("phone_call",), shared_in="outdoors", away=frozenset({"outdoors"})
+    )
+
+    assert placed, "no filler fell inside the wait"
+    assert {room for _, room in placed} == {"living_room"}
 
 
 def _morning_slept(share: float) -> HabitGroundTruth:

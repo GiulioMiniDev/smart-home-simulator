@@ -365,6 +365,18 @@ def _motion_pulses(trace: ExecutionTrace, bundle: SimulationBundle) -> list[_Mot
         # reconciliation was hardened below, fatal — one of them latched a sensor ON for the
         # remaining twenty-five days of a month.
         while at < action.ended_at:
+            # Put down for an errand: while she is at the toilet the desk is not being worked at.
+            # The action's record still spans the pause, so it is the innermost action of hers at
+            # this moment, when it belongs to another activity, that says where her hands are.
+            innermost = _ongoing_action(
+                by_actor_actions[action.actor_id], starts_by_actor.get(action.actor_id, []), at
+            )
+            if (
+                innermost is not None
+                and innermost.activity_execution_id != action.activity_execution_id
+            ):
+                at += timedelta(seconds=PIR_MOTION_REFRACTORY_SECONDS)
+                continue
             pulses.append(
                 _MotionPulse(
                     at=at,
