@@ -238,24 +238,34 @@ def _in_failure(sensor: SensorDefinition, at: datetime) -> bool:
     return any(item.starts_at <= at < item.ends_at for item in sensor.failure_windows)
 
 
-def _causal_context(
-    trace: ExecutionTrace,
-    cause_id: str,
-) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
-    actions = {item.action_execution_id: item for item in trace.action_executions}
-    activities = {item.activity_execution_id: item for item in trace.activity_executions}
-    if cause_id in actions:
-        action = actions[cause_id]
-        activity = activities.get(action.activity_execution_id)
-        return (
+CausalContext = tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]
+
+
+def _causal_index(trace: ExecutionTrace) -> dict[str, CausalContext]:
+    # Built once per trace, not once per event: rebuilt inside every lookup it made a projection
+    # quadratic in the trace, and a two-resident year (93k actions, 230k transitions) spent over
+    # an hour here on a run whose simulation took 26 minutes.
+    #
+    # Actions are written last so that an identifier naming both wins as an action, as it did when
+    # the lookup tried actions first.
+    index: dict[str, CausalContext] = {}
+    for activity in trace.activity_executions:
+        index[activity.activity_execution_id] = (
+            (activity.actor_id,),
+            (activity.activity_execution_id,),
+            (),
+        )
+    for action in trace.action_executions:
+        index[action.action_execution_id] = (
             (action.actor_id,),
             (action.activity_execution_id,),
             (action.action_execution_id,),
         )
-    if cause_id in activities:
-        activity = activities[cause_id]
-        return ((activity.actor_id,), (activity.activity_execution_id,), ())
-    return (), (), ()
+    return index
+
+
+def _causal_context(causes: dict[str, CausalContext], cause_id: str) -> CausalContext:
+    return causes.get(cause_id, ((), (), ()))
 
 
 @dataclass(frozen=True)
@@ -669,11 +679,11 @@ def _resting_at(
     fault was caught — observations went missing from a bathroom, which has no seat in it, because
     a resident there was being projected from the sofa she had been sitting on.
     """
-    place: tuple[Point2D, str] | None = None
-    for at, value in series:
-        if at > moment:
-            break
-        place = value
+    # Bisected, not scanned: this runs once per presence pulse, and walking the whole series from
+    # the start each time was quadratic in the horizon. A two-resident year sat here for over half
+    # an hour before a single sensor had been projected.
+    index = bisect.bisect_right(series, moment, key=lambda item: item[0]) - 1
+    place = series[index][1] if index >= 0 else None
     return place[0] if place is not None and place[1] == region_id else fallback
 
 
@@ -734,7 +744,9 @@ def _dwells(trace: ExecutionTrace) -> list[_Dwell]:
     return dwells
 
 
-def _contact_candidates(trace: ExecutionTrace, sensor: ContactSensor) -> list[Candidate]:
+def _contact_candidates(
+    trace: ExecutionTrace, sensor: ContactSensor, causes: dict[str, CausalContext]
+) -> list[Candidate]:
     candidates: list[Candidate] = []
     if sensor.fact is None:
         for action in trace.action_executions:
@@ -795,7 +807,7 @@ def _contact_candidates(trace: ExecutionTrace, sensor: ContactSensor) -> list[Ca
             value = "CLOSED"
         else:
             continue
-        residents, activities, actions = _causal_context(trace, transition.causality.cause_id)
+        residents, activities, actions = _causal_context(causes, transition.causality.cause_id)
         candidates.append(
             Candidate(
                 at=transition.at,
@@ -925,6 +937,7 @@ def _temperature_candidates(
     bundle: SimulationBundle,
     sensor: TemperatureSensor,
     seed: int,
+    causes: dict[str, CausalContext],
     *,
     enhanced: bool,
 ) -> list[Candidate]:
@@ -1033,7 +1046,7 @@ def _temperature_candidates(
                 )
             else:
                 residents, activities, actions = _causal_context(
-                    trace, sample_transition.causality.cause_id
+                    causes, sample_transition.causality.cause_id
                 )
                 common = dict(
                     origin="simulated_cause",
@@ -1070,7 +1083,7 @@ def _temperature_candidates(
     for delta in deltas:
         current += delta.amount
         transition = delta.transition
-        residents, activities, actions = _causal_context(trace, transition.causality.cause_id)
+        residents, activities, actions = _causal_context(causes, transition.causality.cause_id)
         candidates.append(
             Candidate(
                 at=delta.at,
@@ -1353,6 +1366,7 @@ def _sensor_candidates(
     sensor: SensorDefinition,
     seed: int,
     motion: list[_MotionPulse],
+    causes: dict[str, CausalContext],
     *,
     enhanced: bool,
     realistic: bool,
@@ -1360,9 +1374,9 @@ def _sensor_candidates(
     if isinstance(sensor, PirSensor):
         nominal = _pir_candidates(trace, bundle, sensor, motion, enhanced=enhanced)
     elif isinstance(sensor, ContactSensor):
-        nominal = _contact_candidates(trace, sensor)
+        nominal = _contact_candidates(trace, sensor, causes)
     else:
-        nominal = _temperature_candidates(trace, bundle, sensor, seed, enhanced=enhanced)
+        nominal = _temperature_candidates(trace, bundle, sensor, seed, causes, enhanced=enhanced)
     candidates = sorted(
         [
             *nominal,
@@ -1388,6 +1402,7 @@ def _project_sensor(
     sensor: SensorDefinition,
     seed: int,
     motion: list[_MotionPulse],
+    causes: dict[str, CausalContext],
     *,
     enhanced: bool,
     realistic: bool,
@@ -1398,6 +1413,7 @@ def _project_sensor(
         sensor,
         seed,
         motion,
+        causes,
         enhanced=enhanced,
         realistic=realistic,
     )
@@ -1732,6 +1748,7 @@ def project_sensors(
         # Once for the whole home, before any sensor: the resident's motion is a fact about her,
         # and every detector that can see a given shift must report that same instant.
         motion = _motion_pulses(trace, bundle) if enhanced else []
+        causes = _causal_index(trace)
         for sensor in model.sensors:
             sensor_records, sensor_links, counters = _project_sensor(
                 trace,
@@ -1739,6 +1756,7 @@ def project_sensors(
                 sensor,
                 trace.seed,
                 motion,
+                causes,
                 enhanced=enhanced,
                 realistic=realistic,
             )
@@ -1769,7 +1787,8 @@ def project_sensors(
         "sensorModelVersion": model.sensor_model_version,
         "records": [item.model_dump(mode="json", by_alias=True) for item in records],
     }
-    log_id = f"sensor_log_{_canonical_digest(semantic)[:16]}"
+    semantic_digest = _canonical_digest(semantic)
+    log_id = f"sensor_log_{semantic_digest[:16]}"
     ended_at = max([trace.ended_at, *(item.observed_at for item in records)])
     observable_log = ObservableSensorLog(
         log_id=log_id,
@@ -1778,7 +1797,7 @@ def project_sensors(
         started_at=trace.started_at,
         ended_at=ended_at,
         records=records,
-        semantic_digest=_canonical_digest(semantic),
+        semantic_digest=semantic_digest,
     )
     oracle_digest = _canonical_digest([item.model_dump(mode="json") for item in links])
     oracle_mapping = OracleMapping(
