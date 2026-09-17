@@ -661,6 +661,7 @@ g.has-problem .furniture-glyph { color: var(--red); }
 .editor-fields label { display: grid; gap: .3rem; color: var(--text-soft); font-size: .72rem; }
 .editor-fields input, .editor-fields select { width: 100%; min-width: 0; padding: .45rem .5rem; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); color: var(--text); font: inherit; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.editor-fields .field-note { margin: -.2rem 0 0; color: var(--text-soft); font-size: .72rem; line-height: 1.35; }
 .failure-editor { display: grid; gap: .5rem; padding-top: .65rem; border-top: 1px solid var(--line); }
 .failure-editor > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .failure-editor h4, .failure-editor p { margin: 0; }

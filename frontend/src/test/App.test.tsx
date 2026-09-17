@@ -1411,6 +1411,42 @@ describe("complete application routes", () => {
     expect(screen.getByText(/object the gate will reject/)).toBeInTheDocument();
   });
 
+  it("moves the front door to another room and takes the flat's exits with it", async () => {
+    // The generator had put the door in the living room of a flat that had a hall, and the
+    // resident walked out through the living room. Repairing that by hand has to move the door,
+    // the spot somebody stands on to open it and every transit out of the flat together.
+    const hall = { regionId: "hall", kind: "room" as const, traversable: true, boundary: { vertices: [{ x: 4, y: 0 }, { x: 8, y: 0 }, { x: 8, y: 4 }, { x: 4, y: 4 }] } };
+    const street = { regionId: "outdoors", kind: "external" as const, traversable: true, boundary: { vertices: [{ x: 0, y: 20 }, { x: 4, y: 20 }, { x: 4, y: 24 }, { x: 0, y: 24 }] } };
+    const flat: HomeModel = {
+      ...homeModel,
+      regions: [...homeModel.regions, hall, street],
+      connections: [
+        { connectionId: "door_room_hall", regionAId: "room", regionBId: "hall", kind: "doorway", bidirectional: true, widthMeters: 1, portalA: { x: 3.6, y: 2 }, portalB: { x: 4.4, y: 2 } },
+        { connectionId: "transit_room_outdoors", regionAId: "room", regionBId: "outdoors", kind: "transit", bidirectional: true, widthMeters: 1, portalA: { x: 3, y: 3 }, portalB: { x: 2, y: 22 } },
+      ],
+      interactionPoints: [...homeModel.interactionPoints, { interactionPointId: "point_entrance", regionId: "room", position: { x: 3, y: 3 }, approachRadiusMeters: 0.3 }],
+      entities: [...homeModel.entities, { entityId: "entrance_door", entityType: "entrance_door", regionId: "room", interactionPointId: "point_entrance", capabilities: [{ capability: "home_egress", roles: ["entrance"], supportedOperations: ["leave_home", "enter_home"] }], initialState: { open: false } }],
+    };
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel: flat, sensorModel }, jobs: [job] };
+
+    mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
+    openPlan("House");
+    fireEvent.click(screen.getByRole("button", { name: "entrance_door entrance_door" }));
+
+    // The door says it is the door, and offers the rooms of the flat rather than every region:
+    // a front door opening onto the street is not a plan the gate would take.
+    expect(screen.getByRole("heading", { name: "Front door" })).toBeInTheDocument();
+    expect(screen.getByText(/ways out of the flat leave from this room/)).toBeInTheDocument();
+    const room = screen.getByLabelText("Room the door opens into") as HTMLSelectElement;
+    expect([...room.options].map((item) => item.value)).toEqual(["room", "hall"]);
+
+    fireEvent.change(room, { target: { value: "hall" } });
+
+    // Moved, and the exits came too — the inspector would say so otherwise.
+    expect((screen.getByLabelText("Room the door opens into") as HTMLSelectElement).value).toBe("hall");
+    expect(screen.queryByText(/the way out of the flat starts in/)).not.toBeInTheDocument();
+  });
+
   it("covers precise region, obstacle and PIR controls plus invalid model feedback", async () => {
     mount("/homes/home_1"); await screen.findByRole("heading", { name: "Golden home" });
     openPlan("House");

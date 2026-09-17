@@ -26,6 +26,7 @@ import {
   sensorIdFor,
   sensorSlug,
   sensorsByRoom,
+  setFrontDoorRegion,
   setPirRange,
   setRegionLevel,
   setSensorPosition,
@@ -719,6 +720,87 @@ describe("drawing a floorplan out of a simulation model", () => {
     // The opening is cut out of that wall like any other.
     const cut = cutDoorways(planWalls(withDoor, ids(withDoor)), [door!]);
     expect(cut.filter((item) => item.exterior)).toHaveLength(7);
+  });
+
+  /** The flat with its front door in the living room and the street reached from there. */
+  const withExits = (): HomeModel => ({
+    ...flat(),
+    regions: [
+      ...flat().regions,
+      { regionId: "outdoors", kind: "external", traversable: true, boundary: { vertices: [{ x: 0, y: 20 }, { x: 4, y: 20 }, { x: 4, y: 24 }, { x: 0, y: 24 }] } },
+    ],
+    connections: [
+      ...flat().connections,
+      { connectionId: "transit_living_room_outdoors", regionAId: "living_room", regionBId: "outdoors", kind: "transit", bidirectional: true, widthMeters: 1, portalA: { x: 7, y: 2.4 }, portalB: { x: 2, y: 22 } },
+    ],
+    interactionPoints: [{ interactionPointId: "point_entrance", regionId: "living_room", position: { x: 7, y: 2.4 }, approachRadiusMeters: 0.3 }],
+    entities: [{ entityId: "entrance_door", entityType: "entrance_door", regionId: "living_room", interactionPointId: "point_entrance", capabilities: [{ capability: "home_egress", roles: ["entrance"], supportedOperations: ["leave_home", "enter_home"] }], initialState: {} }],
+  });
+
+  it("moves the front door to another room and takes the way out with it", () => {
+    // The generator put the door in the living room of a flat that had a hall, because its
+    // preference list did not name one; the resident then walked out through the living room. The
+    // repair is a hand edit, so the hand edit has to move all three things the door is made of.
+    const moved = setFrontDoorRegion(withExits(), "kitchen");
+
+    expect(moved.entities[0]!.regionId).toBe("kitchen");
+    const point = moved.interactionPoints[0]!;
+    expect(point.regionId).toBe("kitchen");
+    expect(boxOf(moved.regions[0]!.boundary.vertices)).toMatchObject({ minX: 0, maxX: 4 });
+    expect(point.position.x).toBeGreaterThan(0);
+    expect(point.position.x).toBeLessThan(4);
+    const transit = moved.connections.find((item) => item.kind === "transit")!;
+    expect(transit.regionAId).toBe("kitchen");
+    expect(transit.portalA).toEqual(point.position);
+    // The doorway between the two rooms is not a way out and stays where it was.
+    expect(moved.connections.find((item) => item.kind === "doorway")!.regionAId).toBe("kitchen");
+    // A room the flat does not have, or the one it is already in, changes nothing.
+    expect(setFrontDoorRegion(withExits(), "attic")).toEqual(withExits());
+    expect(setFrontDoorRegion(withExits(), "living_room")).toEqual(withExits());
+  });
+
+  it("keeps the standing point off the furniture when the door changes room", () => {
+    const cluttered: HomeModel = {
+      ...withExits(),
+      obstacles: [{ obstacleId: "obstacle_table", regionId: "kitchen", boundary: { vertices: [{ x: 0.5, y: 0.5 }, { x: 2.5, y: 0.5 }, { x: 2.5, y: 2.5 }, { x: 0.5, y: 2.5 }] } }],
+    };
+
+    const moved = setFrontDoorRegion(cluttered, "kitchen");
+    const point = moved.interactionPoints[0]!.position;
+
+    // Not inside the table, and not within reach of it either: the gate grows each obstacle by the
+    // approach radius before asking, so a point that merely misses the box is still refused.
+    expect(point.x > 2.8 || point.y > 2.8).toBe(true);
+    expect(planProblems(moved).find((item) => item.objectId === "entrance_door")).toBeUndefined();
+  });
+
+  it("carries the exits along when the front door is dragged into another room", () => {
+    // Dragging used to move the point alone: the door ended up in the kitchen while the flat's
+    // exits still left from the living room, and nothing said so until the publish.
+    const dragged = movePlanObject(withExits(), undefined, "entrance_door", -4, 0).home;
+
+    expect(dragged.entities[0]!.regionId).toBe("kitchen");
+    expect(dragged.interactionPoints[0]!.regionId).toBe("kitchen");
+    const transit = dragged.connections.find((item) => item.kind === "transit")!;
+    expect(transit.regionAId).toBe("kitchen");
+    expect(transit.portalA).toEqual({ x: 3, y: 2.4 });
+    // A nudge that stays inside the room keeps the room and still drags the portal along.
+    const nudged = movePlanObject(withExits(), undefined, "entrance_door", -0.5, 0).home;
+    expect(nudged.entities[0]!.regionId).toBe("living_room");
+    expect(nudged.connections.find((item) => item.kind === "transit")!.portalA).toEqual({ x: 6.5, y: 2.4 });
+  });
+
+  it("says so when the way out no longer starts at the front door", () => {
+    const split: HomeModel = {
+      ...withExits(),
+      entities: withExits().entities.map((item) => ({ ...item, regionId: "kitchen" })),
+    };
+
+    expect(planProblems(split).find((item) => item.objectId === "entrance_door")?.message)
+      .toBe("is in kitchen, but the way out of the flat starts in living room");
+    // And nothing to report once they agree again.
+    expect(planProblems(setFrontDoorRegion(withExits(), "kitchen"))
+      .find((item) => item.objectId === "entrance_door")).toBeUndefined();
   });
 
   it("swings the front door outwards whichever way the room is wound", () => {

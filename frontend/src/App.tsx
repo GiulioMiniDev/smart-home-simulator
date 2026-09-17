@@ -86,6 +86,8 @@ import {
   addStoreyByStairs,
   alignSensorModel,
   createRoomFromBox,
+  dwellingRegionIds,
+  frontDoorOf,
   movePlanObject,
   pirRange,
   planProblems,
@@ -95,6 +97,7 @@ import {
   rotatePlanObject,
   sensorSlug,
   sensorsByRoom,
+  setFrontDoorRegion,
   setPirRange,
   setRegionLevel,
   setSensorPosition,
@@ -1788,13 +1791,22 @@ function EditorFields({ layer, selectedId, home, sensors, onHome, onSensors, onS
   const entity = home.entities.find((item) => item.entityId === selectedId);
   if (entity) {
     const updateEntity = (next: Partial<typeof entity>) => onHome({ ...home, entities: home.entities.map((item) => item.entityId === selectedId ? { ...item, ...next } : item) });
-    const setRegion = (regionId: string) => onHome({
+    // The front door is the one provider whose room is also where the flat's exits leave from, so
+    // moving it is a different edit: `setFrontDoorRegion` takes the transit links and the standing
+    // point with it. Every other provider only has to say which room contains it.
+    const isFrontDoor = frontDoorOf(home)?.entityId === entity.entityId;
+    const setRegion = (regionId: string) => onHome(isFrontDoor ? setFrontDoorRegion(home, regionId) : {
       ...home,
       entities: home.entities.map((item) => item.entityId === selectedId ? { ...item, regionId } : item),
       interactionPoints: home.interactionPoints.map((item) => item.interactionPointId === entity.interactionPointId ? { ...item, regionId } : item),
     });
     const coerceState = (value: string): unknown => value === "true" ? true : value === "false" ? false : Number.isNaN(Number(value)) || !value.trim() ? value : Number(value);
-    return <div className="inspector-section editor-fields"><h3>Capability provider</h3><label><span>Provider type</span><input value={entity.entityType} onChange={(event) => updateEntity({ entityType: event.target.value })} /></label><label><span>Containing region</span><select value={entity.regionId} onChange={(event) => setRegion(event.target.value)}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label><div className="capability-editor"><div><h4>Capabilities</h4><button className="button secondary" onClick={() => updateEntity({ capabilities: [...entity.capabilities, { capability: `capability_${entity.capabilities.length + 1}`, roles: [], supportedOperations: [] }] })}><Plus size={14} /> Add capability</button></div>{entity.capabilities.map((capability, index) => <div className="capability-row" key={`${capability.capability}-${index}`}><label><span>Capability</span><input value={capability.capability} onChange={(event) => updateEntity({ capabilities: entity.capabilities.map((item, itemIndex) => itemIndex === index ? { ...item, capability: event.target.value } : item) })} /></label><label><span>Roles</span><input value={capability.roles.join(", ")} onChange={(event) => updateEntity({ capabilities: entity.capabilities.map((item, itemIndex) => itemIndex === index ? { ...item, roles: event.target.value.split(",").map((value) => value.trim()).filter(Boolean) } : item) })} /></label><label><span>Operations</span><input value={capability.supportedOperations.join(", ")} onChange={(event) => updateEntity({ capabilities: entity.capabilities.map((item, itemIndex) => itemIndex === index ? { ...item, supportedOperations: event.target.value.split(",").map((value) => value.trim()).filter(Boolean) } : item) })} /></label><button className="icon-button" aria-label={`Remove capability ${index + 1}`} onClick={() => updateEntity({ capabilities: entity.capabilities.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>)}</div><div className="initial-state-editor"><h4>Initial state</h4>{Object.entries(entity.initialState).map(([fact, value]) => <label key={fact}><span>{fact}</span><input value={String(value)} onChange={(event) => updateEntity({ initialState: { ...entity.initialState, [fact]: coerceState(event.target.value) } })} /></label>)}</div></div>;
+    // Only rooms of the dwelling: a front door opening onto the office or the supermarket is not
+    // a plan the gate would take, and the list is the place to say so rather than a refusal later.
+    const regionChoices = isFrontDoor
+      ? home.regions.filter((item) => dwellingRegionIds(home).has(item.regionId))
+      : home.regions;
+    return <div className="inspector-section editor-fields"><h3>{isFrontDoor ? "Front door" : "Capability provider"}</h3><label><span>Provider type</span><input value={entity.entityType} onChange={(event) => updateEntity({ entityType: event.target.value })} /></label><label><span>{isFrontDoor ? "Room the door opens into" : "Containing region"}</span><select value={entity.regionId} onChange={(event) => setRegion(event.target.value)}>{regionChoices.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label>{isFrontDoor && <p className="field-note">The ways out of the flat leave from this room: moving the door moves them with it.</p>}<div className="capability-editor"><div><h4>Capabilities</h4><button className="button secondary" onClick={() => updateEntity({ capabilities: [...entity.capabilities, { capability: `capability_${entity.capabilities.length + 1}`, roles: [], supportedOperations: [] }] })}><Plus size={14} /> Add capability</button></div>{entity.capabilities.map((capability, index) => <div className="capability-row" key={`${capability.capability}-${index}`}><label><span>Capability</span><input value={capability.capability} onChange={(event) => updateEntity({ capabilities: entity.capabilities.map((item, itemIndex) => itemIndex === index ? { ...item, capability: event.target.value } : item) })} /></label><label><span>Roles</span><input value={capability.roles.join(", ")} onChange={(event) => updateEntity({ capabilities: entity.capabilities.map((item, itemIndex) => itemIndex === index ? { ...item, roles: event.target.value.split(",").map((value) => value.trim()).filter(Boolean) } : item) })} /></label><label><span>Operations</span><input value={capability.supportedOperations.join(", ")} onChange={(event) => updateEntity({ capabilities: entity.capabilities.map((item, itemIndex) => itemIndex === index ? { ...item, supportedOperations: event.target.value.split(",").map((value) => value.trim()).filter(Boolean) } : item) })} /></label><button className="icon-button" aria-label={`Remove capability ${index + 1}`} onClick={() => updateEntity({ capabilities: entity.capabilities.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={14} /></button></div>)}</div><div className="initial-state-editor"><h4>Initial state</h4>{Object.entries(entity.initialState).map(([fact, value]) => <label key={fact}><span>{fact}</span><input value={String(value)} onChange={(event) => updateEntity({ initialState: { ...entity.initialState, [fact]: coerceState(event.target.value) } })} /></label>)}</div></div>;
   }
   return <div className="inspector-section editor-fields"><h3>{obstacle ? "Obstacle" : "Spatial object"}</h3>{obstacle && <label><span>Containing region</span><select value={obstacle.regionId} onChange={(event) => onHome({ ...home, obstacles: home.obstacles.map((item) => item.obstacleId === selectedId ? { ...item, regionId: event.target.value } : item) })}>{home.regions.map((item) => <option key={item.regionId}>{item.regionId}</option>)}</select></label>}</div>;
 }

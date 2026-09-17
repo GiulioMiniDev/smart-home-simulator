@@ -74,6 +74,7 @@ from smart_home_sim.materialization import (
     materialize_workspace,
 )
 from smart_home_sim.materialization.service import (
+    ENTRANCE_PREFERENCE,
     _companion_seats,
     _CompanionSeat,
     _functional_zones,
@@ -588,6 +589,41 @@ def test_the_way_out_of_the_flat_starts_where_the_front_door_is() -> None:
         assert not any(
             item.buffer(door_point.approach_radius_meters).covers(point) for item in blocking
         )
+
+
+def test_a_flat_whose_only_circulation_is_called_entrance_gets_its_door_there() -> None:
+    """The room an author named after the way in is the way in.
+
+    `ENTRANCE_PREFERENCE` listed hallway, corridor, living room and kitchen, but not `entrance`,
+    while `floorplan._CIRCULATION_ROOMS` did list it. So a flat whose only circulation space was
+    called `entrance` fell through to the living room: the door and all six transit links landed
+    there, the resident walked out through the living room, and the hall she had been given sat on
+    no route at all. Caught on the export of case B, in the run replay.
+
+    The preference list must also stay a subset of the circulation rooms the layout knows, because
+    that disagreement is what the bug was made of.
+    """
+    assert set(ENTRANCE_PREFERENCE) <= floorplan._CIRCULATION_ROOMS
+
+    # The same pair of sources with the hall renamed, which is the only difference that matters:
+    # the flat still has a living room and a kitchen for the door to fall through to.
+    def renamed(name: str) -> str:
+        return (SOURCE / name).read_text(encoding="utf-8").replace("hallway", "entrance")
+
+    scenario_text = renamed("scenario.json")
+    package_text = renamed("personal-process-package.json")
+    scenario = Scenario.model_validate_json(scenario_text)
+    package = PersonalProcessPackage.model_validate_json(package_text)
+    assert "entrance" in {item.location_id for item in scenario.locations}
+
+    home = generate_home(scenario, package, HomeGenerationPolicy()).home
+    assert home is not None
+    door = next(item for item in home.entities if item.entity_id == "entrance_door")
+    assert door.region_id == "entrance"
+    exits = [item for item in home.connections if item.kind is not ConnectionKind.doorway]
+    assert exits, "the flat has no way out at all"
+    for connection in exits:
+        assert connection.region_a_id == "entrance"
 
 
 def test_the_ideal_profile_deploys_no_failures_and_the_realistic_one_does() -> None:

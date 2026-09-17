@@ -132,7 +132,13 @@ def _rectangle(x: float, y: float, width: float, height: float) -> Polygon2D:
     )
 
 
-ENTRANCE_PREFERENCE = ("hallway", "corridor", "living_room", "kitchen")
+# Which room gets the front door, best first. Every name here is a circulation space, and the list
+# must stay a subset of `floorplan._CIRCULATION_ROOMS` — the two disagreed, and `entrance` was
+# missing from this one alone. A flat whose only circulation was called `entrance` therefore fell
+# through to the living room: the door and all six transit links landed there, the resident left
+# the flat by walking through the living room, and the hall she had been given sat on no route at
+# all. `entrance` leads because a room an author named after the way in is the way in.
+ENTRANCE_PREFERENCE = ("entrance", "hallway", "corridor", "living_room", "kitchen")
 
 
 def _entrance_region(local: list[Any], regions: list[HomeRegion]) -> str:

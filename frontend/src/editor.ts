@@ -324,14 +324,35 @@ export function movePlanObject(
     ?? (obstacle ? home.entities.find((item) => `obstacle_${item.entityId}` === obstacle.obstacleId) : undefined);
   const obstacleId = obstacle?.obstacleId ?? (entity ? `obstacle_${entity.entityId}` : undefined);
   if (!obstacleId && !entity) return { home, sensors };
+  const moved = {
+    ...home,
+    obstacles: home.obstacles.map((item) => item.obstacleId === obstacleId
+      ? { ...item, boundary: { vertices: translate(item.boundary.vertices, dx, dy) } }
+      : item),
+    interactionPoints: home.interactionPoints.map((item) => item.interactionPointId === entity?.interactionPointId
+      ? { ...item, position: { x: snap(item.position.x + dx), y: snap(item.position.y + dy) } }
+      : item),
+  };
+  // Dragging the front door drags the way out with it. Every transit leaves from the door's own
+  // portal, so a door moved without them is a flat whose exits start where the door used to be —
+  // and once the drag crosses a wall, the room each transit declares has to follow too.
+  const front = frontDoorOf(home);
+  if (!entity || !front || entity.entityId !== front.entityId) return { home: moved, sensors };
+  const point = moved.interactionPoints.find((item) => item.interactionPointId === front.interactionPointId);
+  if (!point) return { home: moved, sensors };
+  const level = home.regions.find((item) => item.regionId === front.regionId)?.level ?? 0;
+  const landed = regionAt(moved, point.position, level) ?? front.regionId;
   return {
     home: {
-      ...home,
-      obstacles: home.obstacles.map((item) => item.obstacleId === obstacleId
-        ? { ...item, boundary: { vertices: translate(item.boundary.vertices, dx, dy) } }
+      ...moved,
+      entities: moved.entities.map((item) => item.entityId === front.entityId
+        ? { ...item, regionId: landed }
         : item),
-      interactionPoints: home.interactionPoints.map((item) => item.interactionPointId === entity?.interactionPointId
-        ? { ...item, position: { x: snap(item.position.x + dx), y: snap(item.position.y + dy) } }
+      interactionPoints: moved.interactionPoints.map((item) => item.interactionPointId === front.interactionPointId
+        ? { ...item, regionId: landed }
+        : item),
+      connections: moved.connections.map((item) => item.kind === "transit" && item.regionAId === front.regionId
+        ? { ...item, regionAId: landed, portalA: point.position }
         : item),
     },
     sensors,
@@ -808,17 +829,79 @@ export function cutDoorways(walls: WallPiece[], doors: DoorGlyph[]): WallPiece[]
  * carry `leave_home` or `enter_home`. Its interaction point is where the resident stands to use it,
  * so the opening is drawn on the exterior wall of its room nearest that point, swinging out.
  */
-export function planFrontDoor(
-  home: HomeModel,
-  visibleRegionIds: Set<string>,
-): DoorGlyph | undefined {
-  // Tolerant of an entity with no capabilities at all: the scene draws whatever home it is handed,
-  // and a model that is missing them is one to render plainly rather than one to crash on.
-  const entrance = home.entities.find((entity) =>
+/**
+ * The way out of the flat: the one entity that answers to `leave_home` and `enter_home`.
+ *
+ * Found by capability rather than by id, because `entrance_door` is what the generator happens to
+ * call it and a home edited by hand may carry another name. Tolerant of an entity with no
+ * capabilities at all: the scene draws whatever home it is handed.
+ */
+export function frontDoorOf(home: HomeModel): HomeEntity | undefined {
+  return home.entities.find((entity) =>
     (entity.capabilities ?? []).some((capability) =>
       (capability.supportedOperations ?? []).some((item) => item === "leave_home" || item === "enter_home"),
     ),
   );
+}
+
+/**
+ * Move the front door into another room, taking every way out of the flat with it.
+ *
+ * The door and the transit links to office, shops and the street are one object in three places:
+ * the entity's region, the point somebody stands on to open it, and the portal each transit leaves
+ * from. The generator writes all three together; an edit that changed only the first left the
+ * resident walking out of a room with no door in it — which is exactly the defect this editor is
+ * here to repair, so it must not be able to recreate it.
+ *
+ * The point lands in the middle of the target room and is then nudged off anything it would stand
+ * on, the same treatment a piece of furniture gets. `planFrontDoor` draws the leaf on the nearest
+ * exterior wall, so the drawing follows without being told.
+ */
+export function setFrontDoorRegion(home: HomeModel, regionId: string): HomeModel {
+  const door = frontDoorOf(home);
+  const region = home.regions.find((item) => item.regionId === regionId);
+  if (!door || !region || door.regionId === regionId) return home;
+  const position = freeSpotIn(home, region.regionId);
+  return {
+    ...home,
+    entities: home.entities.map((item) => item.entityId === door.entityId ? { ...item, regionId } : item),
+    interactionPoints: home.interactionPoints.map((item) =>
+      item.interactionPointId === door.interactionPointId ? { ...item, regionId, position } : item),
+    connections: home.connections.map((item) => item.kind === "transit" && item.regionAId === door.regionId
+      ? { ...item, regionAId: regionId, portalA: position }
+      : item),
+  };
+}
+
+/** The middle of a room, pushed off whatever furniture is standing there. */
+function freeSpotIn(home: HomeModel, regionId: string): Point {
+  const region = home.regions.find((item) => item.regionId === regionId);
+  if (!region) return { x: 0, y: 0 };
+  const room = boxOf(region.boundary.vertices);
+  const blocking = home.obstacles
+    .filter((item) => item.regionId === regionId)
+    .map((item) => boxOf(item.boundary.vertices));
+  const clear = (point: Point) => !blocking.some((box) =>
+    point.x >= box.minX - 0.3 && point.x <= box.maxX + 0.3
+    && point.y >= box.minY - 0.3 && point.y <= box.maxY + 0.3);
+  const candidates: Point[] = [];
+  for (let across = 0.25; across <= 0.75; across += 0.25) {
+    for (let along = 0.25; along <= 0.75; along += 0.25) {
+      candidates.push({
+        x: snap(room.minX + (room.maxX - room.minX) * across),
+        y: snap(room.minY + (room.maxY - room.minY) * along),
+      });
+    }
+  }
+  const centre = { x: snap((room.minX + room.maxX) / 2), y: snap((room.minY + room.maxY) / 2) };
+  return candidates.find(clear) ?? centre;
+}
+
+export function planFrontDoor(
+  home: HomeModel,
+  visibleRegionIds: Set<string>,
+): DoorGlyph | undefined {
+  const entrance = frontDoorOf(home);
   if (!entrance || !visibleRegionIds.has(entrance.regionId)) return undefined;
   const point = home.interactionPoints.find(
     (item) => item.interactionPointId === entrance.interactionPointId,
@@ -1148,6 +1231,20 @@ export function planProblems(home: HomeModel): PlanProblem[] {
     if (home.regions.length > 1 && !joined.has(region.regionId)) {
       problems.push({ objectId: region.regionId, message: "has no way in or out" });
     }
+  }
+  // The way out of the flat has to start where the front door is. The generator writes the door
+  // and the transit links together, and a hand edit that moves one without the other leaves the
+  // resident walking out through a room with no door in it — the very defect this editor is here
+  // to repair, so it says so while the door is still in your hand.
+  const front = frontDoorOf(home);
+  const stray = front
+    ? home.connections.find((item) => item.kind === "transit" && item.regionAId !== front.regionId)
+    : undefined;
+  if (front && stray) {
+    problems.push({
+      objectId: front.entityId,
+      message: `is in ${words(front.regionId)}, but the way out of the flat starts in ${words(stray.regionAId)}`,
+    });
   }
   // One line per object, so a piece with three faults does not fill the panel with three rows.
   const seen = new Set<string>();
