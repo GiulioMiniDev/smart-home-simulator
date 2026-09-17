@@ -31,6 +31,7 @@ from smart_home_sim.domain.application import (
     ExportRequest,
     JobProgress,
     JobStatus,
+    ReplayEventKind,
 )
 from smart_home_sim.domain.environment import Point2D
 from smart_home_sim.domain.execution import (
@@ -311,7 +312,7 @@ def test_indexed_frame_reconstruction_matches_the_trace_fold_for_random_seeks(
     index = replay._index(run_id)
     instants = [index.trace_start, index.trace_end]
     rng = random.Random("replay-index-equivalence-v1")
-    seekable = index.event_times + index.observation_times
+    seekable = index.event_times + index.observations.get().times
     instants.extend(seekable[rng.randrange(len(seekable))] for _ in range(48))
     rng.shuffle(instants)
 
@@ -579,6 +580,50 @@ def test_observable_replay_never_reads_the_oracle_mapping(
     assert any(item.details.get("oracleCause") for item in oracle_window.items)
 
 
+def test_the_scene_reads_neither_the_sensor_log_nor_the_oracle(
+    completed_workspace: tuple[WorkspaceService, str],
+) -> None:
+    """The scene draws residents and asks for no reading, so opening it reads neither.
+
+    Together they are most of a long run's size, and reading them made opening its replay take
+    minutes.
+    """
+    workspace, run_id = completed_workspace
+    replay = ReplayService(workspace)
+    index = replay._index(run_id)
+    scene_kinds: set[ReplayEventKind] = {"activity", "action", "movement", "state_transition"}
+
+    frame = replay.frame(run_id, at=index.trace_start, include_oracle=True, include_sensors=False)
+    window = replay.events(run_id, kinds=scene_kinds, include_oracle=True, limit=5_000)
+
+    assert frame.sensor_states == []
+    assert frame.residents
+    assert window.items
+    assert not index.observations.loaded
+    assert not index.oracle.loaded
+
+    with_sensors = replay.frame(run_id, at=index.trace_end, include_oracle=True)
+
+    assert with_sensors.sensor_states
+    assert index.observations.loaded
+    assert index.oracle.loaded
+
+
+def test_warming_a_run_builds_the_index_a_request_then_finds(tmp_path: Path) -> None:
+    workspace, run_id = _completed_workspace(tmp_path / "workspace")
+    replay = ReplayService(workspace)
+
+    replay.warm(run_id)
+    pending = replay._warming.get(run_id)
+    if pending is not None:
+        pending.result(timeout=120)
+    replay.warm(run_id)
+
+    assert run_id in replay._indices
+    assert replay._warming == {}
+    replay.shutdown()
+
+
 def test_replay_windows_project_observations_only_within_their_bound(
     completed_workspace: tuple[WorkspaceService, str],
 ) -> None:
@@ -696,7 +741,7 @@ def test_replay_frame_folds_resources_completed_intervals_and_sensor_change_boun
         ),
         key=lambda item: (item.at, item.resource_event_id),
     )[-1]
-    observation = index.observations.records[0]
+    observation = index.observations.get().log.records[0]
     exact_boundary = replay.frame(run_id, at=observation.observed_at + timedelta(milliseconds=500))
     at_observation = replay.frame(run_id, at=observation.observed_at)
 

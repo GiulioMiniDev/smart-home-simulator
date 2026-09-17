@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import zipfile
 from datetime import UTC, datetime
@@ -129,6 +130,20 @@ def test_authoring_resident_replacement_updates_revives_and_removes(tmp_path: Pa
     assert [(item.source_resident_id, item.display_name) for item in revived] == [
         ("resident_a", "Revived A")
     ]
+
+
+def test_a_verified_artifact_rewritten_in_place_is_still_refused(tmp_path: Path) -> None:
+    """A verified digest is remembered, but not past a rewrite of the same length."""
+    workspace = WorkspaceService.create(tmp_path / "workspace", "Rewrite")
+    artifact = workspace.put_object(b"original", role="fixture", suffix=".bin")
+    path = workspace.artifact_path(artifact.artifact_id)
+    before = path.stat().st_mtime_ns
+
+    path.write_bytes(b"tampered")
+    os.utime(path, ns=(before + 1_000_000, before + 1_000_000))
+
+    with pytest.raises(WorkspaceError, match="missing or corrupt"):
+        workspace.artifact_path(artifact.artifact_id)
 
 
 def test_workspace_rejects_unsafe_or_corrupt_artifacts_and_recovers_jobs(

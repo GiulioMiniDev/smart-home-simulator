@@ -16,6 +16,11 @@ const DAY_LIMIT = 5_000;
  * same thing the person on screen is already saying, and the dataset is where they belong.
  */
 const SCENE_KINDS = "activity,action,movement,state_transition";
+/**
+ * The same holds for a frame: the last reading of every sensor is never drawn, and asking for it
+ * makes the server read the sensor log and the oracle mapping, a minute of a long run's opening.
+ */
+const FRAME_WITHOUT_SENSORS = "include_oracle=true&include_sensors=false";
 
 /** Real time first. Anything faster is for crossing a quiet stretch, not for reading one. */
 export const SCENE_SPEEDS = [1, 2, 5, 15, 60, 300];
@@ -162,7 +167,7 @@ export function useReplayScene(runId: string, home: HomeModel | undefined): Repl
             return;
           }
         }
-        const anchor = await api<ReplayFrame>(`/runs/${encodeURIComponent(runId)}/replay/frame?at=${encodeURIComponent(new Date(0).toISOString())}&include_oracle=true`, { signal: controller.signal });
+        const anchor = await api<ReplayFrame>(`/runs/${encodeURIComponent(runId)}/replay/frame?at=${encodeURIComponent(new Date(0).toISOString())}&${FRAME_WITHOUT_SENSORS}`, { signal: controller.signal });
         if (controller.signal.aborted) return;
         const start = Date.parse(anchor.traceStart);
         const end = Date.parse(anchor.traceEnd);
@@ -203,7 +208,7 @@ export function useReplayScene(runId: string, home: HomeModel | undefined): Repl
     });
     void Promise.all([
       api<ReplayEventWindow>(`/runs/${encodeURIComponent(runId)}/replay/events?${parameters.toString()}`, { signal: controller.signal }),
-      api<ReplayFrame>(`/runs/${encodeURIComponent(runId)}/replay/frame?at=${encodeURIComponent(new Date(dayStartMs).toISOString())}&include_oracle=true`, { signal: controller.signal }),
+      api<ReplayFrame>(`/runs/${encodeURIComponent(runId)}/replay/frame?at=${encodeURIComponent(new Date(dayStartMs).toISOString())}&${FRAME_WITHOUT_SENSORS}`, { signal: controller.signal }),
     ])
       .then(([window, anchor]) => {
         if (controller.signal.aborted) return;

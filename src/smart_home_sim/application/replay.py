@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import logging
+import threading
 from bisect import bisect_left, bisect_right
-from collections.abc import Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
@@ -46,6 +50,8 @@ from smart_home_sim.domain.sensors import (
 )
 from smart_home_sim.profiling import DEFAULT_SLOT_MINUTES, profile_from_trace
 from smart_home_sim.simulation import replay_files
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=8)
@@ -126,15 +132,18 @@ class _OracleSource:
     it may see, and keeps its link lookup built once instead of once per frame.
     """
 
-    def __init__(self, path: str | None) -> None:
-        self._path = path
+    def __init__(self, resolve: Callable[[], Path] | None) -> None:
+        # The path is resolved, and so the file hashed, only when the mapping is first read.
+        self._resolve = resolve
         self._mapping: OracleMapping | None = None
         self._causes: dict[str, Any] | None = None
         self._read = False
+        # Two requests arriving together must not read half a gigabyte twice.
+        self._lock = threading.RLock()
 
     @property
     def available(self) -> bool:
-        return self._path is not None
+        return self._resolve is not None
 
     @property
     def loaded(self) -> bool:
@@ -142,25 +151,83 @@ class _OracleSource:
         return self._read
 
     def mapping(self) -> OracleMapping | None:
-        if not self._read:
-            self._mapping = (
-                OracleMapping.model_validate_json(
-                    Path(self._path).read_text(encoding="utf-8"),
-                    context={TRUSTED_ARTIFACT_DIGEST: True},
+        with self._lock:
+            if not self._read:
+                self._mapping = (
+                    OracleMapping.model_validate_json(
+                        self._resolve().read_text(encoding="utf-8"),
+                        context={TRUSTED_ARTIFACT_DIGEST: True},
+                    )
+                    if self._resolve is not None
+                    else None
                 )
-                if self._path is not None
-                else None
-            )
-            self._read = True
-        return self._mapping
+                self._read = True
+            return self._mapping
 
     def causes(self) -> dict[str, Any]:
-        if self._causes is None:
-            mapping = self.mapping()
-            self._causes = (
-                {item.observation_id: item for item in mapping.links} if mapping is not None else {}
-            )
-        return self._causes
+        with self._lock:
+            if self._causes is None:
+                mapping = self.mapping()
+                self._causes = (
+                    {item.observation_id: item for item in mapping.links}
+                    if mapping is not None
+                    else {}
+                )
+            return self._causes
+
+
+@dataclass(frozen=True)
+class _Observations:
+    log: ObservableSensorLog
+    # Ordered by instant and identifier, the order they would hold among the traced events.
+    records: tuple[Any, ...]
+    times: tuple[datetime, ...]
+    sensor_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...]
+
+
+class _ObservationSource:
+    """The observable sensor log, read only once a request asks for a reading.
+
+    The scene draws people, not sensors, and never asks for one. For a long run the log is
+    several times the size of the trace, and reading it up front made opening a replay wait a
+    minute for evidence the first frame did not need.
+    """
+
+    def __init__(self, resolve: Callable[[], Path]) -> None:
+        self._resolve = resolve
+        self._observations: _Observations | None = None
+        self._lock = threading.Lock()
+
+    @property
+    def loaded(self) -> bool:
+        return self._observations is not None
+
+    def get(self) -> _Observations:
+        with self._lock:
+            if self._observations is None:
+                log = ObservableSensorLog.model_validate_json(
+                    self._resolve().read_text(encoding="utf-8"),
+                    context={TRUSTED_ARTIFACT_DIGEST: True},
+                )
+                by_sensor: dict[str, list[Any]] = {}
+                for record in log.records:
+                    by_sensor.setdefault(record.sensor_id, []).append(record)
+                # Observation events carry a constant kind, so ordering them by instant and
+                # identifier reproduces the order they would hold inside one globally sorted
+                # event sequence.
+                records = tuple(
+                    sorted(log.records, key=lambda item: (item.observed_at, item.observation_id))
+                )
+                self._observations = _Observations(
+                    log=log,
+                    records=records,
+                    times=tuple(item.observed_at for item in records),
+                    sensor_timelines=tuple(
+                        (sensor_id, tuple(item.observed_at for item in items), tuple(items))
+                        for sensor_id, items in sorted(by_sensor.items())
+                    ),
+                )
+            return self._observations
 
 
 @dataclass(frozen=True)
@@ -169,11 +236,8 @@ class _ReplayIndex:
     trace_end: datetime
     events: tuple[ReplayEventView, ...]
     event_times: tuple[datetime, ...]
-    observation_records: tuple[Any, ...]
-    observation_times: tuple[datetime, ...]
     trace: ExecutionTrace
-    observations: ObservableSensorLog
-    sensor_timelines: tuple[tuple[str, tuple[datetime, ...], tuple[Any, ...]], ...]
+    observations: _ObservationSource
     frame_sources: _FrameSources
     oracle: _OracleSource
     bundle: SimulationBundle | None
@@ -515,24 +579,15 @@ def _merged_window(
 
 def _replay_index(
     trace_path: str,
-    trace_digest: str,
-    observations_path: str,
-    observations_digest: str,
-    oracle_path: str | None,
-    oracle_digest: str | None,
+    observations: _ObservationSource,
+    oracle: _OracleSource,
     bundle_path: str | None,
-    bundle_digest: str | None,
     scenario_path: str | None,
-    scenario_digest: str | None,
 ) -> _ReplayIndex:
     # An index is owned by one ReplayService instance.  Do not reuse it across reopened
     # workspaces: artifact paths can be regenerated in place and a module-level index would
     # retain an unrelated workspace's parsed run for the process lifetime.
-    del trace_digest, observations_digest, oracle_digest, bundle_digest, scenario_digest
     trace = ExecutionTrace.model_validate_json(Path(trace_path).read_text(encoding="utf-8"))
-    observations = ObservableSensorLog.model_validate_json(
-        Path(observations_path).read_text(encoding="utf-8")
-    )
     bundle = (
         SimulationBundle.model_validate_json(Path(bundle_path).read_text(encoding="utf-8"))
         if bundle_path
@@ -551,31 +606,16 @@ def _replay_index(
         if scenario is not None
         else None,
     )
-    sensor_records: dict[str, list[Any]] = {}
-    for record in observations.records:
-        sensor_records.setdefault(record.sensor_id, []).append(record)
-    sensor_timelines = tuple(
-        (sensor_id, tuple(item.observed_at for item in records), tuple(records))
-        for sensor_id, records in sorted(sensor_records.items())
-    )
-    # Observation events carry a constant kind, so ordering them by instant and identifier
-    # reproduces the order they would hold inside one globally sorted event sequence.
-    observation_records = tuple(
-        sorted(observations.records, key=lambda item: (item.observed_at, item.observation_id))
-    )
     frame_sources = _frame_sources(trace, bundle)
     return _ReplayIndex(
         trace_start=trace.started_at,
         trace_end=trace.ended_at,
         events=events,
         event_times=tuple(item.at for item in events),
-        observation_records=observation_records,
-        observation_times=tuple(item.observed_at for item in observation_records),
         trace=trace,
         observations=observations,
-        sensor_timelines=sensor_timelines,
         frame_sources=frame_sources,
-        oracle=_OracleSource(oracle_path),
+        oracle=oracle,
         bundle=bundle,
     )
 
@@ -1344,12 +1384,22 @@ def _matches_final_state(frame: ReplayFrame, trace: ExecutionTrace) -> bool:
     )
 
 
+# A year's index holds gigabytes of parsed evidence, so only the runs looked at last are kept.
+_KEPT_INDICES = 2
+
+
 class ReplayService:
     def __init__(self, workspace: WorkspaceService) -> None:
         self.workspace = workspace
         # Completed run artifacts are immutable. Cached indexes avoid rehashing large traces
         # for every scrubber seek while preserving a fresh index per service instance.
-        self._indices: dict[str, _ReplayIndex] = {}
+        self._indices: OrderedDict[str, _ReplayIndex] = OrderedDict()
+        self._building: dict[str, threading.Lock] = {}
+        self._indices_lock = threading.Lock()
+        # One run is prepared at a time, so opening several in a row does not parse them all
+        # at once.
+        self._warmer: ThreadPoolExecutor | None = None
+        self._warming: dict[str, Future[None]] = {}
 
     def _artifact(self, run_id: str, role: str) -> tuple[Path, str]:
         artifacts = self.workspace.run_artifacts(run_id)
@@ -1363,20 +1413,72 @@ class ReplayService:
             raise WorkspaceError(f"run '{run_id}' has no '{role}' artifact")
         return self.workspace.artifact_path(artifact.artifact_id), artifact.sha256
 
+    def warm(self, run_id: str) -> None:
+        """Start building a run's index in the background, so opening its replay does not wait.
+
+        Anything that goes wrong is left for the request that needs the index to report.
+        """
+        with self._indices_lock:
+            if run_id in self._indices:
+                return
+            pending = self._warming.get(run_id)
+            if pending is not None and not pending.done():
+                return
+            if self._warmer is None:
+                self._warmer = ThreadPoolExecutor(max_workers=1, thread_name_prefix="replay-warm")
+            self._warming[run_id] = self._warmer.submit(self._warm, run_id)
+
+    def _warm(self, run_id: str) -> None:
+        try:
+            self._index(run_id)
+        except Exception:  # a background guess must never take the server down
+            _LOGGER.debug("could not prepare the replay of %s", run_id, exc_info=True)
+        finally:
+            with self._indices_lock:
+                self._warming.pop(run_id, None)
+
+    def shutdown(self) -> None:
+        if self._warmer is not None:
+            self._warmer.shutdown(wait=False, cancel_futures=True)
+
     def _index(self, run_id: str) -> _ReplayIndex:
-        cached = self._indices.get(run_id)
-        if cached is not None:
-            return cached
-        trace_path, trace_digest = self._artifact(run_id, "execution_trace")
-        observations_path, observations_digest = self._artifact(run_id, "observable_sensor_log")
+        with self._indices_lock:
+            cached = self._indices.get(run_id)
+            if cached is not None:
+                self._indices.move_to_end(run_id)
+                return cached
+            building = self._building.setdefault(run_id, threading.Lock())
+        # A request arriving while the warmer is halfway through the same run waits for it
+        # rather than parsing the trace a second time.
+        with building:
+            with self._indices_lock:
+                cached = self._indices.get(run_id)
+                if cached is not None:
+                    self._indices.move_to_end(run_id)
+                    return cached
+            index = self._build_index(run_id)
+            with self._indices_lock:
+                self._indices[run_id] = index
+                while len(self._indices) > _KEPT_INDICES:
+                    self._indices.popitem(last=False)
+                self._building.pop(run_id, None)
+            return index
+
+    def _build_index(self, run_id: str) -> _ReplayIndex:
+        trace_path, _ = self._artifact(run_id, "execution_trace")
         artifacts = self.workspace.run_artifacts(run_id)
+        if "observable_sensor_log" not in artifacts:
+            self._artifact(run_id, "observable_sensor_log")  # raises the usual refusal
         oracle_artifact = artifacts.get("oracle_mapping")
         bundle_artifact = artifacts.get("simulation_bundle")
         scenario_artifact = artifacts.get("scenario")
-        oracle_path = (
-            str(self.workspace.artifact_path(oracle_artifact.artifact_id))
+        observations = _ObservationSource(
+            lambda: self._artifact(run_id, "observable_sensor_log")[0]
+        )
+        oracle = (
+            _OracleSource(lambda: self.workspace.artifact_path(oracle_artifact.artifact_id))
             if oracle_artifact is not None
-            else None
+            else _OracleSource(None)
         )
         bundle_path = (
             str(self.workspace.artifact_path(bundle_artifact.artifact_id))
@@ -1388,20 +1490,7 @@ class ReplayService:
             if scenario_artifact is not None
             else None
         )
-        index = _replay_index(
-            str(trace_path),
-            trace_digest,
-            str(observations_path),
-            observations_digest,
-            oracle_path,
-            oracle_artifact.sha256 if oracle_artifact is not None else None,
-            bundle_path,
-            bundle_artifact.sha256 if bundle_artifact is not None else None,
-            scenario_path,
-            scenario_artifact.sha256 if scenario_artifact is not None else None,
-        )
-        self._indices[run_id] = index
-        return index
+        return _replay_index(str(trace_path), observations, oracle, bundle_path, scenario_path)
 
     def events(
         self,
@@ -1435,9 +1524,10 @@ class ReplayService:
         # family out before a single record is read.
         observed: Sequence[Any] = ()
         if (kinds is None or "observation" in kinds) and statuses is None and actor_id is None:
-            first = bisect_left(index.observation_times, window_start)
-            last = bisect_right(index.observation_times, window_end)
-            window = index.observation_records[first:last]
+            readings = index.observations.get()
+            first = bisect_left(readings.times, window_start)
+            last = bisect_right(readings.times, window_end)
+            window = readings.records[first:last]
             observed = (
                 window
                 if sensor_id is None
@@ -1446,7 +1536,12 @@ class ReplayService:
         bounded = max(1, min(limit, 5_000))
         visible = _merged_window(traced, observed, bounded)
         if include_oracle:
-            oracle_links = index.oracle.causes() if index.oracle.available else None
+            # Only an observation carries a cause, so a window without one never reads the oracle.
+            oracle_links = (
+                index.oracle.causes()
+                if index.oracle.available and any(item.kind == "observation" for item in visible)
+                else None
+            )
             visible = [_with_oracle(item, oracle_links) for item in visible]
         else:
             visible = [_without_oracle(item) for item in visible]
@@ -1465,7 +1560,13 @@ class ReplayService:
         *,
         at: datetime,
         include_oracle: bool = False,
+        include_sensors: bool = True,
     ) -> ReplayFrame:
+        """The run's state at one instant.
+
+        ``include_sensors=False`` leaves out the last reading of every sensor, and with it the
+        sensor log and the oracle mapping, the largest artifacts a run owns.
+        """
         index = self._index(run_id)
         instant = min(max(at, index.trace_start), index.trace_end)
         residents, active_ids = _resident_frames(
@@ -1475,14 +1576,17 @@ class ReplayService:
             index.trace, index.bundle, instant, index.frame_sources
         )
         resources = _resource_state_at(index.trace, index.bundle, instant, index.frame_sources)
-        sensors = _sensor_state_at(
-            index.observations,
-            None,
-            instant,
-            include_oracle,
-            index.sensor_timelines,
-            causes=index.oracle.causes() if include_oracle and index.oracle.available else None,
-        )
+        sensors = []
+        if include_sensors:
+            readings = index.observations.get()
+            sensors = _sensor_state_at(
+                readings.log,
+                None,
+                instant,
+                include_oracle,
+                readings.sensor_timelines,
+                causes=index.oracle.causes() if include_oracle and index.oracle.available else None,
+            )
         frame = ReplayFrame(
             run_id=run_id,
             at=instant,

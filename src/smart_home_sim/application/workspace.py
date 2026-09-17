@@ -72,6 +72,10 @@ class WorkspaceService:
         # What the last startup repair had to change, so the application can say so instead of
         # quietly rewriting the catalogue behind the researcher's back.
         self.last_repair: MaintenanceSummary | None = None
+        # Artifacts are immutable, and hashing a year of trace and sensor evidence costs seconds
+        # every time a view asks for its path. A file still the size and age it had when its
+        # digest last matched is taken to still match; anything that rewrote it moved one of them.
+        self._verified: dict[str, tuple[Path, int, int, str]] = {}
 
     def _ensure_layout(self) -> None:
         """Create the workspace's content directories if they are absent.
@@ -554,10 +558,9 @@ class WorkspaceService:
             ).fetchone()
         if row is None:
             raise WorkspaceError(f"unknown artifact '{artifact_id}'")
-        path = self._safe_path(row["relative_path"])
-        if not path.is_file() or _sha256(path) != row["sha256"]:
-            raise WorkspaceError(f"artifact '{artifact_id}' is missing or corrupt")
-        return path.read_bytes()
+        return self._verified_artifact(
+            artifact_id, row["relative_path"], row["sha256"]
+        ).read_bytes()
 
     def artifact_path(self, artifact_id: str) -> Path:
         with self.connection() as connection:
@@ -566,9 +569,24 @@ class WorkspaceService:
             ).fetchone()
         if row is None:
             raise WorkspaceError(f"unknown artifact '{artifact_id}'")
-        path = self._safe_path(row["relative_path"])
-        if not path.is_file() or _sha256(path) != row["sha256"]:
+        return self._verified_artifact(artifact_id, row["relative_path"], row["sha256"])
+
+    def _verified_artifact(self, artifact_id: str, relative_path: str, digest: str) -> Path:
+        path = self._safe_path(relative_path)
+        try:
+            stat = path.stat()
+        except OSError:
+            stat = None
+        if stat is None or not path.is_file():
+            self._verified.pop(artifact_id, None)
             raise WorkspaceError(f"artifact '{artifact_id}' is missing or corrupt")
+        verified = self._verified.get(artifact_id)
+        if verified == (path, stat.st_size, stat.st_mtime_ns, digest):
+            return path
+        if _sha256(path) != digest:
+            self._verified.pop(artifact_id, None)
+            raise WorkspaceError(f"artifact '{artifact_id}' is missing or corrupt")
+        self._verified[artifact_id] = (path, stat.st_size, stat.st_mtime_ns, digest)
         return path
 
     def create_home(self, name: str, description: str = "") -> HomeSummary:

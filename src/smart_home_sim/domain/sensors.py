@@ -358,9 +358,14 @@ class ObservableSensorLog(ContractModel):
     semantic_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
-    def check_records(self) -> ObservableSensorLog:
+    def check_records(self, info: ValidationInfo) -> ObservableSensorLog:
         if self.started_at > self.ended_at:
             raise ValueError("sensor log start must not follow its end")
+        # Every check below walks the whole log, and the digest re-serializes each record: for a
+        # year of coverage that is a million records and most of the cost of opening a replay.
+        # Bytes the workspace has just authenticated by recorded digest passed them when written.
+        if info.context is not None and info.context.get(TRUSTED_ARTIFACT_DIGEST):
+            return self
         if any(record.observed_at < self.started_at for record in self.records):
             raise ValueError("sensor records must not precede startedAt")
         identifiers = [item.observation_id for item in self.records]

@@ -309,7 +309,21 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         _quieten_client_disconnects(asyncio.get_running_loop())
+        # The run finished last is the one most likely to be opened next, and its replay takes
+        # longer to read than anyone should wait for after clicking.
+        latest = next(
+            (
+                item
+                for item in workspace.list_jobs(limit=20)
+                if item.status == JobStatus.completed
+                and "execution_trace" in workspace.run_artifacts(item.job_id)
+            ),
+            None,
+        )
+        if latest is not None:
+            replay.warm(latest.job_id)
         yield
+        replay.shutdown()
         jobs.shutdown()
 
     app = FastAPI(
@@ -887,15 +901,20 @@ def create_app(
 
     @app.get("/api/jobs/{job_id}", dependencies=[secured])
     def job_detail(job_id: str) -> dict[str, Any]:
+        job = workspace.get_job(job_id)
+        artifacts = workspace.run_artifacts(job_id)
+        # Opening a run is the moment before opening its replay, so its index starts now.
+        if job.status == JobStatus.completed and "execution_trace" in artifacts:
+            replay.warm(job_id)
         return {
-            "job": workspace.get_job(job_id).model_dump(mode="json", by_alias=True),
+            "job": job.model_dump(mode="json", by_alias=True),
             "events": [
                 item.model_dump(mode="json", by_alias=True)
                 for item in workspace.list_events(job_id)
             ],
             "artifacts": {
                 role: item.model_dump(mode="json", by_alias=True)
-                for role, item in workspace.run_artifacts(job_id).items()
+                for role, item in artifacts.items()
             },
         }
 
@@ -1075,8 +1094,11 @@ def create_app(
         run_id: str,
         at: Annotated[AwareDatetime, Query(strict=False)],
         include_oracle: bool = False,
+        include_sensors: bool = True,
     ) -> dict[str, Any]:
-        frame = replay.frame(run_id, at=at, include_oracle=include_oracle)
+        frame = replay.frame(
+            run_id, at=at, include_oracle=include_oracle, include_sensors=include_sensors
+        )
         if include_oracle:
             return frame.model_dump(mode="json", by_alias=True)
         return ObservableReplayFrame.from_frame(frame).model_dump(mode="json", by_alias=True)
