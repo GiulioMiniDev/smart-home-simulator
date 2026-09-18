@@ -272,9 +272,25 @@ ERRAND_RETRY_SECONDS = 5
 # while Paolo slept, she stood in the kitchen until 10:04, and the day after began eleven hours
 # late — her next two shifts started four hours behind. Of the 93 shared activities that month, 19
 # waited past a quarter of an hour after the actor was free, 9 past half an hour and 2 past the
-# hour, and those two were the frozen ones. Past this an optional one is given up and a mandatory
-# one goes ahead with whoever came.
+# hour, and those two were the frozen ones. Past this the activity goes ahead with whoever came.
+#
+# The hour is now only for the one wait that is worth it: the other one is cooking, and the meal
+# being made is what is waited for. Everything else is decided by what the other one is doing —
+# see `SHARED_WAIT_SHORT_SECONDS` and `_CALLABLE_CATEGORIES`.
 SHARED_WAIT_LIMIT_SECONDS = 60 * 60
+# How long an actor waits for somebody busy with something that cannot be put down — at the desk,
+# in the shower, asleep, out. A quarter of an hour, and never past her own next obligation: on the
+# Moretti quarter Chiara stood an hour at a time waiting for Luca to come to lunch, three times
+# gave the lunch up altogether, and once the waits carried her night shift two hours late. A
+# person waits a little, then eats on her own.
+SHARED_WAIT_SHORT_SECONDS = 15 * 60
+# What somebody is called away from for a shared activity, and comes back to afterwards: a book,
+# the television, a phone call. Of the Moretti quarter's 22 waits past a quarter of an hour, ten
+# were for somebody reading or on the phone, who would have put it down for lunch. The names are
+# the vocabulary pack's `IntentCategory`, not the activity catalog's.
+_CALLABLE_CATEGORIES = frozenset({"leisure", "social"})
+# What is waited for to the end instead: the other one is making the meal, or a drink.
+_WAIT_FOR_CATEGORIES = frozenset({"cooking"})
 # How long a resident stands at a refrigerator somebody else has open before she reaches past
 # them. Nothing in the plan serialises opening a door: the compiler places activities against the
 # resources they declare, and a breakfast declares the stove, not the refrigerator it takes the
@@ -406,6 +422,14 @@ def _gesture_table() -> dict[str, float]:
     from smart_home_sim.vocabulary.active import active_pack
 
     return views.gesture_seconds_table(active_pack())
+
+
+def _intent_category_table() -> dict[str, str]:
+    """What kind of activity each intent is, from the active vocabulary pack."""
+    from smart_home_sim.vocabulary import views
+    from smart_home_sim.vocabulary.active import active_pack
+
+    return views.intent_categories(active_pack())
 
 
 class SimulationFailure(RuntimeError):
@@ -1218,6 +1242,15 @@ class SimulationEngine:
         # is known: an empty stretch is only empty if nothing is coming, and how long it is decides
         # whether leaving the room is worth the walk.
         self.commitments_by_actor: dict[str, list[int]] = {}
+        # The same, for the mandatory ones only: what a resident may not be late for. Waiting for
+        # somebody else stops there. See `SHARED_WAIT_SHORT_SECONDS`.
+        self.obligations_by_actor: dict[str, list[int]] = {}
+        # What kind of activity each intent is. See `_CALLABLE_CATEGORIES`.
+        self.intent_categories = _intent_category_table()
+        # What each resident is doing right now, innermost last: the block, and the errand that has
+        # put it down if there is one. Hosts alone do not say it — a cup of coffee is an errand, and
+        # somebody making one read as doing nothing, and was not waited for.
+        self.doing: defaultdict[str, list[CanonicalActivity]] = defaultdict(list)
         # Which away activity each away activity hands its resident on to, without her coming home
         # in between. Filled in `run`. See `OUTING_CONTINUATION_GAP_SECONDS`.
         self.outing_continuations: dict[str, str] = {}
@@ -2076,6 +2109,60 @@ class SimulationEngine:
         index = bisect.bisect_right(starts, after_us)
         return starts[index] if index < len(starts) else None
 
+    def _next_obligation(self, actor_id: str, after_us: int) -> int | None:
+        """When this resident is next due at something mandatory, or None."""
+        starts = self.obligations_by_actor.get(actor_id, [])
+        index = bisect.bisect_right(starts, after_us)
+        return starts[index] if index < len(starts) else None
+
+    def _callable_partner(self, resident_id: str, activity: CanonicalActivity) -> _Host | None:
+        """What a resident a shared activity wants can be called away from, right now.
+
+        Somebody reading or on the phone puts it down to come to lunch, and picks it up again after;
+        somebody at the desk, in the shower or asleep does not. The same conditions as an errand's
+        `_find_host`, for the same reasons — nothing mid-stride, nothing holding an object the
+        shared activity needs, no door in hand — plus what kind of thing the activity is.
+        """
+        partner = self.state.residents[resident_id]
+        if partner.facts.get("at_home") is False or self._is_outside(partner.region_id):
+            return None
+        host = self.hosts.get(resident_id)
+        if host is None or host.activity.participant_ids:
+            return None
+        # Only the block itself, not an errand on top of it: that is being done, not put down.
+        doing = self.doing.get(resident_id)
+        if not doing or doing[-1] is not host.activity:
+            return None
+        if self.intent_categories.get(host.activity.intent) not in _CALLABLE_CATEGORIES:
+            return None
+        needs = frozenset(item.resource_id for item in activity.required_resources)
+        if host.requirements & needs:
+            return None
+        if any(resident_id in holders for holders in self.opened_by.values()):
+            return None
+        alive = [item for item in host.processes if item.is_alive]
+        if not alive or not all(item in self.pausable for item in alive):
+            return None
+        return host
+
+    def _shared_wait_deadline(self, resident_id: str, actor_id: str, free_us: int) -> int:
+        """Until when an actor waits for a resident a shared activity wants, who is busy.
+
+        To the end of what she is cooking, within the hour of `SHARED_WAIT_LIMIT_SECONDS`; for
+        anything else a quarter of an hour. Either way never past the actor's own next obligation:
+        she does not wait for lunch company into the time she has to leave for her shift.
+        """
+        doing = self.doing.get(resident_id)
+        category = self.intent_categories.get(doing[-1].intent) if doing else None
+        limit_s = (
+            SHARED_WAIT_LIMIT_SECONDS
+            if category in _WAIT_FOR_CATEGORIES
+            else SHARED_WAIT_SHORT_SECONDS
+        )
+        deadline = free_us + limit_s * 1_000_000
+        obligation = self._next_obligation(actor_id, int(self.env.now))
+        return deadline if obligation is None else min(deadline, obligation)
+
     def _return_from_service_room(
         self,
         actor: ResidentRuntime,
@@ -2892,6 +2979,61 @@ class SimulationEngine:
         self.env.process(self._settle(participant, execution_id, next_us, stream_key=f":{who}"))
         return action_ids
 
+    def _return_called_partner(
+        self,
+        participant: ResidentRuntime,
+        activity: CanonicalActivity,
+        execution_id: str,
+        call: tuple[_Host, simpy.Event, tuple[str, Point2D], str, int],
+    ) -> Generator[Any, Any, list[str]]:
+        """Take somebody called away for a shared activity back to what he put down.
+
+        `_leave_shared_activity` ends with an idle resident; he is not idle, he is in the middle of
+        a book. He walks back to where he left it, settles as he was, and it goes on — for what was
+        left of the time it was going to take, not for all of it. The lunch he was called to comes
+        out of the reading, which is what a person does, instead of pushing everything he planned
+        after it back by the length of a meal and handing him the lateness the call took away from
+        the one who called.
+        """
+        host, resume, body, posture, called_at_us = call
+        action_ids: list[str] = []
+        # Out with the actor, back with the actor, as in `_leave_shared_activity`.
+        if self._is_outside(participant.region_id) and participant.facts.get("at_home") is False:
+            crossed = yield from self._cross_front_door(
+                participant, activity, execution_id, "enter_home", LEAVE_INGRESS_NODE_ID
+            )
+            if crossed is not None:
+                action_ids.append(crossed)
+        action_ids.extend(
+            (
+                yield from self._back_to_host(
+                    participant,
+                    activity,
+                    execution_id,
+                    body,
+                    posture,
+                    who=participant.resident_id,
+                )
+            )
+        )
+        self._set_execution_state(participant, "performing_activity", "plan", host.execution_id)
+        away_us = int(self.env.now) - called_at_us
+        deviation_id = self.trace.identifier(
+            "deviation", [host.activity.source_activity_id, activity.source_activity_id]
+        )
+        self.trace.deviations.append(
+            PlanDeviation(
+                deviation_id=deviation_id,
+                activity_execution_id=host.execution_id,
+                kind="interrupted",
+                amount_microseconds=away_us,
+                cause_id=activity.source_activity_id,
+            )
+        )
+        self.pause_deviations[host.execution_id].append(deviation_id)
+        resume.succeed({"absorb_us": away_us})
+        return action_ids
+
     def _sit_out_interruption(
         self, activity: CanonicalActivity, activity_execution_id: str, payload: dict[str, Any]
     ) -> Generator[Any, Any, None]:
@@ -2961,6 +3103,12 @@ class SimulationEngine:
                 yield from self._sit_out_interruption(
                     activity, activity_execution_id, interruption.cause
                 )
+                # Called away to a shared activity, the time it took comes out of what was left:
+                # see `_return_called_partner`. An errand resumes with nothing and changes nothing.
+                payload = interruption.cause if isinstance(interruption.cause, dict) else {}
+                resumed = payload.get("resume_event")
+                if resumed is not None and isinstance(resumed.value, dict):
+                    remaining = max(0, remaining - int(resumed.value.get("absorb_us", 0)))
             self.pausable.discard(process)
 
     def _wait_until_closed(
@@ -3126,11 +3274,15 @@ class SimulationEngine:
             if item != actor_id and item in self.state.residents
         ]
         # The actor first, waited for as long as any activity waits for its own resident. Then the
-        # others, each for no longer than `SHARED_WAIT_LIMIT_SECONDS` from the moment the actor was
-        # free: holding her while somebody else finishes is what froze a whole night. The bound is
-        # also what keeps two shared activities waiting for each other's people from deadlocking —
-        # they are not taken in one global order any more, so both give up instead.
+        # others, and how long each is waited for depends on what they are doing: called away from
+        # a book or the phone, waited for to the end of the meal they are cooking, and otherwise
+        # for a quarter of an hour at most, never into the actor's next obligation. Holding her
+        # while somebody else finishes is what froze a whole night, and the bound is also what
+        # keeps two shared activities waiting for each other's people from deadlocking — they are
+        # not taken in one global order any more, so both go ahead without the other.
         absent: list[str] = []
+        # Who was called away from something to join, with what to bring them back to.
+        called: dict[str, tuple[_Host, simpy.Event, tuple[str, Point2D], str, int]] = {}
         with ExitStack() as held:
             # A toilet trip does not wait for the night to end. A candidate that may overlap its
             # resident was left out of her timeline by the compiler precisely so that it interrupts
@@ -3151,14 +3303,39 @@ class SimulationEngine:
                     absent.append(resident_id)
                     continue
                 request = self.actor_locks[resident_id].request(priority=requested_us)
-                remaining_us = free_us + SHARED_WAIT_LIMIT_SECONDS * 1_000_000 - int(self.env.now)
-                if not request.triggered:
-                    yield request | self.env.timeout(max(0, remaining_us))
+                partner_host: _Host | None = None
+                # Looked at again every `ERRAND_RETRY_SECONDS`, because what the other one is doing
+                # changes while she waits: done cooking, he sits down with a book, and can be
+                # called.
+                while not request.triggered:
+                    partner_host = self._callable_partner(resident_id, activity)
+                    if partner_host is not None:
+                        break
+                    remaining_us = self._shared_wait_deadline(resident_id, actor_id, free_us) - int(
+                        self.env.now
+                    )
+                    if remaining_us <= 0:
+                        break
+                    yield request | self.env.timeout(
+                        min(remaining_us, ERRAND_RETRY_SECONDS * 1_000_000)
+                    )
                 if request.triggered:
                     held.enter_context(request)
-                else:
-                    request.cancel()
+                    continue
+                request.cancel()
+                if partner_host is None:
                     absent.append(resident_id)
+                    continue
+                # Put down in the same instant he was found free to be called, as an errand puts
+                # down its host: a wait in between would let what he is doing move on.
+                partner = self.state.residents[resident_id]
+                called[resident_id] = (
+                    partner_host,
+                    self._put_down(partner_host),
+                    (partner.region_id, partner.position),
+                    partner.posture,
+                    int(self.env.now),
+                )
             participants = [item for item in participants if item not in absent]
             if not errand:
                 yield from self._transition_pause(
@@ -3237,10 +3414,11 @@ class SimulationEngine:
                     {item.resource_id: item.units for item in activity.required_resources}
                 )
             )
-            # Somebody the activity names never came. A shared evening in front of the television
-            # without the other one is not the evening that was planned, so an optional activity
-            # is given up; a dinner still happens, with whoever is at the table.
-            nobody_came = bool(absent) and not activity.mandatory
+            # Somebody the activity names never came, and it is not a reason to give it up: it
+            # happens with whoever is there. What a household declares as shared is the company, not
+            # whether the thing is done — an optional shared lunch is optional *together*. Given up,
+            # it left Chiara without lunch three times on the Moretti quarter, each after an hour of
+            # waiting for Luca.
             # She is out between two halves of one outing. A toilet trip or a phone call on the
             # sofa that came due meanwhile cannot happen, and running it would walk her home through
             # the street without the front door ever opening.
@@ -3259,14 +3437,7 @@ class SimulationEngine:
             # Due after the simulation window closed: the horizon stops at its end, so whatever the
             # day's delays pushed past it does not happen, mandatory or not.
             past_horizon = int(self.env.now) >= self.horizon_end_us
-            if (
-                past_horizon
-                or away
-                or not conditions_ok
-                or object_taken
-                or nobody_came
-                or room_taken
-            ):
+            if past_horizon or away or not conditions_ok or object_taken or room_taken:
                 if activity.mandatory and not past_horizon:
                     raise SimulationFailure(
                         "PRECONDITION_FAILED",
@@ -3281,10 +3452,8 @@ class SimulationEngine:
                     reason, cause_id = "room-occupied", "room_occupied"
                 elif not conditions_ok:
                     reason, cause_id = "live-precondition", "live_precondition_failed"
-                elif object_taken:
-                    reason, cause_id = "object-taken", "object_in_use"
                 else:
-                    reason, cause_id = "participant-unavailable", "participant_unavailable"
+                    reason, cause_id = "object-taken", "object_in_use"
                 deviation_id = self.trace.identifier(
                     "deviation", [activity.source_activity_id, reason]
                 )
@@ -3314,6 +3483,11 @@ class SimulationEngine:
                 # out. The drop itself stays the instant it was, so a dropped activity is still a
                 # zero-length statement that nothing happened.
                 dropped_at_us = int(self.env.now)
+                # Called for something that is not happening: he never left what he was doing, so
+                # he simply goes on with it.
+                for _, called_resume, _, _, _ in called.values():
+                    called_resume.succeed()
+                participants = [item for item in participants if item not in called]
                 actor = self.state.residents[actor_id]
                 returned = None
                 if actor.execution_state == "idle":
@@ -3378,6 +3552,7 @@ class SimulationEngine:
             actor = self.state.residents[actor_id]
             actor.idle_since_us = None
             self._set_execution_state(actor, "performing_activity", "plan", execution_id)
+            self.doing[actor_id].append(activity)
             held_posture, final_posture = _shared_postures(
                 self.models[self._process_model_id(activity.source_activity_id)]
             )
@@ -3641,9 +3816,14 @@ class SimulationEngine:
                 joined = yield simpy.events.AllOf(self.env, joining)
                 for result in joined.values():
                     action_ids.extend(result)
+                # Somebody called away from something goes back to it; everybody else is let go.
                 leaving = [
                     self.env.process(
-                        self._leave_shared_activity(
+                        self._return_called_partner(
+                            self.state.residents[item], activity, execution_id, called[item]
+                        )
+                        if item in called
+                        else self._leave_shared_activity(
                             self.state.residents[item], activity, execution_id, final_posture
                         )
                     )
@@ -3674,6 +3854,9 @@ class SimulationEngine:
             self.state.completed_activities.add(activity.source_activity_id)
             if activity.intent in _BLADDER_RELIEVING_INTENTS:
                 self._empty_bladder(actor, execution_id)
+            doing = self.doing[actor_id]
+            if activity in doing:
+                doing.remove(activity)
             if host is not None and resume is not None:
                 # Back to where she left what she was doing, in the posture she left it in, and
                 # only then does it go on. The pause is the host's deviation, named after the
@@ -3812,6 +3995,7 @@ class SimulationEngine:
         execution_id: str,
         body: tuple[str, Point2D],
         posture: str,
+        who: str | None = None,
     ) -> Generator[Any, Any, list[str]]:
         """Walk her back to where she was when the errand came due, and settle her as she was.
 
@@ -3845,7 +4029,8 @@ class SimulationEngine:
             )
             if path is not None and path.distance_meters > 1e-9:
                 action_id = self.trace.identifier(
-                    "action", [activity.source_activity_id, ERRAND_RETURN_NODE_ID]
+                    "action",
+                    [activity.source_activity_id, ERRAND_RETURN_NODE_ID, *([who] if who else [])],
                 )
                 started = self.env.now
                 yield from self._travel(
@@ -3864,7 +4049,8 @@ class SimulationEngine:
                 action_ids.append(action_id)
         if posture in {_SITTING_POSTURE, _RECLINING_POSTURE} and not settled:
             action_id = self.trace.identifier(
-                "action", [activity.source_activity_id, ERRAND_POSTURE_NODE_ID]
+                "action",
+                [activity.source_activity_id, ERRAND_POSTURE_NODE_ID, *([who] if who else [])],
             )
             started = self.env.now
             yield from self._take_a_seat(actor, posture, action_id)
@@ -3999,7 +4185,13 @@ class SimulationEngine:
                 self.commitments_by_actor.setdefault(resident_id, []).append(
                     planned + self.delay_us[item.source_activity_id]
                 )
+                if item.mandatory:
+                    self.obligations_by_actor.setdefault(resident_id, []).append(
+                        planned + self.delay_us[item.source_activity_id]
+                    )
         for starts in self.commitments_by_actor.values():
+            starts.sort()
+        for starts in self.obligations_by_actor.values():
             starts.sort()
         self.outing_continuations = self._outing_continuations(activities)
         processes = [self.env.process(self._activity_process(item)) for item in activities]

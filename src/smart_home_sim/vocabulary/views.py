@@ -100,6 +100,16 @@ def intent_specs(pack: VocabularyPack) -> tuple[IntentSpec, ...]:
     )
 
 
+def intent_categories(pack: VocabularyPack) -> dict[str, str]:
+    """What kind of thing each in-home intent is — leisure, eating, meal preparation, hygiene.
+
+    The engine asks it of the activity a resident is in the middle of, when somebody else wants
+    her for a shared one: a book is put down for lunch, a pan on the stove is not. An away intent
+    has no entry, and reads as something that cannot be interrupted, which is what being out is.
+    """
+    return {intent.intent_id: intent.category for intent in pack.intents}
+
+
 def away_intent_specs(pack: VocabularyPack) -> tuple[IntentSpec, ...]:
     """The away alphabet, every member placed outdoors because that is all a home sensor knows."""
     from smart_home_sim.hybrid_planning.intents import AWAY_LOCATION, IntentCategory, IntentSpec

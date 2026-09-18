@@ -80,7 +80,7 @@ from smart_home_sim.profiling.builder import OCCUPYING_STATUSES
 from smart_home_sim.sensors.service import _motion_pulses
 from smart_home_sim.simulation.service import (
     OPENABLE_WAIT_LIMIT_SECONDS,
-    SHARED_WAIT_LIMIT_SECONDS,
+    SHARED_WAIT_SHORT_SECONDS,
     simulate_bundle,
     validate_execution_trace,
 )
@@ -494,11 +494,13 @@ _LUCA_HYGIENE = "luca_hygiene"
 _MARCO_TOILET = "marco_toilet"
 _LUCA_LUNCH = "luca_lunch"
 _MARCO_LUNCH = "marco_lunch"
+_MARCO_DRINK = "marco_drink"
 _ROLE_INTENTS = {
     "call": "phone_call",
     "hygiene": "evening_hygiene",
     "toilet": "use_toilet",
     "lunch": "eat_lunch",
+    "drink": "prepare_and_drink_hot_drink",
 }
 
 
@@ -511,7 +513,8 @@ def _role(activity: CanonicalActivity, role: str) -> bool:
         and activity.intent == _ROLE_INTENTS[what]
         and not activity.participant_ids
         # The bare ones: a candidate the engine may turn down would test the drive, not the rule.
-        and (what == "toilet" or not activity.can_overlap_for_actor)
+        # The toilet and the hot drink exist only as candidates, and are taken as they are.
+        and (what in {"toilet", "drink"} or not activity.can_overlap_for_actor)
     )
 
 
@@ -521,8 +524,12 @@ def _evening(
     *,
     mandatory: dict[str, bool] | None = None,
     private_from: dict[str, list[str]] | None = None,
+    drop: str | None = None,
 ) -> tuple[SimulationBundle, dict[str, str]]:
     """Only the named activities, each at `(minutes after the television was due, minutes long)`.
+
+    `drop` leaves one of them out while keeping everybody else's minutes, so a test can compare an
+    evening with the one it would have been without it.
 
     Returns the bundle and the source identifier each role was found under. Preconditions are
     cleared, so the drives cannot turn an activity down for a reason the test is not about.
@@ -539,6 +546,8 @@ def _evening(
     due = found[_TELEVISION].scheduled_start
     activities = []
     for index, (role, (offset, minutes)) in enumerate(sorted(timing.items())):
+        if role == drop:
+            continue
         start = due + timedelta(minutes=offset)
         update: dict[str, Any] = {
             "sequence_index": index,
@@ -625,43 +634,89 @@ def test_a_shared_activity_waits_in_line_by_when_it_was_due(run: Path) -> None:
 
 
 @pytest.mark.parametrize("mandatory", [False, True])
-def test_nobody_waits_all_night_for_a_resident_who_is_busy(run: Path, mandatory: bool) -> None:
-    """Past the limit an optional shared activity is given up and a mandatory one goes ahead alone.
+def test_nobody_waits_long_for_a_resident_who_cannot_put_down_what_he_is_doing(
+    run: Path, mandatory: bool
+) -> None:
+    """A quarter of an hour at most, and then the activity happens without him — never given up.
 
-    Marco is on the phone for two hours from five minutes before the television. Luca is free the
-    whole time, and used to stand there until marco hung up.
+    Marco is washing for two hours from five minutes before the television, which is nothing a
+    person is called out of. Luca is free the whole time. He used to stand there for an hour and
+    then, if the television was optional, give it up: on the Moretti quarter that is how Chiara
+    went without lunch three times. What is shared is the company, not whether it happens.
     """
     trace, executions = _executions(
         _evening(
             run,
-            {_TELEVISION: (0, 15), _MARCO_CALL: (-5, 125)},
+            {_TELEVISION: (0, 15), _MARCO_HYGIENE: (-5, 125)},
             mandatory={_TELEVISION: mandatory},
         )
     )
     television = executions[_TELEVISION]
-    call = executions[_MARCO_CALL]
-    limit = television.planned_start + timedelta(seconds=SHARED_WAIT_LIMIT_SECONDS)
+    wash = executions[_MARCO_HYGIENE]
+    limit = television.planned_start + timedelta(seconds=SHARED_WAIT_SHORT_SECONDS)
     deviations = {
         item.kind: item
         for item in trace.plan_deviations
         if item.activity_execution_id == television.activity_execution_id
     }
 
-    # Given up or started once the limit ran out — a transition pause after it, never marco's call.
+    # Started once the short wait ran out — a transition pause after it, never marco's wash.
     assert limit <= television.actual_start < limit + timedelta(minutes=5)
-    assert television.actual_start < call.actual_end
+    assert television.actual_start < wash.actual_end
+    assert television.status == "deviated"
     assert television.participant_ids == []
-    if mandatory:
-        assert television.status == "deviated"
-        assert deviations["fallback_applied"].cause_id == "participant_unavailable"
-        assert not any(
-            item.actor_id == "marco"
-            for item in trace.action_executions
-            if item.activity_execution_id == television.activity_execution_id
-        )
-    else:
-        assert television.status == "dropped"
-        assert deviations["optional_dropped"].cause_id == "participant_unavailable"
+    assert deviations["fallback_applied"].cause_id == "participant_unavailable"
+    assert "optional_dropped" not in deviations
+    assert not any(
+        item.actor_id == "marco"
+        for item in trace.action_executions
+        if item.activity_execution_id == television.activity_execution_id
+    )
+
+
+def test_somebody_on_the_phone_is_called_and_goes_back_to_the_call(run: Path) -> None:
+    """A phone call is put down for the shared activity and picked up again after it.
+
+    Marco is on the phone for two hours from five minutes before the television. He comes to the
+    television straight away instead of being waited for, the call records the interruption, and
+    the time he spent at the television comes out of the call rather than being added to it: his
+    call ends when it would have ended with no television at all, give or take the walk back.
+    """
+    trace, executions = _executions(_evening(run, {_TELEVISION: (0, 15), _MARCO_CALL: (-5, 125)}))
+    television = executions[_TELEVISION]
+    call = executions[_MARCO_CALL]
+    _, alone = _executions(
+        _evening(run, {_TELEVISION: (0, 15), _MARCO_CALL: (-5, 125)}, drop=_TELEVISION)
+    )
+
+    assert television.participant_ids == ["marco"]
+    assert television.actual_start < television.planned_start + timedelta(minutes=5)
+    assert call.status != "dropped"
+    interruptions = [
+        item
+        for item in trace.plan_deviations
+        if item.activity_execution_id == call.activity_execution_id and item.kind == "interrupted"
+    ]
+    assert [item.cause_id for item in interruptions] == [television.source_activity_id]
+    assert abs(call.actual_end - alone[_MARCO_CALL].actual_end) < timedelta(minutes=5)
+
+
+def test_a_shared_activity_waits_for_the_one_making_a_drink(run: Path) -> None:
+    """What is being made is waited for to the end, past the quarter of an hour.
+
+    Marco is making a hot drink for forty minutes from five minutes before the television: nothing
+    he walks away from, and nothing that lasts, so Luca waits for it rather than starting without
+    him.
+    """
+    _, executions = _executions(_evening(run, {_TELEVISION: (0, 15), _MARCO_DRINK: (-5, 40)}))
+    television = executions[_TELEVISION]
+    drink = executions[_MARCO_DRINK]
+
+    assert television.participant_ids == ["marco"]
+    assert television.actual_start >= drink.actual_end
+    assert television.actual_start > television.planned_start + timedelta(
+        seconds=SHARED_WAIT_SHORT_SECONDS
+    )
 
 
 def test_a_toilet_trip_is_given_up_while_the_bathroom_is_private(run: Path) -> None:
