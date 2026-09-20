@@ -15,7 +15,6 @@ import {
   PanelLeftOpen,
   Search,
   Settings,
-  Sparkles,
   Sun,
   Trash2,
   Users,
@@ -45,9 +44,11 @@ import { FurnitureSymbols } from "./furniture-symbols";
 import { CustomFurnitureSymbols } from "./vocabulary/CustomFurnitureSymbols";
 import type { HomeModel, JobStatus, Point, Polygon, SensorBase, SensorModel } from "./types";
 
+// The routes that have a place in the sidebar. `/generate` is deliberately absent: local
+// generation is no longer part of the working path — every home now arrives as an authored
+// outline — and the route stays reachable by URL only, for the runs already published from it.
 const nav = [
   { to: "/", label: "Dashboard", icon: Activity },
-  { to: "/generate", label: "Generate", icon: Sparkles },
   { to: "/homes", label: "Homes", icon: Home },
   { to: "/vocabulary", label: "Vocabulary", icon: ListTree },
   { to: "/residents", label: "Residents", icon: Users },

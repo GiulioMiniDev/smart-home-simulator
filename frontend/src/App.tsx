@@ -1352,7 +1352,15 @@ function HomePage() {
       navigate("/homes", { state: { removed: summary } });
     } catch (reason) { setNotice({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) }); setWorking(false); }
   };
-  const recommended = !!homeDraft && detail.planApproval?.approved === false;
+  // A plan that has already executed a simulation is not a proposal any more, whatever the
+  // approval flag says: the researcher ran it, and the evidence in the workspace was produced by
+  // exactly this planimetry. Asking them to confirm it after the fact is a question with no
+  // consequence, so the review banner is offered only until the first run. An environment job
+  // does not count — it builds the plan and executes nothing, which is precisely the moment the
+  // planimetry is waiting to be read.
+  const executedCount = detail.jobs.filter((job) => job.kind !== "environment" && job.status === "completed").length;
+  const executed = executedCount > 0;
+  const recommended = !!homeDraft && detail.planApproval?.approved === false && !executed;
   // Loading a corrected file over an attached one is offered only while it is free: no run has
   // been started, so no evidence points at the context about to be replaced, and there is
   // something the file is being corrected for. Without this the only way out of a reported issue
@@ -1414,7 +1422,7 @@ function HomePage() {
         </section>
         <section className="surface evidence-sheet">
           <div className="section-heading"><div><p className="eyebrow">Environment state</p><h2>Authoritative revisions</h2></div><ShieldCheck size={21} /></div>
-          <dl className="definition-list"><div><dt>Home model</dt><dd>{detail.home.currentHomeArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentHomeArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div><div><dt>Sensor model</dt><dd>{detail.home.currentSensorArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentSensorArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div>{detail.generation && <div><dt>Generated horizon</dt><dd><StatusBadge status="valid" /><span>{detail.generation.dayCount} days, each compiled and bundled separately</span></dd></div>}<div><dt>Runs</dt><dd>{detail.jobs.length}</dd></div></dl>
+          <dl className="definition-list"><div><dt>Home model</dt><dd>{detail.home.currentHomeArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentHomeArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div><div><dt>Sensor model</dt><dd>{detail.home.currentSensorArtifactId ? <><StatusBadge status="valid" /><code>{detail.home.currentSensorArtifactId}</code></> : <StatusBadge status="draft" />}</dd></div>{detail.generation && <div><dt>Generated horizon</dt><dd><StatusBadge status="valid" /><span>{detail.generation.dayCount} days, each compiled and bundled separately</span></dd></div>}<div><dt>Planimetry</dt><dd>{detail.planApproval?.approved ? <span>Confirmed — every run executes it as it stands</span> : executed ? <span>Executed by {executedCount} run{executedCount === 1 ? "" : "s"}. Edit and publish it to pin it against a rebuild.</span> : <span>As the policies proposed it</span>}</dd></div><div><dt>Runs</dt><dd>{detail.jobs.length}</dd></div></dl>
           {detail.generation && <p className="hint">Running this home simulates every generated day and publishes them as one run: a single trace, one observable sensor log and one oracle mapping to export whole.</p>}
           {!homeDraft && inputResident && <>
             <p className="hint">The plan and the sensor field come from the deterministic policies, not from the execution. Building them first lets you move a wall or a PIR before anything is simulated — and what you approve is what the run then executes.</p>
@@ -1835,7 +1843,7 @@ function RunPage() {
   const navigate = useNavigate();
   const detail = useResource<JobDetail>(`/jobs/${runId}`);
   useJobRefresh(detail.data ? [detail.data.job] : [], detail.reload);
-  const [tab, setTab] = useState<"summary" | "diary" | "profile" | "observations" | "replay" | "artifacts">("summary");
+  const [tab, setTab] = useState<"summary" | "plan" | "diary" | "profile" | "observations" | "replay" | "artifacts">("summary");
   const [oracle, setOracle] = useState(false);
   const [selectedDiary, setSelectedDiary] = useState<string>();
   const [exportNotice, setExportNotice] = useState<string>();
@@ -1843,6 +1851,11 @@ function RunPage() {
   // An environment job publishes a plan and a sensor field and executes nothing, so it completes
   // without a trace: offering the diary or the replay for it would open empty views.
   const evidenceAvailable = detail.data?.job.status === "completed" && detail.data.job.kind !== "environment";
+  // The plan is not evidence of behaviour, so it does not wait for a trace: every completed job
+  // publishes the home model and the sensor field it ran, and an environment job publishes
+  // nothing else. Reading back the planimetry a run executed — rather than the one the home holds
+  // now, which a later edit may have moved — is the one thing those jobs were for.
+  const planAvailable = detail.data?.job.status === "completed";
   const diary = useResource<{ items: DiaryEntry[]; total: number }>(evidenceAvailable ? `/runs/${runId}/diary?limit=500` : undefined);
   // Only once the tab is opened: profiling a long horizon is real work, and most visits to a run
   // never ask for it.
@@ -1855,8 +1868,9 @@ function RunPage() {
     setOracle(nextOracle);
   };
   useEffect(() => {
+    if (tab === "plan") { if (!planAvailable) setTab("summary"); return; }
     if (!evidenceAvailable && !["summary", "artifacts"].includes(tab)) setTab("summary");
-  }, [evidenceAvailable, tab]);
+  }, [evidenceAvailable, planAvailable, tab]);
   if (detail.loading) return <div className="page"><Skeleton lines={8} /></div>;
   if (detail.error || !detail.data) return <div className="page"><ErrorPanel message={detail.error?.message ?? "Run not found"} onRetry={() => void detail.reload()} /></div>;
   const job = detail.data.job;
@@ -1871,15 +1885,103 @@ function RunPage() {
     <Breadcrumbs items={[{ label: "Simulations", to: "/simulations" }, { label: runId }]} />
     <PageHeader eyebrow="Run evidence" title={runId} description={job.progress.message} actions={<><StatusBadge status={job.status} />{!terminal.has(job.status) ? <button className="button danger" onClick={() => void cancel()}><Square size={15} /> Cancel safely</button> : <ConfirmAction label="Delete run" title="Delete this run and its evidence?" consequence="The execution trace, observable log, oracle mapping and every export built from this run are deleted from the workspace folder. The home and its inputs are untouched." onConfirm={removeRun} />}</>} />
     {!terminal.has(job.status) && <section className="active-run-detail"><div className="phase-orbit" aria-hidden="true"><i /><span>{Math.round(job.progress.percent)}%</span></div><div><p className="eyebrow">Current backend phase</p><h2>{job.progress.phase}</h2><p>{job.progress.message}</p><ProgressBar value={job.progress.percent} label="Overall progress" /></div><ol>{detail.data.events.slice(-6).map((event) => <li key={event.sequence}><time>{formatTime(event.occurredAt)}</time><span>{event.message}</span></li>)}</ol></section>}
-    <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "diary", "profile", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={!evidenceAvailable && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
+    <div className="tabs" role="tablist" aria-label="Run detail sections">{(["summary", "plan", "diary", "profile", "observations", "replay", "artifacts"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} disabled={item === "plan" ? !planAvailable : !evidenceAvailable && !["summary", "artifacts"].includes(item)} onClick={() => setTab(item)}>{item}</button>)}</div>
     {exportNotice && <div className="notice notice-success" role="status"><Check size={17} /><span>{exportNotice}</span><button className="icon-button" aria-label="Dismiss" onClick={() => setExportNotice(undefined)}><X size={15} /></button></div>}
     {tab === "summary" && <>{job.status === "failed" && <FailureDiagnostics job={job} events={issueEvents} />}<div className="run-summary-grid"><section className="surface"><div className="section-heading"><div><p className="eyebrow">Execution</p><h2>Persistent state</h2></div><Clock3 size={20} /></div><dl className="definition-list"><div><dt>Status</dt><dd><StatusBadge status={job.status} /></dd></div><div><dt>Requested</dt><dd>{formatDate(job.requestedAt)}</dd></div><div><dt>Started</dt><dd>{formatDate(job.startedAt)}</dd></div><div><dt>Finished</dt><dd>{formatDate(job.finishedAt)}</dd></div><div><dt>Worker PID</dt><dd><code>{job.processId ?? "n/a"}</code></dd></div></dl></section><section className="surface"><div className="section-heading"><div><p className="eyebrow">Scientific output</p><h2>{Object.keys(detail.data.artifacts).length} verified artifacts</h2></div><ShieldCheck size={20} /></div><p>{evidenceAvailable ? "Bundle, trace, observations and oracle remain separate and digest-addressable." : job.kind === "environment" ? "This job built the home and its sensor field and executed nothing. Review the plan on the home, then start a run to produce evidence from exactly these models." : "Execution evidence was not published. Diary, observations and replay become available only after a completed run."}</p><div className="button-row"><button className="button primary" disabled={!evidenceAvailable} onClick={() => setTab("diary")}><ListTree size={16} /> Open ground-truth diary</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => setTab("profile")}><UserRound size={16} /> Read the resident profile</button><button className="button secondary" disabled={!evidenceAvailable} onClick={() => void createExport()}><Download size={16} /> Export complete dataset</button></div></section></div>{exportManifest && <section className="surface export-manifest"><div className="section-heading"><div><p className="eyebrow">Verified export manifest</p><h2>{exportManifest.files.length} files across observable and oracle roles</h2></div><div className="button-row" style={{ margin: 0 }}><button className="button primary" onClick={() => void download(`/exports/${exportManifest.exportId}/zip`, `${exportManifest.exportId}.zip`)}><Download size={15} /> Download ZIP</button><StatusBadge status="valid" /></div></div><p><code>{exportManifest.exportId}</code> · seed {exportManifest.seed} · trace {exportManifest.sourceTraceSemanticDigest.slice(0, 16)}…</p><div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Format</span><span>Records</span><span>Download</span></div>{exportManifest.files.map((file) => <div className="artifact-row" key={file.relativePath}><span>{file.role.replaceAll("_", " ")}</span><code>{file.format}</code><span>{file.recordCount}</span><button className="row-link" onClick={() => void download(`/exports/${exportManifest.exportId}/files/${file.relativePath.split("/").at(-1)}`, file.relativePath.split("/").at(-1) ?? "dataset")}><Download size={15} /> Download</button></div>)}</div></section>}</>}
     {tab === "diary" && <section className="diary-layout"><div className="diary-list"><div className="section-heading"><div><p className="eyebrow">Authoritative execution trace</p><h2>Ground-truth diary</h2></div><span>{diary.data?.total ?? 0} activities</span></div>{diary.loading ? <Skeleton lines={8} /> : diary.error ? <ErrorPanel message={diary.error.message} /> : diary.data?.items?.map((entry) => <button key={entry.activityExecutionId} className={`diary-entry ${selectedDiary === entry.activityExecutionId ? "is-selected" : ""}`} onClick={() => setSelectedDiary(entry.activityExecutionId)}><time>{formatTime(entry.actualStart)}</time><span><strong>{entry.intent.replaceAll("_", " ")}</strong><small>{entry.actorId} · {duration(entry.actualStart, entry.actualEnd)} · {entry.actions.length} actions</small></span><StatusBadge status={entry.status} /></button>)}</div><DiaryInspector entry={diary.data?.items?.find((item) => item.activityExecutionId === selectedDiary) ?? diary.data?.items?.[0]} /></section>}
     {tab === "observations" && <section><div className="observable-toolbar"><div><p className="eyebrow">Sensor projection</p><h2>{oracle ? "Oracle-linked observations" : "Observable device log"}</h2></div><div className="mode-switch" role="group" aria-label="Data visibility"><button aria-pressed={!oracle} onClick={() => changeVisibility(false)}>Observable</button><button aria-pressed={oracle} onClick={() => changeVisibility(true)}>Oracle links</button></div></div><p className="mode-explanation">{oracle ? "Identity and activity appear only through the separate oracle mapping." : "This view contains only fields a physical device could expose."}</p>{observations.loading ? <Skeleton lines={8} /> : observations.error ? <ErrorPanel message={observations.error.message} /> : <div className="observation-table"><div className="observation-head"><span>Time</span><span>Sensor</span><span>Measurement</span><span>Value</span><span>Quality</span>{oracle && <span>Ground-truth cause</span>}</div>{visibleObservations?.map((record) => <div className="observation-row" key={record.observationId}><time>{formatTime(record.observedAt)}</time><span><code>{record.sensorId}</code><small>{record.sensorType}</small></span><span>{record.measurement}</span><strong>{String(record.value)}{record.unit ? ` ${record.unit}` : ""}</strong><StatusBadge status={record.quality} />{oracle && <span className="cause-cell">{record.oracleCause ? <><b>{record.oracleCause.origin.replaceAll("_", " ")}</b><small>{record.oracleCause.residentIds.join(", ") || "No resident identity"} · {record.oracleCause.causeType}</small></> : "No oracle link"}</span>}</div>)}</div>}</section>}
+    {tab === "plan" && <RunPlan runId={runId} homeId={job.homeId} />}
     {tab === "replay" && <ReplayScene runId={runId} />}
     {tab === "profile" && <section>{profile.loading ? <Skeleton lines={8} /> : profile.error ? <ErrorPanel message={profile.error.message} /> : profile.data ? <ProfileView runId={runId} profile={profile.data} /> : null}</section>}
     {tab === "artifacts" && <div className="artifact-table"><div className="artifact-head"><span>Role</span><span>Artifact</span><span>Size</span><span>SHA-256</span></div>{Object.entries(detail.data.artifacts).map(([role, artifact]) => <div className="artifact-row" key={artifact.artifactId}><span>{role.replaceAll("_", " ")}</span><code>{artifact.artifactId}</code><span>{new Intl.NumberFormat(undefined, { style: "unit", unit: "megabyte", maximumFractionDigits: 2 }).format(artifact.sizeBytes / 1_000_000)}</span><code title={artifact.sha256}>{artifact.sha256.slice(0, 16)}…</code></div>)}</div>}
   </div>;
+}
+
+/**
+ * The planimetry a run executed, drawn rather than edited.
+ *
+ * Every completed job publishes the home model and the sensor field it ran, so the plan behind a
+ * dataset is already in the workspace — it was only reachable as four megabytes of JSON in the
+ * artifacts table. This reads those two artifacts back through the editor's own canvas, which is
+ * the point: the drawing a reviewer recognises from the home, with the storey switch, the sensor
+ * layer and the coverage wash, and without a single control that could change what a published
+ * run executed. It is also the plan *that* run used, which is not always the plan the home holds
+ * now: an edit after the fact moves the home forward and leaves the evidence where it was.
+ */
+function RunPlan({ runId, homeId }: { runId: string; homeId?: string }) {
+  const models = useResource<{ homeModel?: HomeModel; sensorModel?: SensorModel }>(`/runs/${encodeURIComponent(runId)}/models`);
+  const [layer, setLayer] = useState<"home" | "sensors">("home");
+  const [showCoverage, setShowCoverage] = useState(false);
+  const [showExternalPlaces, setShowExternalPlaces] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
+  if (models.loading) return <Skeleton lines={8} />;
+  if (models.error) return <ErrorPanel message={models.error.message} onRetry={() => void models.reload()} />;
+  const home = models.data?.homeModel;
+  if (!home) {
+    return <EmptyState title="This run published no plan" icon={<RouteIcon size={25} />}>
+      <p>A home model is published by the job that materialized the environment. This one carries none, so there is nothing to draw.</p>
+    </EmptyState>;
+  }
+  const sensors = models.data?.sensorModel;
+  return <section className="run-plan">
+    <div className="observable-toolbar">
+      <div>
+        <p className="eyebrow">Executed environment</p>
+        <h2>The plan this run ran on</h2>
+      </div>
+      {homeId && <Link className="button secondary" to={`/homes/${homeId}`}><HomeIcon size={15} /> Open the home to edit it</Link>}
+    </div>
+    <p className="mode-explanation">
+      {home.regions.length} regions, {home.obstacles.length} pieces of furniture and {sensors?.sensors.length ?? 0} sensors, read back from this run&rsquo;s own artifacts. Nothing here can be moved: what a published run executed is evidence. Editing happens on the home, and applies to the runs that come after it.
+    </p>
+    <div className="editor-layout is-readonly">
+      <section className="editor-stage">
+        <div className="editor-toolbar">
+          <div>
+            <div className="layer-switch" role="radiogroup" aria-label="What this plan shows">
+              {([["home", "House"], ["sensors", "Sensors"]] as const).map(([item, label]) => (
+                <button
+                  key={item}
+                  role="radio"
+                  aria-checked={layer === item}
+                  disabled={item === "sensors" && !sensors}
+                  onClick={() => { if (layer === item) return; setLayer(item); setSelectedId(undefined); }}
+                  title={item === "home" ? "Bring the rooms, doors and furniture forward." : "Bring the sensor field forward. The house stays drawn behind it."}
+                >{label}</button>
+              ))}
+            </div>
+            {selectedId && <span className="plan-selection"><CircleDot size={14} /> <code>{selectedId}</code></span>}
+          </div>
+          <div className="viewport-tools" aria-label="Plan viewport">
+            {layer === "sensors" && <button className="tool-button" aria-pressed={showCoverage} onClick={() => setShowCoverage(!showCoverage)} title="Draw what every detector sees at once. The floor nothing watches is the floor left bare."><SquareDashed size={15} /> Coverage</button>}
+            <button className="tool-button" aria-pressed={showExternalPlaces} onClick={() => setShowExternalPlaces(!showExternalPlaces)} title="The places the resident travels to are regions of the model, not rooms of the house."><Trees size={15} /> External places</button>
+            <button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.max(.4, item.zoom / 1.25) }))} aria-label="Zoom out"><ZoomOut size={15} /></button>
+            <button className="tool-button" onClick={() => setViewport({ zoom: 1, x: 0, y: 0 })} aria-label="Fit plan"><Maximize2 size={15} /></button>
+            <button className="tool-button" onClick={() => setViewport((item) => ({ ...item, zoom: Math.min(12, item.zoom * 1.25) }))} aria-label="Zoom in"><ZoomIn size={15} /></button>
+            <button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x - 1 }))} aria-label="Pan left">&larr;</button>
+            <button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y - 1 }))} aria-label="Pan up">&uarr;</button>
+            <button className="tool-button" onClick={() => setViewport((item) => ({ ...item, y: item.y + 1 }))} aria-label="Pan down">&darr;</button>
+            <button className="tool-button" onClick={() => setViewport((item) => ({ ...item, x: item.x + 1 }))} aria-label="Pan right">&rarr;</button>
+            <span>{Math.round(viewport.zoom * 100)}%</span>
+          </div>
+        </div>
+        <PlanCanvas
+          home={home}
+          // Drawn on the layer that is about them, exactly as the editor does it: the house reads
+          // as architecture, and thirty-five detectors over it read as neither.
+          sensors={layer === "sensors" ? sensors : undefined}
+          layer={layer}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          viewport={viewport}
+          onViewport={setViewport}
+          showExternalPlaces={showExternalPlaces}
+          showCoverage={layer === "sensors" && showCoverage}
+        />
+      </section>
+    </div>
+  </section>;
 }
 
 /** Twelve hues far enough apart to be told apart in an eleven-pixel cell. */

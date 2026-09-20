@@ -307,6 +307,12 @@ dd { margin: 0; }
 .editor-stage { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-inline-end: 1px solid var(--line); }
 .editor-stage > .editor-toolbar, .editor-stage > .furniture-palette { flex: none; }
 .editor-stage > .plan-canvas-wrap { min-height: 0; flex: 1 1 auto; }
+/* The same stage without the inspector: a run's plan is read, not edited, so the column that
+   holds the editing controls is not there to hold open. */
+.editor-layout.is-readonly { grid-template-columns: minmax(0, 1fr); }
+.editor-layout.is-readonly .editor-stage { border-inline-end: 0; }
+.run-plan > .editor-layout { margin-top: .9rem; }
+.plan-selection { display: inline-flex; align-items: center; gap: .35rem; align-self: center; margin-left: .3rem; color: var(--text-soft); font-size: .72rem; }
 .editor-toolbar { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: .8rem; padding: .35rem .6rem; border-bottom: 1px solid var(--line); background: var(--surface-cool); }
 .editor-toolbar > div { display: flex; flex-wrap: wrap; gap: .25rem; }
 .viewport-tools { align-items: center; justify-content: flex-end; }

@@ -13,7 +13,7 @@ import {
   stepTiming,
   typesForRole,
 } from "../vocabulary/phrasing";
-import type { VocabularyGapsReport, VocabularyPack } from "../vocabulary/types";
+import type { VocabularyEntityType, VocabularyGapsReport, VocabularyPack } from "../vocabulary/types";
 import { CustomFurnitureSymbols } from "../vocabulary/CustomFurnitureSymbols";
 import { customSymbolId, setCustomSymbols, useCustomSymbols } from "../vocabulary/symbol-registry";
 import { furnitureSymbol } from "../furniture";
@@ -582,6 +582,85 @@ describe("the furniture tab", () => {
     expect(body.pack.entityTypes.find((item) => item.entityType === "aquarium")!.capabilities).toEqual([
       "personal_care_support",
     ]);
+  });
+});
+
+describe("which activities can end up at a piece of furniture", () => {
+  /**
+   * A pack whose `leisure` step asks for a capability and names nothing — the shape every
+   * capability-bound activity has, and the one the panel used to report as unused.
+   */
+  function leisurePack(): VocabularyPack {
+    const pack = fixturePack();
+    const leisure = pack.actions[0]!;
+    pack.actions = [
+      ...pack.actions,
+      {
+        ...leisure,
+        definition: {
+          ...leisure.definition,
+          actionType: "leisure",
+          parameters: [],
+          requiredCapabilities: [{ role: "medium", capability: "leisure_support", parameterName: null }],
+        },
+      },
+    ];
+    const read = pack.intents[1]!;
+    pack.intents = [
+      ...pack.intents,
+      {
+        ...read,
+        intentId: "read_and_rest",
+        label: "Read and rest",
+        processModel: {
+          ...read.processModel,
+          processModelId: "reference__read_and_rest",
+          nodes: read.processModel.nodes.map((node) =>
+            node.nodeId === "step_2" ? { ...node, actionType: "leisure", arguments: {} } : node,
+          ),
+        },
+      },
+    ];
+    return pack;
+  }
+
+  it("counts the capability route, not only the activities that name the type", () => {
+    const pack = leisurePack();
+    const easel: VocabularyEntityType = {
+      entityType: "artists_easel",
+      displayName: "Artist's easel",
+      capabilities: ["leisure_support"],
+      roleAliases: [],
+      contactInstrumented: false,
+      symbolId: null,
+      symbolBody: null,
+    };
+    expect(draft.entityBindings(pack, easel)).toEqual([
+      { label: "Read and rest", capabilities: ["leisure_support"], byName: false },
+    ]);
+  });
+
+  it("keeps naming and capability apart, and says which one it is", () => {
+    const pack = leisurePack();
+    const fridge = pack.entityTypes.find((item) => item.entityType === "refrigerator")!;
+    const bindings = draft.entityBindings(pack, fridge);
+    // `openable` and `storage_support` are not what any of these steps ask for: the fridge is
+    // reached by the name its recipes use for it.
+    expect(bindings).toEqual([{ label: "Eat breakfast", capabilities: [], byName: true }]);
+  });
+
+  it("says nothing binds when neither route reaches it", () => {
+    const pack = leisurePack();
+    const shelf: VocabularyEntityType = {
+      entityType: "plant_stand",
+      displayName: "Plant stand",
+      capabilities: ["cleanable"],
+      roleAliases: [],
+      contactInstrumented: false,
+      symbolId: null,
+      symbolBody: null,
+    };
+    expect(draft.entityBindings(pack, shelf)).toEqual([]);
   });
 });
 

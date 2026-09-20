@@ -114,7 +114,9 @@
 .vocab-symbol-stage { display: grid; justify-items: center; gap: .5rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); }
 .vocab-svg-input { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .76rem; line-height: 1.5; }
 .vocab-usedby { display: flex; gap: .3rem; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
-.vocab-usedby li { padding: .12rem .4rem; border-radius: 3px; background: var(--surface-cool); font-size: .76rem; }
+.vocab-usedby li { display: inline-flex; align-items: baseline; gap: .3rem; padding: .12rem .4rem; border-radius: 3px; background: var(--surface-cool); font-size: .76rem; }
+/* Why this activity lands here — named outright, or matched on a capability. */
+.vocab-usedby li small { color: var(--text-soft); font-size: .68rem; }
 
 .token-editor { display: grid; gap: .4rem; }
 .token-editor ul { display: flex; gap: .3rem; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }

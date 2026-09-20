@@ -501,7 +501,7 @@ describe("complete application routes", () => {
     // Until it is answered, the planimetry on screen is a proposal, and the page says so and
     // offers the two ways of answering: take it as it stands, or open it and change it.
     const approve = vi.fn(() => response({ homeId: "home_1", planApproval: { home: "researcher", sensor: "researcher", approved: true } }));
-    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
     overrides["/homes/home_1/plan-approval"] = approve;
     mount("/homes/home_1");
 
@@ -510,6 +510,25 @@ describe("complete application routes", () => {
 
     await screen.findByText(/Plan confirmed/);
     expect(approve).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops asking for a confirmation once a run has executed the plan", async () => {
+    // The run is the answer: whatever the approval flag says, this planimetry produced evidence
+    // that is in the workspace, and confirming it afterwards would decide nothing.
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
+    mount("/homes/home_1");
+
+    await screen.findByRole("heading", { name: "Golden home" });
+    expect(screen.queryByText("This planimetry is a proposal")).not.toBeInTheDocument();
+    expect(screen.getByText(/Executed by 1 run/)).toBeInTheDocument();
+  });
+
+  it("still asks after an environment job, which built the plan and executed nothing", async () => {
+    const environment = { ...job, jobId: "env_1", kind: "environment" as const };
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [environment], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
+    mount("/homes/home_1");
+
+    expect(await screen.findByText("This planimetry is a proposal")).toBeInTheDocument();
   });
 
   it("says nothing about approval for a plan the researcher already stands behind", async () => {
@@ -534,7 +553,7 @@ describe("complete application routes", () => {
   });
 
   it("reports a refused confirmation and drags nothing when nothing is selected", async () => {
-    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [job], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
+    overrides["/homes/home_1"] = { home, residents: [resident], models: { homeModel, sensorModel }, jobs: [], planApproval: { home: "recommended", sensor: "recommended", approved: false } };
     overrides["/homes/home_1/plan-approval"] = () => response({ error: { code: "WORKSPACE_OPERATION_FAILED", message: "this home has no plan to approve yet" } }, { status: 409 });
     mount("/homes/home_1");
 
@@ -603,6 +622,31 @@ describe("complete application routes", () => {
     // The workspace reports this session as playable, which is its record that the trace has
     // already been verified; re-executing the simulation to learn that again is minutes of work.
     expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/runs/run_1/replay/verify"))).toBe(false);
+  });
+
+  it("draws the plan a finished run executed, and refuses to let it be edited", async () => {
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    fireEvent.click(screen.getByRole("tab", { name: "plan" }));
+
+    expect(await screen.findByRole("heading", { name: "The plan this run ran on" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Plan of model_home/)).toBeInTheDocument();
+    // Read back from this run's own artifacts, not from whatever the home holds now.
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/runs/run_1/models"))).toBe(true);
+    // The editor's controls are on the home, deliberately: a published run's inputs are evidence.
+    expect(screen.queryByRole("button", { name: /Validate and publish/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Regenerate plan/ })).not.toBeInTheDocument();
+
+    // The sensor field is the same drawing's other layer, and it brings the coverage wash with it.
+    fireEvent.click(screen.getByRole("radio", { name: "Sensors" }));
+    expect(screen.getByRole("button", { name: /Coverage/ })).toBeInTheDocument();
+  });
+
+  it("offers no plan for a run that is still going", async () => {
+    overrides["/jobs/run_1"] = { job: { ...job, status: "running" }, events: [], artifacts: {} };
+    mount("/simulations/run_1");
+    await screen.findByText("Persistent state");
+    expect(screen.getByRole("tab", { name: "plan" })).toBeDisabled();
   });
 
   it("revokes observational Oracle evidence while an Observable reload supersedes it", async () => {

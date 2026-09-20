@@ -398,3 +398,79 @@ export function knownRoles(pack: VocabularyPack): string[] {
   }
   return [...values].sort();
 }
+
+// What a body can do to anything at all, so a piece of furniture offering only these offers
+// nothing in particular, and `posture_control`, which the resident carries rather than the room.
+// Mirrors `smart_home_sim.vocabulary.gaps`: counting them as a binding would make every activity
+// use every object.
+const UNSPECIFIC_CAPABILITIES = new Set([
+  "interaction_point",
+  "reachable",
+  "transport_reachable",
+  "posture_control",
+]);
+
+/** One activity that can end up at this piece of furniture, and what makes it land there. */
+export interface EntityBinding {
+  label: string;
+  /** The capabilities its steps ask for that this type offers. Empty when it is named outright. */
+  capabilities: string[];
+  /** True when a step names the type or one of its aliases, rather than asking for a capability. */
+  byName: boolean;
+}
+
+/**
+ * Which activities can end up at a piece of furniture — by name, and by capability.
+ *
+ * The two routes are not alternatives, and reporting only the first is how a type someone has
+ * just added looks unused while quietly competing for every binding its capabilities answer. A
+ * step either names an object outright — `activate` the `television` — or it asks for a
+ * capability and the binder picks whatever offers it: `leisure` asks for `leisure_support` and
+ * takes the sofa, the radio, the television, or the easel somebody added last week. Which is
+ * exactly what an author needs told before a month of data is generated around it.
+ *
+ * Follows the binder in `smart_home_sim.environment.service`: an action's requirement must be
+ * offered, and where the requirement names a parameter, the word in that parameter has to be
+ * answered too — as one of this type's roles, or, when no real furniture answers it as a role, as
+ * one of its capabilities. A type that declares no capabilities keeps all of them, so it answers
+ * every requirement there is; that is reported as the warning it is rather than silently.
+ */
+export function entityBindings(pack: VocabularyPack, entity: VocabularyEntityType): EntityBinding[] {
+  const offered = new Set(entity.capabilities);
+  // A type that says nothing about what it is for keeps every capability there is.
+  const offers = (value: string) => offered.size === 0 || offered.has(value);
+  const answers = (value: string) =>
+    value === entity.entityType || entity.roleAliases.includes(value) || offers(value);
+  const bindings: EntityBinding[] = [];
+  for (const intent of pack.intents) {
+    let named = false;
+    const capabilities = new Set<string>();
+    for (const node of intent.processModel.nodes) {
+      const action = pack.actions.find((item) => item.definition.actionType === node.actionType);
+      const literals = new Map<string, string>();
+      for (const [name, argument] of Object.entries(node.arguments)) {
+        if (argument.source !== "literal" || typeof argument.value !== "string") continue;
+        literals.set(name, argument.value);
+        if (argument.value === entity.entityType || entity.roleAliases.includes(argument.value)) named = true;
+      }
+      for (const requirement of action?.definition.requiredCapabilities ?? []) {
+        if (!offers(requirement.capability)) continue;
+        // The word in the named parameter is what tells two objects of the same capability
+        // apart: `move_to_capability` asks every entity for `interaction_point` and discriminates
+        // entirely on its `targetRole`.
+        const role = requirement.parameterName ? literals.get(requirement.parameterName) : undefined;
+        if (role !== undefined) {
+          if (!answers(role)) continue;
+          if (!UNSPECIFIC_CAPABILITIES.has(requirement.capability)) capabilities.add(requirement.capability);
+          else if (offers(role)) capabilities.add(role);
+        } else if (!UNSPECIFIC_CAPABILITIES.has(requirement.capability)) {
+          capabilities.add(requirement.capability);
+        }
+      }
+    }
+    if (named || capabilities.size > 0) {
+      bindings.push({ label: intent.label, capabilities: [...capabilities].sort(), byName: named });
+    }
+  }
+  return bindings.sort((a, b) => Number(b.byName) - Number(a.byName) || a.label.localeCompare(b.label));
+}

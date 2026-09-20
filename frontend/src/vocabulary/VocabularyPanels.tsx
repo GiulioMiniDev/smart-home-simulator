@@ -407,22 +407,10 @@ function FurnitureDetail({
   onSelect: (id: string) => void;
 }) {
   const capabilities = useMemo(() => draft.knownCapabilities(pack), [pack]);
-  const usedBy = useMemo(
-    () =>
-      pack.intents
-        .filter((intent) =>
-          intent.processModel.nodes.some((node) =>
-            Object.values(node.arguments).some(
-              (argument) =>
-                argument.source === "literal" &&
-                typeof argument.value === "string" &&
-                (entity.roleAliases.includes(argument.value) || argument.value === entity.entityType),
-            ),
-          ),
-        )
-        .map((intent) => intent.label),
-    [pack.intents, entity],
-  );
+  // Both ways an activity can end up here: naming the type, and asking for a capability it
+  // offers. Listing only the first made every capability-bound type look unused.
+  const bindings = useMemo(() => draft.entityBindings(pack, entity), [pack, entity]);
+  const usedBy = bindings.filter((item) => item.byName);
   const drawn = entity.symbolBody || entity.symbolId || furnitureSymbol(entity.entityType);
 
   return (
@@ -445,8 +433,10 @@ function FurnitureDetail({
           title={`Remove “${entity.displayName}”?`}
           consequence={
             usedBy.length > 0
-              ? `${usedBy.length} activities bind to it. They will fall back to the middle of the room.`
-              : "No activity binds to it, so nothing changes in what is generated."
+              ? `${usedBy.length} activities name it. They will fall back to the middle of the room.`
+              : bindings.length > 0
+                ? `${bindings.length} activities can bind to it through the capabilities it offers. They will use whatever else offers them instead.`
+                : "No activity binds to it, so nothing changes in what is generated."
           }
           onConfirm={() => {
             onEdit(draft.removeEntityType(pack, entity.entityType));
@@ -500,12 +490,37 @@ function FurnitureDetail({
           </label>
 
           <h3>Which activities use it</h3>
-          {usedBy.length === 0 ? (
+          {bindings.length === 0 ? (
             <p className="vocab-note is-warning">
-              <AlertTriangle size={14} /> Nothing binds to it. It will stand in the flat unused.
+              <AlertTriangle size={14} /> Nothing binds to it: no step names it, and no step asks
+              for a capability it offers. It will stand in the flat unused.
             </p>
           ) : (
-            <ul className="vocab-usedby">{usedBy.map((label) => <li key={label}>{label}</li>)}</ul>
+            <>
+              {entity.capabilities.length === 0 && (
+                <p className="vocab-note is-warning">
+                  <AlertTriangle size={14} /> It declares no capability, so it keeps every one of
+                  them and competes for every binding below.
+                </p>
+              )}
+              <ul className="vocab-usedby">
+                {bindings.map((item) => (
+                  <li key={item.label}>
+                    {item.label}
+                    <small>
+                      {item.byName
+                        ? "names it"
+                        : `asks for ${item.capabilities.join(", ")}`}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+              <p className="vocab-note">
+                An activity that only <em>asks for a capability</em> takes whichever piece of
+                furniture in the room offers it and sorts first by id, so adding a type to a
+                capability another object already answers can change which one the resident uses.
+              </p>
+            </>
           )}
         </div>
 
