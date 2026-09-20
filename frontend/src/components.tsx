@@ -60,7 +60,6 @@ const nav = [
 ];
 
 interface ShellProps extends PropsWithChildren {
-  workspaceName?: string;
   theme: "light" | "dark";
   onTheme: () => void;
   navOpen: boolean;
@@ -72,7 +71,6 @@ interface ShellProps extends PropsWithChildren {
 
 export function Shell({
   children,
-  workspaceName = "Local workspace",
   theme,
   onTheme,
   navOpen,
@@ -105,7 +103,7 @@ export function Shell({
             <Box size={18} strokeWidth={1.8} />
           </span>
           <span>
-            <strong>Habitat Lab</strong>
+            <strong>Smart Home Simulator</strong>
             <small>Simulation workspace</small>
           </span>
           <button className="icon-button sidebar-close" onClick={onNav} aria-label="Close navigation">
@@ -131,11 +129,6 @@ export function Shell({
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-context">
-          <span>Current workspace</span>
-          <strong>{workspaceName}</strong>
-          <small>Local · schema 1.0.0</small>
-        </div>
       </aside>
       {navOpen && <button className="nav-scrim" onClick={onNav} aria-label="Close navigation" />}
       <div className="app-body">
@@ -148,8 +141,7 @@ export function Shell({
             <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search workspace" placeholder="Search homes" />
             <kbd>Ctrl K</kbd>
           </form>
-          <span className="worker-indicator"><i /> Local engine ready</span>
-          <button className="icon-button" onClick={onTheme} aria-label={`Use ${theme === "light" ? "dark" : "light"} theme`}>
+          <button className="icon-button theme-toggle" onClick={onTheme} aria-label={`Use ${theme === "light" ? "dark" : "light"} theme`}>
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
           <NavLink className="icon-button" to="/help" aria-label="Open help">

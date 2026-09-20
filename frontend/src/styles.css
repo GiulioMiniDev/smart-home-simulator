@@ -26,7 +26,7 @@
   --green: oklch(48% 0.11 150);
   --green-soft: oklch(92% 0.035 150);
   --shadow: 0 16px 45px oklch(28% 0.02 215 / 0.08);
-  --radius: 8px;
+  --radius: 10px;
 }
 
 * { box-sizing: border-box; }
@@ -69,11 +69,27 @@ p { color: var(--text-soft); line-height: 1.55; }
 }
 
 .app-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; background: var(--bg); color: var(--text); }
+/* Shared shell polish: clear navigation groups and quiet, compact controls. */
+.theme-toggle { margin-left: auto; }
+.sidebar nav a:nth-child(7) { margin-top: 1.4rem; }
+.sidebar nav a.active { position: relative; }
+.sidebar nav a.active::before { content: ""; position: absolute; left: 0; top: 28%; bottom: 28%; width: 3px; border-radius: 3px; background: oklch(78% .1 190); }
+.sidebar nav a svg { flex-shrink: 0; }
+.button:active:not(:disabled) { transform: translateY(1px); }
+.object-row .row-arrow { transition: transform 160ms ease; }
+.object-row:hover .row-arrow { transform: translateX(3px); }
+.page-header h1 { font-weight: 650; }
+.dashboard-page .page-header { padding-bottom: 1.4rem; border-bottom: 1px solid var(--line); }
+.dashboard-page .metric { padding: 1.2rem 1.4rem; }
+.dashboard-page .metric > span { font-weight: 600; }
+.dashboard-page .metric strong { font-size: 1.75rem; line-height: 1.4; }
+.dashboard-page .section-heading { align-items: center; min-height: 78px; }
+.object-row strong { overflow-wrap: anywhere; }
 /* Collapsed to its icons: the plan is the thing worth the width. */
 .app-shell.nav-collapsed { grid-template-columns: 62px minmax(0, 1fr); }
 .nav-collapsed .sidebar { width: 62px; }
 .nav-collapsed .brand-lockup { justify-content: center; padding: 0; }
-.nav-collapsed .brand-lockup > span:nth-child(2), .nav-collapsed .sidebar-context, .nav-collapsed .sidebar nav a span { display: none; }
+.nav-collapsed .brand-lockup > span:nth-child(2), .nav-collapsed .sidebar nav a span { display: none; }
 .nav-collapsed .sidebar nav { padding: 1.1rem .5rem; }
 .nav-collapsed .sidebar nav a { justify-content: center; padding: .5rem; }
 .nav-collapsed .sidebar-collapse { position: absolute; top: 68px; right: 50%; transform: translate(50%, .55rem); }
@@ -81,16 +97,13 @@ p { color: var(--text-soft); line-height: 1.55; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; display: flex; width: 232px; flex-direction: column; background: var(--sidebar); color: oklch(93% 0.01 85); }
 .brand-lockup { display: flex; align-items: center; gap: .7rem; height: 68px; padding: 0 1.1rem; border-bottom: 1px solid oklch(100% 0 0 / .1); }
 .brand-lockup > span:nth-child(2) { display: flex; min-width: 0; flex: 1; flex-direction: column; }
-.brand-lockup strong { font-size: .97rem; letter-spacing: .01em; }
+.brand-lockup strong { font-size: .9rem; line-height: 1.2; letter-spacing: .01em; }
 .brand-lockup small { color: var(--sidebar-muted); font-size: .72rem; }
-.brand-mark { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid oklch(75% .08 190 / .7); border-radius: 50%; color: oklch(76% .1 190); }
-.sidebar nav { display: grid; gap: .22rem; padding: 1.1rem .65rem; }
+.brand-mark { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid oklch(75% .08 190 / .7); border-radius: 9px; color: oklch(76% .1 190); }
+.sidebar nav { display: grid; gap: .35rem; padding: 1.3rem .8rem; }
 .sidebar nav a { display: flex; align-items: center; gap: .72rem; min-height: 40px; padding: .5rem .72rem; border-radius: 6px; color: var(--sidebar-muted); text-decoration: none; transition: 160ms cubic-bezier(.25, 1, .5, 1); }
 .sidebar nav a:hover { background: oklch(100% 0 0 / .06); color: oklch(94% .01 85); }
 .sidebar nav a.active { background: oklch(73% .1 190 / .14); color: oklch(92% .035 190); box-shadow: inset 0 0 0 1px oklch(75% .1 190 / .18); }
-.sidebar-context { display: flex; flex-direction: column; gap: .25rem; margin: auto .8rem .8rem; padding: .9rem; border: 1px solid oklch(100% 0 0 / .11); border-radius: var(--radius); }
-.sidebar-context span, .sidebar-context small { color: var(--sidebar-muted); font-size: .72rem; }
-.sidebar-context strong { overflow: hidden; font-size: .84rem; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-close, .mobile-menu, .nav-scrim { display: none !important; }
 .sidebar-collapse { color: var(--sidebar-muted); }
 .sidebar-collapse:hover { background: oklch(100% 0 0 / .08); color: oklch(94% .01 85); }
@@ -105,8 +118,6 @@ p { color: var(--text-soft); line-height: 1.55; }
 .catalogue-filter:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in oklch, var(--focus) 24%, transparent); }
 .catalogue-filter input { width: min(220px, 24vw); border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
-.worker-indicator { display: inline-flex; align-items: center; gap: .45rem; margin-left: auto; color: var(--text-soft); font-size: .78rem; }
-.worker-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
 .icon-button { display: inline-grid; min-width: 34px; height: 34px; padding: 0; place-items: center; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-soft); cursor: pointer; text-decoration: none; }
 .icon-button:hover { border-color: var(--line); background: var(--surface); color: var(--text); }
 .icon-button:focus-visible, .button:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible { outline: 3px solid color-mix(in oklch, var(--indigo) 55%, transparent); outline-offset: 2px; }
@@ -140,7 +151,7 @@ p { color: var(--text-soft); line-height: 1.55; }
 .status-failed, .status-invalid, .status-error, .status-interrupted, .status-dropped { background: var(--red-soft); color: var(--red); }
 .status-cancelled, .status-draft { background: var(--surface-cool); color: var(--text-soft); }
 
-.metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); border-block: 1px solid var(--line); margin-bottom: 1.65rem; }
+.metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; margin-bottom: 1.65rem; }
 .metric { display: grid; gap: .05rem; padding: 1rem 1.25rem; border-inline-end: 1px solid var(--line); }
 .metric:last-child { border-inline-end: 0; }
 .metric > span { color: var(--text-soft); font-size: .75rem; }
@@ -705,11 +716,16 @@ g.has-problem .furniture-glyph { color: var(--red); }
   /* Stacked on a phone the sidebar is a drawer, and collapsing it to icons means nothing. */
   .sidebar-collapse { display: none !important; }
   .app-shell.nav-collapsed { grid-template-columns: 1fr; }
-  .nav-collapsed .sidebar { width: 232px; }
+  .nav-collapsed .sidebar { width: min(82vw, 290px); }
+  .nav-collapsed .brand-lockup { justify-content: flex-start; padding: 0 1.1rem; }
+  .nav-collapsed .brand-lockup > span:nth-child(2) { display: flex; }
+  .nav-collapsed .sidebar nav { padding: 1.3rem .8rem; }
+  .nav-collapsed .sidebar nav a { justify-content: flex-start; padding: .5rem .72rem; }
+  .nav-collapsed .sidebar nav a span { display: inline; }
   .nav-scrim { position: fixed; inset: 0; z-index: 25; display: block !important; border: 0; background: oklch(10% .01 220 / .45); }
   .topbar { height: 58px; padding: 0 .8rem; }
   .global-search { width: auto; flex: 1; }
-  .global-search kbd, .worker-indicator { display: none; }
+  .global-search kbd { display: none; }
   .topbar > a.icon-button { display: none; }
   .page { padding: 1.15rem .8rem 2rem; }
   .page-header { align-items: flex-start; flex-direction: column; }

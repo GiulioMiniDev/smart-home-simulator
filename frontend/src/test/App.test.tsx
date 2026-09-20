@@ -145,7 +145,7 @@ describe("complete application routes", () => {
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
   it.each([
-    ["/", "Good evidence starts"], ["/homes", "Workspace catalogue"], ["/residents", "People and provenance"],
+    ["/", "Simulation overview"], ["/homes", "Workspace catalogue"], ["/residents", "People and provenance"],
     ["/simulations", "Execution centre"], ["/exports", "Portable datasets"], ["/help", "Generate one authoring bundle"],
     ["/generate", "Generate a home input from a brief"], ["/missing", "does not exist"],
   ])("renders %s", async (path, text) => {
@@ -1048,7 +1048,7 @@ describe("complete application routes", () => {
   it("loads and persists the workspace theme preference", async () => {
     overrides["/settings/theme"] = { value: "dark" };
     mount("/");
-    await screen.findByText("Good evidence starts with inspectable inputs.");
+    await screen.findByRole("heading", { name: "Dashboard" });
     await waitFor(() => expect(screen.getByLabelText("Use light theme")).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText("Use light theme"));
     expect(localStorage.getItem("habitat-theme")).toBe('"light"');

@@ -27,8 +27,10 @@ describe("application components", () => {
 
   it("renders the shell and controls navigation and theme", () => {
     const theme = vi.fn(); const nav = vi.fn();
-    const view = render(<MemoryRouter><Shell workspaceName="Lab" theme="light" onTheme={theme} navOpen onNav={nav}><p>Content</p></Shell></MemoryRouter>);
-    expect(screen.getByText("Lab")).toBeInTheDocument();
+    const view = render(<MemoryRouter><Shell theme="light" onTheme={theme} navOpen onNav={nav}><p>Content</p></Shell></MemoryRouter>);
+    expect(screen.getByText("Smart Home Simulator")).toBeInTheDocument();
+    expect(screen.queryByText("Current workspace")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local engine ready|Local · schema/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Use dark theme")); fireEvent.click(screen.getAllByLabelText("Close navigation")[0]);
     const search = screen.getByLabelText("Search workspace");
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
@@ -37,19 +39,19 @@ describe("application components", () => {
     fireEvent.submit(screen.getByRole("search"));
     fireEvent.change(search, { target: { value: "" } });
     fireEvent.submit(screen.getByRole("search"));
-    view.rerender(<MemoryRouter><Shell workspaceName="Lab" theme="dark" onTheme={theme} navOpen={false} onNav={nav}><p>Content</p></Shell></MemoryRouter>);
+    view.rerender(<MemoryRouter><Shell theme="dark" onTheme={theme} navOpen={false} onNav={nav}><p>Content</p></Shell></MemoryRouter>);
     expect(screen.getByLabelText("Use light theme")).toBeInTheDocument();
     expect(theme).toHaveBeenCalled(); expect(nav).toHaveBeenCalled();
   });
 
   it("collapses the navigation to its icons and back", () => {
     const collapse = vi.fn();
-    const view = render(<MemoryRouter><Shell workspaceName="Lab" theme="light" onTheme={vi.fn()} navOpen={false} onNav={vi.fn()} navCollapsed={false} onNavCollapse={collapse}><p>Content</p></Shell></MemoryRouter>);
+    const view = render(<MemoryRouter><Shell theme="light" onTheme={vi.fn()} navOpen={false} onNav={vi.fn()} navCollapsed={false} onNavCollapse={collapse}><p>Content</p></Shell></MemoryRouter>);
     fireEvent.click(screen.getByLabelText("Collapse navigation"));
     expect(collapse).toHaveBeenCalled();
     expect(view.container.querySelector(".app-shell.nav-collapsed")).toBeNull();
 
-    view.rerender(<MemoryRouter><Shell workspaceName="Lab" theme="light" onTheme={vi.fn()} navOpen={false} onNav={vi.fn()} navCollapsed onNavCollapse={collapse}><p>Content</p></Shell></MemoryRouter>);
+    view.rerender(<MemoryRouter><Shell theme="light" onTheme={vi.fn()} navOpen={false} onNav={vi.fn()} navCollapsed onNavCollapse={collapse}><p>Content</p></Shell></MemoryRouter>);
     expect(view.container.querySelector(".app-shell.nav-collapsed")).not.toBeNull();
     expect(screen.getByLabelText("Expand navigation")).toHaveAttribute("aria-pressed", "true");
   });

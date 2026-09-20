@@ -178,7 +178,6 @@ async function readJson(file: File): Promise<Record<string, unknown>> {
 }
 
 export function App() {
-  const overview = useResource<Overview>("/overview");
   // Furniture the researcher drew themselves, so the plan and the replay draw it too rather
   // than falling back to an anonymous box.
   useCustomSymbols();
@@ -203,7 +202,6 @@ export function App() {
   };
   return (
     <Shell
-      workspaceName={overview.data?.workspace.name}
       theme={theme}
       onTheme={toggleTheme}
       navOpen={navOpen}
@@ -239,9 +237,9 @@ function Dashboard() {
   return (
     <div className="page dashboard-page">
       <PageHeader
-        eyebrow="Local research workspace"
-        title="Good evidence starts with inspectable inputs."
-        description="Build the home, execute behavior, then follow each sensor observation back to its simulated cause."
+        eyebrow="Simulation overview"
+        title="Dashboard"
+        description="Manage your homes, follow simulation runs and inspect their results."
         actions={<Link className="button primary" to="/homes"><Plus size={17} /> New experiment</Link>}
       />
       {workspace.diagnosticMode && (
@@ -263,9 +261,9 @@ function Dashboard() {
       )}
       <section className="metrics-strip" aria-label="Workspace summary">
         <Metric label="Homes" value={workspace.homeCount} detail={`${workspace.residentCount} residents`} />
-        <Metric label="Verified runs" value={workspace.runCount} detail={`${active.length} active`} />
+        <Metric label="Simulation runs" value={workspace.runCount} detail={`${active.length} active`} />
         <Metric label="Artifacts" value={workspace.artifactCount} detail="Digest catalogued" />
-        <Metric label="Workspace schema" value={workspace.formatVersion} detail="Local SQLite + files" />
+        <Metric label="Residents" value={workspace.residentCount} detail="Attached to homes" />
       </section>
       <div className="dashboard-grid">
         <section className="surface recent-homes">
@@ -298,7 +296,7 @@ function Dashboard() {
               <RunLink id={job.jobId}>Inspect live run</RunLink>
             </div>
           )) : (
-            <div className="quiet-state"><CircleDot size={24} /><strong>No active work</strong><p>Workers are ready. Runs continue if this page is closed.</p></div>
+            <div className="quiet-state"><CircleDot size={24} /><strong>No active work</strong><p>No queued or running simulations. Start a simulation from a home.</p></div>
           )}
         </aside>
       </div>

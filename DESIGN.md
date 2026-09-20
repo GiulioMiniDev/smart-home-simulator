@@ -57,3 +57,15 @@ canvas selection, inspector details and simulation progress.
   by authoritative obstacle geometry.
 - Verify desktop and narrow-screen renders, keyboard selection, route changes, layer
   states and browser console errors before accepting a visual milestone artifact.
+
+## Application shell and dashboard
+
+Keep navigation compact, with a teal selection marker and a spacing break before
+maintenance, settings and help. On phones, the drawer always shows labels even if
+desktop navigation was collapsed. Use quiet bordered statistic strips and direct
+page titles, with Source Sans 3 and tabular figures. Preserve dark-mode tokens and
+reduced-motion support for press and row feedback.
+
+Do not display hardcoded workspace versions or engine-ready claims. Operational
+status must come from observed data; schema metadata belongs in technical settings,
+not the navigation or dashboard summary.

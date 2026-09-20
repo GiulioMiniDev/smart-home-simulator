@@ -3,7 +3,7 @@ import axe from "axe-core";
 
 test("creates a durable home and keeps the application accessible", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Good evidence starts with inspectable inputs." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   if (await page.getByRole("button", { name: "Open navigation" }).isVisible()) {
     await page.getByRole("button", { name: "Open navigation" }).click();
   }
