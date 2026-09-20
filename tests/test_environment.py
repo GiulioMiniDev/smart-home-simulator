@@ -807,3 +807,64 @@ def test_a_plan_that_no_longer_binds_is_refused_instead_of_silently_reverting() 
 
     assert result.bundle is None
     assert "OBSTACLE_INVALID" in issue_codes(result.report)
+
+
+def test_the_behaviour_gate_says_why_and_not_only_that() -> None:
+    """A refused run has to name its cause, because the researcher cannot see the validator.
+
+    The gate kept `summary.error_count` and dropped the issues that produced it, so a horizon that
+    took ten minutes to expand stopped at "Behavior package is not accepted for this scenario" and
+    a count of 1. That sentence is true of every possible cause and so identifies none of them, and
+    the first time it fired in anger the cause was ours, not the author's: a run cannot be repaired
+    from a number.
+    """
+    from smart_home_sim.behavior.issues import behavior_issue
+    from smart_home_sim.domain.behavior_report import BehaviorValidationReport
+    from smart_home_sim.environment.service import _behavior_gate_issues
+
+    report = BehaviorValidationReport.from_issues(
+        [
+            behavior_issue(
+                "UNKNOWN_INTENT",
+                "catalog",
+                "$.bindings[10].intent",
+                "Unknown activity intent 'paint_at_home'.",
+            )
+        ]
+    )
+
+    issues = _behavior_gate_issues(report)
+
+    assert [item.code for item in issues] == ["BEHAVIOR_INVALID"]
+    assert "paint_at_home" in issues[0].message
+    # Rebased onto the package, so the path can be followed from the bundle it is reported against.
+    assert issues[0].path == "$.personalProcessPackage.bindings[10].intent"
+    assert issues[0].details["behaviorCode"] == "UNKNOWN_INTENT"
+    assert issues[0].details["behaviorErrorCount"] == 1
+
+
+def test_the_behaviour_gate_stops_repeating_itself_but_still_counts() -> None:
+    """One defect is usually many errors, and a run report is read by a person."""
+    from smart_home_sim.behavior.issues import behavior_issue
+    from smart_home_sim.domain.behavior_report import BehaviorValidationReport
+    from smart_home_sim.environment.service import _BEHAVIOR_ISSUES_SURFACED, _behavior_gate_issues
+
+    total = _BEHAVIOR_ISSUES_SURFACED + 5
+    report = BehaviorValidationReport.from_issues(
+        [
+            behavior_issue(
+                "UNKNOWN_INTENT",
+                "catalog",
+                f"$.bindings[{index}].intent",
+                f"Unknown activity intent 'invented_{index}'.",
+            )
+            for index in range(total)
+        ]
+    )
+
+    issues = _behavior_gate_issues(report)
+
+    assert len(issues) == _BEHAVIOR_ISSUES_SURFACED + 1
+    assert "5 further error(s)" in issues[-1].message
+    # Nothing is hidden: the count is the true total whatever the list shows.
+    assert all(item.details["behaviorErrorCount"] == total for item in issues)

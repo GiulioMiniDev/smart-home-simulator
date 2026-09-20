@@ -240,37 +240,58 @@ def validate_behavior_files(
     package_preview: Any = None
     if action_catalog_path is None or activity_catalog_path is None:
         package_preview, _ = _read_json(package_path, "personal process package")
+
+    def _declared_version(reference: str) -> str:
+        if isinstance(package_preview, dict):
+            catalogs = package_preview.get("catalogs")
+            if isinstance(catalogs, dict):
+                declared = catalogs.get(reference)
+                if isinstance(declared, dict):
+                    return str(declared.get("version", "1.0.0"))
+        return "1.0.0"
+
+    # A catalog the caller did not name is read through the vocabulary overlay rather than straight
+    # off disk. Every other stage — the expander, the preflight, the materializer, the simulator —
+    # reads `activity_catalog_payload` and `action_catalog_payload`, which add what the workspace
+    # editor contributed; this one function still opened the bundled file, so an activity accepted
+    # from an outline's proposals expanded into a horizon of days and was then refused here as
+    # `UNKNOWN_INTENT` at the run gate. See `vocabulary.catalogs` for why additions are safe.
+    action_overlay: dict[str, Any] | None = None
     if action_catalog_path is None:
-        catalog_version = "1.0.0"
-        if isinstance(package_preview, dict):
-            catalogs = package_preview.get("catalogs")
-            if isinstance(catalogs, dict):
-                action_reference = catalogs.get("actionCatalog")
-                if isinstance(action_reference, dict):
-                    catalog_version = str(action_reference.get("version", "1.0.0"))
+        catalog_version = _declared_version("actionCatalog")
         try:
-            action_catalog_path = default_action_catalog_path(catalog_version)
+            action_overlay = action_catalog_payload(catalog_version)
         except ValueError:
+            # An unknown version keeps the old behaviour: a path that does not exist, reported as
+            # a missing artifact rather than as a crash.
             action_catalog_path = _default_catalog_path(f"action-catalog-{catalog_version}.json")
+    activity_overlay: dict[str, Any] | None = None
     if activity_catalog_path is None:
-        activity_catalog_version = "1.0.0"
-        if isinstance(package_preview, dict):
-            catalogs = package_preview.get("catalogs")
-            if isinstance(catalogs, dict):
-                activity_reference = catalogs.get("activityCatalog")
-                if isinstance(activity_reference, dict):
-                    activity_catalog_version = str(activity_reference.get("version", "1.0.0"))
+        activity_catalog_version = _declared_version("activityCatalog")
         try:
-            activity_catalog_path = default_activity_catalog_path(activity_catalog_version)
+            activity_overlay = activity_catalog_payload(activity_catalog_version)
         except ValueError:
             activity_catalog_path = _default_catalog_path(
                 f"activity-catalog-{activity_catalog_version}.json"
             )
 
-    paths = (
+    activity_source: Path | dict[str, Any]
+    if activity_overlay is not None:
+        activity_source = activity_overlay
+    else:
+        assert activity_catalog_path is not None
+        activity_source = activity_catalog_path
+    action_source: Path | dict[str, Any]
+    if action_overlay is not None:
+        action_source = action_overlay
+    else:
+        assert action_catalog_path is not None
+        action_source = action_catalog_path
+
+    sources: tuple[tuple[Path | dict[str, Any], str, type[ContractModel]], ...] = (
         (package_path, "personal process package", PersonalProcessPackage),
         (
-            activity_catalog_path,
+            activity_source,
             "activity catalog",
             ActivityCatalog,
         ),
@@ -280,7 +301,7 @@ def validate_behavior_files(
             VariableCatalog,
         ),
         (
-            action_catalog_path,
+            action_source,
             "action catalog",
             ActionCatalog,
         ),
@@ -288,11 +309,15 @@ def validate_behavior_files(
     parsed: list[ContractModel] = []
     issues: list[BehaviorValidationIssue] = []
     package_payload: Any = None
-    for path, artifact_name, model in paths:
-        payload, read_issue = _read_json(path, artifact_name)
-        if read_issue is not None:
-            issues.append(read_issue)
-            continue
+    for source, artifact_name, model in sources:
+        payload: Any
+        if isinstance(source, Path):
+            payload, read_issue = _read_json(source, artifact_name)
+            if read_issue is not None:
+                issues.append(read_issue)
+                continue
+        else:
+            payload = source
         value, parse_issues = _parse_model(payload, model, artifact_name)
         issues.extend(parse_issues)
         if value is not None:

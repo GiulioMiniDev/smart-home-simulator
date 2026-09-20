@@ -26,6 +26,7 @@ from smart_home_sim.domain.behavior import (
     ValueSource,
     VariableCatalog,
 )
+from smart_home_sim.domain.behavior_report import BehaviorValidationReport
 from smart_home_sim.domain.environment import (
     ArtifactDigest,
     BundleBuildResult,
@@ -1060,6 +1061,71 @@ def _validate_routes(
     return route_checks, issues
 
 
+# How many of the behaviour package's own errors the gate repeats. A package that is wrong in one
+# way is usually wrong in it many times over, and a run report is read by a person; past this the
+# list stops informing and starts scrolling. The count in `behaviorErrorCount` is always the true
+# total, so nothing is hidden — only the repetition is.
+_BEHAVIOR_ISSUES_SURFACED = 20
+
+
+def _behavior_gate_issues(
+    report: BehaviorValidationReport,
+) -> list[EnvironmentValidationIssue]:
+    """Why the behaviour package was refused, and not merely that it was.
+
+    The gate used to keep `summary.error_count` and drop the issues that produced it, so a run
+    stopped with "Behavior package is not accepted for this scenario" and a count of 1 — the
+    sentence is true of every possible cause and therefore says nothing. The reasons were computed
+    one line above and thrown away, leaving a researcher with a rejected horizon, no path to the
+    defect, and no way to tell a mistake in their own document from one in ours. The first time it
+    fired in anger the cause was ours.
+
+    Each surfaced issue keeps the behaviour validator's own message and path, rebased onto the
+    package so the path can be followed from the bundle it is reported against.
+    """
+    errors = [item for item in report.issues if item.severity == "error"]
+    total = report.summary.error_count
+    surfaced = errors[:_BEHAVIOR_ISSUES_SURFACED]
+    issues = [
+        environment_issue(
+            "BEHAVIOR_INVALID",
+            "compatibility",
+            (
+                "$.personalProcessPackage" + item.path[1:]
+                if item.path.startswith("$")
+                else item.path
+            ),
+            f"Behavior package is not accepted for this scenario: {item.message}",
+            details={"behaviorErrorCount": total, "behaviorCode": item.code},
+        )
+        for item in surfaced
+    ]
+    if not issues:
+        # `valid` is false with no error of its own only if the report says so some other way;
+        # the gate still has to speak, so it keeps the sentence it always had.
+        return [
+            environment_issue(
+                "BEHAVIOR_INVALID",
+                "compatibility",
+                "$",
+                "Behavior package is not accepted for this scenario.",
+                details={"behaviorErrorCount": total},
+            )
+        ]
+    if len(errors) > len(surfaced):
+        issues.append(
+            environment_issue(
+                "BEHAVIOR_INVALID",
+                "compatibility",
+                "$",
+                f"Behavior package is not accepted for this scenario: "
+                f"{len(errors) - len(surfaced)} further error(s) are not listed here.",
+                details={"behaviorErrorCount": total},
+            )
+        )
+    return issues
+
+
 def build_bundle_files(
     scenario_path: Path,
     plan_path: Path,
@@ -1129,15 +1195,7 @@ def build_bundle_files(
     issues.extend(home_report.issues)
     behavior_report = validate_behavior_files(package_path, scenario_path)
     if not behavior_report.valid:
-        issues.append(
-            environment_issue(
-                "BEHAVIOR_INVALID",
-                "compatibility",
-                "$",
-                "Behavior package is not accepted for this scenario.",
-                details={"behaviorErrorCount": behavior_report.summary.error_count},
-            )
-        )
+        issues.extend(_behavior_gate_issues(behavior_report))
     if (
         plan.source_scenario_id != scenario.scenario_id
         or plan.source_scenario_sha256 != canonical_sha256(scenario)

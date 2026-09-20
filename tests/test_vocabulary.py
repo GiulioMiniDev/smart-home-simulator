@@ -10,6 +10,7 @@ from, key for key.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -355,6 +356,64 @@ def test_an_activity_added_in_the_editor_is_known_to_the_behaviour_validator(
     ]
     # The bundled definition of an activity the file already has is never replaced.
     assert by_intent["phone_call"].components == phone.components
+
+
+def test_the_run_gate_reads_the_overlay_and_not_the_catalog_file(
+    pack: VocabularyPack, tmp_path: Path
+) -> None:
+    """The test above checks the payload the overlay builds. This one checks who reads it.
+
+    `validate_behavior_files` resolved the version a package declares to a path and opened that
+    file, so the overlay stopped at the door of the one gate a run has to pass. An activity a
+    researcher had accepted into the workspace expanded into a horizon of days and survived the
+    import — both of those read the overlay — and was then refused `UNKNOWN_INTENT` when the run
+    went to build its bundle. The failure surfaced as "Behavior package is not accepted for this
+    scenario", which is true of every possible cause, so the defect read as the author's.
+    """
+    from smart_home_sim.behavior.service import validate_behavior_files
+
+    root = Path(__file__).resolve().parents[1]
+    package = json.loads(
+        (root / "examples/behavior/minimal_valid_scenario.behavior.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    package["bindings"].append(
+        {
+            "bindingId": "resident_1__water_the_plants",
+            "residentId": "resident_1",
+            "intent": "water_the_plants",
+            "processModelId": package["processModels"][0]["processModelId"],
+            "fallback": True,
+            "applicability": [],
+        }
+    )
+    package_path = tmp_path / "package.json"
+    package_path.write_text(json.dumps(package), encoding="utf-8")
+    scenario_path = root / "examples/valid/minimal.json"
+
+    def refuses_the_intent() -> bool:
+        report = validate_behavior_files(package_path, scenario_path)
+        return any(
+            item.code == "UNKNOWN_INTENT" and "water_the_plants" in item.message
+            for item in report.issues
+        )
+
+    # Nobody has added it yet, so the gate is right to refuse it.
+    assert refuses_the_intent()
+
+    extended = pack.model_copy(deep=True)
+    authored = extended.intents[0].model_copy(deep=True)
+    authored.intent_id = "water_the_plants"
+    authored.label = "Water the plants"
+    authored.components = []
+    extended.intents.append(authored)
+
+    with use_pack(extended):
+        assert not refuses_the_intent()
+
+    # And the workspace's own vocabulary does not leak into a process that never adopted it.
+    assert refuses_the_intent()
 
 
 def test_an_action_added_in_the_editor_reaches_every_stage_that_loads_the_catalog(
