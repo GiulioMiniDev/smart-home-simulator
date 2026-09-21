@@ -413,6 +413,18 @@ describe("application components", () => {
     expect(view.container.querySelector("polygon.sensor-coverage")).not.toBeNull();
   });
 
+  it("outlines a selected circular PIR with its coverage rather than a square", () => {
+    const circular: SensorModel = { ...sensors, sensors: [{ ...sensors.sensors[0], coverage: {
+      vertices: Array.from({ length: 24 }, (_, index) => ({
+        x: 2 + Math.cos(index * Math.PI / 12), y: 2 + Math.sin(index * Math.PI / 12),
+      })),
+    } }] };
+    const editing = { onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn(), onRange: vi.fn() };
+    const view = render(<PlanCanvas home={home} sensors={circular} layer="sensors" selectedId="pir" editing={editing} />);
+    expect(view.container.querySelector("polygon.selection-outline")).not.toBeNull();
+    expect(view.container.querySelector("rect.selection-outline")).toBeNull();
+  });
+
   it("offers resize handles for areas only, and none when the plan is read-only", () => {
     const editing = { onDragStart: vi.fn(), onMove: vi.fn(), onResize: vi.fn() };
     const areas = render(<PlanCanvas home={home} sensors={sensors} selectedId="pir" editing={editing} />);

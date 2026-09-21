@@ -472,6 +472,41 @@ describe("direct manipulation on the plan", () => {
     expect(setPirRange(contacts, home(), "pir_01", 2)).toEqual(contacts);
   });
 
+  it("keeps a circular PIR circular when its radius is edited", () => {
+    const circle = withPir();
+    circle.sensors[0].coverage = { vertices: Array.from({ length: 24 }, (_, index) => ({
+      x: 2 + Math.cos(index * Math.PI / 12), y: 2 + Math.sin(index * Math.PI / 12),
+    })) };
+    const wider = setPirRange(circle, home(), "pir_01", 1.5);
+    const vertices = (wider.sensors[0].coverage as { vertices: Point[] }).vertices;
+    expect(vertices.length).toBeGreaterThan(8);
+    expect(vertices.some((point) => point.x > 3 && point.y > 2)).toBe(true);
+    expect(wider.sensors[0].position).toEqual({ x: 2, y: 2 });
+    expect(pirRange(wider.sensors[0])).toBeCloseTo(1.5, 1);
+
+    const clipped = setPirRange(circle, home(), "pir_01", 9);
+    const clippedVertices = (clipped.sensors[0].coverage as { vertices: Point[] }).vertices;
+    expect(clippedVertices.every((point) => point.x >= 0 && point.x <= 4 && point.y >= 0 && point.y <= 4)).toBe(true);
+    const narrowed = setPirRange(clipped, home(), "pir_01", 0.8);
+    expect((narrowed.sensors[0].coverage as { vertices: Point[] }).vertices.length).toBeGreaterThan(8);
+  });
+
+  it("keeps a circular PIR circular while crossing into another room", () => {
+    const two = createRoomFromBox(home(), { minX: 4, minY: 0, maxX: 8, maxY: 4 }).model;
+    const circle = withPir();
+    circle.sensors[0].coverage = { vertices: Array.from({ length: 24 }, (_, index) => ({
+      x: 2 + Math.cos(index * Math.PI / 12), y: 2 + Math.sin(index * Math.PI / 12),
+    })) };
+    const crossing = movePlanObject(two, circle, "pir_01", 2.1, 0).sensors!;
+    expect(crossing.sensors[0].regionIds).toEqual(["room_02"]);
+    expect((crossing.sensors[0].coverage as { vertices: Point[] }).vertices.length).toBeGreaterThan(8);
+    const settled = setSensorPosition(crossing, two, "pir_01", { x: 6, y: 2 }).sensors[0];
+    const vertices = (settled.coverage as { vertices: Point[] }).vertices;
+    expect(vertices.length).toBeGreaterThan(8);
+    expect(vertices.some((point) => point.x < 6 && point.y < 2)).toBe(true);
+    expect(settled.position).toEqual({ x: 6, y: 2 });
+  });
+
   it("takes doorways along when their room moves, and ignores a selection it cannot place", () => {
     const withDoor: HomeModel = {
       ...furnished(),

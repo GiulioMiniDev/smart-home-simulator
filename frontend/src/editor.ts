@@ -246,6 +246,49 @@ function rectangle(box: PlanBox): Point[] {
   ];
 }
 
+/** Generated circular PIR fields are polygons with 24 points (possibly fewer after wall clipping). */
+export function isCircularPirCoverage(sensor: SensorBase): boolean {
+  const vertices = (sensor.coverage as { vertices?: Point[] } | undefined)?.vertices;
+  return sensor.sensorType === "pir" && !!vertices && vertices.length >= 8;
+}
+
+function circleWithinBox(centre: Point, radius: number, box: PlanBox): Point[] {
+  let vertices = Array.from({ length: 24 }, (_, index) => ({
+    x: centre.x + radius * Math.cos(index * Math.PI / 12),
+    y: centre.y + radius * Math.sin(index * Math.PI / 12),
+  }));
+  // Clip each side of the disc to the monitored room's bounds, keeping the curved edge.
+  for (const [inside, cross] of [
+    [(point: Point) => point.x >= box.minX, (a: Point, b: Point) => ({ x: box.minX, y: a.y + (b.y - a.y) * (box.minX - a.x) / (b.x - a.x) })],
+    [(point: Point) => point.x <= box.maxX, (a: Point, b: Point) => ({ x: box.maxX, y: a.y + (b.y - a.y) * (box.maxX - a.x) / (b.x - a.x) })],
+    [(point: Point) => point.y >= box.minY, (a: Point, b: Point) => ({ x: a.x + (b.x - a.x) * (box.minY - a.y) / (b.y - a.y), y: box.minY })],
+    [(point: Point) => point.y <= box.maxY, (a: Point, b: Point) => ({ x: a.x + (b.x - a.x) * (box.maxY - a.y) / (b.y - a.y), y: box.maxY })],
+  ] as Array<[(point: Point) => boolean, (a: Point, b: Point) => Point]>) {
+    const input = vertices;
+    vertices = [];
+    for (let index = 0; index < input.length; index += 1) {
+      const previous = input[(index + input.length - 1) % input.length]!;
+      const current = input[index]!;
+      if (inside(current)) {
+        if (!inside(previous)) vertices.push(cross(previous, current));
+        vertices.push(current);
+      } else if (inside(previous)) vertices.push(cross(previous, current));
+    }
+  }
+  const rounded = vertices.map((point) => ({ x: Math.round(point.x * 1000) / 1000, y: Math.round(point.y * 1000) / 1000 }))
+    .filter((point, index, points) => index === 0 || point.x !== points[index - 1]!.x || point.y !== points[index - 1]!.y);
+  if (rounded.length >= 8) return rounded;
+  // A disc wider than its room has a rectangular visible boundary. Keep enough points on that
+  // boundary to retain its circular editing mode after the draft is saved and loaded again.
+  return rounded.flatMap((point, index) => {
+    const next = rounded[(index + 1) % rounded.length]!;
+    return [point, ...[1, 2].map((step) => ({
+      x: Math.round((point.x * (3 - step) + next.x * step) * 1000 / 3) / 1000,
+      y: Math.round((point.y * (3 - step) + next.y * step) * 1000 / 3) / 1000,
+    }))];
+  });
+}
+
 /** Round to the centimetre so dragging cannot smuggle floating-point noise into a published model. */
 export function snap(value: number, grid = 0.1): number {
   if (grid <= 0) return Math.round(value * 1000) / 1000;
@@ -415,11 +458,18 @@ function rebindSensor(sensor: SensorBase, home: HomeModel): SensorBase {
 
 function moveSensor(sensor: SensorBase, home: HomeModel, dx: number, dy: number): SensorBase {
   const coverage = sensor.coverage as { vertices: Point[] } | undefined;
-  return rebindSensor({
+  const moved = rebindSensor({
     ...sensor,
     position: { x: snap(sensor.position.x + dx), y: snap(sensor.position.y + dy) },
     coverage: coverage ? { vertices: translate(coverage.vertices, dx, dy) } : sensor.coverage,
   }, home);
+  if (!isCircularPirCoverage(sensor)) return moved;
+  const level = home.regions.find((item) => regionsOf(moved).includes(item.regionId))?.level ?? 0;
+  if (!regionUnder(home, moved.position, level)) return moved;
+  const limit = clampToRegions(
+    { minX: -Infinity, minY: -Infinity, maxX: Infinity, maxY: Infinity }, home, regionsOf(moved),
+  );
+  return { ...moved, coverage: { vertices: circleWithinBox(moved.position, pirRange(sensor), limit) } };
 }
 
 /**
@@ -550,6 +600,17 @@ export function setPirRange(
     ...model,
     sensors: model.sensors.map((sensor) => {
       if (sensor.sensorId !== sensorId || sensor.sensorType !== "pir") return sensor;
+      if (isCircularPirCoverage(sensor)) {
+        const boxes = home.regions.filter((item) => regionsOf(sensor).includes(item.regionId))
+          .map((item) => boxOf(item.boundary.vertices));
+        const limit = boxes.length ? {
+          minX: Math.min(...boxes.map((item) => item.minX)),
+          minY: Math.min(...boxes.map((item) => item.minY)),
+          maxX: Math.max(...boxes.map((item) => item.maxX)),
+          maxY: Math.max(...boxes.map((item) => item.maxY)),
+        } : { minX: -Infinity, minY: -Infinity, maxX: Infinity, maxY: Infinity };
+        return { ...sensor, coverage: { vertices: circleWithinBox(sensor.position, range, limit) } };
+      }
       const box = clampToRegions({
         minX: snap(sensor.position.x - range),
         minY: snap(sensor.position.y - range),
@@ -565,6 +626,10 @@ export function setPirRange(
 export function pirRange(sensor: SensorBase): number {
   const coverage = sensor.coverage as { vertices: Point[] } | undefined;
   if (!coverage) return 0;
+  if (isCircularPirCoverage(sensor)) {
+    return snap(Math.max(...coverage.vertices.map((point) =>
+      Math.hypot(point.x - sensor.position.x, point.y - sensor.position.y))));
+  }
   const box = boxOf(coverage.vertices);
   return snap(Math.min(box.maxX - box.minX, box.maxY - box.minY) / 2);
 }

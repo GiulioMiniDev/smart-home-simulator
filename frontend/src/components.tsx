@@ -28,6 +28,7 @@ import {
   boxOf,
   cutDoorways,
   dwellingRegionIds,
+  isCircularPirCoverage,
   magnet,
   planDoors,
   planFrontDoor,
@@ -825,6 +826,7 @@ export function PlanCanvas({
   // Carrying the id alongside the box removes the need to re-check it when wiring the handles.
   const selectedBox = editing && selectedId ? selectionBox(home, sensors, selectedId) : undefined;
   const selection = selectedBox ? { id: selectedId as string, box: selectedBox } : undefined;
+  const selectedCircularCoverage = sensors?.sensors.find((item) => item.sensorId === selectedId && isCircularPirCoverage(item))?.coverage as Polygon | undefined;
   // Every detector's coverage, largest first: drawn in that order the smallest ends up on top, so
   // a zone inside a room takes the click that was meant for it rather than the room-wide cone.
   const covered = (sensors?.sensors ?? [])
@@ -1073,13 +1075,16 @@ export function PlanCanvas({
           })}
         </g>}
         {selection && <g role="group" aria-label="Resize handles" className="resize-handles">
-          <rect
+          {selectedCircularCoverage ? <polygon
+            points={polygonPoints(selectedCircularCoverage.vertices)}
+            className="selection-outline"
+          /> : <rect
             x={selection.box.minX}
             y={selection.box.minY}
             width={selection.box.maxX - selection.box.minX}
             height={selection.box.maxY - selection.box.minY}
             className="selection-outline"
-          />
+          />}
           {gripped && GRIPS.map(({ grip, fx, fy }) => {
             const size = Math.min(width, height) / 32;
             return (
