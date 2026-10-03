@@ -1113,11 +1113,17 @@ describe("complete application routes", () => {
     await screen.findByText("Attach accepted authoring");
     // The questions about the field that are decisions rather than calibrations.
     fireEvent.change(screen.getByLabelText("Detectors"), { target: { value: "room_coverage" } });
+    // The form starts on the deployment of the reference datasets: a 2.5 m circle.
+    expect(screen.getByLabelText("What each one watches")).toHaveValue("circle");
+    expect(screen.getByLabelText("How far each one sees")).toHaveValue("2.5");
+    expect(screen.getByText(/roughly doubles the readings/)).toBeInTheDocument();
     // Reach is a circle's question alone: a rectangle is the room's floor shared out.
+    fireEvent.change(screen.getByLabelText("What each one watches"), { target: { value: "rectangle" } });
     expect(screen.getByLabelText("How far each one sees")).toBeDisabled();
     fireEvent.change(screen.getByLabelText("What each one watches"), { target: { value: "circle" } });
     expect(screen.getByText(/leaves the corners of every room unwatched/)).toBeInTheDocument();
     expect(screen.getByLabelText("How far each one sees")).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("How far each one sees"), { target: { value: "0" } });
     expect(screen.getByText(/the log repeats that one name/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("How far each one sees"), { target: { value: "2.5" } });
     expect(screen.getByText(/roughly doubles the readings/)).toBeInTheDocument();
@@ -1269,7 +1275,7 @@ describe("complete application routes", () => {
     const rebuilt = vi.fn((options?: RequestInit) => {
       expect(JSON.parse(String(options?.body))).toEqual({
         scenario_artifact_id: "scenario", behavior_artifact_id: "behavior",
-        sensor_policy: { preset: "functional_zones", pirCoverageShape: "rectangle", pirCoverageRadiusMeters: 0, observationProfile: "realistic" },
+        sensor_policy: { preset: "functional_zones", pirCoverageShape: "circle", pirCoverageRadiusMeters: 2.5, observationProfile: "realistic" },
       });
       return response(job, { status: 202 });
     });

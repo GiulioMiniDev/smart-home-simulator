@@ -844,8 +844,12 @@ function HomePage() {
   const [depth, setDepth] = useState<PipelineDepth>("environment");
   // The half of the deployment policy worth a control. The rest of `SensorDeploymentPolicy` is
   // forty numbers calibrated against CASAS, and a form for those is a form nobody can answer.
+  //
+  // The field starts as the 2.5 m circle, not the engine's `rectangle`: it is the deployment the
+  // three reference datasets were generated with, and it is the one that measured closest to
+  // CASAS Aruba. A form left at its default produced a dataset nobody could compare with them.
   const [deployment, setDeployment] = useState<DeploymentChoice>({
-    preset: "functional_zones", pirCoverageShape: "rectangle", pirCoverageRadiusMeters: 0,
+    preset: "functional_zones", pirCoverageShape: "circle", pirCoverageRadiusMeters: 2.5,
     observationProfile: "realistic",
   });
   const [progress, setProgress] = useState<OperationProgress>();
